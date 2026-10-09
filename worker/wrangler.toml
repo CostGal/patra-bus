@@ -1,0 +1,12 @@
+name = "patra-bus"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Local-only: run with `wrangler dev --local`. The id is a placeholder;
+# no real KV namespace is created and this is never deployed.
+[[kv_namespaces]]
+binding = "KV"
+id = "patra-bus-local"
+
+[vars]
+ALLOWED_ORIGIN = "*"
