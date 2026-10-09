@@ -1,0 +1,15 @@
+{
+  "name": "patra-bus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch-static": "node scripts/fetch-static.mjs",
+    "dev:worker": "wrangler dev --local --config worker/wrangler.toml --port 8787",
+    "dev:web": "http-server web -p 8080 -c-1"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "wrangler": "^4.149.0"
+  }
+}
