@@ -1,5 +1,5 @@
 // Bump on any shell change.
-const CACHE = 'patra-bus-v1';
+const CACHE = 'patra-bus-v2';
 
 const SHELL = [
   './',

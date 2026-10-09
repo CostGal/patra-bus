@@ -27,7 +27,7 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - `/api/v1/el/112/lines` → 30: `{id, code, name, color, textColor, borderColor, routes[{id, code, name, direction:1|2}]}`.
 - `/api/v1/el/112/stops/live/{code}` → `{vehicles[{lineCode, lineName, routeCode, routeName, latitude:string, longitude:string, departureMins:number, departureSeconds:number, vehicleCode, lineColor, lineTextColor, borderColor}]}`.
   - `latitude/longitude` = `"0"/"0"` → **προγραμματισμένη** αναχώρηση. Το `departureMins` = λεπτά ως την ώρα του προγράμματος. Όλα τα άλλα είναι live.
-  - Το `departureSeconds` είναι **υπόλοιπο 0–59**, όχι σύνολο (1′14″ → mins 1, secs 14).
+  - Το `departureSeconds` είναι **υπόλοιπο 0–59**, όχι σύνολο (1′14″ → mins 1, secs 14). Μπορεί να είναι ≠0 **και στα προγραμματισμένα**. Γι' αυτό η ώρα προγράμματος = `fetchedAt + etaSec`, και βγαίνει σταθερή ανάμεσα στα fetches (π.χ. 22:45:33).
   - Μία φορά ήρθε **200 με κενό body** (σε γρήγορη επανάληψη). Το χειριζόμαστε ως upstream error και δεν μπαίνει σε cache.
 - Υπάρχουν και trips/sequence/points (`/api/v1/112/lines/{code}/points` χωρίς `el`), αλλά δεν χρησιμοποιούνται στο v1.
 - Στάση για τεστ: **1011** `ΠΑΝΕΠΙΣΤΗΜΙΟΥ & ΑΡΕΘΑ` (201, 606, 609).
@@ -39,3 +39,9 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Ονόματα: Title Case μόνο στην εμφάνιση, με τελικό ς. Οι τόνοι δεν μαντεύονται.
 - Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins. Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`.
 - Minimum viable complexity: vanilla JS, χωρίς build step και χωρίς framework.
+
+## Dev σημειώσεις
+- Το `npm i` μπλοκάρει το postinstall του `workerd` (npm allow-scripts). Δεν πειράζει: το binary έρχεται από το `@cloudflare/workerd-windows-64` και το `wrangler dev` τρέχει κανονικά.
+- Το frontend καλεί `http://localhost:8787` (`API_BASE` στο `web/js/app.js`).
+- Ο worker στέλνει `X-Cache: HIT|MISS`. Στο HIT το `fetchedAt` είναι αυτό του αρχικού upstream fetch.
+- Το ενσωματωμένο browser pane του Claude desktop δεν κάνει register service workers ("unknown error when fetching the script"). Ο SW επαληθεύεται σε κανονικό Chrome/Edge.
