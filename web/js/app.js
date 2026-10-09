@@ -1,7 +1,10 @@
 import { normalizeLive } from './arrivals.js';
 import { titleCase, searchKey } from './text.js';
 
-const API_BASE = 'http://localhost:8787';
+// Local dev talks to `wrangler dev`; everything else to the deployed worker.
+const API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? 'http://localhost:8787'
+  : 'https://patra-bus.patra-bus.workers.dev';
 const POLL_MS = 20000;
 const MIN_GAP_MS = 15000; // never fetch live more often than this, retries included
 const STALE_MS = 60000;

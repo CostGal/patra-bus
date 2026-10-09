@@ -2,11 +2,11 @@ name = "patra-bus"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
-# Local-only: run with `wrangler dev --local`. The id is a placeholder;
-# no real KV namespace is created and this is never deployed.
+# Deployed with `wrangler deploy`. KV "patra-bus-token" holds only the scraped token.
+# `wrangler dev --local` keeps using local KV storage, not this namespace.
 [[kv_namespaces]]
 binding = "KV"
-id = "patra-bus-local"
+id = "f69d669e1cac4ac68b732266017c4453"
 
 [vars]
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://costgal.github.io,http://localhost:8080"

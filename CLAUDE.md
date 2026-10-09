@@ -7,21 +7,23 @@ PWA με live αφίξεις αστικών λεωφορείων Πάτρας, �
 ```
 npm install
 npm run fetch-static     # ανανεώνει web/data/stops.json + lines.json (committed)
-npm run dev:worker       # wrangler dev --local στο :8787 (local KV, ποτέ deploy)
+npm run dev:worker       # wrangler dev --local στο :8787 (local KV)
+npx wrangler deploy --config worker/wrangler.toml   # deploy του worker στο Cloudflare
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
 ```
 Άνοιγμα: http://localhost:8080/ · demo με fixture: http://localhost:8080/?demo#/stop/1011
 Τα δύο dev servers υπάρχουν και στο `.claude/launch.json` (`worker`, `web`).
 
-## GitHub / Pages
+## GitHub / Pages / Cloudflare
 - Repo (public): https://github.com/CostGal/patra-bus
 - Site: https://costgal.github.io/patra-bus/. Το `.github/workflows/pages.yml` ανεβάζει **μόνο** το `web/` σε κάθε push στο `main`.
 - Το site είναι σε subpath (`/patra-bus/`), οπότε όλα τα paths στο `web/` μένουν **σχετικά** (`./data/…`, `sw.js`, `start_url: "./"`).
-- Ο worker δεν γίνεται deploy. Στο Pages το `API_BASE` δείχνει ακόμα σε `http://localhost:8787`, άρα live μόνο στο δικό σου PC με τον worker ανοιχτό (ο browser μπορεί να ζητήσει άδεια local network). Το browser pane του Claude το μπλοκάρει. Για τους άλλους δουλεύουν αναζήτηση, στάσεις και `?demo`.
+- Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`, μόνο για το token. Το deploy είναι **χειροκίνητο**: το push στο `main` ανεβάζει μόνο το Pages.
+- `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080`). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
 
 ## Δομή
 - `scripts/fetch-static.mjs`: scrape token → /stops, /lines (250 ms παύση) → `web/data/`. Τα αρχεία γράφονται απευθείας εκεί, ώστε να τα σερβίρει ο static server χωρίς αντίγραφα.
-- `worker/`: Cloudflare Worker, μόνο για τοπική χρήση. Routes: `/api/live/:code` (cache 15 s), `/api/stops` και `/api/lines` (cache 24 h), `/health`.
+- `worker/`: Cloudflare Worker, τοπικά (`wrangler dev`) και deployed. Routes: `/api/live/:code` (cache 15 s), `/api/stops` και `/api/lines` (cache 24 h), `/health`.
 - `web/js/arrivals.js`: **κοινό** module worker + frontend. Η λογική live/προγρ. ζει μόνο εδώ.
 - `web/js/text.js`: titleCase και searchKey.
 - `web/fixtures/live-1011.json`: πραγματική upstream απάντηση (1 live, 1 προγρ.), για το `?demo`.
@@ -49,6 +51,7 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 
 ## Dev σημειώσεις
 - Το `npm i` μπλοκάρει το postinstall του `workerd` (npm allow-scripts). Δεν πειράζει: το binary έρχεται από το `@cloudflare/workerd-windows-64` και το `wrangler dev` τρέχει κανονικά.
-- Το frontend καλεί `http://localhost:8787` (`API_BASE` στο `web/js/app.js`).
+- `API_BASE` στο `web/js/app.js`: σε `localhost`/`127.0.0.1` καλεί `http://localhost:8787`, αλλού τον deployed worker.
+- Από τα μεσάνυχτα της 2026-10-10 το upstream live δίνει **404** για τις 1011 και 410, τοπικά και από Cloudflare. Πιθανώς σημαίνει "καμία αναχώρηση" (νύχτα), **ανεπιβεβαίωτο**. Ο worker το δίνει ως 502 και η εφαρμογή δείχνει "Δεν ήταν δυνατή η σύνδεση".
 - Ο worker στέλνει `X-Cache: HIT|MISS`. Στο HIT το `fetchedAt` είναι αυτό του αρχικού upstream fetch.
 - Το ενσωματωμένο browser pane του Claude desktop δεν κάνει register service workers ("unknown error when fetching the script"). Ο SW επαληθεύεται σε κανονικό Chrome/Edge.

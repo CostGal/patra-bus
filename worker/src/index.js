@@ -71,27 +71,36 @@ async function upstream(env, path) {
   }
 }
 
-function headers(env, extra = {}) {
+// ALLOWED_ORIGIN: "*" or a comma-separated list; a listed Origin is echoed back.
+function corsOrigin(env, request) {
+  const allowed = (env.ALLOWED_ORIGIN || '*').split(',').map((o) => o.trim());
+  if (allowed.includes('*')) return '*';
+  const origin = request.headers.get('Origin');
+  return origin && allowed.includes(origin) ? origin : allowed[0];
+}
+
+function headers(cors, extra = {}) {
   return {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
+    'Access-Control-Allow-Origin': cors,
+    Vary: 'Origin',
     'Access-Control-Expose-Headers': 'X-Cache',
     ...extra,
   };
 }
 
-function json(env, data, status = 200, extra = {}) {
-  return new Response(JSON.stringify(data), { status, headers: headers(env, extra) });
+function json(cors, data, status = 200, extra = {}) {
+  return new Response(JSON.stringify(data), { status, headers: headers(cors, extra) });
 }
 
 // Serves from caches.default or builds via produce() -> JSON string.
 // The cached copy carries max-age; the response to the browser is no-store.
-async function cached(env, ctx, key, ttl, produce) {
+async function cached(cors, ctx, key, ttl, produce) {
   const cacheKey = new Request(`https://patra-bus.cache/${key}`);
   const hit = await caches.default.match(cacheKey);
   if (hit) {
     return new Response(await hit.text(), {
-      headers: headers(env, { 'Cache-Control': 'no-store', 'X-Cache': 'HIT' }),
+      headers: headers(cors, { 'Cache-Control': 'no-store', 'X-Cache': 'HIT' }),
     });
   }
   const body = await produce();
@@ -104,50 +113,52 @@ async function cached(env, ctx, key, ttl, produce) {
     ),
   );
   return new Response(body, {
-    headers: headers(env, { 'Cache-Control': 'no-store', 'X-Cache': 'MISS' }),
+    headers: headers(cors, { 'Cache-Control': 'no-store', 'X-Cache': 'MISS' }),
   });
 }
 
 export default {
   async fetch(request, env, ctx) {
+    const cors = corsOrigin(env, request);
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
+          'Access-Control-Allow-Origin': cors,
+          Vary: 'Origin',
           'Access-Control-Allow-Methods': 'GET, OPTIONS',
           'Access-Control-Allow-Headers': '*',
           'Access-Control-Max-Age': '86400',
         },
       });
     }
-    if (request.method !== 'GET') return json(env, { error: 'not_found' }, 404);
+    if (request.method !== 'GET') return json(cors, { error: 'not_found' }, 404);
 
     const { pathname } = new URL(request.url);
     try {
       const live = pathname.match(/^\/api\/live\/(\d{1,6})$/);
       if (live) {
         const code = live[1];
-        return await cached(env, ctx, `live/${code}`, 15, async () => {
+        return await cached(cors, ctx, `live/${code}`, 15, async () => {
           const raw = await upstream(env, `/stops/live/${code}`);
           return JSON.stringify(normalizeLive(raw, Date.now()));
         });
       }
       if (pathname === '/api/stops' || pathname === '/api/lines') {
         const name = pathname.slice('/api/'.length);
-        return await cached(env, ctx, name, 86400, async () =>
+        return await cached(cors, ctx, name, 86400, async () =>
           JSON.stringify(await upstream(env, `/${name}`)),
         );
       }
       if (pathname === '/health') {
         const saved = await env.KV.get('token', 'json');
-        return json(env, { ok: true, tokenExp: saved?.exp ?? null, now: Date.now() });
+        return json(cors, { ok: true, tokenExp: saved?.exp ?? null, now: Date.now() });
       }
-      return json(env, { error: 'not_found' }, 404);
+      return json(cors, { error: 'not_found' }, 404);
     } catch (err) {
       const status = err.status || 502;
       console.error(`${pathname}: ${err.message}`);
-      return json(env, { error: 'upstream', status }, status, { 'Cache-Control': 'no-store' });
+      return json(cors, { error: 'upstream', status }, status, { 'Cache-Control': 'no-store' });
     }
   },
 };
