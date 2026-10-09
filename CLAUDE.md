@@ -11,6 +11,13 @@ npm run dev:worker       # wrangler dev --local στο :8787 (local KV, ποτέ
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
 ```
 Άνοιγμα: http://localhost:8080/ · demo με fixture: http://localhost:8080/?demo#/stop/1011
+Τα δύο dev servers υπάρχουν και στο `.claude/launch.json` (`worker`, `web`).
+
+## GitHub / Pages
+- Repo (public): https://github.com/CostGal/patra-bus
+- Site: https://costgal.github.io/patra-bus/. Το `.github/workflows/pages.yml` ανεβάζει **μόνο** το `web/` σε κάθε push στο `main`.
+- Το site είναι σε subpath (`/patra-bus/`), οπότε όλα τα paths στο `web/` μένουν **σχετικά** (`./data/…`, `sw.js`, `start_url: "./"`).
+- Ο worker δεν γίνεται deploy. Στο Pages το `API_BASE` δείχνει ακόμα σε `http://localhost:8787`, άρα live μόνο στο δικό σου PC με τον worker ανοιχτό (ο browser μπορεί να ζητήσει άδεια local network). Το browser pane του Claude το μπλοκάρει. Για τους άλλους δουλεύουν αναζήτηση, στάσεις και `?demo`.
 
 ## Δομή
 - `scripts/fetch-static.mjs`: scrape token → /stops, /lines (250 ms παύση) → `web/data/`. Τα αρχεία γράφονται απευθείας εκεί, ώστε να τα σερβίρει ο static server χωρίς αντίγραφα.
