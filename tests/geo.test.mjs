@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { CITIES } from '../web/js/cities.js';
 import {
-  haversine, bearing, fmtDist, nearestStops, inArea, PATRAS_BBOX, normDeg, angleDiff, lerpAngle,
+  haversine, bearing, fmtDist, nearestStops, inArea, normDeg, angleDiff, lerpAngle,
   metersToLatLngDelta, offsetPoint, destinationPoint, pointAlong, pathLength, closestOnPath,
 } from '../web/js/geo.js';
 
@@ -46,11 +47,12 @@ test('fmtDist', () => {
   assert.equal(fmtDist(NaN), '—');
 });
 
-test('inArea / PATRAS_BBOX', () => {
+test('inArea / city bbox', () => {
   assert.ok(inArea(CENTER));
   assert.ok(!inArea({ lat: 37.9755, lng: 23.7348 })); // Athens
   assert.ok(!inArea(null));
-  assert.ok(inArea({ lat: PATRAS_BBOX.minLat, lng: PATRAS_BBOX.minLng }));
+  assert.ok(inArea({ lat: CITIES.patra.bbox.south, lng: CITIES.patra.bbox.west }));
+  assert.ok(!inArea(CENTER, { west: 0, south: 0, east: 1, north: 1 })); // explicit bbox wins
 });
 
 test('angles: normDeg, angleDiff, lerpAngle across 0/360', () => {

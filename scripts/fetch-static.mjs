@@ -1,9 +1,11 @@
 // Fetches stops + lines from the citybus API and writes them to web/data/.
 // The token is scraped fresh each run and never written to disk.
 import { writeFile } from 'node:fs/promises';
+import { city, apiBase } from '../web/js/cities.js';
 
-const PAGE = 'https://patra.citybus.gr/el/stops';
-const API = 'https://rest.citybus.gr/api/v1/el/112';
+const CITY = city();
+const PAGE = CITY.page;
+const API = apiBase(CITY);
 const OUT = new URL('../web/data/', import.meta.url);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -18,7 +20,7 @@ async function get(path, token) {
   let res = await fetch(API + path, { headers: { Authorization: `Bearer ${token}` } });
   if (res.status === 401 || res.status === 403) {
     res = await fetch(API + path, {
-      headers: { Authorization: `Bearer ${token}`, Referer: 'https://patra.citybus.gr/' },
+      headers: { Authorization: `Bearer ${token}`, Referer: new URL('/', PAGE).href },
     });
   }
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);

@@ -19,6 +19,7 @@ import { readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { searchKey } from '../web/js/text.js';
+import { city } from '../web/js/cities.js';
 
 const DATA = new URL('../web/data/', import.meta.url);
 const CACHE = new URL('./.cache/osrm/', import.meta.url);
@@ -33,7 +34,7 @@ export const K = {
   DP_TOL_M: 8,       // Douglas-Peucker tolerance for shapes
   JUMP_M: 1500,      // consecutive stops further apart than this are flagged
   SIDE_MIN_OFF_M: 2, // stops closer than this to the road centre line say nothing about the side
-  CENTER: { lat: 38.2466, lng: 21.7346 }, // Πλ. Γεωργίου Α', the "ΚΕΝΤΡΟ" of the route names
+  CENTER: city().center, // the "ΚΕΝΤΡΟ" of the route names
   UA: 'patra-bus/2 (github.com/CostGal/patra-bus)',
   MIN_GAP_MS: 1100,
   SERVERS: ['https://routing.openstreetmap.de/routed-car', 'https://router.project-osrm.org'],

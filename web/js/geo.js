@@ -1,11 +1,12 @@
 // Geometry helpers (owner: location). Pure functions, no DOM; also imported by node tests.
 import { t, lang } from './i18n.js';
+import { city } from './cities.js';
 const RAD = Math.PI / 180;
 const EARTH_R = 6371000;
 const M_PER_DEG = 111320; // metres per degree of latitude (good enough at city scale)
 
-export const PATRAS_BBOX = { minLat: 38.13, maxLat: 38.33, minLng: 21.60, maxLng: 21.90 };
-export const inArea = (p) => !!p && p.lat >= PATRAS_BBOX.minLat && p.lat <= PATRAS_BBOX.maxLat && p.lng >= PATRAS_BBOX.minLng && p.lng <= PATRAS_BBOX.maxLng;
+// Inside the active city's service area.
+export const inArea = (p, b = city().bbox) => !!p && p.lat >= b.south && p.lat <= b.north && p.lng >= b.west && p.lng <= b.east;
 
 export function haversine(a, b) {
   const dLat = (b.lat - a.lat) * RAD, dLng = (b.lng - a.lng) * RAD;

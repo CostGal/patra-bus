@@ -1,13 +1,13 @@
 // Offline map (owner: offline map). Contract in docs/ARCHITECTURE.md (Round 2).
-// Opt-in download of the OpenFreeMap tiles around Patras into the cache `patra-bus-map-offline-v1`, which sw.js
+// Opt-in download of the OpenFreeMap tiles around the active city into the cache `patra-bus-map-offline-v1`, which sw.js
 // serves from first and never trims. Only tiles.openfreemap.org is fetched; live arrivals still need the internet.
 import { h, icon } from './ui.js';
 import { t, lang, locale } from './i18n.js';
+import { city } from './cities.js';
 
 export const OFFLINE_CACHE = 'patra-bus-map-offline-v1';
 const HOST = 'https://tiles.openfreemap.org';
 export const STYLE_URLS = [`${HOST}/styles/liberty`, `${HOST}/styles/fiord`]; // keep in sync with STYLES in map.js
-export const PATRAS_BBOX = { west: 21.6, east: 21.9, south: 38.13, north: 38.33 };
 // The map's minZoom is 8. OpenFreeMap vector tiles end at z14 (z15+ is overzoom of z14), so there is nothing to fetch above.
 export const ZOOMS = { min: 8, max: 14 };
 // 0-255 Latin, 256-511 Latin Ext-A, 768-1023 Greek (U+0300-03FF), 7936-8191 Greek Extended, 8192-8447 punctuation (– ’ “)
@@ -68,7 +68,7 @@ export const glyphUrls = (template, stacks, ranges = GLYPH_RANGES) =>
 export const spriteUrls = (base) => (base ? ['.json', '.png', '@2x.json', '@2x.png'].map((s) => base + s) : []);
 
 // Everything to store besides the style JSONs and the TileJSON themselves. All URLs unique.
-export function buildPlan(styles, tilejson, bbox = PATRAS_BBOX, zooms = ZOOMS) {
+export function buildPlan(styles, tilejson, bbox = city().bbox, zooms = ZOOMS) {
   const sprites = new Set();
   const glyphs = new Set();
   for (const st of styles) {
@@ -81,7 +81,7 @@ export function buildPlan(styles, tilejson, bbox = PATRAS_BBOX, zooms = ZOOMS) {
 }
 
 // Size shown before the first download (no network): tile count is exact, the rest is a fixed guess.
-export function estimateDownload(bbox = PATRAS_BBOX, zooms = ZOOMS) {
+export function estimateDownload(bbox = city().bbox, zooms = ZOOMS) {
   const tiles = tileCount(bbox, zooms.min, zooms.max);
   const glyphs = EST.fontStacks * GLYPH_RANGES.length;
   return { tiles, files: tiles + glyphs + 4, bytes: tiles * EST.tile + glyphs * EST.glyph + EST.sprite };
@@ -155,9 +155,9 @@ async function getFile(url, signal) {
   }
 }
 
-// Downloads the Patras area (both map styles). Resolves { ok, cancelled, failed, skipped, ...status }; never rejects
+// Downloads the active city's area (both map styles). Resolves { ok, cancelled, failed, skipped, ...status }; never rejects
 // on network trouble (ok = false, error = message). onProgress({ phase, done, total, bytes }).
-export async function downloadPatrasMap({ onProgress, signal } = {}) {
+export async function downloadCityMap({ onProgress, signal } = {}) {
   const fail = (error) => ({ ok: false, cancelled: false, failed: 0, skipped: 0, error, ...emptyStatus() });
   if (!hasCaches()) return fail(t('Ο browser δεν υποστηρίζει αποθήκευση για χρήση χωρίς σύνδεση.'));
   try { navigator.storage?.persist?.(); } catch { /* best effort: keeps the browser from evicting the map */ }
@@ -249,7 +249,7 @@ function startJob() {
   const ctl = new AbortController();
   const j = { ctl, last: { phase: 'prepare', done: 0, total: 0, bytes: 0 }, listeners: new Set(), result: null };
   job = j;
-  downloadPatrasMap({ signal: ctl.signal, onProgress: (p) => { j.last = p; for (const f of j.listeners) f(); } })
+  downloadCityMap({ signal: ctl.signal, onProgress: (p) => { j.last = p; for (const f of j.listeners) f(); } })
     .then((r) => { j.result = r; }, (e) => { j.result = { ok: false, error: String(e?.message || e) }; })
     .finally(() => { job = null; for (const f of j.listeners) f(j.result); });
   return j;

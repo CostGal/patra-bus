@@ -2,9 +2,11 @@ import { normalizeLive, noServiceResult } from '../../web/js/arrivals.js';
 import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
 import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
+import { city, apiBase } from '../../web/js/cities.js';
 
-const PAGE = 'https://patra.citybus.gr/el/stops';
-const API = 'https://rest.citybus.gr/api/v1/el/112';
+const CITY = city();
+const PAGE = CITY.page;
+const API = apiBase(CITY);
 const TOKEN_MARGIN_MS = 5 * 60 * 1000;
 
 class UpstreamError extends Error {
@@ -62,7 +64,7 @@ async function upstream(env, path, opts = {}) {
     token = await getToken(env, { force: true });
     res = await call(path, {
       Authorization: `Bearer ${token}`,
-      Referer: 'https://patra.citybus.gr/',
+      Referer: new URL('/', PAGE).href,
     });
   }
   if (res.status === 404 && 'notFound' in opts) return opts.notFound;

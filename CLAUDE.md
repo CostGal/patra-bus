@@ -39,6 +39,7 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - `worker/`: Cloudflare Worker, τοπικά (`wrangler dev`) και deployed. Routes: `/api/live/:code` (cache 15 s), `/api/stops` και `/api/lines` (cache 24 h), `/health`.
 - `web/js/arrivals.js`: **κοινό** module worker + frontend. Η λογική live/προγρ. ζει μόνο εδώ.
 - `web/js/text.js`: titleCase και searchKey.
+- `web/js/cities.js`: πίνακας πόλεων (agency, σελίδα token, bbox, κέντρο). Ό,τι εξαρτάται από την πόλη το διαβάζει από εκεί (worker, scripts, frontend). Προς το παρόν μόνο Πάτρα· σχέδιο για Κέρκυρα στο **`docs/MULTI-CITY.md`** (issue #1).
 - `web/fixtures/live-1011.json`: πραγματική upstream απάντηση (1 live, 1 προγρ.), για το `?demo`.
 
 ## Upstream API (επαληθευμένο 2026-10-09)

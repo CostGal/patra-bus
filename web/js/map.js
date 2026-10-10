@@ -4,12 +4,12 @@
 // Everything custom (sources, layers) is re-added on every `style.load` so theme swaps keep state.
 import { icon } from './ui.js';
 import { t } from './i18n.js';
+import { city } from './cities.js';
 
 const STYLES = {
   light: 'https://tiles.openfreemap.org/styles/liberty',
   dark: 'https://tiles.openfreemap.org/styles/fiord', // 'dark' is near-black (roads #181818 on #0c0c0c): unreadable
 };
-const PATRAS = { lat: 38.2466, lng: 21.7346 };
 const FONT = ['Noto Sans Regular'];
 const noop = () => {};
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -38,7 +38,7 @@ function fallbackApi(reason) {
     available: false, reason, ready: Promise.resolve(),
     setStops: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
     setOverlay: noop, clearOverlay: noop, setMarkers: noop, clearMarkers: noop, flyTo: noop, fitTo: noop,
-    setPadding: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...PATRAS }),
+    setPadding: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
   };
 }
 
@@ -74,7 +74,7 @@ export function createMap(container, opts = {}) {
     map = new maplibregl.Map({
       container,
       style: STYLES[theme],
-      center: ll(PATRAS),
+      center: ll(city().center),
       zoom: 14,
       minZoom: 8,
       maxZoom: 19.5,
