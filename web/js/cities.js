@@ -13,7 +13,20 @@ export const CITIES = {
 
 export const DEFAULT_CITY = 'patra';
 
-// Only Patras until the frontend has an active-city setting (MULTI-CITY.md step 4).
-export const city = () => CITIES[DEFAULT_CITY];
+export const isCity = (id) => typeof id === 'string' && Object.hasOwn(CITIES, id);
+
+// Active city: set once at boot by app.js (hash prefix → settings.city → default). Switching city reloads the
+// page, so modules may read it at load time. Saved items without a `city` field belong to DEFAULT_CITY.
+let active = DEFAULT_CITY;
+export const city = () => CITIES[active];
+export const cityId = () => active;
+export function setActiveCity(id) {
+  if (!isCity(id)) return false;
+  active = id;
+  return true;
+}
+
+// Static data (stops/lines/routes/shapes) of a city, relative to web/. Patras stays at the old path.
+export const dataDir = (c = city()) => (c.id === DEFAULT_CITY ? './data/' : `./data/${c.id}/`);
 
 export const apiBase = (c) => `https://rest.citybus.gr/api/v1/el/${c.agency}`;
