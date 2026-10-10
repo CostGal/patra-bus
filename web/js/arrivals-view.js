@@ -16,10 +16,17 @@ const NOW_SEC = 15; // under this a tile reads "τώρα"
 const whenSpoken = (rem) => (rem < NOW_SEC ? 'τώρα' : `σε ${etaSpoken(rem)}`);
 
 // ---- one arrival tile ----
-// v: normalised Vehicle. opts: { compact, now, line }. The element has .tick(now) to refresh the countdown in
+// v: normalised Vehicle. opts: { compact, now, line, stop, lineLinks }. The element has .tick(now) to refresh the countdown in
 // place (the stop view calls it every second; other modules may do the same or just re-render).
-export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line } = {}) {
+// With opts.stop (the stop code the tile belongs to) the tile is a link: a live bus opens its route (#/bus/…), a scheduled
+// departure (no vehicle position) opens its line (#/line/…; lineLinks: false turns that off, e.g. inside the line view).
+export const busHash = (v, stop) => `#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`;
+const lineHash = (v) => `#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`;
+
+export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true } = {}) {
   const live = !!v.live;
+  const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
+    : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
   const at = fetchedAt + v.etaSec * 1000; // ETA as a wall-clock instant; constant between fetches
   const clock = fmtClock(at);
   const dest = titleCase(v.routeName);
@@ -31,12 +38,14 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
     : h('span', { class: 'atile-flag' }, icon('clock'), 'ΠΡΟΓΡ.');
   const status = h('div', { class: 'atile-status' }, flag, h('span', { class: 'atile-clock' }, live ? `≈ ${clock}` : clock));
   const note = compact ? null : h('div', { class: 'atile-note' },
-    live ? 'Θέση σε πραγματικό χρόνο' : 'Ώρα προγράμματος, μπορεί να μην τηρηθεί');
+    (live ? 'Θέση σε πραγματικό χρόνο' : 'Ώρα προγράμματος, μπορεί να μην τηρηθεί') + (href ? (live ? ' · δες τη διαδρομή' : ' · δες τη γραμμή') : ''));
 
-  const el = h('div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${compact ? ' atile-compact' : ''}`, role: 'img' },
+  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${compact ? ' atile-compact' : ''}${href ? ' atile-link' : ''}`, role: href ? null : 'img', href },
     h('div', { class: 'atile-badge' }, badge),
     h('div', { class: 'atile-body' }, h('div', { class: 'atile-dest' }, dest), status, note),
-    h('div', { class: 'atile-eta' }, num));
+    h('div', { class: 'atile-eta' }, num),
+    href ? icon('chevron') : null);
+  const hint = href ? (live ? ' Πάτα για τη διαδρομή του οχήματος.' : ' Πάτα για τη γραμμή.') : '';
 
   let lastText = null;
   el.tick = (t = Date.now()) => {
@@ -47,8 +56,8 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
     lastText = text;
     num.textContent = text;
     el.setAttribute('aria-label', live
-      ? `Γραμμή ${v.lineCode}, ${dest}. Ζωντανή θέση: φτάνει ${whenSpoken(rem)}, περίπου στις ${clock}.`
-      : `Γραμμή ${v.lineCode}, ${dest}. Προγραμματισμένη άφιξη στις ${clock}, ${whenSpoken(rem)}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.`);
+      ? `Γραμμή ${v.lineCode}, ${dest}. Ζωντανή θέση: φτάνει ${whenSpoken(rem)}, περίπου στις ${clock}.${hint}`
+      : `Γραμμή ${v.lineCode}, ${dest}. Προγραμματισμένη άφιξη στις ${clock}, ${whenSpoken(rem)}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.${hint}`);
   };
   el.tick(now);
   return el;
@@ -209,12 +218,16 @@ export function mountStop(container, ctx, { code }) {
       } else {
         const cut = showAll ? shown : shown.slice(0, MAX_TILES);
         const items = cut.map((v) => {
-          const t = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode) });
+          const t = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code });
+          t.dataset.key = v.vehicleCode || `${v.routeCode}:${v.etaSec}`;
           tiles.push({ v, el: t });
           return h('li', {}, t);
         });
+        // Tiles are links: a refresh must not drop keyboard focus.
+        const focused = document.activeElement && body.contains(document.activeElement) ? document.activeElement.dataset?.key : null;
         // replaceChildren would stringify a null child as "null", so only pass real nodes.
         body.replaceChildren(h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items));
+        if (focused) tiles.find((x) => x.el.dataset.key === focused)?.el.focus({ preventScroll: true });
         if (cut.length < shown.length) {
           body.append(h('button', { type: 'button', class: 'stopv-btn stopv-more', onclick: () => { showAll = true; render(); } }, `Εμφάνιση όλων (${shown.length})`));
         }
@@ -258,7 +271,8 @@ export function mountStop(container, ctx, { code }) {
     const buses = data && !stale
       ? data.vehicles.filter((v) => v.live && Number.isFinite(v.lat) && Number.isFinite(v.lng) && (!filter || v.lineCode === filter))
       : [];
-    const pts = buses.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || '#757575', textColor: v.textColor || '#ffffff', label: v.lineCode }));
+    // vehicleCode / routeCode / stopCode make the marker tappable (map.js onVehicleClick -> #/bus/…)
+    const pts = buses.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || '#757575', textColor: v.textColor || '#ffffff', label: v.lineCode, vehicleCode: v.vehicleCode, routeCode: v.routeCode, stopCode: code }));
     onMap((m) => { if (!dead) m.setVehicles('stop', pts); });
     if (!fitted && data) {
       fitted = true;

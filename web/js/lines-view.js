@@ -77,6 +77,13 @@ function stopsFor(ctx, routeCode) {
   return { ordered: false, stops };
 }
 
+// Estimated end-to-end bus time of an ordered route, in whole minutes (null if unknown): the sum of the typical leg times.
+export function routeDurationMin(route) {
+  if (!route || !Array.isArray(route.legSec) || !route.legSec.length) return null;
+  const s = route.legSec.reduce((a, b) => a + (Number(b) > 0 ? Number(b) : 0), 0);
+  return s > 0 ? Math.max(1, Math.round(s / 60)) : null;
+}
+
 const validShape = (c) => (Array.isArray(c) && c.length > 1 ? c : null);
 const routeFc = (coordinates, routeCode) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { routeCode }, geometry: { type: 'LineString', coordinates } }] });
 
@@ -106,6 +113,18 @@ export function mountLine(container, ctx, params = {}) {
   const list = h('ol', { class: 'lines-stops' });
   const status = h('p', { class: 'ex-sub', 'aria-live': 'polite' });
 
+  // "Πρόγραμμα": live/scheduled departures from the first stop of the route + estimated end-to-end time. NOT a timetable.
+  const timesId = `lt${Math.random().toString(36).slice(2, 7)}`;
+  const timesFacts = h('p', { class: 'lines-times-facts' });
+  const timesStop = h('p', { class: 'ex-sub' });
+  const timesList = h('ul', { class: 'lines-deps' });
+  const timesMsg = h('p', { class: 'ex-sub', 'aria-live': 'polite' });
+  const times = h('section', { class: 'lines-times', 'aria-labelledby': timesId },
+    h('h2', { id: timesId, class: 'lines-times-title' }, icon('clock'), 'Επόμενες αναχωρήσεις από την αφετηρία'),
+    timesFacts, timesStop, timesList, timesMsg,
+    h('p', { class: 'ex-note lines-times-note', role: 'note' }, 'Πλήρες ημερήσιο πρόγραμμα: όχι ακόμη διαθέσιμο — χρειάζεται τα επίσημα δεδομένα δρομολογίων.'));
+  let term = null; // { code, poller, ticker, state, tiles } — the terminal stop's poller (one at a time)
+
   const share = h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': 'Κοινοποίηση γραμμής', onclick: async () => {
     const r = await shareLink({ title: `Γραμμή ${line.code} · ${line.displayName}`, text: `Γραμμή ${line.code} ${line.displayName} — Λεωφορεία Πάτρας`, url: `${location.origin}${location.pathname}${location.hash}` });
     if (r === 'copied') ctx.toast('Ο σύνδεσμος αντιγράφηκε');
@@ -118,7 +137,7 @@ export function mountLine(container, ctx, params = {}) {
       h('span', { class: 'lines-badge lines-badge-lg' }, lineBadge(line)),
       h('div', { class: 'ex-grow' }, h('h1', {}, line.displayName), sub),
       share),
-    chips, note, status, list);
+    chips, note, status, times, list);
   container.replaceChildren(root);
 
   // --- route chips ---
@@ -126,7 +145,9 @@ export function mountLine(container, ctx, params = {}) {
     chips.hidden = line.routes.length < 2;
     chips.replaceChildren(...line.routes.map((r) => {
       const name = routeName(ctx, r);
-      return h('button', { type: 'button', class: 'lines-chip', 'aria-pressed': String(r.code === routeCode), title: name, onclick: () => setRoute(r.code) }, name);
+      const mins = routeDurationMin(ctx.data.routeByCode.get(r.code));
+      return h('button', { type: 'button', class: 'lines-chip', 'aria-pressed': String(r.code === routeCode), title: mins ? `${name} · ~${mins}′ (εκτίμηση)` : name, onclick: () => setRoute(r.code) },
+        name, mins ? h('span', { class: 'lines-chip-dur' }, ` · ~${mins}′`) : null);
     }));
     const on = chips.querySelector('[aria-pressed="true"]'); // bring the active chip into view (horizontal only)
     if (on) chips.scrollLeft = Math.max(0, on.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2);
@@ -140,6 +161,54 @@ export function mountLine(container, ctx, params = {}) {
     try { history.replaceState(history.state, '', `#/line/${encodeURIComponent(line.code)}?dir=${r?.direction ?? ''}&route=${encodeURIComponent(code)}`); } catch { /* ignore */ }
     paint();
     draw();
+    startTimes();
+  }
+
+  // --- departures from the terminal (first stop): poller 20 s, visible only; at most one stop polled for this block ---
+  function stopTimes() {
+    if (!term) return;
+    const t = term; term = null;
+    t.poller.destroy(); clearInterval(t.ticker);
+  }
+  function paintTimes() {
+    const route = routeCode && ctx.data.routeByCode.get(routeCode);
+    const mins = routeDurationMin(route);
+    timesFacts.textContent = mins ? `Διαδρομή ~${mins}′ από την αφετηρία ως το τέρμα (εκτίμηση από τυπικούς χρόνους, όχι πρόγραμμα).` : '';
+    timesFacts.hidden = !mins;
+    if (!term) {
+      timesStop.textContent = '';
+      timesList.replaceChildren();
+      timesMsg.textContent = 'Δεν υπάρχει γνωστή αφετηρία για αυτή τη διαδρομή.';
+      return;
+    }
+    const first = ctx.data.stopByCode.get(term.code);
+    timesStop.replaceChildren('Αφετηρία: ', h('a', { href: `#/stop/${encodeURIComponent(term.code)}` }, first ? first.displayName : term.code));
+    const s = term.state;
+    const now = Date.now();
+    term.tiles = [];
+    if (!s || (s.loading && !s.data)) { timesList.replaceChildren(); timesMsg.textContent = 'Φόρτωση…'; return; }
+    if (s.error && !s.data) { timesList.replaceChildren(); timesMsg.textContent = 'Δεν φορτώθηκαν οι αναχωρήσεις.'; return; }
+    const mine = s.data.vehicles.filter((v) => v.routeCode === routeCode && v.etaSec - (now - s.data.fetchedAt) / 1000 > -30)
+      .sort((a, b) => a.etaSec - b.etaSec).slice(0, 6);
+    timesList.replaceChildren(...mine.map((v) => {
+      const t = arrivalTile(v, s.data.fetchedAt, { compact: true, now, line, stop: term.code, lineLinks: false });
+      term.tiles.push(t);
+      return h('li', {}, t);
+    }));
+    const age = Math.max(0, Math.round((now - s.data.fetchedAt) / 1000));
+    const n = mine.length;
+    timesMsg.textContent = `${n ? plural(n, 'αναχώρηση', 'αναχωρήσεις') : 'Καμία προσεχής αναχώρηση αυτής της διαδρομής'} · ενημερώθηκε ${age < 5 ? 'μόλις τώρα' : `πριν ${age < 120 ? `${age}″` : `${Math.round(age / 60)}′`}`}${s.error ? ' · αποτυχία ανανέωσης' : ''}`;
+  }
+  function startTimes() {
+    stopTimes();
+    const code = current.ordered ? current.stops[0]?.code : null;
+    if (code) {
+      const t = { code, state: null, poller: null, ticker: null, tiles: [] };
+      term = t;
+      t.poller = createLivePoller(code, (s) => { if (term !== t) return; t.state = s; paintTimes(); });
+      t.ticker = setInterval(() => { if (!document.hidden && term === t) for (const x of t.tiles) x.tick(); }, 1000);
+    }
+    paintTimes();
   }
 
   // --- stop list ---
@@ -186,7 +255,7 @@ export function mountLine(container, ctx, params = {}) {
         .sort((a, b) => remainingSec(a, state.data.fetchedAt, now) - remainingSec(b, state.data.fetchedAt, now)).slice(0, 3);
       if (!mine.length) nodes.push(h('p', { class: 'ex-sub' }, `Καμία άφιξη της γραμμής ${line.code} αυτή τη στιγμή.`));
       for (const v of mine) {
-        try { nodes.push(arrivalTile(v, state.data.fetchedAt, { compact: true, now, line })); } catch { /* tile failed: skip */ }
+        try { nodes.push(arrivalTile(v, state.data.fetchedAt, { compact: true, now, line, stop: open.code, lineLinks: false })); } catch { /* tile failed: skip */ }
       }
       const age = Math.max(0, Math.round((now - state.data.fetchedAt) / 1000));
       nodes.push(h('p', { class: 'ex-sub lines-age' }, age < 5 ? 'Ενημερώθηκε μόλις τώρα' : `Ενημερώθηκε πριν ${age < 120 ? `${age}″` : `${Math.round(age / 60)}′`}`,
@@ -196,7 +265,8 @@ export function mountLine(container, ctx, params = {}) {
   }
   function showLiveOnMap(data) {
     const vs = (data?.vehicles || []).filter((v) => v.lineCode === line.code && v.live && Number.isFinite(v.lat) && Number.isFinite(v.lng));
-    try { map.setVehicles('line-live', vs.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || line.color, textColor: v.textColor || line.textColor, label: v.vehicleCode || undefined }))); } catch { /* ignore */ }
+    const stopCode = open && open.code;
+    try { map.setVehicles('line-live', vs.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || line.color, textColor: v.textColor || line.textColor, vehicleCode: v.vehicleCode, routeCode: v.routeCode, stopCode }))); } catch { /* ignore */ }
   }
   function closeNext() {
     if (!open) return;
@@ -241,12 +311,13 @@ export function mountLine(container, ctx, params = {}) {
 
   paint();
   draw();
+  startTimes();
   try { ctx.sheet?.snap('half'); } catch { /* ignore */ }
 
   return {
     destroy() {
       dead = true; drawToken++;
-      closeNext();
+      closeNext(); stopTimes();
       try { map.clearOverlay('line'); map.clearMarkers('line-stops'); map.clearVehicles('line-live'); map.highlightStop(null); } catch { /* ignore */ }
     },
   };

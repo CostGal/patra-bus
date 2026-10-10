@@ -516,7 +516,7 @@ let routeToken = 0;
 let nextSnap = null;
 let currentHead = '';
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full' };
 const CHIP_FOR = { '': 'home', favorites: 'favorites', lines: 'lines', line: 'lines', plan: 'plan' };
 
 function parseHash() {
@@ -585,6 +585,10 @@ async function route() {
       await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code }));
       break;
     }
+    case 'bus':
+      document.title = `Διαδρομή οχήματος · ${TITLE}`;
+      await mount(() => import('./bus-view.js'), (m) => m.mountBus(content, ctx, { vehicleCode: String(arg), route: params.route || undefined, stop: params.stop || undefined }));
+      break;
     case 'plan':
       document.title = `Διαδρομή · ${TITLE}`;
       await mount(() => import('./planner-view.js'), (m) => m.mountPlanner(content, ctx, {
@@ -630,6 +634,11 @@ function navigate(hash, opts = {}) {
 
 // ---------------------------------------------------------------- map events
 function onStopClick(code) { navigate(`#/stop/${encodeURIComponent(code)}`); }
+// A tapped live bus marker (carries vehicleCode + routeCode + stopCode): open its route and timeline.
+function onVehicleClick(v) {
+  if (!v || !v.vehicleCode || !v.routeCode) return;
+  navigate(`#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}${v.stopCode ? `&stop=${encodeURIComponent(v.stopCode)}` : ''}`);
+}
 function onMapClick() {
   if (currentHead === 'stop' || currentHead === 'pin') navigate('#/', { snap: 'peek' });
   else if (currentHead === '' && sheet.state !== 'peek') sheet.snap('peek');
@@ -678,7 +687,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-top', '#fabs-bottom'] }, onStopClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-top', '#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

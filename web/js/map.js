@@ -61,7 +61,7 @@ const el = (cls, html) => {
 };
 
 export function createMap(container, opts = {}) {
-  const { onStopClick = noop, onMapClick = noop, onLongPress = noop, onUserMove = noop, onBearing = noop } = opts;
+  const { onStopClick = noop, onVehicleClick = noop, onMapClick = noop, onLongPress = noop, onUserMove = noop, onBearing = noop } = opts;
   // Floating UI that fitTo / flyTo keep clear of: { top: [selector], right: [selector] }, measured on every call.
   const avoid = { top: opts.avoid?.top || [], right: opts.avoid?.right || [] };
   if (typeof maplibregl === 'undefined') return fallbackApi('script');
@@ -360,12 +360,26 @@ export function createMap(container, opts = {}) {
   }
 
   // ---------- vehicles ----------
+  // A vehicle that carries vehicleCode + routeCode is a button (opens its route); others are plain pictures.
+  const tappable = (v) => !!(v.vehicleCode && v.routeCode);
+  function paintVehA11y(d, v) {
+    const on = tappable(v);
+    d.classList.toggle('veh-click', on);
+    if (on) {
+      d.setAttribute('role', 'button');
+      d.setAttribute('tabindex', '0');
+      d.setAttribute('aria-label', `Γραμμή ${v.lineCode}: δες τη διαδρομή του οχήματος`);
+    } else {
+      d.setAttribute('role', 'img');
+      d.removeAttribute('tabindex');
+      d.setAttribute('aria-label', v.label ? `Γραμμή ${v.lineCode}, ${v.label}` : `Γραμμή ${v.lineCode}`);
+    }
+  }
   function vehEl(v) {
     const d = el('veh');
     d.style.setProperty('--c', v.color || '#757575');
     d.style.setProperty('--t', v.textColor || '#fff');
-    d.setAttribute('role', 'img');
-    d.setAttribute('aria-label', v.label ? `Γραμμή ${v.lineCode}, ${v.label}` : `Γραμμή ${v.lineCode}`);
+    paintVehA11y(d, v);
     const b = el('veh-badge');
     b.textContent = String(v.lineCode ?? '');
     d.append(el('veh-ring'), b);
@@ -376,6 +390,8 @@ export function createMap(container, opts = {}) {
     it.node.style.setProperty('--c', v.color || '#757575');
     it.node.style.setProperty('--t', v.textColor || '#fff');
     it.lineCode = String(v.lineCode);
+    it.data = v;
+    paintVehA11y(it.node, v);
   }
 
   // ---------- markers ----------
@@ -515,7 +531,12 @@ export function createMap(container, opts = {}) {
         } else {
           const node = vehEl(v);
           const marker = new maplibregl.Marker({ element: node, anchor: 'center' }).setLngLat(ll(p)).addTo(map);
-          it = { node, marker, lineCode: String(v.lineCode), explicit: given != null, cur: p, to: p, apply(q) { marker.setLngLat(ll(q)); } };
+          it = { node, marker, data: v, lineCode: String(v.lineCode), explicit: given != null, cur: p, to: p, apply(q) { marker.setLngLat(ll(q)); } };
+          paintVehA11y(node, v); // Marker.addTo() stamps its own generic aria-label
+          const open = (e) => { if (!tappable(it.data)) return; e.stopPropagation(); onVehicleClick(it.data); };
+          node.addEventListener('click', open);
+          node.addEventListener('pointerdown', (e) => { if (tappable(it.data)) e.stopPropagation(); }); // not a map drag / long press
+          node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(e); } });
           key ??= `auto-${Math.random().toString(36).slice(2)}`;
         }
         claimed.add(key);

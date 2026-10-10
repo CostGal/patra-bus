@@ -158,3 +158,63 @@
 
 /* Offline map download progress (offline.js). */
 .set-card progress { width: 100%; accent-color: var(--accent); }
+
+/* ---- tappable map buses + arrival tile links ---- */
+.veh.veh-click { pointer-events: auto; cursor: pointer; }
+.veh.veh-click::before { content: ''; position: absolute; inset: -8px; border-radius: 50%; } /* 44 px touch target around the 30 px badge */
+.veh.veh-click:focus-visible .veh-badge { outline: 3px solid var(--focus, #1a73e8); outline-offset: 2px; }
+a.atile { text-decoration: none; }
+.atile-link { grid-template-columns: auto minmax(0, 1fr) auto auto; cursor: pointer; }
+.atile-link:hover { background: var(--surface-2); }
+.atile-link:focus-visible { outline: 3px solid var(--focus, var(--accent)); outline-offset: 2px; }
+.atile-link > .icon { color: var(--text-2); width: 18px; height: 18px; margin-left: -4px; }
+.atile-link.atile-compact > .icon { width: 16px; height: 16px; }
+.atile-link.atile-now.atile-live:hover { background: var(--live-bg); }
+
+/* ---- timetable block in the line view ---- */
+.lines-times { margin: 4px 0 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.lines-times-title { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 1rem; font-weight: 700; }
+.lines-times-title .icon { width: 18px; height: 18px; }
+.lines-times-facts { margin: 0 0 4px; font-size: .9rem; }
+.lines-times .ex-sub a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.lines-times .ex-sub a:hover { text-decoration: underline; }
+.lines-deps { display: grid; gap: 6px; margin: 8px 0 4px; }
+.lines-times-note { margin: 8px 0 0; font-size: .8125rem; }
+.lines-chip-dur { opacity: .75; font-weight: 400; }
+
+/* ---- bus view (#/bus/…): vertical stop timeline in the line's colour ---- */
+.bv { --lc: var(--accent); --lc-text: #fff; }
+.bv-head .bv-badge { display: flex; flex: none; font-size: 1.1rem; }
+.bv-flag { flex: none; display: inline-flex; }
+.bv-flag .ex-chip .icon { width: 13px; height: 13px; }
+.bv-banner { margin: 0 0 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--warn-bg); color: var(--text); font-size: .875rem; line-height: 1.4; }
+.bv-banner.is-bad { border-left: 4px solid var(--warn); }
+.bv-summary { display: grid; gap: 2px; margin: 0 0 8px; padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2); border-left: 5px solid var(--lc); }
+.bv-sum-main { font-size: 1rem; }
+.bv-toggle { margin: 0 0 4px; }
+.bv-list { margin: 4px 0 0; }
+.bv-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; min-height: 56px; padding: 6px 0 6px 34px; }
+.bv-row::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 4px; background: var(--lc); border-radius: 2px; }
+.bv-row.is-first::before { top: 50%; }
+.bv-row.is-last::before { bottom: 50%; }
+.bv-dot { position: absolute; left: 6px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%; background: var(--surface); border: 3px solid var(--lc); }
+.bv-row.is-end .bv-dot { left: 4px; width: 18px; height: 18px; margin-top: -9px; background: var(--lc); border: 4px solid var(--surface); box-shadow: 0 0 0 3px var(--lc); }
+.bv-link { min-width: 0; padding: 4px 0; color: inherit; text-decoration: none; }
+.bv-link:hover .bv-name { text-decoration: underline; }
+.bv-name { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.bv-when { display: grid; justify-items: end; gap: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.bv-clock { font-weight: 600; }
+.bv-in { font-size: .8125rem; color: var(--text-2); }
+.bv-tag { font-size: .6875rem; letter-spacing: .03em; text-transform: uppercase; color: var(--text-2); }
+.bv-tag-live { color: var(--live); font-weight: 700; }
+.bv-row.is-passed { opacity: .5; }
+.bv-row.is-passed::before { background: var(--border); }
+.bv-row.is-passed .bv-dot { border-color: var(--border); background: var(--border); }
+.bv-row.is-next .bv-name { font-weight: 700; }
+.bv-row.is-anchor .bv-clock { color: var(--live); }
+.bv-row.is-plain .bv-when { display: none; }
+.bv-busrow { min-height: 44px; display: flex; align-items: center; gap: 10px; }
+.bv-bus-ico { position: absolute; left: 0; top: 50%; width: 26px; height: 26px; margin-top: -13px; display: grid; place-items: center; border-radius: 50%; background: var(--lc); color: var(--lc-text); box-shadow: 0 0 0 3px var(--surface); }
+.bv-bus-ico .icon { width: 15px; height: 15px; }
+.bv-bus-text { font-size: .875rem; font-weight: 600; color: var(--text); }
+.bv-foot, .bv-legend { margin-top: 10px; }

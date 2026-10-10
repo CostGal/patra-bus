@@ -3,7 +3,7 @@
 // Push handlers live in sw-push.js (owned separately).
 importScripts('sw-push.js');
 
-const CACHE = 'patra-bus-v7';
+const CACHE = 'patra-bus-v8';
 const MAP_CACHE = 'patra-bus-map-v1'; // runtime OpenFreeMap cache, bounded (oldest tiles trimmed first)
 const MAP_OFFLINE = 'patra-bus-map-offline-v1'; // filled by js/offline.js (opt-in download), never trimmed
 const MAP_MAX = 4000;
@@ -71,6 +71,7 @@ const SHELL = [
   'js/notify.js',
   'js/share.js',
   'js/lines-view.js',
+  'js/bus-view.js',
   'js/settings-view.js',
   'js/accents.js',
   'js/push.js',
