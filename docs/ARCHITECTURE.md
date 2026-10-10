@@ -129,6 +129,9 @@ LocationService = { start(): void; stop(): void; current: Fix|null; status: LocS
 ### D — data & routes: `scripts/fetch-static.mjs`, `scripts/build-routes.mjs`, `web/data/routes.json`, `web/data/shapes.json`, `web/js/data.js`, `package.json`, `tests/routes.test.mjs`, `tests/data.test.mjs`
 - `routes.json`: `{ version: 1, generatedAt, routes: { [routeCode]: { code, lineCode, name, direction, stops: string[] /*ordered stop codes*/, legSec: number[] /*bus seconds between consecutive stops, length stops-1*/, confidence: number /*0..1*/, method: string } } }`
 - `shapes.json` (lazy): `{ [routeCode]: [lng, lat][] }` road geometry, simplified.
+- Other cities keep the same files under `web/data/{city}/` (Patras stays at `web/data/`); `fetch-static.mjs` and
+  `build-routes.mjs` take `--city=`. `build-routes.mjs` has a per-city `CENTER_WORDS` table (the route-name tokens that mean
+  the town hub: Patras `κεντρο`, Corfu `σαροκο`/`μεθοδιου`/`πολη`); see `docs/MULTI-CITY.md` for the Corfu data review.
 - `data.js`: `loadData() → Promise<Data>`, `loadShapes() → Promise<Record<string, [number,number][]>>`, `searchStops(data, q, limit)`.
 ```ts
 type Stop = { code, name, displayName, lat, lng, lineCodes: string[], routeCodes: string[], key: string };

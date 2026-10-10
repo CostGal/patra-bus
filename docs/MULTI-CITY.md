@@ -111,6 +111,31 @@ touches the SW `SHELL` list, `data.js` and the tests. It happens in the same cha
 - Settings has a city picker. The app is called **Telematica** (manifest, `<title>`, about text, notification
   titles); the active city is shown in the UI. Repo, worker name, localStorage key and SW cache names stay as they are.
 
+## Corfu data (2026-10-10)
+`web/data/corfu/`: 479 stops, 13 lines, 55 routes (`routes.json` 23 KB, `shapes.json` 81 KB, one shape per route).
+Line `16` (Λιμάνι - Σπήλια) has no routes upstream; nothing references it and the build skips it.
+`node scripts/build-routes.mjs --city=corfu`: 110 OSRM requests (FOSSGIS, ~1 per 2 s in practice), 0 retries, all
+routes `osrm-trip`, no flags. Patras output verified unchanged (80 routes, identical stops/legSec/confidence/method/
+shapes in an `--offline` run against the committed files, 0 network).
+- **Confidence:** min 0.80, mean 0.94. **No route is below 0.5** (18 are below 0.9, lowest: 86 0.80, 210 0.82,
+  3 0.83, 5 0.85, 6 0.86). Nothing to hide in the UI for Corfu.
+- **Centre words:** `build-routes.mjs` has a per-city `CENTER_WORDS` table (Patras `κεντρο`; Corfu `σαροκο`,
+  `μεθοδιου`, `πολη`). Corfu writes the hub as «ΣΑΡΟΚΟ (ΠΟΛΗ)» or «ΜΕΘΟΔΙΟΥ (ΠΟΛΗ)»; the bracket is stripped before
+  tokenising, so `σαροκο` / `μεθοδιου` are what match.
+- **Spot check:** all 55 routes put the town hub (stop 801 / 501 area) at the end the name says; paired directions
+  agree (consistency ≥ 0.81, 50 of 55 ≥ 0.94). Direction 2 routes start in town, direction 1 end there.
+- **Free signal not used yet:** upstream has two stops per place, «X» and «X ΠΡΟΣ ΠΟΛΗ» (244 of 479 stops). Direction-1
+  routes use the «ΠΡΟΣ ΠΟΛΗ» side (≥ 0.9 of their stops on most). This could replace the side-of-road test for Corfu;
+  not needed so far.
+- **Known issues:**
+  1. Order is inferred, as in Patras. Loops through town (11, 45, 51: 40-50 % «ΠΡΟΣ ΠΟΛΗ» stops) and 86 (60 stops,
+     28/19 side votes, 0.80) are the least certain.
+  2. `CITIES.corfu.center` (39.6243, 19.9217) is ~400 m NE of the Πλ. Σαρόκου stops (801: 39.6221, 19.9180). It is
+     only used as the centre target for orientation evidence (radius 1.5 km), so no effect on the output; fix it in
+     `cities.js` when convenient.
+  3. Codes are strings with leading zeros: route `093` vs `93`, stop `0015`, line `04`..`08`. Never coerce to number.
+  4. Names stay un-accented (no Corfu accent dictionary yet, see section 5).
+
 ## Open questions (resolved, see Status)
 1. **Allow the Corfu API calls?** That means `/stops`, `/lines` and `/stops/live/{code}` under agency `101`, the
    same shapes as the Patras ones, with the agency taken from the official page above. This extends the endpoint
