@@ -1,0 +1,56 @@
+/* "Install as app" tutorial (js/install-guide.js). Solid card on purpose: it lives inside the translucent sheet,
+   and a material on a material is forbidden (DESIGN.md §4). Colours/spacing only from tokens. */
+.install {
+  margin: 0; padding: var(--s3); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2);
+  color: var(--text); font-size: var(--fs); line-height: var(--lead-body); letter-spacing: var(--track-body);
+  animation: install-in .2s var(--spring-ease) both;
+}
+@keyframes install-in { from { opacity: 0; } }
+.install > :first-child { margin-top: 0; }
+.install > :last-child { margin-bottom: 0; }
+
+.install-title { margin: 0 0 var(--s1); font-size: 1.0625rem; font-weight: 700; line-height: var(--lead-title); letter-spacing: var(--track-title); }
+.install-lead { margin: 0 0 var(--s3); color: var(--text-2); font-size: var(--fs-sm); line-height: var(--lead-body); }
+.install-foot { margin: var(--s3) 0 0; color: var(--text-2); font-size: var(--fs-sm); line-height: var(--lead-body); }
+.install-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s3); }
+.install-actions .btn { touch-action: manipulation; }
+.install-actions .icon, .install-actions .install-svg, .install-go .install-svg, .install-copy .install-svg { width: 20px; height: 20px; flex: none; }
+.install-url {
+  flex: 1 1 100%; min-width: 0; min-height: 44px; padding: 0 var(--s3); border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-sm);
+}
+
+/* ---- numbered steps ---- */
+.install-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.install-step { display: flex; align-items: center; gap: var(--s3); min-height: 52px; padding: var(--s2) var(--s2) var(--s2) var(--s3); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-1); }
+.install-n {
+  flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent); font-size: var(--fs-sm); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.install-text { flex: 1; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.install-note { display: block; margin-top: 2px; color: var(--text-2); font-size: var(--fs-sm); font-weight: 400; letter-spacing: var(--track-label); line-height: var(--lead-label); }
+
+/* glyph tile: a small stand-in for the real browser control */
+.install-glyph {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
+}
+.install-glyph.is-share { color: var(--accent); }
+.install-glyph.is-add { color: var(--text); }
+.install-svg { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- one-line states (installed, desktop) ---- */
+.install-state { display: flex; align-items: center; gap: var(--s3); margin: 0; }
+.install-state-text { flex: 1; min-width: 0; font-weight: 500; }
+.install-badge { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--surface); color: var(--text-2); box-shadow: var(--shadow-1); }
+.install-state.is-ok .install-badge { background: var(--live-bg); color: var(--live); box-shadow: none; }
+.install-badge .install-svg { width: 20px; height: 20px; stroke-width: 2.2; }
+
+/* the card is solid already; keep it defined for users who ask for more contrast */
+@media (prefers-contrast: more) {
+  .install { border-color: var(--text-2); }
+  .install-step { box-shadow: none; border: 1px solid var(--border); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .install { animation: none; }
+}
