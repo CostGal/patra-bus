@@ -1,5 +1,7 @@
 import { normalizeLive, noServiceResult } from '../../web/js/arrivals.js';
 import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
+import { RoutineBase, validateRoutine } from './routines.js';
+import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 
 const PAGE = 'https://patra.citybus.gr/el/stops';
 const API = 'https://rest.citybus.gr/api/v1/el/112';
@@ -138,18 +140,34 @@ export function liveBody(env, ctx, code) {
     // 404 = nothing scheduled for this stop right now: a normal answer, cached like any other.
     const raw = await upstream(env, `/stops/live/${code}`, { notFound: null });
     const now = Date.now();
-    return JSON.stringify(raw === null ? noServiceResult(now) : normalizeLive(raw, now));
+    const result = raw === null ? noServiceResult(now) : normalizeLive(raw, now);
+    // Stats feed on real upstream answers only (this runs on cache MISS), off the response path.
+    if (raw !== null) ctx.waitUntil(recordStats(env, code, result));
+    return JSON.stringify(result);
   });
 }
 
+// Live read for Durable Objects: same shared cache path as the HTTP route.
+async function liveFor(env, code) {
+  const pending = [];
+  const { body } = await liveBody(env, { waitUntil: (p) => pending.push(p) }, code);
+  await Promise.allSettled(pending);
+  return JSON.parse(body);
+}
+
 export class Reminder extends ReminderBase {
-  async getLive(code) {
-    const pending = [];
-    const { body } = await liveBody(this.env, { waitUntil: (p) => pending.push(p) }, code);
-    await Promise.allSettled(pending);
-    return JSON.parse(body);
+  getLive(code) {
+    return liveFor(this.env, code);
   }
 }
+
+export class Routine extends RoutineBase {
+  getLive(code) {
+    return liveFor(this.env, code);
+  }
+}
+
+export class Stats extends StatsBase {}
 
 const PUSH_ID = /^[0-9a-f]{32}$/;
 
@@ -166,6 +184,23 @@ function rateLimited(ip, now) {
   return false;
 }
 const reminderStub = (env, id) => env.REMINDERS.get(env.REMINDERS.idFromName(id));
+const routineStub = (env, id) => env.ROUTINES.get(env.ROUTINES.idFromName(id));
+const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+
+// Shared POST preamble: push configured, per-IP rate limit, size cap, JSON. -> { raw } | { res }.
+async function readPushBody(request, env, cors, bucket) {
+  if (!env.VAPID_PRIVATE_KEY || !env.VAPID_PUBLIC_KEY) return { res: json(cors, { error: 'push_unavailable' }, 503) };
+  if (rateLimited(`${bucket}:${request.headers.get('CF-Connecting-IP') || 'local'}`, Date.now())) {
+    return { res: json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '600' }) };
+  }
+  const text = await request.text();
+  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return { res: json(cors, { error: 'too_large' }, 413) };
+  try {
+    return { raw: JSON.parse(text) };
+  } catch {
+    return { res: json(cors, { error: 'bad_request', field: 'json' }, 400) };
+  }
+}
 
 async function pushRoute(request, env, cors, pathname) {
   if (pathname === '/api/push/key' && request.method === 'GET') {
@@ -173,22 +208,11 @@ async function pushRoute(request, env, cors, pathname) {
     return json(cors, { publicKey: env.VAPID_PUBLIC_KEY });
   }
   if (pathname === '/api/push/reminders' && request.method === 'POST') {
-    if (!env.VAPID_PRIVATE_KEY || !env.VAPID_PUBLIC_KEY) return json(cors, { error: 'push_unavailable' }, 503);
-    if (rateLimited(request.headers.get('CF-Connecting-IP') || 'local', Date.now())) {
-      return json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '600' });
-    }
-    const text = await request.text();
-    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return json(cors, { error: 'too_large' }, 413);
-    let raw;
-    try {
-      raw = JSON.parse(text);
-    } catch {
-      return json(cors, { error: 'bad_request', field: 'json' }, 400);
-    }
+    const { raw, res: early } = await readPushBody(request, env, cors, 'reminder');
+    if (early) return early;
     const v = validateReminder(raw, Date.now(), { allowLocal: env.DEV_ALLOW_LOCAL_PUSH === '1' });
     if (!v.ok) return json(cors, { error: 'bad_request', field: v.error }, 400);
-    const bytes = crypto.getRandomValues(new Uint8Array(16));
-    const id = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    const id = newId();
     const res = await reminderStub(env, id).fetch('https://reminder/', { method: 'POST', body: JSON.stringify(v.value) });
     if (!res.ok) return json(cors, { error: 'internal' }, 500);
     return json(cors, { id }, 201, { 'Cache-Control': 'no-store' });
@@ -197,6 +221,22 @@ async function pushRoute(request, env, cors, pathname) {
   if (del && request.method === 'DELETE') {
     if (!PUSH_ID.test(del[1])) return json(cors, { error: 'not_found' }, 404);
     await reminderStub(env, del[1]).fetch('https://reminder/', { method: 'DELETE' });
+    return new Response(null, { status: 204, headers: headers(cors) });
+  }
+  if (pathname === '/api/push/routines' && request.method === 'POST') {
+    const { raw, res: early } = await readPushBody(request, env, cors, 'routine');
+    if (early) return early;
+    const v = validateRoutine(raw, { allowLocal: env.DEV_ALLOW_LOCAL_PUSH === '1' });
+    if (!v.ok) return json(cors, { error: 'bad_request', field: v.error }, 400);
+    const id = newId();
+    const res = await routineStub(env, id).fetch('https://routine/', { method: 'POST', body: JSON.stringify({ id, ...v.value }) });
+    if (!res.ok) return json(cors, { error: 'internal' }, 500);
+    return json(cors, { id }, 201, { 'Cache-Control': 'no-store' });
+  }
+  const delR = pathname.match(/^\/api\/push\/routines\/([^/]+)$/);
+  if (delR && request.method === 'DELETE') {
+    if (!PUSH_ID.test(delR[1])) return json(cors, { error: 'not_found' }, 404);
+    await routineStub(env, delR[1]).fetch('https://routine/', { method: 'DELETE' });
     return new Response(null, { status: 204, headers: headers(cors) });
   }
   return null;
@@ -232,6 +272,13 @@ export default {
         return new Response(body, {
           headers: headers(cors, { 'Cache-Control': 'no-store', 'X-Cache': hit ? 'HIT' : 'MISS' }),
         });
+      }
+      const stats = pathname.match(/^\/api\/stats\/([^/]+)\/([^/]+)$/);
+      if (stats) {
+        const [, routeCode, stopCode] = stats;
+        if (!validCode(routeCode) || !validCode(stopCode)) return json(cors, { error: 'bad_request' }, 400);
+        const { body, hit } = await cachedBody(env, ctx, `stats/${routeCode}/${stopCode}`, 600, () => readStats(env, routeCode, stopCode));
+        return new Response(body, { headers: headers(cors, { 'Cache-Control': 'public, max-age=600', 'X-Cache': hit ? 'HIT' : 'MISS' }) });
       }
       if (pathname === '/api/stops' || pathname === '/api/lines') {
         const name = pathname.slice('/api/'.length);

@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/nearby.css">
   <link rel="stylesheet" href="css/planner.css">
   <link rel="stylesheet" href="css/extras.css">
+  <link rel="stylesheet" href="css/places.css">
   <script>
     // Apply a forced theme before first paint (best effort; app.js owns the real logic).
     try {
@@ -43,22 +44,17 @@
              role="combobox" aria-expanded="false" aria-controls="search-list" aria-autocomplete="list">
       <span id="demo-tag" class="demo-tag" title="Δεδομένα επίδειξης" hidden>DEMO</span>
       <button type="button" class="sb-btn" id="search-clear" aria-label="Καθαρισμός αναζήτησης" hidden></button>
-      <span class="sb-btn sb-decor" id="search-decor" aria-hidden="true"></span>
     </div>
     <div class="pop" id="menu-pop" hidden></div>
 
-    <nav class="chips" id="chips" aria-label="Συντομεύσεις"></nav>
+    <nav class="chips" id="chips" aria-label="Αποθηκευμένα μέρη" hidden></nav>
 
     <div class="search-panel" id="search-panel" hidden>
       <div id="search-list" class="search-list" role="listbox" aria-label="Αποτελέσματα αναζήτησης"></div>
     </div>
 
-    <div class="fabs-top" id="fabs-top">
-      <button type="button" class="fab" id="layers-btn" aria-label="Εμφάνιση χάρτη" aria-haspopup="true" aria-expanded="false" aria-controls="layers-pop"></button>
-      <button type="button" class="fab fab-sm" id="north-btn" aria-label="Επαναφορά βορρά" hidden></button>
-    </div>
-    <div class="pop pop-fab" id="layers-pop" hidden></div>
     <div class="fabs-bottom" id="fabs-bottom">
+      <button type="button" class="fab fab-sm" id="north-btn" aria-label="Επαναφορά βορρά" hidden></button>
       <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
     </div>
 

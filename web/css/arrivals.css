@@ -10,13 +10,20 @@
 .stopv-titles { flex: 1; min-width: 0; }
 .stopv-name { margin: 0; font-size: 1.35rem; line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
 .stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0 0; color: var(--text-2); font-size: .85rem; }
-.stopv-lines { display: inline-flex; flex-wrap: wrap; gap: 4px; }
-.stopv-lines .badge { font-size: .8rem; min-width: 2.4em; padding: .15em .45em; }
-.stopv-actions { display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
+.stopv-actions { position: relative; display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
+.stopv-more-btn { font-size: 1.5rem; line-height: 1; font-weight: 700; padding-bottom: 6px; }
+
+/* "⋯" menu: share, directions */
+.stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-1); }
+.stopv-menu[hidden] { display: none; }
+.stopv-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.stopv-item:hover, .stopv-item:focus-visible { background: var(--surface-2); outline: none; }
+.stopv-item .icon { width: 20px; height: 20px; fill: none; }
+.stopv-item .icon-walk { fill: currentColor; stroke: none; }
 
 .stopv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
 .stopv-btn:hover:not(:disabled) { background: var(--surface-2); }
-.stopv-btn:focus-visible, .stopv-chip:focus-visible, .stopv-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.stopv-btn:focus-visible, .stopv-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .stopv-btn:disabled { opacity: .6; cursor: default; }
 .stopv-btn .icon { width: 22px; height: 22px; }
 .stopv-star.on { color: var(--warn); }
@@ -26,9 +33,6 @@
 .stopv-primary { background: var(--accent); color: var(--accent-text); font-weight: 600; padding: 0 20px; }
 .stopv-primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 .stopv-more { align-self: center; color: var(--accent); font-weight: 600; margin-top: 4px; }
-
-.stopv-go { display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; min-height: 44px; padding: 0 18px 0 14px; border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer; }
-.stopv-go .icon { width: 20px; height: 20px; fill: currentColor; stroke: none; }
 
 /* ---- filter chips ---- */
 .stopv-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px; scrollbar-width: none; }
@@ -61,19 +65,20 @@
 .atile-badge { display: flex; }
 .atile-body { min-width: 0; }
 .atile-dest { font-weight: 600; font-size: 1rem; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.atile-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 5px; font-size: .85rem; }
+.atile-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 5px; font-size: .8rem; }
 .atile-flag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; line-height: 1.5; background: var(--sched-bg); color: var(--sched); }
 .atile-live .atile-flag { background: var(--live-bg); color: var(--live); }
 .atile-now.atile-live .atile-flag { background: var(--surface); }
 .atile-flag .icon { width: 13px; height: 13px; stroke-width: 2.4; }
-.atile-clock { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
-.atile-note { margin-top: 3px; font-size: .78rem; line-height: 1.3; color: var(--text-2); }
+.atile-clock { margin-left: 2px; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.atile-usual { color: var(--text-2); font-size: .78rem; font-weight: 400; }
+.atile-usual[hidden] { display: none; }
 .atile-eta { text-align: right; }
 .atile-num { display: block; min-width: 3.4ch; font-size: 1.9rem; font-weight: 700; line-height: 1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--sched); }
 .atile-live .atile-num { color: var(--live); }
 .atile-now .atile-num { font-size: 1.5rem; }
 
-/* pulsing live dot (static in the legend) */
+/* pulsing live dot */
 .atile-dot { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
 .atile-live .atile-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--live); animation: atile-pulse 1.6s ease-out infinite; }
 @keyframes atile-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(3.2); opacity: 0; } }
@@ -95,14 +100,11 @@
 .skel-num { width: 52px; height: 30px; margin-left: auto; }
 @keyframes skel-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
-/* ---- footer ---- */
-.stopv-foot { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; color: var(--text-2); font-size: .8rem; }
-.stopv-foot-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* ---- footer: one quiet line ---- */
+.stopv-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; color: var(--text-2); font-size: .75rem; }
 .stopv-foot-text { margin: 0; font-variant-numeric: tabular-nums; }
-.stopv-legend { margin: 0; line-height: 1.7; }
-.stopv-legend .atile-dot { margin-right: 4px; vertical-align: 1px; }
-.stopv-legend .icon { width: 13px; height: 13px; margin: 0 2px 0 0; vertical-align: -2px; }
-.stopv-demo { margin: 0; padding: 6px 10px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); }
+.stopv-refresh { min-width: 36px; min-height: 36px; padding: 0; color: var(--text-2); }
+.stopv-refresh .icon { width: 18px; height: 18px; }
 
 @media (prefers-reduced-motion: reduce) {
   .atile-live .atile-dot::after { animation: none; }

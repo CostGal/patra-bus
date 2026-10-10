@@ -8,10 +8,11 @@ const SCHEMA = 2;
 const MAX_RECENTS = 10;
 const MAX_FAVS = 100;
 
-export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2 });
+export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'auto' });
 const intIn = (lo, hi) => (v) => Number.isInteger(v) && v >= lo && v <= hi;
 const VALID = {
   theme: (v) => ['auto', 'light', 'dark'].includes(v),
+  lang: (v) => ['auto', 'el', 'en'].includes(v),
   walkSpeed: (v) => ['slow', 'normal', 'fast'].includes(v),
   bufferMin: intIn(0, 30),
   reminderMin: intIn(0, 30),

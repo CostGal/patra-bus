@@ -157,3 +157,33 @@
   .pl-step::before { left: calc(2.7rem + 8px + 13px); }
   .pl-step.is-bus::before, .pl-step.is-ride::before { left: calc(2.7rem + 8px + 12px); }
 }
+
+/* ---- "⋯" disclosure (secondary text/actions) ---- */
+.pl-more > summary { list-style: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-2); font-weight: 700; cursor: pointer; }
+.pl-more > summary::-webkit-details-marker { display: none; }
+.pl-more > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pl-more[open] { flex: 1 1 100%; }
+.pl-more[open] > summary { margin-bottom: 8px; }
+.pl-more-body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.pl-more-body .pl-foot { margin-top: 0; }
+
+/* ---- onboard ("Θα κατέβω σε…"): home card, bus view picker ---- */
+.ob-card { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--radius); background: var(--surface-2); border-left: 5px solid var(--accent); }
+.ob-card.is-alert { background: var(--warn-bg); border-left-color: var(--warn); }
+.ob-main { flex: 1; min-width: 0; }
+.ob-title { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.ob-meta { color: var(--text-2); font-size: .9rem; }
+.ob-card.is-alert .ob-meta { color: var(--warn); font-weight: 600; }
+.ob-end { flex: none; min-height: 44px; padding: 0 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.ob-end:focus-visible, .ob-pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ob-box { margin: 0 0 8px; }
+.ob-open { gap: 8px; }
+.ob-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ob-on { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.ob-on .icon { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.ob-picker { list-style: none; margin: 8px 0 0; padding: 0; max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.ob-picker li + li { border-top: 1px solid var(--border); }
+.ob-pick { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 0 12px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ob-pick:hover { background: var(--surface-2); }
+.ob-pick-in { flex: none; color: var(--text-2); font-size: .85rem; }
+.ob-more { margin-top: 12px; }

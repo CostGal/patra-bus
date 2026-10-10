@@ -7,6 +7,7 @@ import { createSheet } from './sheet.js';
 import locationService from './location.js';
 import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
+import { t, onLangChange } from './i18n.js';
 import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
@@ -16,8 +17,8 @@ const root = document.documentElement;
 const appEl = $('app');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
-const TITLE = 'Λεωφορεία Πάτρας';
-const PIN_NAME = 'Επιλεγμένο σημείο';
+const title = () => t('Λεωφορεία Πάτρας');
+const pinName = () => t('Επιλεγμένο σημείο');
 
 let data = null;
 let map = null;
@@ -37,7 +38,7 @@ function applyTheme() {
   else delete root.dataset.theme;
   themeMetas.forEach((m, i) => { m.content = t === 'dark' ? '#1e2227' : t === 'light' ? '#ffffff' : themeMetaOrig[i]; });
   map?.setTheme(resolveTheme());
-  paintLayersPop();
+  paintThemeRow();
 }
 
 // ---------------------------------------------------------------- small helpers
@@ -49,8 +50,8 @@ const ptStr = (p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
 const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
 const planHash = (to, name) => `#/plan?to=${ptStr(to)}${name ? `&name=${encodeURIComponent(name)}` : ''}`;
 const msgEl = (text) => h('p', { class: 'state-msg' }, text);
-const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, 'Δοκίμασε ξανά'));
-const backBtn = (to = '#/') => h('a', { class: 'icon-btn', href: to, 'aria-label': 'Πίσω' }, icon('back'));
+const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, t('Δοκίμασε ξανά')));
+const backBtn = (to = '#/') => h('a', { class: 'icon-btn', href: to, 'aria-label': t('Πίσω') }, icon('back'));
 
 function lineBadges(stop, max = 6) {
   return stop.lineCodes.slice(0, max).map((c) => lineBadge(data.lineByCode.get(c) || { code: c }));
@@ -112,66 +113,57 @@ function makePopover(btn, pop) {
   }
   const p = { open, close };
   pops.push(p);
-  pop.addEventListener('click', (e) => { if (e.target.closest('a, button')) close(false); });
+  pop.addEventListener('click', (e) => { if (e.target.closest('a, button:not([data-keep])')) close(false); });
   return p;
 }
 
-// ---------------------------------------------------------------- menu + layers popovers
+// ---------------------------------------------------------------- menu popover (navigation + map theme)
 const menuBtn = $('menu-btn');
 const menuPop = $('menu-pop');
-const layersBtn = $('layers-btn');
-const layersPop = $('layers-pop');
 let menuPopover;
-let layersPopover;
 
+const THEMES = [['auto', 'layers', 'Αυτόματο'], ['light', 'sun', 'Φωτεινό'], ['dark', 'moon', 'Σκοτεινό']];
 function buildMenu() {
   const item = (href, ico, label) => h('a', { class: 'pop-item', href }, icon(ico), label);
   menuPop.replaceChildren(
-    item('#/', 'home', 'Αρχική'),
-    item('#/favorites', 'star', 'Αγαπημένες στάσεις'),
-    item('#/lines', 'bus', 'Γραμμές'),
-    item('#/plan', 'route', 'Διαδρομή'),
+    item('#/', 'home', t('Αρχική')),
+    item('#/favorites', 'star', t('Αγαπημένες στάσεις')),
+    item('#/lines', 'bus', t('Γραμμές')),
+    item('#/plan', 'route', t('Διαδρομή')),
     h('div', { class: 'pop-sep' }),
-    item('#/settings', 'settings', 'Ρυθμίσεις και σχετικά'));
-}
-const THEMES = [['auto', 'layers', 'Αυτόματο'], ['light', 'sun', 'Φωτεινό'], ['dark', 'moon', 'Σκοτεινό']];
-function buildLayersPop() {
-  layersPop.replaceChildren(
-    h('div', { class: 'pop-head', id: 'theme-label' }, 'Θέμα χάρτη'),
-    h('div', { role: 'radiogroup', 'aria-labelledby': 'theme-label' },
+    h('div', { class: 'pop-head', id: 'theme-label' }, t('Θέμα')),
+    h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' },
       THEMES.map(([value, ico, label]) => h('button', {
-        type: 'button', class: 'pop-item', role: 'radio', 'data-value': value, 'aria-checked': 'false',
-        onclick: () => setSetting('theme', value),
-      }, icon(ico), label, h('span', { class: 'tick' }, icon('check'))))));
-  paintLayersPop();
+        type: 'button', class: 'theme-opt', role: 'radio', 'data-value': value, 'data-keep': '', 'aria-checked': 'false',
+        'aria-label': t(label), title: t(label), onclick: () => setSetting('theme', value),
+      }, icon(ico)))),
+    h('div', { class: 'pop-sep' }),
+    item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
+  paintThemeRow();
 }
-function paintLayersPop() {
+function paintThemeRow() {
   const cur = getSettings().theme || 'auto';
-  layersPop.querySelectorAll('[role="radio"]').forEach((b) => {
-    const on = b.dataset.value === cur;
-    b.setAttribute('aria-checked', String(on));
-    b.querySelector('.tick').hidden = !on;
-  });
+  menuPop.querySelectorAll('[role="radio"]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === cur)));
 }
 
-// Runs after the popover consts exist (applyTheme repaints the layers popover).
+// Runs after the popover consts exist (applyTheme repaints the theme row).
 applyTheme();
 darkMQ.addEventListener('change', applyTheme);
 onChange(applyTheme);
 
 // ---------------------------------------------------------------- sheet <-> map/floating UI
 const fabsBottom = $('fabs-bottom');
-const fabsTop = $('fabs-top');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
 let attribEl = null;
 const chipsEl = $('chips');
+const searchbarEl = $('searchbar');
 function onSnap({ visible, desktop }) {
   if (!map) return;
   if (desktop) {
     map.setPadding({ top: 72, bottom: 0, left: sheet.el.offsetWidth, right: 0 });
   } else {
-    const top = chipsEl.getBoundingClientRect().bottom + 8;
+    const top = Math.max(searchbarEl.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
     map.setPadding({ top, bottom: Math.min(visible, innerHeight * 0.6), left: 0, right: 0 });
   }
 }
@@ -179,11 +171,6 @@ function onMove({ lift, opacity }) {
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
   fabsBottom.style.opacity = String(opacity);
   fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
-  if (!desktopMQ.matches) {
-    fabsTop.style.opacity = String(opacity);
-    fabsTop.style.pointerEvents = opacity < 0.05 ? 'none' : '';
-    fabsTop.style.visibility = opacity < 0.05 ? 'hidden' : '';
-  } else { fabsTop.style.opacity = ''; fabsTop.style.pointerEvents = ''; fabsTop.style.visibility = ''; }
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
   attribEl ||= appEl.querySelector('.maplibregl-ctrl-bottom-right');
   if (attribEl) attribEl.style.transform = lift ? `translateY(${-lift}px)` : '';
@@ -197,15 +184,19 @@ const LOC_LABEL = {
   idle: 'Εντοπισμός τοποθεσίας', centre: 'Ακολούθησε τη θέση μου',
   follow: 'Περιστροφή χάρτη με την πυξίδα', compass: 'Σταμάτα την περιστροφή του χάρτη',
 };
+const locLabel = (m) => t(LOC_LABEL[m]);
 let locMode = 'idle';
 let wantFix = false; // the user asked for a location and we are waiting for the first fix
 let firstFixHandled = false;
 
+function paintLocLabel() {
+  locateBtn.setAttribute('aria-label', locLabel(locMode));
+  locateBtn.title = locLabel(locMode);
+}
 function setLocMode(m) {
   locMode = m;
   locateBtn.dataset.mode = m;
-  locateBtn.setAttribute('aria-label', LOC_LABEL[m]);
-  locateBtn.title = LOC_LABEL[m];
+  paintLocLabel();
   locateBtn.replaceChildren(icon(LOC_ICON[m]));
   map?.setFollow(m === 'idle' ? 'off' : m);
 }
@@ -222,8 +213,8 @@ function onLocation(fix, status) {
   if (fix && wantFix) { wantFix = false; setLocMode('centre'); }
   if (!fix && wantFix && status !== 'locating' && status !== 'idle') {
     wantFix = false;
-    if (status === 'timeout') toast('Δεν βρέθηκε η τοποθεσία σου. Δοκίμασε ξανά.', { action: { label: 'Ξανά', onClick: () => requestCentre() } });
-    else if (LOC_ERR[status]) toast(LOC_ERR[status]);
+    if (status === 'timeout') toast(t('Δεν βρέθηκε η τοποθεσία σου. Δοκίμασε ξανά.'), { action: { label: t('Ξανά'), onClick: () => requestCentre() } });
+    else if (LOC_ERR[status]) toast(t(LOC_ERR[status]));
   }
   // First fix of the session while browsing the home screen inside Patras: show where you are.
   if (fix && !firstFixHandled && inArea(fix)) {
@@ -244,7 +235,7 @@ locateBtn.addEventListener('click', async () => {
   else if (locMode === 'follow') {
     const ok = await locationService.enableCompass(); // must run inside the click gesture (iOS)
     if (ok) setLocMode('compass');
-    else toast('Η πυξίδα δεν είναι διαθέσιμη σε αυτή τη συσκευή.');
+    else toast(t('Η πυξίδα δεν είναι διαθέσιμη σε αυτή τη συσκευή.'));
   } else setLocMode('follow');
 });
 northBtn.addEventListener('click', () => map?.resetNorth());
@@ -258,14 +249,14 @@ function onUserMove() { wantFix = false; setLocMode('idle'); paintLocating(); }
 // ---------------------------------------------------------------- offline cue
 // A persistent pill under the search bar while offline; a toast when the connection returns.
 const offlinePill = h('div', { class: 'offline-pill', id: 'offline-pill', role: 'status', hidden: true },
-  icon('alert'), h('span', {}, 'Εκτός σύνδεσης — δείχνω αποθηκευμένα δεδομένα'));
+  icon('alert'), h('span', {}, t('Εκτός σύνδεσης — δείχνω αποθηκευμένα δεδομένα')));
 appEl.append(offlinePill);
 let wasOffline = false;
 function paintOnline(announce) {
   const off = navigator.onLine === false;
   offlinePill.hidden = !off;
   appEl.classList.toggle('is-offline', off);
-  if (announce && wasOffline && !off) toast('Ξανά σε σύνδεση');
+  if (announce && wasOffline && !off) toast(t('Ξανά σε σύνδεση'));
   wasOffline = off;
 }
 window.addEventListener('online', () => paintOnline(true));
@@ -277,7 +268,6 @@ const searchInput = $('search-input');
 const searchPanel = $('search-panel');
 const searchList = $('search-list');
 const searchClear = $('search-clear');
-const searchDecor = $('search-decor');
 let searchOpen = false;
 let activeIdx = -1;
 let rows = [];
@@ -292,7 +282,7 @@ function openSearch() {
   searchInput.setAttribute('aria-expanded', 'true');
   menuPopover.close(false);
   menuBtn.replaceChildren(icon('back'));
-  menuBtn.setAttribute('aria-label', 'Κλείσιμο αναζήτησης');
+  menuBtn.setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
   menuBtn.removeAttribute('aria-haspopup');
   menuBtn.removeAttribute('aria-expanded');
   renderSearch();
@@ -308,9 +298,8 @@ function closeSearch(focusMenu = false) {
   searchInput.setAttribute('aria-expanded', 'false');
   searchInput.removeAttribute('aria-activedescendant');
   searchClear.hidden = true;
-  searchDecor.hidden = false;
   menuBtn.replaceChildren(icon('menu'));
-  menuBtn.setAttribute('aria-label', 'Μενού');
+  menuBtn.setAttribute('aria-label', t('Μενού'));
   menuBtn.setAttribute('aria-haspopup', 'true');
   menuBtn.setAttribute('aria-expanded', 'false');
   if (focusMenu) menuBtn.focus(); else searchInput.blur();
@@ -350,24 +339,24 @@ function renderSearch(keepActive = false) {
     const rs = recentStops(4);
     const rp = recentPlaces(4);
     if (rs.length || rp.length) {
-      out.push(srHead('Πρόσφατα'), ...stopRows(rs),
+      out.push(srHead(t('Πρόσφατα')), ...stopRows(rs),
         ...rp.map((p) => srRow(`sr-${n++}`, 'history', p.name, p.subtitle, () => choosePlace(p))));
     } else {
-      out.push(h('p', { class: 'sr-msg' }, 'Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.'));
+      out.push(h('p', { class: 'sr-msg' }, t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
     }
   } else {
     const stops = searchStops(data, q, 6);
-    if (stops.length) out.push(srHead('Στάσεις'), ...stopRows(stops));
+    if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops));
     const seen = new Set(stops.map((s) => s.code));
     const found = places.q === q
       ? places.results.filter((p) => !(p.kind === 'stop' && seen.has(String(p.stopCode)))) : [];
     if (found.length) {
-      out.push(srHead('Τόποι'), ...found.map((p) => srRow(`sr-${n++}`, p.kind === 'stop' ? 'bus' : 'pin', p.name, p.subtitle, () => choosePlace(p))));
+      out.push(srHead(t('Τόποι')), ...found.map((p) => srRow(`sr-${n++}`, p.kind === 'stop' ? 'bus' : 'pin', p.name, p.subtitle, () => choosePlace(p))));
     }
-    if (places.q === q && places.loading) out.push(h('p', { class: 'sr-msg', role: 'status' }, 'Αναζήτηση τόπων…'));
-    else if (places.q === q && places.failed && !found.length) out.push(h('p', { class: 'sr-msg' }, 'Δεν ήταν δυνατή η αναζήτηση τόπων.'));
-    else if (!stops.length && !found.length && q.length >= 3 && places.q === q) out.push(h('p', { class: 'sr-msg' }, 'Κανένα αποτέλεσμα'));
-    else if (!stops.length && q.length < 3) out.push(h('p', { class: 'sr-msg' }, 'Κανένα αποτέλεσμα'));
+    if (places.q === q && places.loading) out.push(h('p', { class: 'sr-msg', role: 'status' }, t('Αναζήτηση τόπων…')));
+    else if (places.q === q && places.failed && !found.length) out.push(h('p', { class: 'sr-msg' }, t('Δεν ήταν δυνατή η αναζήτηση τόπων.')));
+    else if (!stops.length && !found.length && q.length >= 3 && places.q === q) out.push(h('p', { class: 'sr-msg' }, t('Κανένα αποτέλεσμα')));
+    else if (!stops.length && q.length < 3) out.push(h('p', { class: 'sr-msg' }, t('Κανένα αποτέλεσμα')));
   }
   searchList.replaceChildren(...out);
   setActive(Math.min(prev, rows.length - 1));
@@ -408,7 +397,6 @@ searchInput.addEventListener('focus', openSearch);
 searchInput.addEventListener('input', () => {
   const q = searchInput.value.trim();
   searchClear.hidden = !searchInput.value;
-  searchDecor.hidden = !!searchInput.value;
   openSearch();
   schedulePlaces(q);
   renderSearch();
@@ -430,7 +418,6 @@ searchInput.addEventListener('keydown', (e) => {
 searchClear.addEventListener('click', () => {
   searchInput.value = '';
   searchClear.hidden = true;
-  searchDecor.hidden = false;
   clearTimeout(placeTimer);
   placeCtl?.abort();
   places = { q: '', loading: false, results: [], failed: false };
@@ -449,44 +436,84 @@ document.addEventListener('pointerdown', (e) => {
 }, true);
 
 // ---------------------------------------------------------------- views owned by the shell
+// Home = ONE contextual card: onboard trip > saved place > nearby next bus. Favourites/recents show only when the sheet is expanded (CSS).
 function mountHome(container, c) {
-  const nearbyBox = h('div', { class: 'home-nearby' });
-  const favBox = h('section', { class: 'home-section' });
-  const recBox = h('section', { class: 'home-section' });
-  container.replaceChildren(
-    h('div', { class: 'view-head root' }, h('h1', {}, TITLE)),
-    nearbyBox, favBox, recBox);
-  let nearby = null;
+  const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
+  const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
+  const more = h('div', { class: 'home-more', hidden: true });
+  const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
+  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, more);
+  // The peek sheet is exactly as tall as the one visible card.
+  const ro = new ResizeObserver(() => { const hh = card.offsetHeight; if (hh) sheet.setPeek(44 + hh + 8); });
+  ro.observe(card);
+  const views = {};
+  const offs = [];
   let dead = false;
-  import('./nearby.js').then((m) => {
+  let nearbyBusy = false;
+  let nearbyFailed = false;
+  const load = (key, file, fn, after) => import(file).then((m) => {
     if (dead) return;
-    nearby = m.mountNearby(nearbyBox, c);
-  }).catch((err) => { console.error(err); nearbyBox.replaceChildren(msgEl('Δεν φορτώθηκε η ενότητα «κοντά σου».')); });
+    views[key] = m[fn](box[key], c);
+    after?.(m);
+  });
+
+  // The first card with content wins; nearby is mounted only when nothing above it renders (it polls live data).
+  const evaluate = () => {
+    if (dead) return;
+    const top = box.onboard.childElementCount ? 'onboard' : box.places.childElementCount ? 'places' : 'nearby';
+    for (const k of Object.keys(box)) box[k].hidden = k !== top;
+    if (top === 'nearby') {
+      if (views.nearby || nearbyBusy || nearbyFailed) return;
+      nearbyBusy = true;
+      load('nearby', './nearby.js', 'mountNearby')
+        .catch((err) => { console.error(err); nearbyFailed = true; box.nearby.replaceChildren(msgEl(t('Δεν φορτώθηκε η ενότητα «κοντά σου».'))); })
+        .finally(() => { nearbyBusy = false; evaluate(); });
+    } else if (views.nearby) {
+      views.nearby.destroy?.();
+      views.nearby = null;
+      box.nearby.replaceChildren();
+    }
+  };
+  const mo = new MutationObserver(evaluate);
+  mo.observe(box.onboard, { childList: true });
+  mo.observe(box.places, { childList: true });
+  Promise.allSettled([
+    load('onboard', './onboard.js', 'mountOnboardCard', (m) => { if (m.onTripChange) offs.push(m.onTripChange(evaluate)); }),
+    load('places', './places.js', 'mountPlacesCard'),
+  ]).then((rs) => { rs.forEach((r) => r.status === 'rejected' && console.error('[home]', r.reason)); evaluate(); });
 
   const paint = () => {
     const favs = getFavorites().map((code) => data.stopByCode.get(String(code))).filter(Boolean);
-    favBox.replaceChildren(h('h2', {}, 'Αγαπημένες στάσεις'),
-      favs.length ? h('div', { class: 'list' }, favs.map((s) => stopRow(s)))
-        : h('p', { class: 'hint' }, 'Πάτα το αστέρι σε μια στάση για να τη βρίσκεις εδώ.'));
     const rs = recentStops(5);
     const rp = recentPlaces(3);
-    recBox.hidden = !rs.length && !rp.length;
-    recBox.replaceChildren(h('h2', {}, 'Πρόσφατα'), h('div', { class: 'list' }, rs.map((s) => stopRow(s)), rp.map(placeRow)));
+    more.replaceChildren(...[
+      favs.length ? h('section', { class: 'home-section' }, h('h2', {}, t('Αγαπημένες στάσεις')), h('div', { class: 'list' }, favs.map((s) => stopRow(s)))) : null,
+      rs.length || rp.length ? h('section', { class: 'home-section' }, h('h2', {}, t('Πρόσφατα')), h('div', { class: 'list' }, rs.map((s) => stopRow(s)), rp.map(placeRow))) : null].filter(Boolean));
+    more.hidden = !more.childElementCount;
   };
   paint();
-  const off = onChange(paint);
-  return { destroy() { dead = true; off(); nearby?.destroy(); } };
+  offs.push(onChange(paint));
+  return {
+    destroy() {
+      dead = true;
+      mo.disconnect();
+      ro.disconnect();
+      sheet.setPeek(null);
+      offs.forEach((f) => f?.());
+      Object.values(views).forEach((v) => v?.destroy?.());
+    },
+  };
 }
 
 function mountFavorites(container, c) {
   const body = h('div');
   container.replaceChildren(
-    h('div', { class: 'view-head' }, backBtn(), h('h1', {}, 'Αγαπημένες στάσεις')), body);
+    h('div', { class: 'view-head' }, backBtn(), h('h1', {}, t('Αγαπημένες στάσεις'))), body);
   const paint = () => {
     const favs = getFavorites().map((code) => data.stopByCode.get(String(code))).filter(Boolean);
     body.replaceChildren(favs.length
       ? h('div', { class: 'list' }, favs.map((s) => stopRow(s)))
-      : h('p', { class: 'hint' }, 'Δεν έχεις αγαπημένες στάσεις ακόμα. Άνοιξε μια στάση και πάτα το αστέρι για να την προσθέσεις.'));
+      : h('p', { class: 'hint' }, t('Δεν έχεις αγαπημένες στάσεις ακόμα. Άνοιξε μια στάση και πάτα το αστέρι για να την προσθέσεις.')));
   };
   paint();
   const off = onChange(paint);
@@ -497,15 +524,15 @@ function mountPin(container, c, p) {
   const fix = locationService.current;
   const near = nearestStops(data.stops, p, { limit: 5, maxMeters: 1500 });
   const sub = [`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`];
-  if (fix) sub.push(`${fmtDist(haversine(fix, p))} από εσένα`);
+  if (fix) sub.push(t('{d} από εσένα', { d: fmtDist(haversine(fix, p)) }));
   container.replaceChildren(
-    h('div', { class: 'view-head' }, backBtn(), h('h1', {}, PIN_NAME, h('span', { class: 'sub' }, sub.join(' · ')))),
+    h('div', { class: 'view-head' }, backBtn(), h('h1', {}, pinName(), h('span', { class: 'sub' }, sub.join(' · ')))),
     h('div', { class: 'btn-row' },
-      h('a', { class: 'btn primary', href: planHash(p, PIN_NAME) }, icon('route'), 'Διαδρομή ως εδώ')),
+      h('a', { class: 'btn primary', href: planHash(p, pinName()) }, icon('route'), t('Διαδρομή ως εδώ'))),
     h('section', { class: 'home-section' },
-      h('h2', {}, 'Κοντινές στάσεις'),
+      h('h2', {}, t('Κοντινές στάσεις')),
       near.length ? h('div', { class: 'list' }, near.map((n) => stopRow(n.stop, n.meters)))
-        : h('p', { class: 'hint' }, 'Δεν υπάρχει στάση σε απόσταση 1,5 χλμ από αυτό το σημείο.')));
+        : h('p', { class: 'hint' }, t('Δεν υπάρχει στάση σε απόσταση 1,5 χλμ από αυτό το σημείο.'))));
   c.map.setMarkers('pin', [{ ...p, kind: 'pin' }]);
   return { destroy() { c.map.clearMarkers('pin'); } };
 }
@@ -516,8 +543,7 @@ let routeToken = 0;
 let nextSnap = null;
 let currentHead = '';
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full' };
-const CHIP_FOR = { '': 'home', favorites: 'favorites', lines: 'lines', line: 'lines', plan: 'plan' };
+const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full' };
 
 function parseHash() {
   const raw = location.hash.replace(/^#/, '') || '/';
@@ -530,18 +556,21 @@ function teardown() {
   map.highlightStop(null);
   map.clearMarkers('pin');
 }
-function paintChips(head) {
-  const active = CHIP_FOR[head];
-  chipsEl.querySelectorAll('.chip').forEach((a) => {
-    if (a.dataset.chip === active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
-  });
+// Contextual shortcuts: saved places (max 3), home screen only. Nothing is rendered when there are none.
+let getPlaces = () => [];
+import('./places.js').then((m) => { getPlaces = m.getPlaces; paintChips(); }).catch(() => {});
+function paintChips() {
+  let list = [];
+  try { list = currentHead === '' ? getPlaces().filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng)).slice(0, 3) : []; } catch { /* ignore */ }
+  chipsEl.replaceChildren(...list.map((p) => h('a', { class: 'chip', href: planHash(p, p.name) }, icon(p.id === 'home' ? 'home' : p.id === 'work' ? 'briefcase' : 'pin'), p.name)));
+  chipsEl.hidden = !list.length;
+  appEl.classList.toggle('has-chips', !chipsEl.hidden);
 }
 
 async function route() {
   const token = ++routeToken;
   closeSearch();
   menuPopover.close(false);
-  layersPopover.close(false);
   teardown();
   const { parts, params } = parseHash();
   const head = parts[0] || '';
@@ -552,8 +581,8 @@ async function route() {
   content.replaceChildren();
   sheet.scrollToTop();
   if (!reduceMotion.matches) { content.classList.remove('enter'); void content.offsetWidth; content.classList.add('enter'); }
-  paintChips(currentHead);
-  document.title = TITLE;
+  paintChips();
+  document.title = title();
 
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted });
   nextSnap = null;
@@ -567,7 +596,7 @@ async function route() {
       view = v;
     } catch (err) {
       console.error('[view]', err);
-      if (token === routeToken) content.replaceChildren(errorState('Δεν φορτώθηκε αυτή η οθόνη.', () => route()));
+      if (token === routeToken) content.replaceChildren(errorState(t('Δεν φορτώθηκε αυτή η οθόνη.'), () => route()));
     }
   };
 
@@ -575,10 +604,10 @@ async function route() {
     case 'stop': {
       const stop = data.stopByCode.get(String(arg));
       if (!stop) {
-        content.replaceChildren(h('div', { class: 'view-head' }, backBtn(), h('h1', {}, 'Η στάση δεν βρέθηκε')));
+        content.replaceChildren(h('div', { class: 'view-head' }, backBtn(), h('h1', {}, t('Η στάση δεν βρέθηκε'))));
         break;
       }
-      document.title = `${stop.displayName} · ${TITLE}`;
+      document.title = `${stop.displayName} · ${title()}`;
       noteStop(stop);
       map.highlightStop(stop.code);
       map.flyTo(stop, 17);
@@ -586,35 +615,35 @@ async function route() {
       break;
     }
     case 'bus':
-      document.title = `Διαδρομή οχήματος · ${TITLE}`;
+      document.title = `${t('Διαδρομή οχήματος')} · ${title()}`;
       await mount(() => import('./bus-view.js'), (m) => m.mountBus(content, ctx, { vehicleCode: String(arg), route: params.route || undefined, stop: params.stop || undefined }));
       break;
     case 'plan':
-      document.title = `Διαδρομή · ${TITLE}`;
+      document.title = `${t('Διαδρομή')} · ${title()}`;
       await mount(() => import('./planner-view.js'), (m) => m.mountPlanner(content, ctx, {
         to: parsePt(params.to) || undefined, from: parsePt(params.from) || undefined, name: params.name || undefined,
       }));
       break;
     case 'lines':
-      document.title = `Γραμμές · ${TITLE}`;
+      document.title = `${t('Γραμμές')} · ${title()}`;
       await mount(() => import('./lines-view.js'), (m) => m.mountLines(content, ctx));
       break;
     case 'line':
-      document.title = `Γραμμή ${arg} · ${TITLE}`;
+      document.title = `${t('Γραμμή {code}', { code: arg })} · ${title()}`;
       await mount(() => import('./lines-view.js'), (m) => m.mountLine(content, ctx, { code: String(arg), dir: params.dir ? Number(params.dir) : undefined, route: params.route || undefined }));
       break;
     case 'settings':
-      document.title = `Ρυθμίσεις · ${TITLE}`;
+      document.title = `${t('Ρυθμίσεις')} · ${title()}`;
       await mount(() => import('./settings-view.js'), (m) => m.mountSettings(content, ctx));
       break;
     case 'favorites':
-      document.title = `Αγαπημένες στάσεις · ${TITLE}`;
+      document.title = `${t('Αγαπημένες στάσεις')} · ${title()}`;
       view = mountFavorites(content, ctx);
       break;
     case 'pin': {
       const p = parsePt(`${params.lat},${params.lng}`);
       if (!p) { ctx.navigate('#/'); break; }
-      document.title = `${PIN_NAME} · ${TITLE}`;
+      document.title = `${pinName()} · ${title()}`;
       view = mountPin(content, ctx, p);
       map.flyTo(p, 17);
       break;
@@ -644,7 +673,7 @@ function onMapClick() {
   else if (currentHead === '' && sheet.state !== 'peek') sheet.snap('peek');
 }
 function onLongPress(p) {
-  if (!inArea(p)) toast('Το σημείο είναι εκτός της περιοχής της Πάτρας.');
+  if (!inArea(p)) toast(t('Το σημείο είναι εκτός της περιοχής της Πάτρας.'));
   navigate(`#/pin?lat=${p.lat.toFixed(5)}&lng=${p.lng.toFixed(5)}`);
 }
 
@@ -654,40 +683,41 @@ function enterNoMap(reason) {
   sheet.setFixed(true);
   const note = $('map-note');
   note.textContent = reason === 'script'
-    ? 'Δεν φορτώθηκε ο χάρτης (έλεγξε τη σύνδεσή σου). Η εφαρμογή λειτουργεί ως λίστα.'
-    : 'Ο χάρτης δεν είναι διαθέσιμος σε αυτή τη συσκευή. Η εφαρμογή λειτουργεί ως λίστα.';
+    ? t('Δεν φορτώθηκε ο χάρτης (έλεγξε τη σύνδεσή σου). Η εφαρμογή λειτουργεί ως λίστα.')
+    : t('Ο χάρτης δεν είναι διαθέσιμος σε αυτή τη συσκευή. Η εφαρμογή λειτουργεί ως λίστα.');
   note.hidden = false;
+}
+
+// Static Greek in index.html is the fallback; this (re)applies the current language.
+function localizeChrome() {
+  searchInput.placeholder = t('Πού πάμε;');
+  searchInput.setAttribute('aria-label', t('Αναζήτηση στάσης ή τόπου'));
+  searchClear.setAttribute('aria-label', t('Καθαρισμός αναζήτησης'));
+  searchList.setAttribute('aria-label', t('Αποτελέσματα αναζήτησης'));
+  if (!searchOpen) menuBtn.setAttribute('aria-label', t('Μενού'));
+  northBtn.setAttribute('aria-label', t('Επαναφορά βορρά'));
+  northBtn.title = t('Επαναφορά βορρά');
+  chipsEl.setAttribute('aria-label', t('Αποθηκευμένα μέρη'));
+  $('sheet').setAttribute('aria-label', t('Πληροφορίες'));
+  $('demo-tag').title = t('Δεδομένα επίδειξης');
+  paintLocLabel();
+  buildMenu();
 }
 
 function buildChrome() {
   menuBtn.append(icon('menu'));
   searchClear.append(icon('close'));
-  searchDecor.append(icon('search'));
-  layersBtn.append(icon('layers'));
   northBtn.append(icon('compass'));
   locateBtn.append(icon('locate'));
-  layersBtn.title = 'Θέμα χάρτη';
-  northBtn.title = 'Επαναφορά βορρά';
-  locateBtn.title = LOC_LABEL.idle;
-  const chips = [['near', 'locate', 'Κοντά μου', '#/'], ['favorites', 'star', 'Αγαπημένα', '#/favorites'],
-    ['lines', 'bus', 'Γραμμές', '#/lines'], ['plan', 'route', 'Διαδρομή', '#/plan']];
-  chipsEl.replaceChildren(...chips.map(([key, ico, label, href]) => {
-    const a = h('a', { class: 'chip', href, 'data-chip': key === 'near' ? 'home' : key }, icon(ico), label);
-    if (key === 'near') a.addEventListener('click', () => { requestCentre(); });
-    return a;
-  }));
-  buildMenu();
-  buildLayersPop();
   menuPopover = makePopover(menuBtn, menuPop);
-  layersPopover = makePopover(layersBtn, layersPop);
-  layersBtn.addEventListener('click', () => (layersPop.hidden ? layersPopover.open() : layersPopover.close(true)));
+  localizeChrome();
   if (DEMO) $('demo-tag').hidden = false;
 }
 
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-top', '#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');
@@ -696,7 +726,7 @@ async function boot() {
     data = await loadData();
   } catch (err) {
     console.error('[data]', err);
-    sheet.content.replaceChildren(errorState('Δεν φορτώθηκαν τα δεδομένα στάσεων.', () => location.reload()));
+    sheet.content.replaceChildren(errorState(t('Δεν φορτώθηκαν τα δεδομένα στάσεων.'), () => location.reload()));
     return;
   }
   map.setStops(data.stops);
@@ -712,6 +742,7 @@ async function boot() {
   locationService.autoStart?.(); // only if permission is already granted: no prompt on load
 
   window.addEventListener('hashchange', () => route());
+  onLangChange(() => { localizeChrome(); route(); });
   await route();
   booted = true;
 
@@ -723,5 +754,5 @@ async function boot() {
 
 boot().catch((err) => {
   console.error('[boot]', err);
-  sheet?.content.replaceChildren(errorState('Κάτι πήγε στραβά.', () => location.reload()));
+  sheet?.content.replaceChildren(errorState(t('Κάτι πήγε στραβά.'), () => location.reload()));
 });

@@ -6,17 +6,28 @@ import { loadShapes } from './data.js';
 import { createLivePoller, remainingSec } from './api.js';
 import { arrivalTile } from './arrivals-view.js';
 import { shareLink } from './share.js';
+import { t, tn, onLangChange } from './i18n.js';
 
 let shapesP = null; // shapes.json is big and optional: load once, only when a line is opened
 const shapes = () => (shapesP ||= loadShapes().catch(() => ({})));
 
 const routeName = (ctx, r) => ctx.data.routeByCode.get(r.code)?.displayName || titleCase(r.name);
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+// "Updated just now" / "Updated 14″ ago".
+const updated = (age) => (age < 5 ? t('Ενημερώθηκε μόλις τώρα') : t('Ενημερώθηκε πριν {t}', { t: age < 120 ? `${age}″` : `${Math.round(age / 60)}′` }));
 const backBtn = (label, onclick) => h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': label, onclick }, icon('back'));
 
 // ---------------------------------------------------------------- list of lines
 
+// Both views re-render when the language changes (names stay as they are).
 export function mountLines(container, ctx) {
+  const st = { q: '' };
+  let v = buildLines(container, ctx, st);
+  let gone = false;
+  const off = onLangChange(() => { if (gone) return; v.destroy(); v = buildLines(container, ctx, st); });
+  return { destroy() { gone = true; off(); v.destroy(); } };
+}
+
+function buildLines(container, ctx, st) {
   const rows = ctx.data.lines.map((line) => ({
     line,
     key: searchKey([line.code, line.name, ...line.routes.map((r) => r.name)].join(' ')),
@@ -24,36 +35,31 @@ export function mountLines(container, ctx) {
 
   const input = h('input', {
     class: 'ex-search', type: 'search', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search',
-    placeholder: 'Αναζήτηση γραμμής ή προορισμού', 'aria-label': 'Αναζήτηση γραμμής ή προορισμού',
+    placeholder: t('Αναζήτηση γραμμής ή προορισμού'), 'aria-label': t('Αναζήτηση γραμμής ή προορισμού'),
   });
+  input.value = st.q;
   const count = h('p', { class: 'ex-sub', 'aria-live': 'polite' });
   const list = h('ul', { class: 'lines-list' });
 
-  function summary(line) {
-    const names = [...new Set(line.routes.map((r) => routeName(ctx, r)))];
-    if (!names.length) return '';
-    return names.slice(0, 2).join(' · ') + (names.length > 2 ? ` · +${names.length - 2}` : '');
-  }
   function render() {
     const terms = searchKey(input.value).split(' ').filter(Boolean);
-    const hits = rows.filter((r) => terms.every((t) => r.key.includes(t)));
+    const hits = rows.filter((r) => terms.every((w) => r.key.includes(w)));
     if (terms.length) hits.sort((a, b) => Number(b.line.code.startsWith(terms[0])) - Number(a.line.code.startsWith(terms[0])));
-    count.textContent = hits.length ? plural(hits.length, 'γραμμή', 'γραμμές') : 'Καμία γραμμή δεν ταιριάζει';
+    count.textContent = hits.length ? tn(hits.length, '{n} γραμμή', '{n} γραμμές') : t('Καμία γραμμή δεν ταιριάζει');
     list.replaceChildren(...hits.map(({ line }) => h('li', {},
       h('a', { class: 'lines-row', href: `#/line/${encodeURIComponent(line.code)}` },
         h('span', { class: 'lines-badge' }, lineBadge(line)),
-        h('span', { class: 'lines-main' },
-          h('span', { class: 'lines-name' }, line.displayName),
-          h('span', { class: 'ex-sub' }, summary(line))),
+        h('span', { class: 'lines-main' }, h('span', { class: 'lines-name' }, line.displayName)),
         icon('chevron')))));
   }
-  input.addEventListener('input', render);
+  const onInput = () => { st.q = input.value; render(); };
+  input.addEventListener('input', onInput);
 
   container.replaceChildren(h('div', { class: 'ex-view' },
-    h('header', { class: 'ex-head' }, backBtn('Πίσω', () => ctx.navigate('#/')), h('h1', {}, 'Γραμμές')),
+    h('header', { class: 'ex-head' }, backBtn(t('Πίσω'), () => ctx.navigate('#/')), h('h1', {}, t('Γραμμές'))),
     input, count, list));
   render();
-  return { destroy() { input.removeEventListener('input', render); } };
+  return { destroy() { input.removeEventListener('input', onInput); } };
 }
 
 // ---------------------------------------------------------------- one line
@@ -88,13 +94,20 @@ const validShape = (c) => (Array.isArray(c) && c.length > 1 ? c : null);
 const routeFc = (coordinates, routeCode) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { routeCode }, geometry: { type: 'LineString', coordinates } }] });
 
 export function mountLine(container, ctx, params = {}) {
+  let v = buildLine(container, ctx, params);
+  let gone = false;
+  const off = onLangChange(() => { if (gone) return; v.destroy(); v = buildLine(container, ctx, params); });
+  return { destroy() { gone = true; off(); v.destroy(); } };
+}
+
+function buildLine(container, ctx, params) {
   const { map } = ctx;
   const line = ctx.data.lineByCode.get(String(params.code));
   if (!line) {
     container.replaceChildren(h('div', { class: 'ex-view' },
-      h('header', { class: 'ex-head' }, backBtn('Πίσω στις γραμμές', () => ctx.navigate('#/lines')), h('h1', {}, 'Γραμμή')),
-      h('p', { class: 'ex-empty' }, 'Η γραμμή δεν βρέθηκε.'),
-      h('a', { class: 'ex-btn', href: '#/lines' }, 'Όλες οι γραμμές')));
+      h('header', { class: 'ex-head' }, backBtn(t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines')), h('h1', {}, t('Γραμμή'))),
+      h('p', { class: 'ex-empty' }, t('Η γραμμή δεν βρέθηκε.')),
+      h('a', { class: 'ex-btn', href: '#/lines' }, t('Όλες οι γραμμές'))));
     return { destroy() {} };
   }
 
@@ -107,7 +120,7 @@ export function mountLine(container, ctx, params = {}) {
   const root = h('div', { class: 'ex-view lines-line' });
   root.style.setProperty('--lc', line.color || 'var(--accent)');
   root.style.setProperty('--lc-text', line.textColor || '#fff');
-  const chips = h('div', { class: 'lines-routes', role: 'group', 'aria-label': 'Διαδρομές της γραμμής' });
+  const chips = h('div', { class: 'lines-routes', role: 'group', 'aria-label': t('Διαδρομές της γραμμής') });
   const sub = h('p', { class: 'ex-sub' });
   const note = h('p', { class: 'ex-note', role: 'note' });
   const list = h('ol', { class: 'lines-stops' });
@@ -115,25 +128,27 @@ export function mountLine(container, ctx, params = {}) {
 
   // "Πρόγραμμα": live/scheduled departures from the first stop of the route + estimated end-to-end time. NOT a timetable.
   const timesId = `lt${Math.random().toString(36).slice(2, 7)}`;
-  const timesFacts = h('p', { class: 'lines-times-facts' });
   const timesStop = h('p', { class: 'ex-sub' });
   const timesList = h('ul', { class: 'lines-deps' });
   const timesMsg = h('p', { class: 'ex-sub', 'aria-live': 'polite' });
+  const timesHint = h('p', { class: 'ex-sub lines-times-note', hidden: true }, t('Πλήρες ημερήσιο πρόγραμμα: όχι ακόμη διαθέσιμο — χρειάζεται τα επίσημα δεδομένα δρομολογίων.'));
   const times = h('section', { class: 'lines-times', 'aria-labelledby': timesId },
-    h('h2', { id: timesId, class: 'lines-times-title' }, icon('clock'), 'Επόμενες αναχωρήσεις από την αφετηρία'),
-    timesFacts, timesStop, timesList, timesMsg,
-    h('p', { class: 'ex-note lines-times-note', role: 'note' }, 'Πλήρες ημερήσιο πρόγραμμα: όχι ακόμη διαθέσιμο — χρειάζεται τα επίσημα δεδομένα δρομολογίων.'));
+    h('h2', { id: timesId, class: 'lines-times-title' }, icon('clock'), h('span', { class: 'ex-grow' }, t('Αναχωρήσεις από την αφετηρία')),
+      h('button', { type: 'button', class: 'ex-info', 'aria-label': t('Περισσότερα'), 'aria-expanded': 'false', onclick: (e) => {
+        const on = timesHint.hidden; timesHint.hidden = !on; e.currentTarget.setAttribute('aria-expanded', String(on));
+      } }, icon('info'))),
+    timesHint, timesStop, timesList, timesMsg);
   let term = null; // { code, poller, ticker, state, tiles } — the terminal stop's poller (one at a time)
 
-  const share = h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': 'Κοινοποίηση γραμμής', onclick: async () => {
-    const r = await shareLink({ title: `Γραμμή ${line.code} · ${line.displayName}`, text: `Γραμμή ${line.code} ${line.displayName} — Λεωφορεία Πάτρας`, url: `${location.origin}${location.pathname}${location.hash}` });
-    if (r === 'copied') ctx.toast('Ο σύνδεσμος αντιγράφηκε');
-    else if (r === 'failed') ctx.toast('Δεν ήταν δυνατή η κοινοποίηση');
+  const share = h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Κοινοποίηση γραμμής'), onclick: async () => {
+    const r = await shareLink({ title: t('Γραμμή {code} · {name}', { code: line.code, name: line.displayName }), text: t('Γραμμή {code} {name} — Λεωφορεία Πάτρας', { code: line.code, name: line.displayName }), url: `${location.origin}${location.pathname}${location.hash}` });
+    if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
+    else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
   } }, icon('share'));
 
   root.append(
     h('header', { class: 'ex-head' },
-      backBtn('Πίσω στις γραμμές', () => ctx.navigate('#/lines')),
+      backBtn(t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines')),
       h('span', { class: 'lines-badge lines-badge-lg' }, lineBadge(line)),
       h('div', { class: 'ex-grow' }, h('h1', {}, line.displayName), sub),
       share),
@@ -145,9 +160,7 @@ export function mountLine(container, ctx, params = {}) {
     chips.hidden = line.routes.length < 2;
     chips.replaceChildren(...line.routes.map((r) => {
       const name = routeName(ctx, r);
-      const mins = routeDurationMin(ctx.data.routeByCode.get(r.code));
-      return h('button', { type: 'button', class: 'lines-chip', 'aria-pressed': String(r.code === routeCode), title: mins ? `${name} · ~${mins}′ (εκτίμηση)` : name, onclick: () => setRoute(r.code) },
-        name, mins ? h('span', { class: 'lines-chip-dur' }, ` · ~${mins}′`) : null);
+      return h('button', { type: 'button', class: 'lines-chip', 'aria-pressed': String(r.code === routeCode), title: name, onclick: () => setRoute(r.code) }, name);
     }));
     const on = chips.querySelector('[aria-pressed="true"]'); // bring the active chip into view (horizontal only)
     if (on) chips.scrollLeft = Math.max(0, on.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2);
@@ -167,46 +180,42 @@ export function mountLine(container, ctx, params = {}) {
   // --- departures from the terminal (first stop): poller 20 s, visible only; at most one stop polled for this block ---
   function stopTimes() {
     if (!term) return;
-    const t = term; term = null;
-    t.poller.destroy(); clearInterval(t.ticker);
+    const cur = term; term = null;
+    cur.poller.destroy(); clearInterval(cur.ticker);
   }
   function paintTimes() {
-    const route = routeCode && ctx.data.routeByCode.get(routeCode);
-    const mins = routeDurationMin(route);
-    timesFacts.textContent = mins ? `Διαδρομή ~${mins}′ από την αφετηρία ως το τέρμα (εκτίμηση από τυπικούς χρόνους, όχι πρόγραμμα).` : '';
-    timesFacts.hidden = !mins;
+    const mins = routeDurationMin(routeCode && ctx.data.routeByCode.get(routeCode));
     if (!term) {
       timesStop.textContent = '';
       timesList.replaceChildren();
-      timesMsg.textContent = 'Δεν υπάρχει γνωστή αφετηρία για αυτή τη διαδρομή.';
+      timesMsg.textContent = t('Δεν υπάρχει γνωστή αφετηρία για αυτή τη διαδρομή.');
       return;
     }
     const first = ctx.data.stopByCode.get(term.code);
-    timesStop.replaceChildren('Αφετηρία: ', h('a', { href: `#/stop/${encodeURIComponent(term.code)}` }, first ? first.displayName : term.code));
+    timesStop.replaceChildren(`${t('Αφετηρία')}: `, h('a', { href: `#/stop/${encodeURIComponent(term.code)}` }, first ? first.displayName : term.code), mins ? ` · ~${mins}′` : '');
     const s = term.state;
     const now = Date.now();
     term.tiles = [];
-    if (!s || (s.loading && !s.data)) { timesList.replaceChildren(); timesMsg.textContent = 'Φόρτωση…'; return; }
-    if (s.error && !s.data) { timesList.replaceChildren(); timesMsg.textContent = 'Δεν φορτώθηκαν οι αναχωρήσεις.'; return; }
+    if (!s || (s.loading && !s.data)) { timesList.replaceChildren(); timesMsg.textContent = t('Φόρτωση…'); return; }
+    if (s.error && !s.data) { timesList.replaceChildren(); timesMsg.textContent = t('Δεν φορτώθηκαν οι αναχωρήσεις.'); return; }
     const mine = s.data.vehicles.filter((v) => v.routeCode === routeCode && v.etaSec - (now - s.data.fetchedAt) / 1000 > -30)
-      .sort((a, b) => a.etaSec - b.etaSec).slice(0, 6);
+      .sort((a, b) => a.etaSec - b.etaSec).slice(0, 3);
     timesList.replaceChildren(...mine.map((v) => {
-      const t = arrivalTile(v, s.data.fetchedAt, { compact: true, now, line, stop: term.code, lineLinks: false });
-      term.tiles.push(t);
-      return h('li', {}, t);
+      const tile = arrivalTile(v, s.data.fetchedAt, { compact: true, now, line, stop: term.code, lineLinks: false });
+      term.tiles.push(tile);
+      return h('li', {}, tile);
     }));
     const age = Math.max(0, Math.round((now - s.data.fetchedAt) / 1000));
-    const n = mine.length;
-    timesMsg.textContent = `${n ? plural(n, 'αναχώρηση', 'αναχωρήσεις') : 'Καμία προσεχής αναχώρηση αυτής της διαδρομής'} · ενημερώθηκε ${age < 5 ? 'μόλις τώρα' : `πριν ${age < 120 ? `${age}″` : `${Math.round(age / 60)}′`}`}${s.error ? ' · αποτυχία ανανέωσης' : ''}`;
+    timesMsg.textContent = [mine.length ? '' : t('Καμία προσεχής αναχώρηση αυτής της διαδρομής'), updated(age), s.error ? t('αποτυχία ανανέωσης') : ''].filter(Boolean).join(' · ');
   }
   function startTimes() {
     stopTimes();
     const code = current.ordered ? current.stops[0]?.code : null;
     if (code) {
-      const t = { code, state: null, poller: null, ticker: null, tiles: [] };
-      term = t;
-      t.poller = createLivePoller(code, (s) => { if (term !== t) return; t.state = s; paintTimes(); });
-      t.ticker = setInterval(() => { if (!document.hidden && term === t) for (const x of t.tiles) x.tick(); }, 1000);
+      const cur = { code, state: null, poller: null, ticker: null, tiles: [] };
+      term = cur;
+      cur.poller = createLivePoller(code, (s) => { if (term !== cur) return; cur.state = s; paintTimes(); });
+      cur.ticker = setInterval(() => { if (!document.hidden && term === cur) for (const x of cur.tiles) x.tick(); }, 1000);
     }
     paintTimes();
   }
@@ -216,28 +225,29 @@ export function mountLine(container, ctx, params = {}) {
     const { stops, ordered } = current;
     list.classList.toggle('is-unordered', !ordered);
     note.hidden = ordered || !stops.length;
-    note.textContent = 'Δεν υπάρχει γνωστή σειρά στάσεων για αυτή τη διαδρομή· οι στάσεις εμφανίζονται αλφαβητικά.';
-    status.textContent = stops.length ? plural(stops.length, 'στάση', 'στάσεις') : '';
-    if (!stops.length) { list.replaceChildren(h('li', { class: 'ex-empty' }, 'Δεν βρέθηκαν στάσεις για αυτή τη διαδρομή.')); return; }
+    note.textContent = t('Οι στάσεις είναι αλφαβητικά (άγνωστη σειρά).');
+    status.textContent = stops.length ? tn(stops.length, '{n} στάση', '{n} στάσεις') : '';
+    if (!stops.length) { list.replaceChildren(h('li', { class: 'ex-empty' }, t('Δεν βρέθηκαν στάσεις για αυτή τη διαδρομή.'))); return; }
     list.replaceChildren(...stops.map((s, i) => {
-      const term = ordered && (i === 0 ? 'Αφετηρία' : i === stops.length - 1 ? 'Τέρμα' : '');
+      const end = ordered && (i === 0 ? t('Αφετηρία') : i === stops.length - 1 ? t('Τέρμα') : '');
       const panel = h('div', { class: 'lines-next', hidden: true });
-      const btn = h('button', { type: 'button', class: 'lines-next-btn', 'aria-expanded': 'false', 'aria-label': `Επόμενα λεωφορεία στη στάση ${s.displayName}`, onclick: () => toggleNext(s, btn, panel) },
-        icon('clock'), 'Επόμενα');
-      return h('li', { class: `lines-stop${term ? ' is-end' : ''}`, 'data-code': s.code },
+      const btn = h('button', { type: 'button', class: 'lines-next-btn', 'aria-expanded': 'false', 'aria-label': t('Επόμενα λεωφορεία στη στάση {name}', { name: s.displayName }), title: t('Επόμενα'), onclick: () => toggleNext(s, btn, panel) },
+        icon('clock'));
+      return h('li', { class: `lines-stop${end ? ' is-end' : ''}`, 'data-code': s.code },
         h('span', { class: 'lines-dot', 'aria-hidden': 'true' }),
         h('div', { class: 'lines-stop-row' },
           h('a', { class: 'lines-stop-link', href: `#/stop/${encodeURIComponent(s.code)}` },
             h('span', { class: 'lines-stop-name' }, s.displayName),
-            h('span', { class: 'ex-sub' }, term ? `${term} · #${s.code}` : `#${s.code}`)),
+            end ? h('span', { class: 'ex-sub' }, end) : null),
           btn),
         panel);
     }));
   }
   function paint() {
     const r = line.routes.find((x) => x.code === routeCode);
-    sub.textContent = r ? routeName(ctx, r) : 'Δεν υπάρχουν διαδρομές';
+    sub.textContent = r ? routeName(ctx, r) : t('Δεν υπάρχουν διαδρομές');
     paintChips();
+    sub.hidden = line.routes.length > 1; // the chips already name the route
     paintStops();
   }
 
@@ -246,20 +256,19 @@ export function mountLine(container, ctx, params = {}) {
     if (!open) return;
     const { state, panel } = open;
     const nodes = [];
-    if (!state || state.loading && !state.data) nodes.push(h('p', { class: 'ex-sub' }, 'Φόρτωση…'));
-    else if (state.error && !state.data) nodes.push(h('p', { class: 'ex-sub' }, 'Δεν φορτώθηκαν οι αφίξεις.'),
-      h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => open?.poller.refresh() }, 'Δοκίμασε ξανά'));
+    if (!state || state.loading && !state.data) nodes.push(h('p', { class: 'ex-sub' }, t('Φόρτωση…')));
+    else if (state.error && !state.data) nodes.push(h('p', { class: 'ex-sub' }, t('Δεν φορτώθηκαν οι αφίξεις.')),
+      h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => open?.poller.refresh() }, t('Δοκίμασε ξανά')));
     else if (state.data) {
       const now = Date.now();
       const mine = state.data.vehicles.filter((v) => v.lineCode === line.code)
         .sort((a, b) => remainingSec(a, state.data.fetchedAt, now) - remainingSec(b, state.data.fetchedAt, now)).slice(0, 3);
-      if (!mine.length) nodes.push(h('p', { class: 'ex-sub' }, `Καμία άφιξη της γραμμής ${line.code} αυτή τη στιγμή.`));
+      if (!mine.length) nodes.push(h('p', { class: 'ex-sub' }, t('Καμία άφιξη της γραμμής {code} αυτή τη στιγμή.', { code: line.code })));
       for (const v of mine) {
         try { nodes.push(arrivalTile(v, state.data.fetchedAt, { compact: true, now, line, stop: open.code, lineLinks: false })); } catch { /* tile failed: skip */ }
       }
       const age = Math.max(0, Math.round((now - state.data.fetchedAt) / 1000));
-      nodes.push(h('p', { class: 'ex-sub lines-age' }, age < 5 ? 'Ενημερώθηκε μόλις τώρα' : `Ενημερώθηκε πριν ${age < 120 ? `${age}″` : `${Math.round(age / 60)}′`}`,
-        state.error ? ' · αποτυχία ανανέωσης' : ''));
+      nodes.push(h('p', { class: 'ex-sub lines-age' }, updated(age), state.error ? ` · ${t('αποτυχία ανανέωσης')}` : ''));
     }
     panel.replaceChildren(...nodes);
   }

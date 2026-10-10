@@ -71,9 +71,9 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
   }
 
   // Book the server copy. The id arrives later; if the reminder was replaced/cancelled/fired meanwhile, drop it again.
-  function book(r, trip) {
+  function book(r, trip, kind) {
     let p;
-    try { if (!push || push.state() !== 'on') return; p = push.schedule({ at: r.at, title: r.title, body: r.body, tag: r.tag, url: r.url, trip }); } catch { return; }
+    try { if (!push || push.state() !== 'on') return; p = push.schedule({ at: r.at, title: r.title, body: r.body, tag: r.tag, url: r.url, trip, ...(kind ? { kind } : {}) }); } catch { return; }
     Promise.resolve(p).then((sid) => {
       if (!sid) return;
       sync();
@@ -83,7 +83,7 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
     }).catch(() => {});
   }
 
-  function scheduleReminder({ at, title, body = '', tag, url, trip } = {}) {
+  function scheduleReminder({ at, title, body = '', tag, url, trip, kind } = {}) {
     at = Number(at);
     if (!Number.isFinite(at)) throw new TypeError('scheduleReminder: `at` must be epoch milliseconds');
     tag = tag ? String(tag) : `r-${now()}-${seq}`;
@@ -94,7 +94,7 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
     const r = { id, tag, at, title: String(title ?? ''), body: String(body ?? ''), url: url ? String(url) : undefined };
     map.set(tag, r);
     write(); arm(); emit();
-    book(r, trip);
+    book(r, trip, kind);
     return { tag, at, cancel() { sync(); if (map.get(tag)?.id === id) cancelReminder(tag); } };
   }
   function cancelReminder(tag) {

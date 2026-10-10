@@ -19,6 +19,18 @@ VAPID_SUBJECT = "https://github.com/CostGal/patra-bus"
 name = "REMINDERS"
 class_name = "Reminder"
 
+[[durable_objects.bindings]]
+name = "ROUTINES"
+class_name = "Routine"
+
+[[durable_objects.bindings]]
+name = "STATS"
+class_name = "Stats"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Reminder"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Routine", "Stats"]

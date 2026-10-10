@@ -3,6 +3,7 @@
 //   available, setFollow(mode), resetNorth(), opts.onUserMove / opts.onBearing / opts.theme.
 // Everything custom (sources, layers) is re-added on every `style.load` so theme swaps keep state.
 import { icon } from './ui.js';
+import { t } from './i18n.js';
 
 const STYLES = {
   light: 'https://tiles.openfreemap.org/styles/liberty',
@@ -88,7 +89,21 @@ export function createMap(container, opts = {}) {
     return fallbackApi('init');
   }
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-  map.getCanvas().setAttribute('aria-label', 'Χάρτης');
+  // Attribution stays behind the (i) button: MapLibre opens compact mode on load, collapse it.
+  const collapseAttrib = () => {
+    const el = container.querySelector('.maplibregl-ctrl-attrib');
+    el?.classList.remove('maplibregl-compact-show');
+    el?.removeAttribute('open');
+  };
+  collapseAttrib();
+  map.once('load', collapseAttrib);
+  const attribEl = container.querySelector('.maplibregl-ctrl-attrib');
+  if (attribEl) { // MapLibre re-opens it on style/resize events: keep it shut until the user opens it
+    const guard = new MutationObserver(() => { if (attribEl.classList.contains('maplibregl-compact-show')) collapseAttrib(); });
+    guard.observe(attribEl, { attributes: true, attributeFilter: ['class', 'open'] });
+    attribEl.addEventListener('click', () => guard.disconnect(), { once: true, capture: true });
+  }
+  map.getCanvas().setAttribute('aria-label', t('Χάρτης'));
   map.getCanvas().setAttribute('role', 'application');
 
   let styleReady = false;
@@ -326,7 +341,7 @@ export function createMap(container, opts = {}) {
   userEl.innerHTML = '<div class="user-cone"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><radialGradient id="ucg" cx="50%" cy="50%" r="50%"><stop offset="12%" stop-color="currentColor" stop-opacity=".55"/><stop offset="100%" stop-color="currentColor" stop-opacity="0"/></radialGradient></defs><path d="M40 40 L20 5.4 A40 40 0 0 1 60 5.4 Z" fill="url(#ucg)"/></svg></div><div class="user-dot"></div>';
   const coneEl = userEl.querySelector('.user-cone');
   userEl.setAttribute('role', 'img');
-  userEl.setAttribute('aria-label', 'Η θέση σου');
+  userEl.setAttribute('aria-label', t('Η θέση σου'));
   const userMarker = new maplibregl.Marker({ element: userEl, rotationAlignment: 'map', pitchAlignment: 'map' });
   let userOn = false;
   let userAccuracy = 0;
@@ -368,11 +383,11 @@ export function createMap(container, opts = {}) {
     if (on) {
       d.setAttribute('role', 'button');
       d.setAttribute('tabindex', '0');
-      d.setAttribute('aria-label', `Γραμμή ${v.lineCode}: δες τη διαδρομή του οχήματος`);
+      d.setAttribute('aria-label', t('Γραμμή {code}: δες τη διαδρομή του οχήματος', { code: v.lineCode }));
     } else {
       d.setAttribute('role', 'img');
       d.removeAttribute('tabindex');
-      d.setAttribute('aria-label', v.label ? `Γραμμή ${v.lineCode}, ${v.label}` : `Γραμμή ${v.lineCode}`);
+      d.setAttribute('aria-label', v.label ? t('Γραμμή {code}, {label}', { code: v.lineCode, label: v.label }) : t('Γραμμή {code}', { code: v.lineCode }));
     }
   }
   function vehEl(v) {

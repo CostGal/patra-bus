@@ -2,6 +2,7 @@
 // Pure helpers are exported for tests; everything networked is injected through `deps`
 // (defaults load lazily so this module imports cleanly in Node).
 import { haversine, nearestStops, inArea } from './geo.js';
+import { t } from './i18n.js';
 
 export const DEFAULTS = {
   boardRadius: 800, alightRadius: 800, farRadius: 1500, // metres, straight line
@@ -212,6 +213,23 @@ export function departuresAt(route, res) {
   return [...byKey.values()].sort((a, b) => a.departAt - b.departAt);
 }
 
+// ---- historical delay (api.fetchStats): scheduled departures at a stop are shifted by the median delay of that route
+// there, when ≥ MIN_STAT_SAMPLES samples exist. Only positive delays count; capped. The original time stays in `scheduledAt`.
+export const MIN_STAT_SAMPLES = 10;
+export const MAX_DELAY_SHIFT_SEC = 900;
+export const DELAY_LABEL = 'προσαρμοσμένο με βάση την ιστορική καθυστέρηση';
+export function delayShiftSec(stat) {
+  if (!stat || !(stat.samples >= MIN_STAT_SAMPLES) || !Number.isFinite(stat.medianDelaySec) || stat.medianDelaySec < 1) return 0;
+  return Math.min(MAX_DELAY_SHIFT_SEC, Math.round(stat.medianDelaySec));
+}
+// Mutates the scheduled (non-live) entries of `deps` and re-sorts; returns deps.
+export function applyDelay(deps, stat) {
+  const sec = delayShiftSec(stat);
+  if (!sec || !deps) return deps;
+  for (const d of deps) if (!d.live) { d.scheduledAt = d.departAt; d.departAt += sec * 1000; d.delayAdjustSec = sec; }
+  return deps.sort((a, b) => a.departAt - b.departAt);
+}
+
 // Which vehicle to catch. `deps` sorted by departAt.
 //  chosen: first vehicle with remaining ≥ walk + buffer (leaveInSec ≥ 0); if none, the first one still
 //          reachable by hurrying (leaveInSec < 0, "run"). `prefer` (key) keeps a bus you are about to
@@ -254,8 +272,9 @@ export function rideFor(dep, alightDeps, estSec) {
 
 const busInfo = (dep, now) => ({
   key: dep.key, live: dep.live, vehicleCode: dep.vehicleCode, departAt: dep.departAt, fetchedAt: dep.fetchedAt,
-  remainingSec: Math.max(0, (dep.departAt - now) / 1000), scheduledAt: dep.live ? undefined : dep.departAt,
+  remainingSec: Math.max(0, (dep.departAt - now) / 1000), scheduledAt: dep.live ? undefined : dep.scheduledAt ?? dep.departAt,
   routeName: dep.routeName, lat: dep.lat, lng: dep.lng,
+  ...(dep.delayAdjustSec ? { delayAdjustSec: dep.delayAdjustSec, delayLabel: t(DELAY_LABEL) } : {}),
 });
 
 // (Re)select the departure from it.departures at time `now` and refresh the time-dependent fields.
@@ -294,10 +313,11 @@ export function leaveState(it, now = Date.now()) {
   return { kind: 'run', leaveInSec, remainingSec };
 }
 
-export function buildBusItinerary(cand, { line = null, boardRes, alightRes, walkTo, walkFrom, bufferSec = DEFAULTS.bufferSec, now = Date.now(), prefer = null }) {
+export function buildBusItinerary(cand, { line = null, boardRes, alightRes, walkTo, walkFrom, bufferSec = DEFAULTS.bufferSec, now = Date.now(), prefer = null, stat = null }) {
   const departures = departuresAt(cand.route, boardRes);
   const alightDeps = departuresAt(cand.route, alightRes);
   for (const d of departures || []) Object.assign(d, rideFor(d, alightDeps, cand.rideEst));
+  applyDelay(departures, stat); // after rideFor: ride matching uses the listed times
   const it = {
     kind: 'bus', id: `${cand.route.code}:${cand.board.code}:${cand.alight.code}`, line, route: cand.route, board: cand.board, alight: cand.alight,
     walkTo, walkFrom, bi: cand.bi, ai: cand.ai, nStops: cand.nStops, rideEstSec: cand.rideEst, bufferSec,
@@ -371,7 +391,7 @@ export function retimeTransfer(it, now = Date.now(), bufferSec = it.bufferSec, p
 export const transferId = (c) => `${c.a.route.code}:${c.a.board.code}:${c.x1.code}~${c.b.route.code}:${c.x2.code}:${c.b.alight.code}`;
 
 // c: transferCandidates() entry. xferWalk: walk x1 → x2 ({seconds, meters, geometry}) or null when it is the same stop.
-export function buildTransferItinerary(c, { lineA = null, lineB = null, boardRes, xRes, alightRes = null, walkTo, walkFrom, xferWalk = null, bufferSec = DEFAULTS.bufferSec, now = Date.now(), prefer = null }) {
+export function buildTransferItinerary(c, { lineA = null, lineB = null, boardRes, xRes, alightRes = null, walkTo, walkFrom, xferWalk = null, bufferSec = DEFAULTS.bufferSec, now = Date.now(), prefer = null, statA = null, statB = null }) {
   const depsA = departuresAt(c.a.route, boardRes);
   const depsB = departuresAt(c.b.route, xRes);
   const sameStop = c.x1.code === c.x2.code;
@@ -379,6 +399,8 @@ export function buildTransferItinerary(c, { lineA = null, lineB = null, boardRes
   for (const d of depsA || []) Object.assign(d, rideFor(d, aAtX, c.a.rideEst));
   const bAtAlight = departuresAt(c.b.route, alightRes);
   for (const d of depsB || []) Object.assign(d, rideFor(d, bAtAlight, c.b.rideEst));
+  applyDelay(depsA, statA);
+  applyDelay(depsB, statB);
   const leg = (s, line, deps) => ({
     route: s.route, line, board: s.board, alight: s.alight, bi: s.bi, ai: s.ai, nStops: s.nStops, rideEstSec: s.rideEst,
     departures: deps || [], bus: null, rideSec: s.rideEst, rideSource: 'estimate',
@@ -477,11 +499,12 @@ export function rideGeometry(route, stopByCode, shape, bi, ai, snapped = null) {
 async function resolveDeps(d = {}) {
   if (d.fetchLive && d.walkRoute && d.walkEstimate && d.getSettings) return d;
   const [api, walk, store] = await Promise.all([import('./api.js'), import('./walk.js'), import('./store.js')]);
-  return { fetchLive: api.fetchLive, walkRoute: walk.walkRoute, walkEstimate: walk.walkEstimate, getSettings: store.getSettings, ...d };
+  return { fetchLive: api.fetchLive, fetchStats: api.fetchStats, walkRoute: walk.walkRoute, walkEstimate: walk.walkEstimate, getSettings: store.getSettings, ...d };
 }
 
 const wKey = (a, b) => `${a.lat.toFixed(5)},${a.lng.toFixed(5)}>${b.lat.toFixed(5)},${b.lng.toFixed(5)}`;
 const RETRY_ESTIMATE_MS = 60000;
+const MAX_STATS_CALLS = 4; // reliability-stats lookups per plan (memoised in api.js)
 const MAX_OSRM_LEGS = 6; // walk.js spaces OSRM requests 1 s apart: only the best itineraries get exact walking legs
 // Walking legs live in a caller-owned Map so the 20 s refresh never re-asks OSRM: key → { v: walk|null, p, at }.
 // A leg that fell back to the estimate is retried after a minute.
@@ -541,6 +564,24 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
   await Promise.all(liveCodes.map((code) => Promise.resolve().then(() => deps.fetchLive(code)).then((r) => live.set(code, r), () => { res.liveFailed++; })));
   stale();
 
+  // Reliability stats (separate from the live budget; api.js memoises 10 min): only (route, board stop) pairs that list a
+  // scheduled bus, direct picks first, at most MAX_STATS_CALLS per plan. They arrive after the first paint and trigger an update.
+  const stats = new Map();
+  const statKey = (route, stop) => `${route}:${stop}`;
+  const statPairs = [];
+  const wantStat = (route, board) => {
+    const k = statKey(route.code, board.code);
+    if (statPairs.length >= MAX_STATS_CALLS || statPairs.some((p) => p.k === k)) return;
+    const r = live.get(board.code);
+    if (r?.vehicles?.some((v) => !v.live && String(v.routeCode) === String(route.code))) statPairs.push({ k, route: route.code, stop: board.code });
+  };
+  if (deps.fetchStats) {
+    for (const c of picks) wantStat(c.route, c.board);
+    for (const c of tpicks) { wantStat(c.a.route, c.a.board); wantStat(c.b.route, c.b.board); }
+  }
+  const statsP = Promise.all(statPairs.map((p) => Promise.resolve().then(() => deps.fetchStats(p.route, p.stop)).then((s) => { if (s) stats.set(p.k, s); }, () => {}))).then(() => stats.size);
+  const statFor = (route, board) => stats.get(statKey(route.code, board.code)) ?? null;
+
   const walkFor = (a, b) => cache.get(wKey(a, b))?.v || deps.walkEstimate(a, b);
   const assemble = () => {
     let its = picks.map((c) => buildBusItinerary(c, {
@@ -548,6 +589,7 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
       boardRes: live.get(c.board.code) ?? null, alightRes: live.get(c.alight.code) ?? null,
       walkTo: walkFor(from, c.board), walkFrom: walkFor(c.alight, to),
       bufferSec, now, prefer: opts.prefer?.get(`${c.route.code}:${c.board.code}:${c.alight.code}`) ?? null,
+      stat: statFor(c.route, c.board),
     }));
     const tits = tpicks.map((c) => {
       const sameStop = c.x1.code === c.x2.code;
@@ -556,7 +598,7 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
         lineA: data.lineByCode?.get(c.a.route.lineCode) || null, lineB: data.lineByCode?.get(c.b.route.lineCode) || null,
         boardRes: live.get(c.a.board.code) ?? null, xRes: live.get(c.b.board.code) ?? null, alightRes: live.get(c.b.alight.code) ?? null,
         walkTo: walkFor(from, c.a.board), walkFrom: walkFor(c.b.alight, to), xferWalk: sameStop ? null : deps.walkEstimate(c.x1, c.x2),
-        bufferSec, now, prefer: opts.prefer?.get(id) ?? null,
+        bufferSec, now, prefer: opts.prefer?.get(id) ?? null, statA: statFor(c.a.route, c.a.board), statB: statFor(c.b.route, c.b.board),
       });
     }).filter((t) => t.status !== 'none');
     // A transfer that two direct buses already beat is noise; show the best few of the rest.
@@ -590,7 +632,8 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
   };
   emit();
   for (const e of entries.values()) e.p.then(emit);
-  await Promise.all([...entries.values()].map((e) => e.p));
+  statsP.then((n) => { if (n) emit(); });
+  await Promise.all([...[...entries.values()].map((e) => e.p), statsP]);
   finished = true;
   stale();
 

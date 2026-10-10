@@ -121,8 +121,8 @@
 .lines-stop-link:hover .lines-stop-name { text-decoration: underline; }
 .lines-stop-name { display: block; font-weight: 500; overflow-wrap: anywhere; }
 .lines-next-btn {
-  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px;
-  border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text);
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0;
+  border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--text);
   font: inherit; font-size: .8125rem; cursor: pointer;
 }
 .lines-next-btn .icon { width: 16px; height: 16px; }
@@ -218,3 +218,30 @@ a.atile { text-decoration: none; }
 .bv-bus-ico .icon { width: 15px; height: 15px; }
 .bv-bus-text { font-size: .875rem; font-weight: 600; color: var(--text); }
 .bv-foot, .bv-legend { margin-top: 10px; }
+
+/* ---- settings v3: collapsible sections, (i) hints, language row ---- */
+.set-lang { margin: 0 0 12px; padding: 4px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.set-sec { margin: 0 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.set-sum {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px;
+  font-weight: 600; cursor: pointer; list-style: none;
+}
+.set-sum::-webkit-details-marker { display: none; }
+.set-sum .icon { color: var(--text-2); transition: transform .15s; }
+.set-sec[open] > .set-sum .icon { transform: rotate(180deg); }
+.set-body { padding: 0 16px 12px; }
+.set-body > :first-child { margin-top: 0; }
+.set-body .set-card { margin: 0; padding: 0; border: 0; background: none; } /* offline map card: the summary is its title */
+.set-body .set-title { display: none; }
+.set-line { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 0 4px; }
+.set-line > .ex-sub:first-child { flex: 1 1 200px; padding-top: 10px; }
+.set-hint { flex: 1 1 100%; margin: 0 0 4px; }
+.set-row-text .set-hint { margin: 0 0 4px; }
+.ex-info {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  margin: -8px 0 -8px 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); cursor: pointer; vertical-align: middle;
+}
+.ex-info .icon { width: 16px; height: 16px; }
+.ex-info[aria-expanded="true"] { color: var(--accent); }
+.lines-times-title .ex-info { margin: -8px -10px -8px 0; }
+.lines-times-title { font-size: .9375rem; }

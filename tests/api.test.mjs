@@ -2,7 +2,7 @@ import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  fetchLive, remainingSec, createLivePoller, ApiError, lastAttemptAt, _setTransport,
+  fetchLive, fetchStats, usualDelayText, remainingSec, createLivePoller, ApiError, lastAttemptAt, _setTransport,
   MIN_GAP_MS, POLL_MS, API_BASE,
 } from '../web/js/api.js';
 import { _setDemoData } from '../web/js/demo.js';
@@ -443,4 +443,74 @@ test('poller: destroy while a request is in flight does not emit', async () => {
   release();
   await flush();
   assert.equal(updates.length, n);
+});
+
+// ---------- fetchStats ----------
+
+test('fetchStats: GET /api/stats/{route}/{stop}, shape checked, memoised 10 min', async () => {
+  const w = rig();
+  w.handler = () => w.ok({ samples: 31, medianDelaySec: 150, p80DelaySec: 300, updatedAt: 1 });
+  const a = await fetchStats('6091', '1011');
+  assert.deepEqual(a, { samples: 31, medianDelaySec: 150, p80DelaySec: 300 });
+  assert.equal(w.calls[0].url, `${API_BASE}/api/stats/6091/1011`);
+  assert.equal(await fetchStats('6091', '1011'), a);
+  await w.advance(9 * 60000);
+  await fetchStats('6091', '1011');
+  assert.equal(w.calls.length, 1, 'memo holds for 10 minutes');
+  await w.advance(2 * 60000);
+  await fetchStats('6091', '1011');
+  assert.equal(w.calls.length, 2, 'and expires after');
+  await fetchStats('6091', '1012');
+  assert.equal(w.calls.length, 3, 'keyed per route + stop');
+});
+
+test('fetchStats: never throws; failures are memoised as null', async () => {
+  const w = rig();
+  const handlers = [
+    () => ({ ok: false, status: 404 }),
+    () => { throw new Error('offline'); },
+    () => w.ok({ nope: 1 }),
+    () => ({ ok: true, json: async () => { throw new Error('bad json'); } }),
+  ];
+  for (const [i, h] of handlers.entries()) {
+    w.handler = h;
+    w.calls.length = 0;
+    assert.equal(await fetchStats(`r${i}`, 's'), null);
+    assert.equal(await fetchStats(`r${i}`, 's'), null);
+    assert.equal(w.calls.length, 1, 'a failure is not retried inside the 10 minutes');
+  }
+  w.calls.length = 0;
+  assert.equal(await fetchStats('', '1011'), null, 'bad codes make no request');
+  assert.equal(await fetchStats('a/b', '1011'), null);
+  assert.equal(w.calls.length, 0);
+});
+
+test('fetchStats: a hung request gives null after the timeout', async () => {
+  const w = rig();
+  w.handler = (call) => new Promise((_, rej) => call.signal.addEventListener('abort', () => rej(new Error('aborted'))));
+  const p = fetchStats('6091', '1011');
+  await w.advance(6000);
+  assert.equal(await p, null);
+});
+
+test('fetchStats: demo mode is deterministic, offline, and has data for most routes', async () => {
+  const w = rig({ demo: true });
+  const codes = Array.from({ length: 24 }, (_, i) => String(600 + i));
+  const a = await Promise.all(codes.map((c) => fetchStats(c, '1011')));
+  _setTransport({ demo: true });
+  const b = await Promise.all(codes.map((c) => fetchStats(c, '1011')));
+  assert.deepEqual(a, b);
+  assert.equal(w.calls.length, 0, 'no network in demo');
+  const have = a.filter(Boolean);
+  assert.ok(have.length >= 12 && have.length < codes.length, 'some routes have none');
+  assert.ok(have.every((x) => x.samples >= 10 && Number.isFinite(x.medianDelaySec)));
+  assert.ok(have.some((x) => x.medianDelaySec >= 60) && have.some((x) => x.medianDelaySec === 0));
+});
+
+test('usualDelayText: only with at least 10 samples', () => {
+  assert.equal(usualDelayText(null), '');
+  assert.equal(usualDelayText({ samples: 9, medianDelaySec: 180 }), '');
+  assert.equal(usualDelayText({ samples: 10, medianDelaySec: 180 }), 'συνήθως +3′');
+  assert.equal(usualDelayText({ samples: 40, medianDelaySec: 20 }), 'συνήθως στην ώρα του');
+  assert.equal(usualDelayText({ samples: 40, medianDelaySec: -130 }), 'συνήθως −2′');
 });

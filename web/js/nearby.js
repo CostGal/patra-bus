@@ -1,4 +1,4 @@
-// "Επόμενο λεωφορείο κοντά σου" (owner: location). Contract in docs/ARCHITECTURE.md; styles in css/nearby.css (.nb-*).
+// "Επόμενο λεωφορείο κοντά σου" (owner: location). Minimal card: one hero + at most 2 rows, the rest on expand. Contract in docs/ARCHITECTURE.md; styles in css/nearby.css (.nb-*).
 // Pure logic first (pickStops, computeDepartures, pickHero: unit-tested), then the card.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
@@ -7,6 +7,7 @@ import { etaText, etaSpoken, ageText } from './arrivals.js';
 import { getSettings, onChange } from './store.js';
 import { haversine, nearestStops, fmtDist, inArea } from './geo.js';
 import { walkRoute, walkEstimate, walkSpeed } from './walk.js';
+import { t } from './i18n.js';
 
 export const RADIUS_M = 500; // stops considered "near"
 export const FAR_RADIUS_M = 1500; // fallback when nothing is within RADIUS_M
@@ -14,7 +15,8 @@ export const MAX_STOPS = 4; // listed / highlighted on the map
 export const LIVE_STOPS = 3; // of those, how many we fetch live data for; the rest load on demand ("Δες αφίξεις")
 const ROUTE_WORTH_M = 80; // a stop that adds a new route is worth this many extra metres of walking
 const GONE_SEC = 30; // a vehicle this far past its ETA has left
-const ROWS_PER_STOP = 3;
+const ROWS_PER_STOP = 3; // per stop, in the expanded view
+const MAX_EXTRA_ROWS = 2; // under the hero, collapsed view
 const REFRESH_MS = 20000; // live refresh while visible (api.js enforces the 15 s floor per stop)
 const MOVE_M = 50; // recompute when the fix moved more than this
 const RECOMPUTE_GAP_MS = 8000;
@@ -85,15 +87,15 @@ export function pickHero(states) {
 export function actionFor(dep, next) {
   const mins = (sec) => Math.max(1, Math.floor(sec / 60));
   if (dep.verdict === 'ok') {
-    if (dep.leaveInSec >= 60) { const m = mins(dep.leaveInSec); return { cat: 'go', text: `Φύγε σε ${m}′`, spoken: `Φύγε σε ${m === 1 ? 'ένα λεπτό' : `${m} λεπτά`}` }; }
-    return { cat: 'now', text: 'Φύγε τώρα', spoken: 'Φύγε τώρα' };
+    if (dep.leaveInSec >= 60) { const m = mins(dep.leaveInSec); return { cat: 'go', text: t('Φύγε σε {n}′', { n: m }), spoken: m === 1 ? t('Φύγε σε ένα λεπτό') : t('Φύγε σε {n} λεπτά', { n: m }) }; }
+    return { cat: 'now', text: t('Φύγε τώρα'), spoken: t('Φύγε τώρα') };
   }
   if (dep.verdict === 'tight') {
-    const t = dep.walkSec < 60 ? 'Πήγαινε στη στάση τώρα' : 'Φύγε τώρα — στο όριο';
-    return { cat: 'tight', text: t, spoken: t };
+    const x = dep.walkSec < 60 ? t('Πήγαινε στη στάση τώρα') : t('Φύγε τώρα — στο όριο');
+    return { cat: 'tight', text: x, spoken: x };
   }
-  const tail = next ? ` — επόμενο σε ${etaText(next.remaining)}` : ' — δεν υπάρχει άλλο προσεχώς';
-  return { cat: 'missed', text: `Δεν το προλαβαίνεις${tail}`, spoken: `Δεν το προλαβαίνεις${next ? `. Επόμενο σε ${etaSpoken(next.remaining)}` : '. Δεν υπάρχει άλλο προσεχώς'}` };
+  const tail = next ? t(' — επόμενο σε {when}', { when: etaText(next.remaining) }) : t(' — δεν υπάρχει άλλο προσεχώς');
+  return { cat: 'missed', text: t('Δεν το προλαβαίνεις') + tail, spoken: t('Δεν το προλαβαίνεις') + (next ? t('. Επόμενο σε {when}', { when: etaSpoken(next.remaining) }) : t('. Δεν υπάρχει άλλο προσεχώς')) };
 }
 
 const bufferOf = () => { try { const m = Number(getSettings().bufferMin); return (Number.isFinite(m) && m >= 0 ? m : 2) * 60; } catch { return 120; } };
@@ -146,7 +148,7 @@ function miniTile(v, fetchedAt, { now = Date.now(), line } = {}) {
   const el = h('div', { class: `nb-mini ${v.live ? 'nb-mini-live' : ''}` },
     lineBadge({ code: v.lineCode, color: line?.color || v.color, textColor: line?.textColor || v.textColor }),
     h('span', { class: 'nb-mini-dest' }, titleCase(v.routeName)),
-    h('span', { class: `nb-flag ${v.live ? 'nb-flag-live' : ''}` }, v.live ? 'LIVE' : 'ΠΡΟΓΡ.', ' ', fmtClock(at)),
+    h('span', { class: `nb-flag ${v.live ? 'nb-flag-live' : ''}` }, v.live ? t('LIVE') : t('ΠΡΟΓΡ.'), ' ', fmtClock(at)),
     num);
   el.tick = (t = Date.now()) => { num.textContent = etaText(remainingSec(v, fetchedAt, t)); };
   el.tick(now);
@@ -157,7 +159,7 @@ export function mountNearby(container, ctx) {
   const loc = ctx.location;
   const st = {
     fix: loc.current, status: loc.status, anchor: null, states: [], far: false, fitted: false, demand: new Set(),
-    lastRecompute: 0, lastRefreshAt: 0, mode: null, heroKey: null, srKey: null, markersKey: null, overlayKey: null,
+    lastRecompute: 0, lastRefreshAt: 0, expanded: false, toggleSig: null, mode: null, heroKey: null, srKey: null, markersKey: null, overlayKey: null,
   };
   let dead = false, tickTimer = null, refreshTimer = null, recomputeTimer = null, walkCtl = null, tileFn = null;
   const titleId = `nb-t${Math.random().toString(36).slice(2, 7)}`;
@@ -271,7 +273,7 @@ export function mountNearby(container, ctx) {
   // ----- rendering -----
   function setMode(mode) {
     if (mode === st.mode) return;
-    st.mode = mode; st.heroKey = null; st.srKey = null; groups.clear();
+    st.mode = mode; st.heroKey = null; st.srKey = null; groups.clear(); rows.clear();
     body.replaceChildren(...buildMode(mode));
     body.dataset.mode = mode;
     root.setAttribute('aria-busy', mode === 'locating' ? 'true' : 'false');
@@ -289,53 +291,37 @@ export function mountNearby(container, ctx) {
     }
   }
 
-  const title = (extra) => h('div', { class: 'nb-head' }, h('h2', { class: 'nb-title', id: titleId }, 'Επόμενο λεωφορείο κοντά σου'), extra);
-  const manualBtn = (label = 'Όρισε θέση στον χάρτη') => btn('nb-btn-ghost', label, pinMapCentre, icon('pin'), label);
-  const hint = (t) => h('p', { class: 'nb-hint' }, t);
-  const panel = (cls, ...kids) => h('div', { class: `nb-panel ${cls || ''}` }, ...kids);
+  // Every non-result state is one short line and at most one primary button (+ the quiet manual-location one).
+  const title = () => h('h2', { class: 'nb-sr-title', id: titleId }, t('Επόμενο λεωφορείο κοντά σου'));
+  const manualBtn = (label = t('Όρισε θέση στον χάρτη'), cls = 'nb-btn-ghost') => btn(cls, label, pinMapCentre, icon('pin'), label);
+  const panel = (cls, text, ...actions) => h('div', { class: `nb-panel ${cls || ''}` },
+    h('p', { class: 'nb-text', role: 'status' }, text), actions.length ? h('div', { class: 'nb-actions' }, ...actions) : null);
+  const retryBtn = () => btn('nb-btn-primary', t('Δοκίμασε ξανά'), useGpsNow, t('Δοκίμασε ξανά'));
 
   function buildMode(mode) {
     switch (mode) {
       case 'loading':
-        return [title(), panel('', h('p', { class: 'nb-text' }, 'Φόρτωση στάσεων…'))];
+        return [title(), panel('', t('Φόρτωση στάσεων…'))];
       case 'cta':
-        return [title(), panel('nb-cta',
-          h('span', { class: 'nb-ico nb-ico-accent' }, icon('locate')),
-          h('p', { class: 'nb-text' }, 'Δες ποιο λεωφορείο περνά από την κοντινότερη στάση και πότε πρέπει να φύγεις.'),
-          btn('nb-btn-primary', 'Βρες τη στάση μου', useGpsNow, icon('locate'), 'Βρες τη στάση μου'),
-          manualBtn(),
-          hint('Η θέση σου δεν αποθηκεύεται. Χρησιμοποιείται μόνο για να βρούμε στάσεις και τη διαδρομή με τα πόδια.'))];
+        return [title(), panel('nb-cta', t('Δες πότε περνά το επόμενο λεωφορείο.'),
+          btn('nb-btn-primary', t('Βρες τη στάση μου'), useGpsNow, icon('locate'), t('Βρες τη στάση μου')), manualBtn())];
       case 'locating':
-        return [title(), panel('nb-cta', h('span', { class: 'nb-spinner', 'aria-hidden': 'true' }),
-          h('p', { class: 'nb-text', role: 'status' }, 'Εντοπισμός θέσης…'), manualBtn())];
+        return [title(), panel('nb-cta', t('Εντοπισμός θέσης…'), manualBtn())];
       case 'coarse':
-        return [title(), panel('nb-cta', h('span', { class: 'nb-spinner', 'aria-hidden': 'true' }),
-          h('p', { class: 'nb-text', role: 'status' }, `Αναμονή για πιο ακριβή θέση (τώρα ±${fmtDist(st.fix.accuracy)})…`), manualBtn())];
+        return [title(), panel('nb-cta', t('Αναμονή για πιο ακριβή θέση (±{d})…', { d: fmtDist(st.fix.accuracy) }), manualBtn())];
       case 'denied':
-        return [title(), panel('nb-warn',
-          h('p', { class: 'nb-text nb-strong' }, 'Η πρόσβαση στην τοποθεσία είναι απενεργοποιημένη'),
-          h('p', { class: 'nb-text' }, isIOS()
-            ? 'Άνοιξε Ρυθμίσεις → Απόρρητο και ασφάλεια → Υπηρεσίες τοποθεσίας → Safari (ή την εφαρμογή) και επίλεξε «Όταν χρησιμοποιείται».'
-            : 'Πάτα το εικονίδιο δίπλα στη διεύθυνση (κλειδαριά ή ρυθμίσεις) → Άδειες → Τοποθεσία → Να επιτρέπεται, και μετά «Δοκίμασε ξανά».'),
-          btn('nb-btn-primary', 'Δοκίμασε ξανά', useGpsNow, 'Δοκίμασε ξανά'),
-          manualBtn(),
-          hint('Μετακίνησε τον χάρτη στο σημείο όπου βρίσκεσαι και πάτα «Όρισε θέση στον χάρτη».'))];
+        return [title(), panel('nb-warn', t('Η πρόσβαση στην τοποθεσία είναι απενεργοποιημένη'), retryBtn(), manualBtn()),
+          h('details', { class: 'nb-how' }, h('summary', {}, t('Πώς την ενεργοποιώ;')), h('p', { class: 'nb-text' }, isIOS()
+            ? t('Άνοιξε Ρυθμίσεις → Απόρρητο και ασφάλεια → Υπηρεσίες τοποθεσίας → Safari (ή την εφαρμογή) και επίλεξε «Όταν χρησιμοποιείται».')
+            : t('Πάτα το εικονίδιο δίπλα στη διεύθυνση (κλειδαριά ή ρυθμίσεις) → Άδειες → Τοποθεσία → Να επιτρέπεται, και μετά «Δοκίμασε ξανά».')))];
       case 'insecure':
-        return [title(), panel('nb-warn',
-          h('p', { class: 'nb-text nb-strong' }, 'Η τοποθεσία δεν λειτουργεί σε μη ασφαλή σύνδεση'),
-          h('p', { class: 'nb-text' }, 'Άνοιξε την εφαρμογή μέσω https:// για να βρούμε τη στάση σου. Στο μεταξύ μπορείς να ορίσεις θέση στον χάρτη.'),
-          manualBtn())];
+        return [title(), panel('nb-warn', t('Η τοποθεσία δεν λειτουργεί σε μη ασφαλή σύνδεση (άνοιξε το https://)'), manualBtn())];
       case 'retry':
-        return [title(), panel('nb-warn',
-          h('p', { class: 'nb-text nb-strong' }, st.status === 'timeout' ? 'Ο εντοπισμός αργεί' : 'Δεν βρέθηκε η θέση σου'),
-          h('p', { class: 'nb-text' }, 'Δοκίμασε ξανά ή βγες σε ανοιχτό χώρο. Μπορείς επίσης να ορίσεις θέση στον χάρτη.'),
-          btn('nb-btn-primary', 'Δοκίμασε ξανά', useGpsNow, 'Δοκίμασε ξανά'), manualBtn())];
+        return [title(), panel('nb-warn', st.status === 'timeout' ? t('Ο εντοπισμός αργεί') : t('Δεν βρέθηκε η θέση σου'), retryBtn(), manualBtn())];
       case 'outside': {
         const near = nearestStops(ctx.data.stops, st.fix, { limit: 1 })[0];
-        return [title(), panel('nb-warn',
-          h('p', { class: 'nb-text nb-strong' }, 'Δεν βρέθηκαν στάσεις κοντά σου'),
-          h('p', { class: 'nb-text' }, `${near ? `Η πιο κοντινή στάση είναι σε ${fmtDist(near.meters)}. ` : ''}${inArea(st.fix) ? '' : 'Φαίνεται ότι είσαι εκτός Πάτρας. '}Η εφαρμογή καλύπτει τα αστικά της Πάτρας.`),
-          manualBtn('Όρισε άλλη θέση στον χάρτη'))];
+        return [title(), panel('nb-warn', near ? t('Καμία στάση κοντά σου · η πιο κοντινή σε {d}', { d: fmtDist(near.meters) }) : t('Καμία στάση κοντά σου'),
+          manualBtn(t('Όρισε άλλη θέση στον χάρτη')))];
       }
       case 'results':
         return buildResults();
@@ -344,18 +330,20 @@ export function mountNearby(container, ctx) {
     }
   }
 
-  // results skeleton: refs updated in place by paint()
+  // results skeleton: refs updated in place by paint(). hero + ≤ 2 rows; the rest behind the toggle.
   const refs = {};
   function buildResults() {
     refs.noticeSig = null;
-    refs.updated = h('span', { class: 'nb-updated' });
-    refs.refresh = btn('nb-icon-btn', '', manualRefresh, icon('refresh'));
-    refs.refresh.setAttribute('aria-label', 'Ανανέωση αφίξεων');
     refs.notice = h('div', { class: 'nb-notices' });
     refs.hero = h('div', { class: 'nb-hero-slot' });
+    refs.rows = h('ul', { class: 'nb-rows nb-summary' });
     refs.groups = h('div', { class: 'nb-groups' });
     refs.foot = h('p', { class: 'nb-foot' });
-    return [title(h('div', { class: 'nb-head-r' }, refs.updated, refs.refresh)), refs.notice, refs.hero, refs.groups, refs.foot];
+    refs.details = h('div', { class: 'nb-details', hidden: true }, refs.notice, refs.groups, refs.foot);
+    refs.toggle = btn('nb-btn-ghost nb-toggle', '', () => { st.expanded = !st.expanded; paint(); }, '');
+    refs.toggle.setAttribute('aria-expanded', 'false');
+    st.toggleSig = null;
+    return [title(), refs.hero, refs.rows, refs.toggle, refs.details];
   }
 
   // ----- hero -----
@@ -366,16 +354,16 @@ export function mountNearby(container, ctx) {
       const loading = st.states.some((s) => s.live && !s.vehicles && !s.error);
       const failed = st.states.filter((s) => s.live).every((s) => s.error && !s.vehicles);
       r.el = h('div', { class: 'nb-hero nb-hero-none' },
-        h('p', { class: 'nb-hero-msg' }, loading ? 'Φόρτωση αφίξεων…' : failed ? 'Δεν φορτώθηκαν οι αφίξεις' : noSvc ? 'Δεν υπάρχει εξυπηρέτηση αυτή την ώρα' : 'Δεν υπάρχουν προσεχή δρομολόγια στις κοντινές στάσεις'),
-        failed && !loading ? btn('nb-btn-ghost', 'Δοκίμασε ξανά', manualRefresh, 'Δοκίμασε ξανά') : null);
+        h('p', { class: 'nb-hero-msg' }, loading ? t('Φόρτωση αφίξεων…') : failed ? t('Δεν φορτώθηκαν οι αφίξεις') : noSvc ? t('Δεν υπάρχει εξυπηρέτηση αυτή την ώρα') : t('Δεν υπάρχουν προσεχή δρομολόγια στις κοντινές στάσεις')),
+        failed && !loading ? btn('nb-btn-ghost', t('Δοκίμασε ξανά'), manualRefresh, t('Δοκίμασε ξανά')) : null);
       if (loading) r.el.setAttribute('aria-busy', 'true');
       return r;
     }
     const d = m.dep, v = d.v, line = lineOf(v.lineCode);
-    const stopLine = h('div', { class: 'nb-hero-stop' }, icon('walk'), link('nb-hero-stoplink', d.s.stop.code, h('span', { class: 'nb-stopname' }, d.s.stop.displayName || titleCase(d.s.stop.name)), icon('chevron')));
+    const stopLine = h('div', { class: 'nb-hero-stop' }, icon('walk'), link('nb-hero-stoplink', d.s.stop.code, h('span', { class: 'nb-stopname' }, d.s.stop.displayName || titleCase(d.s.stop.name))));
     r.walk = h('span', { class: 'nb-walk' });
     stopLine.append(r.walk);
-    r.in = h('span', { class: 'nb-hero-in' }, 'σε');
+    r.in = h('span', { class: 'nb-hero-in' }, t('σε'));
     r.num = h('span', { class: 'nb-hero-num' });
     r.act = h('div', { class: 'nb-action' });
     r.note = h('div', { class: 'nb-note' });
@@ -385,11 +373,10 @@ export function mountNearby(container, ctx) {
         h('div', { class: 'nb-hero-mid' },
           h('div', { class: 'nb-hero-dest' }, titleCase(v.routeName)),
           h('div', { class: 'nb-hero-flags' },
-            v.live ? h('span', { class: 'nb-flag nb-flag-live' }, h('span', { class: 'nb-dot', 'aria-hidden': 'true' }), 'LIVE')
-              : h('span', { class: 'nb-flag' }, icon('clock'), 'ΠΡΟΓΡ.'),
-            h('span', { class: 'nb-clock' }, v.live ? `≈ ${fmtClock(d.fetchedAt + v.etaSec * 1000)}` : fmtClock(d.fetchedAt + v.etaSec * 1000)))),
+            v.live ? h('span', { class: 'nb-flag nb-flag-live' }, h('span', { class: 'nb-dot', 'aria-hidden': 'true' }), t('LIVE'))
+              : h('span', { class: 'nb-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), ' ', fmtClock(d.fetchedAt + v.etaSec * 1000)))),
         h('div', { class: 'nb-hero-eta' }, r.in, r.num)),
-      stopLine, r.act, r.note);
+      r.act, stopLine, r.note);
     return r;
   }
   function updateHero(r, m, now) {
@@ -402,56 +389,36 @@ export function mountNearby(container, ctx) {
     const act = actionFor(d, m.next);
     r.act.className = `nb-action nb-act-${act.cat}`;
     if (r.act.textContent !== act.text) r.act.textContent = act.text;
-    const w = `${walkLabel(d.s)}`;
+    const w = walkLabel(d.s);
     if (r.walk.textContent !== w) r.walk.textContent = w;
-    const note = m.earlierMissed ? `Το ${m.earlierMissed.v.lineCode} σε ${etaText(m.earlierMissed.remaining)} φεύγει πριν φτάσεις στη στάση.` : staleNote(d.s, now);
+    const note = m.earlierMissed ? t('Το {line} σε {when} φεύγει πριν φτάσεις στη στάση.', { line: m.earlierMissed.v.lineCode, when: etaText(m.earlierMissed.remaining) }) : staleNote(d.s, now);
     if (r.note.textContent !== note) r.note.textContent = note;
     r.note.hidden = !note;
     return act;
   }
-  const staleNote = (s, now) => (s.error && s.vehicles ? `Παλιά δεδομένα · πριν ${ageText((now - s.fetchedAt) / 1000)}` : (now - s.fetchedAt > 60000 && s.vehicles ? `Τελευταία ενημέρωση πριν ${ageText((now - s.fetchedAt) / 1000)}` : ''));
+  const staleNote = (s, now) => (s.error && s.vehicles ? t('Παλιά δεδομένα · πριν {age}', { age: ageText((now - s.fetchedAt) / 1000) }) : (now - s.fetchedAt > 60000 && s.vehicles ? t('Τελευταία ενημέρωση πριν {age}', { age: ageText((now - s.fetchedAt) / 1000) }) : ''));
   function walkLabel(s) {
     const m = s.walkSource === 'osrm' ? s.walkMeters : s.meters;
-    return m < 40 ? ' · Είσαι στη στάση' : ` · ${fmtDist(m)} · ${minText(walkSecOf(s))} με τα πόδια`;
+    return m < 40 ? ` · ${t('Είσαι στη στάση')}` : ` · ${t('{d} · {min} με τα πόδια', { d: fmtDist(m), min: minText(walkSecOf(s)) })}`;
   }
 
-  // ----- per-stop groups -----
-  const groups = new Map(); // stop code → { el, head refs, list, rows: Map(key → row) }
-  function rebuildGroups() { groups.clear(); if (refs.groups) refs.groups.replaceChildren(); }
+  // ----- rows: keyed <li><a> (keeps focus and clicks across refreshes; only the tile is swapped) -----
+  const groups = new Map(); // stop code → { el, head refs, list, rowMap }
+  const rows = new Map(); // summary rows under the hero
+  function rebuildGroups() { groups.clear(); rows.clear(); if (refs.groups) refs.groups.replaceChildren(); if (refs.rows) refs.rows.replaceChildren(); }
 
-  function makeGroup(s) {
-    const g = { s, rows: new Map(), tiles: [] };
-    g.meta = h('span', { class: 'nb-stop-meta' });
-    g.list = h('ul', { class: 'nb-rows' });
-    g.msg = h('p', { class: 'nb-stop-msg' });
-    g.more = btn('nb-btn-ghost nb-more', '', () => loadMore(s.stop.code), icon('clock'), 'Δες αφίξεις');
-    g.more.setAttribute('aria-label', `Δες αφίξεις: ${s.stop.displayName || titleCase(s.stop.name)}`);
-    g.el = h('section', { class: 'nb-stop', 'aria-label': `Στάση ${s.stop.displayName || s.stop.name}` },
-      h('div', { class: 'nb-stop-head' },
-        link('nb-stop-name', s.stop.code, s.stop.displayName || titleCase(s.stop.name), icon('chevron')), g.meta),
-      g.msg, g.more, g.list);
-    return g;
-  }
-  function updateGroup(g, s, now) {
-    g.s = s;
-    g.meta.textContent = s.walkMeters < 40 ? 'Είσαι εδώ' : `${fmtDist(s.walkSource === 'osrm' ? s.walkMeters : s.meters)} · ${minText(walkSecOf(s))}`;
-    g.meta.title = 'Απόσταση και χρόνος με τα πόδια';
-    const deps = s.departures.slice(0, ROWS_PER_STOP);
-    g.more.hidden = s.live;
-    const msg = !s.live ? ''
-      : !s.vehicles ? (s.error ? 'Δεν φορτώθηκαν οι αφίξεις' : 'Φόρτωση…')
-        : !s.departures.length ? (s.noService ? 'Δεν υπάρχει εξυπηρέτηση αυτή την ώρα' : 'Καμία προσεχής άφιξη') : '';
-    if (g.msg.textContent !== msg) g.msg.textContent = msg;
-    g.msg.hidden = !msg;
-    // keyed rows: an <a> row keeps focus and clicks across refreshes; only its tile is swapped
-    const keep = new Set(deps.map((d) => d.key));
-    for (const [k, row] of g.rows) if (!keep.has(k)) { row.el.remove(); g.rows.delete(k); }
-    deps.forEach((d, i) => {
-      let row = g.rows.get(d.key);
+  // items: [{ d, s }] in display order
+  function syncRows(list, map, items, now) {
+    const keyOf = ({ d, s }) => `${s.stop.code}|${d.key}`;
+    const keep = new Set(items.map(keyOf));
+    for (const [k, row] of map) if (!keep.has(k)) { row.el.remove(); map.delete(k); }
+    items.forEach((it, i) => {
+      const { d, s } = it, k = keyOf(it);
+      let row = map.get(k);
       if (!row) {
         row = { dep: null, slot: h('div', { class: 'nb-tile' }), leave: h('div', { class: 'nb-leave' }) };
         row.el = h('li', { class: 'nb-row' }, link('nb-row-link', s.stop.code, row.slot, row.leave));
-        g.rows.set(d.key, row);
+        map.set(k, row);
       }
       if (!row.dep || row.dep.fetchedAt !== d.fetchedAt || row.dep.v.etaSec !== d.v.etaSec || row.tileFn !== tileFn) {
         row.tile = tile(d.v, d.fetchedAt, now); row.tileFn = tileFn;
@@ -462,12 +429,39 @@ export function mountNearby(container, ctx) {
       const l = leaveText(d);
       if (row.leave.textContent !== l.text) row.leave.textContent = l.text;
       row.leave.className = `nb-leave nb-leave-${l.cat}`;
-      if (g.list.children[i] !== row.el) g.list.insertBefore(row.el, g.list.children[i] || null);
+      if (list.children[i] !== row.el) list.insertBefore(row.el, list.children[i] || null);
     });
+  }
+
+  function makeGroup(s) {
+    const g = { s, rowMap: new Map() };
+    g.meta = h('span', { class: 'nb-stop-meta' });
+    g.list = h('ul', { class: 'nb-rows' });
+    g.msg = h('p', { class: 'nb-stop-msg' });
+    g.more = btn('nb-btn-ghost nb-more', '', () => loadMore(s.stop.code), icon('clock'), t('Δες αφίξεις'));
+    g.more.setAttribute('aria-label', t('Δες αφίξεις: {name}', { name: s.stop.displayName || titleCase(s.stop.name) }));
+    g.el = h('section', { class: 'nb-stop', 'aria-label': t('Στάση {name}', { name: s.stop.displayName || s.stop.name }) },
+      h('div', { class: 'nb-stop-head' },
+        link('nb-stop-name', s.stop.code, s.stop.displayName || titleCase(s.stop.name), icon('chevron')), g.meta),
+      g.msg, g.more, g.list);
+    return g;
+  }
+  function updateGroup(g, s, now) {
+    g.s = s;
+    g.meta.textContent = s.walkMeters < 40 ? t('Είσαι εδώ') : `${fmtDist(s.walkSource === 'osrm' ? s.walkMeters : s.meters)} · ${minText(walkSecOf(s))}`;
+    g.meta.title = t('Απόσταση και χρόνος με τα πόδια');
+    const deps = s.departures.slice(0, ROWS_PER_STOP);
+    g.more.hidden = s.live;
+    const msg = !s.live ? ''
+      : !s.vehicles ? (s.error ? t('Δεν φορτώθηκαν οι αφίξεις') : t('Φόρτωση…'))
+        : !s.departures.length ? (s.noService ? t('Δεν υπάρχει εξυπηρέτηση αυτή την ώρα') : t('Καμία προσεχής άφιξη')) : '';
+    if (g.msg.textContent !== msg) g.msg.textContent = msg;
+    g.msg.hidden = !msg;
+    syncRows(g.list, g.rowMap, deps.map((d) => ({ d, s })), now);
   }
   const leaveText = (d) => {
     const a = actionFor(d, null);
-    return a.cat === 'missed' ? { cat: 'missed', text: 'Δεν προλαβαίνεται' } : a.cat === 'tight' ? { cat: 'tight', text: 'Στο όριο' } : { cat: a.cat, text: a.text };
+    return a.cat === 'missed' ? { cat: 'missed', text: t('Δεν προλαβαίνεται') } : a.cat === 'tight' ? { cat: 'tight', text: t('Στο όριο') } : { cat: a.cat, text: a.text };
   };
 
   // ----- paint: cheap enough to run every second; touches text only when it changed -----
@@ -487,10 +481,6 @@ export function mountNearby(container, ctx) {
       s.walkSec = walkSecOf(s);
       s.departures = s.live ? computeDepartures(s, { now, walkSec: s.walkSec, bufferSec }) : [];
     }
-    // header
-    const age = st.lastRefreshAt ? `Ενημερώθηκε πριν ${ageText((now - st.lastRefreshAt) / 1000)}` : 'Φόρτωση…';
-    if (refs.updated.textContent !== age) refs.updated.textContent = age;
-    paintNotices(now);
     // hero
     const m = pickHero(st.states);
     const key = `${m.kind}|${m.dep ? `${m.dep.s.stop.code}|${m.dep.key}` : ''}|${m.kind === 'none' ? st.states.map((s) => (s.vehicles ? 1 : 0) + (s.error ? 'e' : '') + (s.noService ? 'n' : '')).join('') : ''}`;
@@ -498,30 +488,46 @@ export function mountNearby(container, ctx) {
     refs.heroR.m = m;
     const act = m.dep ? updateHero(refs.heroR, m, now) : null;
     announce(m, act);
-    // groups
-    const want = new Set(st.states.map((s) => s.stop.code));
-    for (const [code, g] of groups) if (!want.has(code)) { g.el.remove(); groups.delete(code); }
-    st.states.forEach((s, i) => {
-      let g = groups.get(s.stop.code);
-      if (!g) { g = makeGroup(s); groups.set(s.stop.code, g); }
-      updateGroup(g, s, now);
-      if (refs.groups.children[i] !== g.el) refs.groups.insertBefore(g.el, refs.groups.children[i] || null);
-    });
-    const bufMin = Math.round(bufferSec / 60);
-    const foot = `Φύγε σε = άφιξη λεωφορείου − περπάτημα − περιθώριο ${bufMin}′ (Ρυθμίσεις). Ο χρόνος περπατήματος είναι εκτίμηση.`;
-    if (refs.foot.textContent !== foot) refs.foot.textContent = foot;
+    // at most 2 more rows (next catchable departures, any stop), collapsed view only
+    refs.rows.hidden = st.expanded;
+    refs.details.hidden = !st.expanded;
+    const heroId = m.dep ? `${m.dep.s.stop.code}|${m.dep.key}` : null;
+    const extra = st.expanded ? [] : st.states.flatMap((s) => s.departures.map((d) => ({ d, s })))
+      .filter(({ d, s }) => d.catchable && `${s.stop.code}|${d.key}` !== heroId && (!m.dep || d.remaining >= m.dep.remaining))
+      .sort((a, b) => a.d.remaining - b.d.remaining).slice(0, MAX_EXTRA_ROWS);
+    syncRows(refs.rows, rows, extra, now);
+    const tsig = st.expanded ? 'less' : 'more';
+    if (st.toggleSig !== tsig) {
+      st.toggleSig = tsig;
+      refs.toggle.replaceChildren(st.expanded ? t('Λιγότερα') : t('Όλες οι κοντινές στάσεις'), icon('chevron'));
+      refs.toggle.classList.toggle('open', st.expanded);
+      refs.toggle.setAttribute('aria-expanded', String(st.expanded));
+    }
+    if (st.expanded) {
+      paintNotices(now);
+      const want = new Set(st.states.map((s) => s.stop.code));
+      for (const [code, g] of groups) if (!want.has(code)) { g.el.remove(); groups.delete(code); }
+      st.states.forEach((s, i) => {
+        let g = groups.get(s.stop.code);
+        if (!g) { g = makeGroup(s); groups.set(s.stop.code, g); }
+        updateGroup(g, s, now);
+        if (refs.groups.children[i] !== g.el) refs.groups.insertBefore(g.el, refs.groups.children[i] || null);
+      });
+      const age = st.lastRefreshAt ? t('Ενημερώθηκε πριν {age}', { age: ageText((now - st.lastRefreshAt) / 1000) }) : t('Φόρτωση…');
+      if (refs.foot.textContent !== age) refs.foot.textContent = age;
+    }
     updateMap(m);
   }
 
   function paintNotices(now) {
     const f = st.fix, items = [];
     if (f && f.source === 'manual') {
-      items.push(h('div', { class: 'nb-notice' }, icon('pin'), h('span', {}, 'Χειροκίνητη θέση'), btn('nb-btn-link', 'Χρήση GPS', useGpsNow, 'Χρήση GPS')));
+      items.push(h('div', { class: 'nb-notice' }, icon('pin'), h('span', {}, t('Χειροκίνητη θέση')), btn('nb-btn-link', t('Χρήση GPS'), useGpsNow, t('Χρήση GPS'))));
     } else if (f) {
-      if (f.accuracy > LOW_ACC_M) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, `Χαμηλή ακρίβεια θέσης (±${fmtDist(f.accuracy)}). Οι στάσεις ίσως δεν είναι οι κοντινότερες.`)));
-      else if (now - f.ts > 120000) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, `Η θέση σου είναι από πριν ${ageText((now - f.ts) / 1000)}.`)));
+      if (f.accuracy > LOW_ACC_M) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Χαμηλή ακρίβεια θέσης (±{d}). Οι στάσεις ίσως δεν είναι οι κοντινότερες.', { d: fmtDist(f.accuracy) }))));
+      else if (now - f.ts > 120000) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Η θέση σου είναι από πριν {age}.', { age: ageText((now - f.ts) / 1000) }))));
     }
-    if (st.far && st.states.length) items.push(h('div', { class: 'nb-notice' }, icon('info'), h('span', {}, `Η κοντινότερη στάση είναι σε ${fmtDist(st.states[0].meters)}.`)));
+    if (st.far && st.states.length) items.push(h('div', { class: 'nb-notice' }, icon('info'), h('span', {}, t('Η κοντινότερη στάση είναι σε {d}.', { d: fmtDist(st.states[0].meters) }))));
     const sig = items.map((n) => n.textContent).join('|');
     if (refs.noticeSig !== sig) { refs.noticeSig = sig; refs.notice.replaceChildren(...items); }
   }
@@ -533,9 +539,12 @@ export function mountNearby(container, ctx) {
     const first = st.srKey === null;
     st.srKey = key;
     if (first && !m.dep) return;
-    if (!m.dep) { sr.textContent = 'Δεν υπάρχουν προσεχή δρομολόγια κοντά σου.'; return; }
+    if (!m.dep) { sr.textContent = t('Δεν υπάρχουν προσεχή δρομολόγια κοντά σου.'); return; }
     const d = m.dep, name = d.s.stop.displayName || d.s.stop.name;
-    sr.textContent = `Γραμμή ${d.v.lineCode}, ${d.v.live ? 'ζωντανά' : 'προγραμματισμένο'}, ${d.remaining < 15 ? 'τώρα' : `σε ${etaSpoken(d.remaining)}`}, στάση ${name}, ${minText(d.walkSec)} με τα πόδια. ${act ? act.spoken : ''}.`;
+    sr.textContent = t('Γραμμή {line}, {kind}, {when}, στάση {name}, {min} με τα πόδια. {act}.', {
+      line: d.v.lineCode, kind: d.v.live ? t('ζωντανά') : t('προγραμματισμένο'),
+      when: d.remaining < 15 ? t('τώρα') : t('σε {when}', { when: etaSpoken(d.remaining) }), name, min: minText(d.walkSec), act: act ? act.spoken : '',
+    });
   }
 
   function updateMap(m) {

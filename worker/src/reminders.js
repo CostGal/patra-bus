@@ -10,24 +10,32 @@ export const MAX_REARMS = 3;
 const RETRY_MIN_MS = 30 * 1000;
 const RETRY_MAX_MS = 5 * 60 * 1000;
 
-const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
-const str = (v, max, { min = 0 } = {}) => typeof v === 'string' && v.length >= min && v.length <= max;
+export const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+export const str = (v, max, { min = 0 } = {}) => typeof v === 'string' && v.length >= min && v.length <= max;
+
+// Shared with routines. -> { value } cleaned copy or { error: field }.
+export function cleanSubscription(s, { allowLocal = false } = {}) {
+  if (!isObj(s) || !isAllowedEndpoint(s.endpoint, { allowLocal })) return { error: 'subscription.endpoint' };
+  if (!isObj(s.keys)) return { error: 'subscription.keys' };
+  try {
+    const p = b64uDecode(s.keys.p256dh);
+    const a = b64uDecode(s.keys.auth);
+    if (p.length !== 65 || p[0] !== 4 || a.length !== 16) return { error: 'subscription.keys' };
+  } catch {
+    return { error: 'subscription.keys' };
+  }
+  return { value: { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } } };
+}
 
 // Strict validation of the POST body. Returns { ok: true, value } with a cleaned copy, or { ok: false, error }.
 export function validateReminder(raw, now, { allowLocal = false } = {}) {
   const bad = (error) => ({ ok: false, error });
   if (!isObj(raw)) return bad('body');
-  const { subscription: s, at, title, body, tag, url, trip: t } = raw;
+  const { subscription: s, at, title, body, tag, url, trip: t, kind = 'leave' } = raw;
 
-  if (!isObj(s) || !isAllowedEndpoint(s.endpoint, { allowLocal })) return bad('subscription.endpoint');
-  if (!isObj(s.keys)) return bad('subscription.keys');
-  try {
-    const p = b64uDecode(s.keys.p256dh);
-    const a = b64uDecode(s.keys.auth);
-    if (p.length !== 65 || p[0] !== 4 || a.length !== 16) return bad('subscription.keys');
-  } catch {
-    return bad('subscription.keys');
-  }
+  const sub = cleanSubscription(s, { allowLocal });
+  if (sub.error) return bad(sub.error);
+  if (kind !== 'leave' && kind !== 'alight') return bad('kind');
 
   if (typeof at !== 'number' || !Number.isFinite(at) || at <= now || at > now + MAX_AHEAD_MS) return bad('at');
   if (!str(title, 120, { min: 1 })) return bad('title');
@@ -46,13 +54,16 @@ export function validateReminder(raw, now, { allowLocal = false } = {}) {
     if (typeof t.offsetSec !== 'number' || !Number.isFinite(t.offsetSec) || t.offsetSec < 0 || t.offsetSec > 7200) {
       return bad('trip.offsetSec');
     }
+    if (t.stopName !== undefined && !str(t.stopName, 80)) return bad('trip.stopName');
     trip = { stopCode: t.stopCode, routeCode: t.routeCode, lineCode: t.lineCode, vehicleCode: vc, offsetSec: t.offsetSec };
+    if (t.stopName) trip.stopName = t.stopName;
   }
 
   return {
     ok: true,
     value: {
-      subscription: { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } },
+      subscription: sub.value,
+      kind,
       at,
       title,
       body: body ?? '',
@@ -72,7 +83,9 @@ export function findBus(live, trip) {
 
 const phrase = (sec) => (sec < 15 ? 'έρχεται τώρα' : `έρχεται σε ${etaText(sec)}`);
 
-// reminder: { at, trip?, rearms?, title, body }, live: normalized LiveResult | null, now: epoch ms.
+export const alightText = (name) => `Ετοιμάσου: η στάση ${name ? `«${name}»` : 'σου'} σε ~1′`;
+
+// reminder: { at, kind?, trip?, rearms?, title, body }, live: normalized LiveResult | null, now: epoch ms.
 // -> { action: 'send', title, body } | { action: 'rearm', at } | { action: 'send-original' }
 export function decideReminder({ reminder, live, now, rearms = 0 }) {
   const trip = reminder.trip;
@@ -89,7 +102,7 @@ export function decideReminder({ reminder, live, now, rearms = 0 }) {
   return {
     action: 'send',
     title: reminder.title,
-    body: `Φύγε τώρα για το ${trip.lineCode} · ${phrase(remaining)}`,
+    body: reminder.kind === 'alight' ? alightText(trip.stopName) : `Φύγε τώρα για το ${trip.lineCode} · ${phrase(remaining)}`,
   };
 }
 

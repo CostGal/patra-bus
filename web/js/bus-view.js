@@ -2,11 +2,13 @@
 // Live data exists only per stop, so the bus is followed through the stop it was opened from (the "anchor"): its live
 // ETA there is the only measured time; everything else is that ETA plus/minus the route's typical leg times (an
 // ESTIMATE, labelled so). Route order itself is inferred (routes.json), see route.confidence. Styles: css/extras.css (bv-).
-import { h, icon, lineBadge, fmtClock } from './ui.js';
+import { h, icon, lineBadge, fmtClock, toast } from './ui.js';
 import { createLivePoller, DEMO, STALE_MS } from './api.js';
 import { etaText, ageText } from './arrivals.js';
 import { loadShapes } from './data.js';
 import { closestOnPath } from './geo.js';
+import { t } from './i18n.js';
+import { activeTrip, onTripChange, startOnboard, stopOnboard } from './onboard.js';
 
 export const MAX_SNAP_M = 250; // a GPS fix farther than this from the stop polyline is not trusted for placement
 const TICK_MS = 5000;
@@ -122,6 +124,8 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   let poller = null;
   let rowEls = []; // { li, name, sub, clock, inn, tag, i }
   let passedOpen = false;
+  let moreOpen = false;
+  let pickerOpen = false;
   let fitted = false;
   let markersKey = '';
   let tl = null;
@@ -137,13 +141,17 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const root = h('div', { class: 'ex-view bv' });
   const badgeBox = h('span', { class: 'bv-badge' });
   const title = h('h1', {}, 'Διαδρομή οχήματος');
-  const sub = h('p', { class: 'ex-sub' });
+  const sub = h('p', { class: 'ex-sub', hidden: true });
   const flagBox = h('span', { class: 'bv-flag' });
   const closeBtn = h('button', {
     type: 'button', class: 'ex-icon-btn', 'aria-label': 'Κλείσιμο', title: 'Κλείσιμο',
     onclick: () => ctx.navigate(origin ? `#/stop/${encodeURIComponent(origin)}` : '#/'),
   }, icon('close'));
-  const head = h('header', { class: 'ex-head bv-head' }, badgeBox, h('div', { class: 'ex-grow' }, title, sub), flagBox, closeBtn);
+  const moreBtn = h('button', {
+    type: 'button', class: 'ex-icon-btn', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), 'aria-expanded': 'false',
+    onclick: () => { moreOpen = !moreOpen; moreBtn.setAttribute('aria-expanded', String(moreOpen)); more.hidden = !moreOpen; },
+  }, '⋯');
+  const head = h('header', { class: 'ex-head bv-head' }, badgeBox, h('div', { class: 'ex-grow' }, title, sub), flagBox, moreBtn, closeBtn);
   const banner = h('div', { class: 'bv-banner', role: 'status', hidden: true });
   const summary = h('div', { class: 'bv-summary', 'aria-live': 'polite', hidden: true });
   const caveat = h('p', { class: 'ex-note', role: 'note', hidden: true });
@@ -151,8 +159,11 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const list = h('ol', { class: 'bv-list' });
   const foot = h('p', { class: 'ex-sub bv-foot' });
   const legend = h('p', { class: 'ex-sub bv-legend' });
-  root.append(head, banner, summary, caveat, toggle, list, foot, legend,
+  const alightBox = h('div', { class: 'ob-box', hidden: true });
+  // secondary text lives behind the "⋯" button
+  const more = h('div', { class: 'ob-more', hidden: true }, caveat, foot, legend,
     DEMO ? h('p', { class: 'ex-note' }, 'Δεδομένα προσομοίωσης (demo): δεν είναι πραγματικά λεωφορεία.') : null);
+  root.append(head, banner, summary, alightBox, toggle, list, more);
   container.replaceChildren(root);
 
   // The bus sits between two rows: a pseudo-row the list moves around.
@@ -219,6 +230,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     banner.classList.toggle('is-bad', gone || !!(st.error && !st.data));
 
     // timeline
+    let terminus = '';
     tl = null;
     if (route && found && !gone) {
       tl = busTimeline(route, found.stop, found.v.etaSec, found.fetchedAt, found.pos, now);
@@ -245,7 +257,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
         const exact = row.kind === 'anchor';
         r.clock.textContent = `${exact ? '' : '≈ '}${fmtClock(row.at)}`;
         r.inn.textContent = inText(row.etaSec);
-        r.tag.textContent = exact ? 'από live' : 'εκτίμηση';
+        r.tag.textContent = exact ? 'live' : ''; // the "≈" already says estimate; the rest is in "⋯"
         r.tag.className = `bv-tag${exact ? ' bv-tag-live' : ''}`;
         if (isNext) r.li.setAttribute('aria-current', 'step');
       }
@@ -256,38 +268,79 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
         if (before !== busRow && busRow.nextSibling !== before) list.insertBefore(busRow, before);
         const prevName = seg >= 0 ? nameOf(route.stops[seg]) : null;
         const nextName = tl.next < n ? nameOf(route.stops[tl.next]) : null;
-        busName.textContent = !found.v.live ? 'Θέση οχήματος: άγνωστη (δρομολόγιο χωρίς live θέση)'
-          : prevName && nextName ? `Το όχημα είναι ανάμεσα σε «${prevName}» και «${nextName}»`
-            : nextName ? `Το όχημα είναι στην αφετηρία «${nextName}» ή λίγο πριν από αυτήν` : 'Το όχημα βρίσκεται στο τέρμα';
-        if (!tl.usedPosition && found.v.live) busName.textContent += ' · εκτίμηση από τον χρόνο';
+        busName.textContent = !found.v.live ? t('Χωρίς live θέση')
+          : prevName && nextName ? t('Ανάμεσα σε «{a}» και «{b}»', { a: prevName, b: nextName })
+            : nextName ? t('Στην αφετηρία «{a}»', { a: nextName }) : t('Στο τέρμα');
       }
       // toggle for the folded stops
       const folded = tl ? Math.max(0, seg) : 0; // stops 0 .. seg - 1
       toggle.hidden = folded < 1;
       toggle.setAttribute('aria-expanded', String(passedOpen));
-      toggle.textContent = passedOpen ? 'Απόκρυψη προηγούμενων στάσεων' : `Εμφάνιση ${folded} προηγούμενων στάσεων`;
+      toggle.textContent = passedOpen ? t('Απόκρυψη προηγούμενων') : t('Προηγούμενες στάσεις ({n})', { n: folded });
 
       // summary
       if (tl) {
         const nx = tl.rows[tl.next];
         const last = tl.rows[n - 1];
         const parts = [];
-        if (nx && tl.next < n) parts.push(h('div', { class: 'bv-sum-main' }, 'Επόμενη στάση: ', h('b', {}, nameOf(nx.code)), ` · ${inText(nx.etaSec)} (${nx.kind === 'anchor' ? '' : '≈ '}${fmtClock(nx.at)})`));
-        if (last && last.state === 'upcoming' && last !== nx) parts.push(h('div', { class: 'ex-sub' }, `Τέρμα «${nameOf(last.code)}»: ≈ ${fmtClock(last.at)} · ${inText(last.etaSec)} (εκτίμηση)`));
+        if (nx && tl.next < n) parts.push(h('div', { class: 'bv-sum-main' }, t('Επόμενη: '), h('b', {}, nameOf(nx.code)), ` · ${inText(nx.etaSec)}`));
         summary.replaceChildren(...parts);
         summary.hidden = !parts.length;
-      } else summary.hidden = true;
+        terminus = last && last.state === 'upcoming' && last !== nx ? `Τέρμα «${nameOf(last.code)}»: ≈ ${fmtClock(last.at)} · ${inText(last.etaSec)} (εκτίμηση)` : '';
+      } else { summary.hidden = true; terminus = ''; }
     }
+    paintAlight();
 
-    // footer + legend
+    // footer + legend (behind "⋯")
     const bits = [];
+    if (terminus) bits.push(terminus);
     if (st.data) bits.push(`ενημερώθηκε πριν ${ageText(age)}`);
     if (st.loading) bits.push('ανανέωση…');
     foot.textContent = bits.join(' · ');
+    foot.hidden = !bits.length;
     legend.textContent = tl
       ? `Μόνο η ώρα στη στάση «${nameOf(found.stop)}» προέρχεται από live δεδομένα. Οι υπόλοιπες ώρες είναι εκτίμηση από τυπικούς χρόνους διαδρομής, όχι πρόγραμμα.`
       : 'Οι ώρες υπολογίζονται από live δεδομένα στάσης και τυπικούς χρόνους διαδρομής (εκτίμηση), όχι από πρόγραμμα.';
     pushMap();
+  }
+
+  // ---- "Θα κατέβω σε…": one button, a compact picker of the upcoming stops, then a one-line status with "Τέλος" ----
+  let alightKey = '';
+  function paintAlight() {
+    const tr = activeTrip();
+    const mine = !!tr && !!vehicleCode && tr.vehicleCode === vehicleCode;
+    const can = !!route && !!tl && !gone && !!vehicleCode;
+    alightBox.hidden = !(can || mine);
+    if (alightBox.hidden) { alightKey = ''; return; }
+    const key = `${mine ? tr.alightStop : ''}|${pickerOpen}|${tl ? tl.next : ''}|${route ? route.code : ''}`;
+    if (key === alightKey) return;
+    alightKey = key;
+    if (mine) {
+      pickerOpen = false;
+      alightBox.replaceChildren(h('div', { class: 'ob-row' },
+        h('span', { class: 'ob-on' }, icon('bell'), t('Κατεβαίνεις: «{name}»', { name: tr.stopName || nameOf(tr.alightStop) })),
+        h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => stopOnboard() }, t('Τέλος'))));
+      return;
+    }
+    const btn = h('button', { type: 'button', class: 'ex-btn ob-open', 'aria-expanded': String(pickerOpen), onclick: () => { pickerOpen = !pickerOpen; paint(Date.now()); } }, icon('bell'), t('Θα κατέβω σε…'));
+    const kids = [btn];
+    if (pickerOpen && tl) {
+      const items = [];
+      for (let i = Math.max(0, tl.next); i < route.stops.length; i++) {
+        const row = tl.rows[i];
+        items.push(h('li', {}, h('button', { type: 'button', class: 'ob-pick', onclick: () => pickStop(i) },
+          h('span', { class: 'ob-pick-name' }, nameOf(route.stops[i])), h('span', { class: 'ob-pick-in' }, row ? inText(row.etaSec) : ''))));
+      }
+      kids.push(h('ul', { class: 'ob-picker', role: 'list' }, items));
+    }
+    alightBox.replaceChildren(...kids);
+  }
+  async function pickStop(i) {
+    const code = route.stops[i];
+    pickerOpen = false;
+    const ok = await startOnboard({ vehicleCode, routeCode: route.code, lineCode: route.lineCode, alightStop: code, stopName: nameOf(code) });
+    if (ok) toast(t('Θα σε ειδοποιήσω πριν τη «{name}»', { name: nameOf(code) }));
+    if (!dead) paint(Date.now());
   }
 
   // ---- map ----
@@ -385,6 +438,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     timer = setInterval(() => paint(Date.now()), TICK_MS);
   }
   document.addEventListener('visibilitychange', onVisibility);
+  const offTrip = onTripChange(() => paint(Date.now()));
 
   // ---- go ----
   buildRows();
@@ -397,6 +451,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   return {
     destroy() {
       dead = true;
+      offTrip();
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
       if (poller) poller.destroy();

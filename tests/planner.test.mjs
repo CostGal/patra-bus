@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   candidateTrips, shortlist, chooseDeparture, rideFor, departuresAt, retime, leaveState, rankItineraries,
   planTripsDetailed, planTrips, snapStopsToShape, rideGeometry, walkItinerary,
-  transferCandidates, shortlistTransfers, reminderTrip,
+  transferCandidates, shortlistTransfers, reminderTrip, delayShiftSec, applyDelay, DELAY_LABEL,
 } from '../web/js/planner.js';
 import { stopPlaces, mapPhoton, mergePlaces } from '../web/js/geocode.js';
 import { haversine } from '../web/js/geo.js';
@@ -650,4 +650,77 @@ test('reminderTrip: first bus of a direct or a transfer itinerary (stop, route, 
   assert.deepEqual(reminderTrip(d), { stopCode: 's1', routeCode: 'A1', lineCode: '201', vehicleCode: 'V7', offsetSec: 720 });
   d.bus.vehicleCode = null;
   assert.equal(reminderTrip(d).vehicleCode, null);
+});
+
+// ---------------------------------------------------------------- historical delay
+test('delayShiftSec / applyDelay: needs >= 10 samples and a positive median; capped; live untouched', () => {
+  assert.equal(delayShiftSec(null), 0);
+  assert.equal(delayShiftSec({ samples: 9, medianDelaySec: 180 }), 0);
+  assert.equal(delayShiftSec({ samples: 10, medianDelaySec: -60 }), 0);
+  assert.equal(delayShiftSec({ samples: 10, medianDelaySec: 0 }), 0);
+  assert.equal(delayShiftSec({ samples: 10, medianDelaySec: 180.4 }), 180);
+  assert.equal(delayShiftSec({ samples: 50, medianDelaySec: 5000 }), 900);
+  const deps = [{ live: false, departAt: 1000 }, { live: true, departAt: 100500 }, { live: false, departAt: 99000 }];
+  applyDelay(deps, { samples: 20, medianDelaySec: 120 });
+  assert.deepEqual(deps.map((d) => d.departAt), [100500, 121000, 219000], 'sorted after the shift');
+  const s = deps.find((d) => d.scheduledAt === 1000);
+  assert.equal(s.departAt, 121000);
+  assert.equal(s.delayAdjustSec, 120);
+  assert.equal(deps.find((d) => d.live).delayAdjustSec, undefined);
+  assert.equal(deps.find((d) => d.live).departAt, 100500);
+});
+
+const ownerDeps = (v, stats) => {
+  const deps = mkDeps({ walk: ownerWalk, live: { s1: res([v]) } });
+  deps.calls.stats = [];
+  if (stats !== undefined) {
+    deps.fetchStats = async (r, s) => {
+      deps.calls.stats.push(`${r}:${s}`);
+      if (stats instanceof Error) throw stats;
+      return stats;
+    };
+  }
+  return deps;
+};
+
+test('planTrips: a scheduled bus is shifted by the historic median delay and labelled', async () => {
+  const deps = ownerDeps(veh('A1', 1800, { live: false, vehicleCode: 'V1' }), { samples: 25, medianDelaySec: 180, p80DelaySec: 400 });
+  const it = busOf(await planTripsDetailed(ctxOf(mkData()), FROM, TO, { now: NOW, deps }));
+  assert.equal(it.bus.live, false);
+  assert.equal(it.bus.delayAdjustSec, 180);
+  assert.equal(it.bus.delayLabel, DELAY_LABEL);
+  assert.equal(it.bus.scheduledAt, NOW + 1800000, 'the timetable time is kept');
+  assert.equal(it.bus.departAt, NOW + 1980000);
+  assert.equal(it.leaveInSec, 1080 + 180);
+  assert.equal(it.arriveAt, NOW + (1980 + 7 * 60 + 120) * 1000);
+  assert.deepEqual(deps.calls.stats, ['A1:s1']);
+});
+
+test('planTrips: no shift with too few samples, a live bus, a failing or missing stats call', async () => {
+  const base = async (v, stats) => busOf(await planTripsDetailed(ctxOf(mkData()), FROM, TO, { now: NOW, deps: ownerDeps(v, stats) }));
+  const sched = veh('A1', 1800, { live: false, vehicleCode: 'V1' });
+  const few = await base(sched, { samples: 9, medianDelaySec: 300, p80DelaySec: 400 });
+  assert.equal(few.leaveInSec, 1080);
+  assert.equal(few.bus.delayAdjustSec, undefined);
+  const live = await base(veh('A1', 1800, { vehicleCode: 'V1' }), { samples: 30, medianDelaySec: 300, p80DelaySec: 400 });
+  assert.equal(live.leaveInSec, 1080);
+  assert.equal(live.bus.delayAdjustSec, undefined);
+  assert.equal((await base(sched, new Error('boom'))).leaveInSec, 1080);
+  assert.equal((await base(sched, null)).leaveInSec, 1080);
+  assert.equal((await base(sched)).leaveInSec, 1080, 'deps without fetchStats');
+});
+
+test('planTrips: stats only for routes with a scheduled bus, at most 4 per plan, and they arrive via onUpdate', async () => {
+  const deps = ownerDeps(veh('A1', 1800, { live: false, vehicleCode: 'V1' }), { samples: 12, medianDelaySec: 120, p80DelaySec: 200 });
+  const live = deps.fetchLive;
+  deps.fetchLive = async (code) => (code === 's1' ? live(code) : res([veh('A1', 900, { live: false, vehicleCode: `W${code}` })]));
+  const updates = [];
+  const out = await planTripsDetailed(ctxOf(mkData()), FROM, TO, { now: NOW, deps, onUpdate: (r) => updates.push(r) });
+  assert.ok(deps.calls.stats.length >= 1 && deps.calls.stats.length <= 4);
+  assert.equal(new Set(deps.calls.stats).size, deps.calls.stats.length, 'no duplicate lookups');
+  assert.ok(out.itineraries.some((i) => i.bus?.delayAdjustSec === 120));
+  assert.ok(updates.length >= 1);
+  const d2 = ownerDeps(veh('A1', 1800, { live: true, vehicleCode: 'V1' }), { samples: 12, medianDelaySec: 120 });
+  await planTripsDetailed(ctxOf(mkData()), FROM, TO, { now: NOW, deps: d2 });
+  assert.deepEqual(d2.calls.stats, [], 'nothing scheduled, so no stats call');
 });

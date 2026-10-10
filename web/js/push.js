@@ -39,7 +39,9 @@ export function buildReminderBody(subscription, p) {
       stopCode: String(t.stopCode ?? ''), routeCode: String(t.routeCode ?? ''), lineCode: String(t.lineCode ?? ''),
       vehicleCode: t.vehicleCode ? String(t.vehicleCode) : null, offsetSec: Math.round(Number(t.offsetSec) || 0),
     };
+    if (t.stopName) body.trip.stopName = clip(t.stopName, 80);
   }
+  if (p.kind === 'alight') body.kind = 'alight'; // server defaults to 'leave'
   return body;
 }
 

@@ -10,6 +10,8 @@ import { loadShapes } from './data.js';
 import { getRecents, addRecent, getSettings } from './store.js';
 import { scheduleReminder, cancelReminder, hasReminder, listReminders, ensurePermission } from './notify.js';
 import { titleCase } from './text.js';
+import { t } from './i18n.js';
+import { activeTrip, startOnboard, stopOnboard } from './onboard.js';
 
 const REFRESH_MS = 20000; // live refresh (api.js keeps each stop at ≥ 15 s)
 const MOVE_M = 75;        // re-plan when the user has moved this far
@@ -344,6 +346,8 @@ export function mountPlanner(container, ctx, params = {}) {
     return h('div', { class: 'pl-state' }, icon(iconName), h('p', { class: 'pl-state-title' }, title), sub ? h('p', { class: 'pl-state-sub' }, sub) : null, ...extra);
   }
   const btn = (label, onclick, cls = '', ic = null) => h('button', { type: 'button', class: `pl-btn ${cls}`.trim(), onclick }, ic ? icon(ic) : null, label);
+  // secondary text / actions live behind "⋯"
+  const moreBox = (...kids) => h('details', { class: 'pl-more' }, h('summary', { 'aria-label': t('Περισσότερα'), title: t('Περισσότερα') }, '⋯'), h('div', { class: 'pl-more-body' }, ...kids));
 
   function renderNoDest() {
     const recents = getRecents('place').filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lng)).slice(0, 5);
@@ -434,7 +438,7 @@ export function mountPlanner(container, ctx, params = {}) {
     }
     if (S.pending > 0) notes.push(h('p', { class: 'pl-hint pl-hint-busy' }, 'Υπολογίζω ακριβώς τον χρόνο περπατήματος…'));
     body.replaceChildren(...notes, h('div', { class: 'pl-cards' }, cards),
-      h('p', { class: 'pl-foot' }, `LIVE = θέση οχήματος σε πραγματικό χρόνο · ΠΡΟΓΡ. = ώρα από το πρόγραμμα. Ο χρόνος διαδρομής είναι εκτίμηση, εκτός αν αναγράφεται «από το όχημα».${S.its.some((i) => i.kind === 'transfer') ? ' Στις διαδρομές με αλλαγή, η ώρα του δεύτερου λεωφορείου είναι εκτίμηση όταν δεν υπάρχει καταχωρημένη αναχώρηση.' : ''}${getSettings().bufferMin ? ` Η ώρα εκκίνησης έχει περιθώριο ${getSettings().bufferMin}′ (ρυθμίσεις).` : ''}`));
+      moreBox(h('p', { class: 'pl-foot' }, `LIVE = θέση οχήματος σε πραγματικό χρόνο · ΠΡΟΓΡ. = ώρα από το πρόγραμμα. Ο χρόνος διαδρομής είναι εκτίμηση, εκτός αν αναγράφεται «από το όχημα».${S.its.some((i) => i.kind === 'transfer') ? ' Στις διαδρομές με αλλαγή, η ώρα του δεύτερου λεωφορείου είναι εκτίμηση όταν δεν υπάρχει καταχωρημένη αναχώρηση.' : ''}${getSettings().bufferMin ? ` Η ώρα εκκίνησης έχει περιθώριο ${getSettings().bufferMin}′ (ρυθμίσεις).` : ''}`)));
   }
 
   function card(it, isSel) {
@@ -479,7 +483,7 @@ export function mountPlanner(container, ctx, params = {}) {
     const sub = h('div', { class: 'pl-hero-sub' });
     const hero = h('div', { class: 'pl-hero', role: 'group', 'aria-label': 'Πότε να φύγεις' }, lead, big, sub);
     if (isWalk) sub.append(`${fmtDist(it.walkTo.meters)} · άφιξη ${fmtClock(it.arriveAt)}`);
-    else if (it.bus) sub.append(`Ξεκίνα στις ${fmtClock(it.leaveAt)} · περπάτημα ${dur(it.walkTo.seconds)} ως τη στάση «${it.board.displayName}»`);
+    else if (it.bus) sub.append(t('Ξεκίνα {time} · {dur} ως «{stop}»', { time: fmtClock(it.leaveAt), dur: dur(it.walkTo.seconds), stop: it.board.displayName }));
     else if (it.liveError) sub.append('Δεν φορτώθηκαν δεδομένα live για τη στάση.');
     else if (it.missed) sub.append(`Το επόμενο λεωφορείο φεύγει σε ${etaText(it.missed.remainingSec)}, αλλά χρειάζεσαι ${dur(it.walkTo.seconds)} για να φτάσεις στη στάση.`);
     else sub.append('Δεν υπάρχει καταχωρημένη αναχώρηση για αυτή τη γραμμή στη στάση αυτή τη στιγμή.');
@@ -512,7 +516,8 @@ export function mountPlanner(container, ctx, params = {}) {
       notes.push(h('p', { class: 'pl-note' }, `Όταν υπάρξει δρομολόγιο: περίπου ${dur(it.estTotalSec)} συνολικά (περπάτημα ${dur(it.walkTo.seconds + it.walkFrom.seconds + (it.transfer?.walk?.seconds || 0))} + λεωφορείο ${dur(it.rideEstSec)}).`));
     }
 
-    return h('div', { class: 'pl-detail' }, hero, ...notes, timeline(it, now), actions(it));
+    const warns = notes.filter((n) => n.classList.contains('is-warn'));
+    return h('div', { class: 'pl-detail' }, hero, ...warns, timeline(it, now), actions(it, notes.filter((n) => !warns.includes(n))));
   }
 
   function step(kind, time, ic, title, subText, extra, line) {
@@ -596,8 +601,28 @@ export function mountPlanner(container, ctx, params = {}) {
   // ---- reminder + actions
 
   const tagOf = (it) => `plan:${it.id}`;
-  function actions(it) {
+  // The bus the rider boards first, and where to get off it (a transfer: at the change stop).
+  function boardedLeg(it) {
+    const leg = it.kind === 'transfer' ? { bus: it.legs[0].bus, route: it.legs[0].route, alight: it.transfer.stop } : { bus: it.bus, route: it.route, alight: it.alight };
+    return leg.bus?.vehicleCode && leg.route && leg.alight ? { vehicleCode: leg.bus.vehicleCode, route: leg.route, alight: leg.alight } : null;
+  }
+  function onboardBtn(ob) {
+    const mine = () => activeTrip()?.vehicleCode === ob.vehicleCode;
+    const b = h('button', { type: 'button', class: 'pl-btn', onclick: async () => {
+      if (mine()) stopOnboard();
+      else if (await startOnboard({ vehicleCode: ob.vehicleCode, routeCode: ob.route.code, lineCode: ob.route.lineCode, alightStop: ob.alight.code, stopName: ob.alight.displayName })) {
+        toast(t('Θα σε ειδοποιήσω πριν τη «{name}»', { name: ob.alight.displayName }));
+      }
+      paint();
+    } });
+    const paint = () => b.replaceChildren(icon('bus'), mine() ? t('Τέλος') : t('Είμαι στο λεωφορείο'));
+    paint();
+    return b;
+  }
+
+  function actions(it, quietNotes = []) {
     if (it.kind === 'walk') return null;
+    const ob = boardedLeg(it);
     const tag = tagOf(it);
     const bell = h('button', { type: 'button', class: 'pl-btn is-primary', onclick: () => toggleReminder(it, bell) });
     const paintBell = () => {
@@ -607,7 +632,8 @@ export function mountPlanner(container, ctx, params = {}) {
       bell.disabled = !it.bus && !on;
     };
     paintBell();
-    return h('div', { class: 'pl-actions' }, bell, btn('Στάση επιβίβασης', () => ctx.navigate(`#/stop/${encodeURIComponent(it.board.code)}`), '', 'bus'));
+    return h('div', { class: 'pl-actions' }, bell, ob ? onboardBtn(ob) : null,
+      moreBox(...quietNotes, btn(t('Στάση επιβίβασης'), () => ctx.navigate(`#/stop/${encodeURIComponent(it.board.code)}`), '', 'bus')));
   }
 
   // reminderMin = minutes BEFORE the moment you must leave; if that is already past, remind at the leave time itself.

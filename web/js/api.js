@@ -4,6 +4,7 @@
 // (success or failure) plus in-flight dedupe.
 import { isLive, noServiceResult, normalizeLive } from './arrivals.js';
 import { demoLive, demoReady } from './demo.js';
+import { t } from './i18n.js';
 
 export const MIN_GAP_MS = 15000; // floor between upstream attempts for one stop
 export const POLL_MS = 20000; // poller period
@@ -42,12 +43,14 @@ const defaults = () => ({
 });
 let env = defaults();
 const memo = new Map(); // code -> { at, pending, promise }
+const statsMemo = new Map(); // 'route/stop' -> { at, p }
 
 // Tests only. _setTransport({ fetch, now, setTimeout, clearTimeout, doc, timeoutMs, demo, demoMode, demoDelayMs });
 // no argument resets to the real thing. Always clears the memo.
 export function _setTransport(over) {
   env = { ...defaults(), ...(over || {}) };
   memo.clear();
+  statsMemo.clear();
 }
 
 const abortError = () => new DOMException('Aborted', 'AbortError');
@@ -250,4 +253,59 @@ export function createLivePoller(code, onUpdate) {
       if (doc) doc.removeEventListener('visibilitychange', onVisibility);
     },
   };
+}
+
+// ---- reliability stats: GET /api/stats/{route}/{stop} -> { samples, medianDelaySec, p80DelaySec } | null ----
+export const STATS_TTL_MS = 10 * 60 * 1000; // per key, failures included
+export const STATS_MIN_SAMPLES = 10; // fewer samples are not shown or used
+const STATS_TIMEOUT_MS = 5000;
+const CODE_RE = /^[\w.-]{1,16}$/;
+
+const hashOf = (s) => { let n = 0; for (const c of String(s)) n = (n * 31 + c.charCodeAt(0)) % 9973; return n; };
+// Demo: roughly 3 of 4 routes have history, with a few typical delays (deterministic).
+function demoStats(route, stop) {
+  const n = hashOf(route + '/' + stop);
+  if (n % 4 === 0) return null;
+  const med = [0, 0, 60, 180, 240, 420][n % 6];
+  return { samples: 12 + (n % 40), medianDelaySec: med, p80DelaySec: med + 120 };
+}
+
+async function statsRequest(route, stop) {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = env.setTimeout(() => ctl && ctl.abort(), STATS_TIMEOUT_MS);
+  try {
+    const res = await env.fetch(`${API_BASE}/api/stats/${encodeURIComponent(route)}/${encodeURIComponent(stop)}`, { signal: ctl && ctl.signal, cache: 'no-store' });
+    if (!res.ok) return null;
+    const b = await res.json();
+    const samples = Number(b && b.samples), med = Number(b && b.medianDelaySec);
+    if (!b || !Number.isFinite(samples) || !Number.isFinite(med)) return null;
+    const p80 = Number(b.p80DelaySec);
+    return { samples, medianDelaySec: med, p80DelaySec: Number.isFinite(p80) ? p80 : med };
+  } catch {
+    return null;
+  } finally {
+    env.clearTimeout(timer);
+  }
+}
+
+// Memoised 10 min per (route, stop), null results too. Never throws, never blocks long.
+export function fetchStats(routeCode, stopCode) {
+  const route = String(routeCode ?? ''), stop = String(stopCode ?? '');
+  if (!CODE_RE.test(route) || !CODE_RE.test(stop)) return Promise.resolve(null);
+  const key = `${route}/${stop}`;
+  const now = env.now();
+  const hit = statsMemo.get(key);
+  if (hit && now - hit.at < STATS_TTL_MS) return hit.p;
+  const p = env.demo ? Promise.resolve(demoStats(route, stop)) : statsRequest(route, stop).catch(() => null);
+  statsMemo.set(key, { at: now, p });
+  if (statsMemo.size > 500) for (const [k, v] of statsMemo) if (now - v.at >= STATS_TTL_MS) statsMemo.delete(k);
+  return p;
+}
+
+// Quiet secondary line for a scheduled arrival, or '' without enough history.
+export function usualDelayText(stat) {
+  if (!stat || !(stat.samples >= STATS_MIN_SAMPLES) || !Number.isFinite(stat.medianDelaySec)) return '';
+  const m = Math.round(stat.medianDelaySec / 60);
+  if (m === 0) return t('συνήθως στην ώρα του');
+  return m > 0 ? t('συνήθως +{n}′', { n: m }) : t('συνήθως −{n}′', { n: -m });
 }

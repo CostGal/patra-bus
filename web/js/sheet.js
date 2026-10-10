@@ -5,6 +5,7 @@
 // Desktop: static panel, snap() is remembered but has no visual effect.
 // onSnap({state, visible, desktop}) fires when a target is chosen (padding for the map);
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
+import { t } from './i18n.js';
 const STATES = ['peek', 'half', 'full'];
 const PEEK_PX = 152; // handle + a header row
 const LABEL = { peek: 'κλειστός', half: 'μισός', full: 'πλήρης' };
@@ -28,12 +29,13 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let dragging = false;
   let suppressClick = false;
   let raf = 0;
+  let peekPx = PEEK_PX; // the home card sets this to its own height (setPeek)
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
   function measure() {
     H = root.offsetHeight;
-    const peek = Math.min(PEEK_PX + probe.offsetHeight, H);
+    const peek = Math.min(peekPx + probe.offsetHeight, H);
     SZ = { peek, half: Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100)), full: H };
   }
   const yFor = (s) => H - SZ[s];
@@ -66,7 +68,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;
-    handle.setAttribute('aria-label', `Αλλαγή μεγέθους πίνακα (τώρα: ${LABEL[to]})`);
+    handle.setAttribute('aria-label', t('Αλλαγή μεγέθους πίνακα (τώρα: {state})', { state: t(LABEL[to]) }));
     apply(animate);
   }
 
@@ -203,5 +205,12 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       apply(false);
     },
     scrollToTop() { body.scrollTop = 0; },
+    // Peek height = handle + the single home card; null restores the default.
+    setPeek(px) {
+      const next = px == null ? PEEK_PX : Math.max(96, Math.min(Math.round(px), Math.round(innerHeight * 0.45)));
+      if (next === peekPx) return;
+      peekPx = next;
+      if (!dragging) apply(false);
+    },
   };
 }
