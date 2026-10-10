@@ -20,7 +20,11 @@ const VALID = {
   bufferMin: intIn(0, 30),
   reminderMin: intIn(0, 30),
   city: isCity, // absent until the user picks one: the default city applies
+  guideSeen: (v) => typeof v === 'boolean', // absent = not seen yet
+  installHintDismissed: (v) => typeof v === 'boolean', // absent = not dismissed
 };
+// Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
+const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed'];
 const NUMERIC = new Set(['bufferMin', 'reminderMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };
@@ -204,8 +208,13 @@ export function createStore({ storage = defaultStorage, events = defaultEvents()
     if (getSettings()[key] !== value) { state.settings[key] = value; save(); emit('settings'); }
     return true;
   }
-  // The chosen city is a place, not a preference: it survives "reset settings".
-  function resetSettings() { sync(); state.settings = state.settings.city ? { city: state.settings.city } : {}; save(); emit('settings'); }
+  // The city and the first-run hint flags are not preferences: they survive "reset settings".
+  function resetSettings() {
+    sync();
+    const kept = {};
+    for (const k of KEEP_ON_RESET) if (k in state.settings) kept[k] = state.settings[k];
+    state.settings = kept; save(); emit('settings');
+  }
 
   function clearAll() {
     state = sanitize(null);

@@ -8,15 +8,6 @@ import { cityHash } from './route.js';
 
 export const VERSION = '2.0.0';
 
-// Chrome/Edge fire this once, early. Kept so the "install" button below can use it (best effort:
-// when this module loads after the event, the browser's own install UI is used instead).
-let installPrompt = null;
-try {
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
-  window.addEventListener('appinstalled', () => { installPrompt = null; });
-} catch { /* not in a browser */ }
-
-const isStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch { return false; } };
 let uid = 0;
 
 const LINKS = [
@@ -126,6 +117,15 @@ function build(container, ctx, keep) {
   const language = h('section', { class: 'set-lang' },
     row(idCity, t('Πόλη'), t('Αλλάζουν οι στάσεις, οι γραμμές και τα δεδομένα. Κάθε πόλη έχει τα δικά της αγαπημένα, μέρη και υπενθυμίσεις.'), citySeg),
     row(idLang, t('Γλώσσα'), null, langSeg));
+
+  // ---------- guide (+ install tutorial when it applies: phone, browser tab) ----------
+  const openLink = (to, labelId) => h('a', { class: 'ex-btn ex-btn-sm press', href: cityHash(to), 'aria-labelledby': labelId }, t('Άνοιγμα'), icon('chevron'));
+  const [idGuide, idInstall] = [id('guide'), id('install-guide')];
+  const guide = h('section', { class: 'set-lang' }, row(idGuide, t('Οδηγός χρήσης'), null, openLink('#/guide', idGuide)));
+  import('./install-guide.js').then((m) => {
+    if (dead || !m.installHint()) return;
+    guide.append(row(idInstall, t('Εγκατάσταση ως εφαρμογή'), null, openLink('#/guide?section=install', idInstall)));
+  }).catch(() => { /* no install helper: no row */ });
 
   // ---------- display & walking ----------
   const mins = (n) => (n === 0 ? t('Καθόλου') : tn(n, '{n} λεπτό', '{n} λεπτά'));
@@ -242,22 +242,6 @@ function build(container, ctx, keep) {
 
   const offline = sec('offline', t('Χάρτης χωρίς σύνδεση'), extSlot(() => import('./offline.js'), 'mountOfflineCard'));
 
-  // ---------- install (hidden once installed) ----------
-  const installNote = h('p', { class: 'ex-sub' });
-  const installBtn = h('button', { type: 'button', class: 'ex-btn', onclick: async () => {
-    const p = installPrompt; if (!p) return;
-    installPrompt = null; paintInstall();
-    try { await p.prompt(); await p.userChoice; } catch { /* dismissed */ }
-  } }, t('Εγκατάσταση στη συσκευή'));
-  const install = sec('install', t('Εγκατάσταση'), installNote, h('div', { class: 'set-actions' }, installBtn));
-  function paintInstall() {
-    install.hidden = isStandalone();
-    installBtn.hidden = !installPrompt;
-    installNote.hidden = !!installPrompt;
-    installNote.textContent = t('Πρόσθεσέ την στην αρχική οθόνη από το μενού του περιηγητή.');
-  }
-  paintInstall();
-
   // ---------- about (full LIVE / ΠΡΟΓΡ. legend lives here) ----------
   const about = sec('about', t('Σχετικά'),
     h('p', { class: 'set-p' }, h('strong', {}, APP_NAME), ` · ${cityName(city(), lang())} · ${t('έκδοση {v}', { v: VERSION })}`),
@@ -277,7 +261,7 @@ function build(container, ctx, keep) {
     h('header', { class: 'ex-head' },
       h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
       h('h1', {}, t('Ρυθμίσεις'))),
-    language, display, homeSec, notifications, favorites, data, offline, install, about));
+    language, guide, display, homeSec, notifications, favorites, data, offline, about));
 
   paintPerm(); paintReminders(); paintFavs();
   offs.push(onChange(() => { if (dead) return; for (const s of syncs) s(); paintFavs(); }));

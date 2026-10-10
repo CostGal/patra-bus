@@ -1,0 +1,53 @@
+/* In-app guide (owner: guide). Prefix gd-. Tokens from css/tokens.css; reuses the shell's .view-head / .icon-btn / .btn / .press (app.css)
+   and the arrival tile classes (.atile-*, css/arrivals.css) for the LIVE / ΠΡΟΓΡ. examples. The sheet already gives the 16 px side padding. */
+
+.gd { color: var(--text); font-family: var(--font); line-height: var(--lead-body); padding-bottom: var(--s3); }
+.gd *, .gd *::before, .gd *::after { box-sizing: border-box; }
+.gd :where(h1, h2, h3, p, ul) { margin: 0; padding: 0; }
+.gd :where(ul) { list-style: none; }
+.gd [hidden] { display: none !important; }
+.gd .icon { --icon: 22px; }
+.gd :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ---- sections ---- */
+.gd-sec { margin-top: var(--s4); scroll-margin-top: var(--s2); }
+.gd .view-head + .gd-sec { margin-top: var(--s3); }
+.gd h2.gd-h { margin: 0 0 var(--s2); color: var(--text); font-size: 1.25rem; font-weight: 700; line-height: var(--lead-title); letter-spacing: var(--track-title); }
+.gd-p { margin: 0 0 var(--s2); font-size: 1rem; letter-spacing: var(--track-body); }
+.gd-city { margin-top: var(--s3); color: var(--text-2); font-size: .9375rem; }
+.gd-btn { margin-top: var(--s1); font-size: .9375rem; }
+.gd-btn .icon { --icon: 20px; color: var(--text-2); }
+
+/* ---- LIVE / ΠΡΟΓΡ. examples ---- */
+.gd-eg { margin: var(--s2) 0 var(--s3); }
+.gd .atile .icon { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gd .atile-flag .icon { width: 13px; height: 13px; stroke-width: 2.4; } /* beat the shell's .icon size */
+.gd .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: 8px; font-size: 1rem; font-weight: 700; line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
+.gd .atile-num { font-variant-numeric: tabular-nums; }
+.gd-cap { margin: var(--s2) 2px 0; color: var(--text-2); font-size: .9375rem; }
+.gd-cap strong { color: var(--text); font-weight: 700; letter-spacing: .04em; }
+
+/* ---- entries: icon + title + text (how to use) and key + title + text (where to tap) ---- */
+.gd-list { display: grid; gap: var(--s3); }
+.gd-item { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: var(--s3); align-items: start; }
+.gd-item-title { color: var(--text); font-size: 1rem; font-weight: 600; line-height: var(--lead-title); letter-spacing: var(--track-body); overflow-wrap: anywhere; }
+.gd-item-text { margin-top: 2px; color: var(--text-2); font-size: .9375rem; letter-spacing: var(--track-body); }
+.gd-ico, .gd-key { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none; }
+.gd-ico { border-radius: var(--radius); background: var(--accent-soft); color: var(--accent); }
+/* "where to tap": drawn like the real round controls */
+.gd-taps { gap: var(--s2) var(--s3); }
+.gd-key { border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 1.375rem; font-weight: 700; line-height: 1; }
+
+/* ---- install: Part A's element sits in here ---- */
+.gd-install-body > * { margin: 0; }
+
+@media (min-width: 900px) {
+  .gd { max-width: 36rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd, .gd * { scroll-behavior: auto !important; }
+}
+@media (prefers-contrast: more) {
+  .gd-key { border-color: var(--text-2); }
+  .gd-ico { border: 1px solid var(--accent); }
+}

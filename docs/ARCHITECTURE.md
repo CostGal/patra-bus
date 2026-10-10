@@ -35,6 +35,18 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 | `#/plan` / `#/plan?to=lat,lng&name=…&from=lat,lng` | trip planner (`planner-view.js`) |
 | `#/lines` / `#/line/{lineCode}?dir=1` | line browser / one line on the map (`lines-view.js`) |
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
+| `#/guide` / `#/guide?section=install` | in-app guide + install-as-app tutorial (`guide-view.js`, `install-guide.js`; contract in `docs/GUIDE.md`) |
+
+**Guide integration** (`app.js`, part C of `docs/GUIDE.md`): `guide` has SNAP `full` and mounts `mountGuide(content, ctx, { section })`
+like settings. Just before mounting, `ctx.renderInstall` is set to `() => install-guide.renderInstallSection()` (left `undefined` when
+that module fails to load, the guide then has no install section). `install-guide.js` is imported once at the top of `app.js`, in
+parallel with boot and never awaited, and `captureInstallPrompt()` runs as soon as it resolves. Entry points: menu item "Οδηγός"
+(above Settings), a "Οδηγός χρήσης" row in Settings and, when `installHint()` is non-null, "Εγκατάσταση ως εφαρμογή"
+(`#/guide?section=install`). Settings flags `guideSeen` and `installHintDismissed` (booleans in `store.js`, absent = false, kept by
+`resetSettings`, wiped by `clearAll`) drive one small `.guide-hint` card under the home card (inside the sheet's peek height): "first time
+here?" until `guideSeen`, else the one-time install hint until `installHintDismissed`; never both, and only when the page booted on the home
+view (not a deep link). Opening the guide or pressing ✕ sets the flag.
+
 **City prefix** (docs/MULTI-CITY.md, `js/route.js`): any hash may start with a city id, `#/corfu/stop/123`. Views and links use
 city-relative hashes; `cityHash()` adds the prefix for every city but Patras (links, `navigate`, `replaceState`), `shareHash()`
 always adds it (share links, reminder/push urls). `js/boot-city.js` (first import of `app.js`) sets the active city: prefix, else an

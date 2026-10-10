@@ -42,7 +42,9 @@ export const shareHash = (hash) => formatHash(hash, cityId(), { always: true });
 
 // Is the hash pointing at something city-specific (a code or coordinates)? Bare views (`#/`, `#/plan`, `#/lines`,
 // `#/settings`, `#/favorites`) are not: they open in whatever city the user is in.
-const cityBound = (p) => p.parts.length > 1 || p.query !== '';
+// The guide and the settings never are, even with a query (`#/guide?section=install`).
+const CITYLESS = new Set(['guide', 'settings']);
+const cityBound = (p) => !CITYLESS.has(p.parts[0]) && (p.parts.length > 1 || p.query !== '');
 
 // City to boot into: hash prefix, then an unprefixed link that points at something (= Patras), then the saved
 // setting, then the default.

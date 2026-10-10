@@ -3,7 +3,7 @@
 // Push handlers live in sw-push.js (owned separately).
 importScripts('sw-push.js');
 
-const CACHE = 'patra-bus-v13';
+const CACHE = 'patra-bus-v15';
 const MAP_CACHE = 'patra-bus-map-v1'; // runtime OpenFreeMap cache, bounded (oldest tiles trimmed first)
 const MAP_OFFLINE = 'patra-bus-map-offline-v1'; // filled by js/offline.js (opt-in download), never trimmed
 const MAP_MAX = 4000;
@@ -51,6 +51,8 @@ const SHELL = [
   'css/planner.css',
   'css/extras.css',
   'css/places.css',
+  'css/guide.css',
+  'css/install.css',
   'js/app.js',
   'js/ui.js',
   'js/map.js',
@@ -83,9 +85,14 @@ const SHELL = [
   'js/offline.js',
   'js/i18n.js',
   'js/i18n-en.js',
+  'js/i18n-en-guide.js',
+  'js/i18n-en-install.js',
   'js/places.js',
   'js/routines.js',
   'js/onboard.js',
+  'js/guide-view.js',
+  'js/platform.js',
+  'js/install-guide.js',
   'data/stops.json',
   'data/lines.json',
   // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.
