@@ -146,7 +146,9 @@ shapes in an `--offline` run against the committed files, 0 network).
 
 ## Plan (each step ships on its own, tests green)
 1. `cities.js` + constants → city config, Patras only, **no behavior change**. *(done)*
-2. Worker: city-aware routes + keys with Patras aliases. Needs decision 2.
-3. Data: `fetch-static --city`, `build-routes --city`, move to `web/data/{city}/`. Corfu data needs decision 1.
-4. Frontend: active city, hash prefix, per-city user data + migration, picker.
-5. Corfu: tight bbox from stops, route-order review, demo fixture, manual check on a device.
+2. Worker: city-aware routes + keys with Patras aliases. *(done)*
+3. Data: `fetch-static --city`, `build-routes --city`, `web/data/{city}/` (Patras stays at `web/data/`). *(done)*
+4. Frontend: active city, hash prefix, per-city user data + migration, picker, rebrand to Telematica. *(done)*
+5. Corfu: tight bbox from stops and route-order review *(done)*; still open: live shape during service hours, a real
+   Corfu live fixture, manual check on a device, worker deploy **before** the frontend reaches `main` (the new
+   frontend calls `/api/{city}/…`, which the currently deployed worker does not have).
