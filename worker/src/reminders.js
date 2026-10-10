@@ -1,6 +1,7 @@
 // "Leave now" push reminders: validation + decision logic (pure) and the Durable Object base class.
 // One DO per reminder (name = random 128-bit id). index.js subclasses ReminderBase to supply getLive().
 import { etaText } from '../../web/js/arrivals.js';
+import { DEFAULT_CITY, isCity } from '../../web/js/cities.js';
 import { b64uDecode, isAllowedEndpoint, sendPush } from './push.js';
 
 export const MAX_BODY_BYTES = 4096;
@@ -27,6 +28,13 @@ export function cleanSubscription(s, { allowLocal = false } = {}) {
   return { value: { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } } };
 }
 
+// Optional `city` of a push request (shared with routines): absent -> Patras, otherwise it must be in the table.
+// -> { value } or { error: 'city' }.
+export function cleanCity(c) {
+  if (c === undefined) return { value: DEFAULT_CITY };
+  return isCity(c) ? { value: c } : { error: 'city' };
+}
+
 // Strict validation of the POST body. Returns { ok: true, value } with a cleaned copy, or { ok: false, error }.
 export function validateReminder(raw, now, { allowLocal = false } = {}) {
   const bad = (error) => ({ ok: false, error });
@@ -35,6 +43,8 @@ export function validateReminder(raw, now, { allowLocal = false } = {}) {
 
   const sub = cleanSubscription(s, { allowLocal });
   if (sub.error) return bad(sub.error);
+  const city = cleanCity(raw.city);
+  if (city.error) return bad(city.error);
   if (kind !== 'leave' && kind !== 'alight') return bad('kind');
 
   if (typeof at !== 'number' || !Number.isFinite(at) || at <= now || at > now + MAX_AHEAD_MS) return bad('at');
@@ -63,6 +73,7 @@ export function validateReminder(raw, now, { allowLocal = false } = {}) {
     ok: true,
     value: {
       subscription: sub.value,
+      city: city.value,
       kind,
       at,
       title,
@@ -116,7 +127,7 @@ export class ReminderBase {
   }
 
   // Overridden in index.js: normalized LiveResult for a stop via the shared 15 s cache.
-  async getLive() {
+  async getLive(city, code) {
     throw new Error('getLive not implemented');
   }
 
@@ -151,7 +162,7 @@ export class ReminderBase {
       let live = null;
       if (r.trip) {
         try {
-          live = await this.getLive(r.trip.stopCode);
+          live = await this.getLive(r.city || DEFAULT_CITY, r.trip.stopCode); // stored before multi-city -> Patras
         } catch (err) {
           console.error(`reminder live: ${err.message}`);
         }

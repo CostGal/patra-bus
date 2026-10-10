@@ -2,11 +2,9 @@ import { normalizeLive, noServiceResult } from '../../web/js/arrivals.js';
 import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
 import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
-import { city, apiBase } from '../../web/js/cities.js';
+import { parseRoute } from './routes.js';
+import { CITIES, DEFAULT_CITY, apiBase, isCity } from '../../web/js/cities.js';
 
-const CITY = city();
-const PAGE = CITY.page;
-const API = apiBase(CITY);
 const TOKEN_MARGIN_MS = 5 * 60 * 1000;
 
 class UpstreamError extends Error {
@@ -25,14 +23,22 @@ function jwtExp(token) {
   return exp;
 }
 
-async function getToken(env, { force = false } = {}) {
+// The city table is a whitelist: an id (or object) that is not in it never reaches fetch().
+function cityOf(city) {
+  const id = typeof city === 'string' ? city : city?.id;
+  if (!isCity(id)) throw new UpstreamError('unknown city', 404);
+  return CITIES[id];
+}
+
+// One token per city (KV `token/{city}`), scraped from that city's own page.
+async function getToken(env, city, { force = false } = {}) {
   if (!force) {
-    const saved = await env.KV.get('token', 'json');
+    const saved = await env.KV.get(`token/${city.id}`, 'json');
     if (saved && saved.token && saved.exp * 1000 >= Date.now() + TOKEN_MARGIN_MS) {
       return saved.token;
     }
   }
-  const res = await fetch(PAGE, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const res = await fetch(city.page, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   const html = await res.text();
   const m = html.match(/const token = '([^']+)'/);
   if (!res.ok || !m) throw new UpstreamError('token not found');
@@ -44,27 +50,27 @@ async function getToken(env, { force = false } = {}) {
     throw new UpstreamError('token undecodable');
   }
   const ttl = Math.max(60, exp - Math.floor(Date.now() / 1000));
-  await env.KV.put('token', JSON.stringify({ token, exp }), { expirationTtl: ttl });
+  await env.KV.put(`token/${city.id}`, JSON.stringify({ token, exp }), { expirationTtl: ttl });
   return token;
 }
 
-async function call(path, headers) {
+async function call(city, path, headers) {
   try {
-    return await fetch(API + path, { headers });
+    return await fetch(apiBase(city) + path, { headers });
   } catch {
     throw new UpstreamError('fetch failed');
   }
 }
 
 // opts.notFound: if set, an upstream 404 resolves to that value instead of throwing.
-async function upstream(env, path, opts = {}) {
-  let token = await getToken(env);
-  let res = await call(path, { Authorization: `Bearer ${token}` });
+async function upstream(env, city, path, opts = {}) {
+  let token = await getToken(env, city);
+  let res = await call(city, path, { Authorization: `Bearer ${token}` });
   if (res.status === 401 || res.status === 403) {
-    token = await getToken(env, { force: true });
-    res = await call(path, {
+    token = await getToken(env, city, { force: true });
+    res = await call(city, path, {
       Authorization: `Bearer ${token}`,
-      Referer: new URL('/', PAGE).href,
+      Referer: new URL('/', city.page).href,
     });
   }
   if (res.status === 404 && 'notFound' in opts) return opts.notFound;
@@ -136,36 +142,38 @@ async function cached(cors, ctx, key, ttl, produce, env) {
   });
 }
 
-// The one live path: used by /api/live/:code and by reminder alarms, so the 15 s per-stop cache is shared.
-export function liveBody(env, ctx, code) {
-  return cachedBody(env, ctx, `live/${code}`, 15, async () => {
+// The one live path: used by /api/{city}/live/:code and by reminder/routine alarms, so the 15 s per-stop cache is
+// shared. Stop codes collide across cities, hence the city in the key.
+export async function liveBody(env, ctx, city, code) {
+  const c = cityOf(city);
+  return cachedBody(env, ctx, `live/${c.id}/${code}`, 15, async () => {
     // 404 = nothing scheduled for this stop right now: a normal answer, cached like any other.
-    const raw = await upstream(env, `/stops/live/${code}`, { notFound: null });
+    const raw = await upstream(env, c, `/stops/live/${code}`, { notFound: null });
     const now = Date.now();
     const result = raw === null ? noServiceResult(now) : normalizeLive(raw, now);
     // Stats feed on real upstream answers only (this runs on cache MISS), off the response path.
-    if (raw !== null) ctx.waitUntil(recordStats(env, code, result));
+    if (raw !== null) ctx.waitUntil(recordStats(env, c.id, code, result));
     return JSON.stringify(result);
   });
 }
 
 // Live read for Durable Objects: same shared cache path as the HTTP route.
-async function liveFor(env, code) {
+async function liveFor(env, city, code) {
   const pending = [];
-  const { body } = await liveBody(env, { waitUntil: (p) => pending.push(p) }, code);
+  const { body } = await liveBody(env, { waitUntil: (p) => pending.push(p) }, city, code);
   await Promise.allSettled(pending);
   return JSON.parse(body);
 }
 
 export class Reminder extends ReminderBase {
-  getLive(code) {
-    return liveFor(this.env, code);
+  getLive(city, code) {
+    return liveFor(this.env, city, code);
   }
 }
 
 export class Routine extends RoutineBase {
-  getLive(code) {
-    return liveFor(this.env, code);
+  getLive(city, code) {
+    return liveFor(this.env, city, code);
   }
 }
 
@@ -268,29 +276,29 @@ export default {
       }
       if (request.method !== 'GET') return json(cors, { error: 'not_found' }, 404);
 
-      const live = pathname.match(/^\/api\/live\/(\d{1,6})$/);
-      if (live) {
-        const { body, hit } = await liveBody(env, ctx, live[1]);
+      if (pathname === '/health') {
+        const cities = {};
+        for (const id of Object.keys(CITIES)) cities[id] = { tokenExp: (await env.KV.get(`token/${id}`, 'json'))?.exp ?? null };
+        return json(cors, { ok: true, tokenExp: cities[DEFAULT_CITY]?.tokenExp ?? null, cities, now: Date.now() });
+      }
+      const route = parseRoute(pathname);
+      if (!route) return json(cors, { error: 'not_found' }, 404);
+      const c = CITIES[route.city];
+
+      if (route.kind === 'live') {
+        const { body, hit } = await liveBody(env, ctx, c.id, route.args[0]);
         return new Response(body, {
           headers: headers(cors, { 'Cache-Control': 'no-store', 'X-Cache': hit ? 'HIT' : 'MISS' }),
         });
       }
-      const stats = pathname.match(/^\/api\/stats\/([^/]+)\/([^/]+)$/);
-      if (stats) {
-        const [, routeCode, stopCode] = stats;
+      if (route.kind === 'stats') {
+        const [routeCode, stopCode] = route.args;
         if (!validCode(routeCode) || !validCode(stopCode)) return json(cors, { error: 'bad_request' }, 400);
-        const { body, hit } = await cachedBody(env, ctx, `stats/${routeCode}/${stopCode}`, 600, () => readStats(env, routeCode, stopCode));
+        const { body, hit } = await cachedBody(env, ctx, `stats/${c.id}/${routeCode}/${stopCode}`, 600, () => readStats(env, c.id, routeCode, stopCode));
         return new Response(body, { headers: headers(cors, { 'Cache-Control': 'public, max-age=600', 'X-Cache': hit ? 'HIT' : 'MISS' }) });
       }
-      if (pathname === '/api/stops' || pathname === '/api/lines') {
-        const name = pathname.slice('/api/'.length);
-        return await cached(cors, ctx, name, 86400, async () => JSON.stringify(await upstream(env, `/${name}`)), env);
-      }
-      if (pathname === '/health') {
-        const saved = await env.KV.get('token', 'json');
-        return json(cors, { ok: true, tokenExp: saved?.exp ?? null, now: Date.now() });
-      }
-      return json(cors, { error: 'not_found' }, 404);
+      // stops | lines
+      return await cached(cors, ctx, `${c.id}/${route.kind}`, 86400, async () => JSON.stringify(await upstream(env, c, `/${route.kind}`)), env);
     } catch (err) {
       const status = err.status || 502;
       console.error(`${pathname}: ${err.message}`);
