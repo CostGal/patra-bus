@@ -13,6 +13,7 @@ function fakeStorage(init = {}) {
   };
 }
 const make = (ls = fakeStorage(), events = new EventTarget()) => ({ ls, events, s: createStore({ storage: () => ls, events }) });
+const codes = (list) => list.map((x) => x.code);
 const storageEvent = (key) => Object.assign(new Event('storage'), { key });
 
 test('defaults', () => {
@@ -68,7 +69,7 @@ test('migrates the old `favs` key once, then removes it', () => {
   const { s } = make(ls);
   assert.deepEqual(s.getFavorites(), ['1011', '2022']);
   assert.equal(ls.getItem('favs'), null);
-  assert.deepEqual(JSON.parse(ls.getItem(KEY)).favorites, ['1011', '2022']);
+  assert.deepEqual(JSON.parse(ls.getItem(KEY)).favorites, [{ code: '1011', city: 'patra' }, { code: '2022', city: 'patra' }]);
 });
 
 test('migration ignores garbage in the old key and does not override v2 data', () => {
@@ -80,10 +81,10 @@ test('migration ignores garbage in the old key and does not override v2 data', (
 
 test('recents: newest first, dedupe, max 10 per kind, kinds independent', () => {
   const { s } = make();
-  for (let i = 1; i <= 12; i++) s.addRecent('stop', String(i));
-  assert.deepEqual(s.getRecents('stop'), ['12', '11', '10', '9', '8', '7', '6', '5', '4', '3']);
+  for (let i = 1; i <= 12; i++) s.addRecent('stop', String(i)); // bare codes are stored as { code, city }
+  assert.deepEqual(codes(s.getRecents('stop')), ['12', '11', '10', '9', '8', '7', '6', '5', '4', '3']);
   s.addRecent('stop', '5'); // moves to front, no duplicate
-  assert.deepEqual(s.getRecents('stop').slice(0, 3), ['5', '12', '11']);
+  assert.deepEqual(codes(s.getRecents('stop')).slice(0, 3), ['5', '12', '11']);
   assert.equal(s.getRecents('stop').length, 10);
   assert.deepEqual(s.getRecents('place'), []);
 });
@@ -110,7 +111,7 @@ test('recents: remove and clear; null items ignored', () => {
   s.addRecent('stop', null);
   assert.equal(s.removeRecent('stop', '1'), true);
   assert.equal(s.removeRecent('stop', '1'), false);
-  assert.deepEqual(s.getRecents('stop'), ['2']);
+  assert.deepEqual(codes(s.getRecents('stop')), ['2']);
   s.clearRecents('stop');
   assert.deepEqual(s.getRecents('stop'), []);
   assert.equal(s.getRecents('place').length, 1);
@@ -155,7 +156,7 @@ test('storage unavailable: works in memory', () => {
   s.addRecent('stop', '9');
   s.setSetting('theme', 'light');
   assert.deepEqual(s.getFavorites(), ['1']);
-  assert.deepEqual(s.getRecents('stop'), ['9']);
+  assert.deepEqual(codes(s.getRecents('stop')), ['9']);
   assert.equal(s.getSettings().theme, 'light');
   const none = createStore({ storage: () => null, events: null });
   none.addFavorite('x');

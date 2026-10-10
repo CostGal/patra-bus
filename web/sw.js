@@ -3,7 +3,7 @@
 // Push handlers live in sw-push.js (owned separately).
 importScripts('sw-push.js');
 
-const CACHE = 'patra-bus-v12';
+const CACHE = 'patra-bus-v13';
 const MAP_CACHE = 'patra-bus-map-v1'; // runtime OpenFreeMap cache, bounded (oldest tiles trimmed first)
 const MAP_OFFLINE = 'patra-bus-map-offline-v1'; // filled by js/offline.js (opt-in download), never trimmed
 const MAP_MAX = 4000;
@@ -64,6 +64,8 @@ const SHELL = [
   'js/demo.js',
   'js/location.js',
   'js/cities.js',
+  'js/route.js',
+  'js/boot-city.js',
   'js/geo.js',
   'js/walk.js',
   'js/nearby.js',
@@ -86,12 +88,17 @@ const SHELL = [
   'js/onboard.js',
   'data/stops.json',
   'data/lines.json',
+  // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.
+  'data/corfu/stops.json',
+  'data/corfu/lines.json',
 ];
 
 // Cached when present; a 404 here must not break the install.
 const OPTIONAL = [
   'data/routes.json',
   'data/shapes.json',
+  'data/corfu/routes.json', // generated per city; a city without them just has no route order / drawn lines
+  'data/corfu/shapes.json',
   'fixtures/live-1011.json',
   'icons/icon-180.png',
   'icons/icon-192.png',

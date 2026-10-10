@@ -11,6 +11,7 @@ import { scheduleReminder, cancelReminder, hasReminder, listReminders, ensurePer
 import { titleCase } from './text.js';
 import { t, tn, etaTxt } from './i18n.js';
 import { activeTrip, startOnboard, stopOnboard } from './onboard.js';
+import { cityHash, relHash, shareHash } from './route.js';
 
 const REFRESH_MS = 20000; // live refresh (api.js keeps each stop at ≥ 15 s)
 const MOVE_M = 75;        // re-plan when the user has moved this far
@@ -279,7 +280,7 @@ export function mountPlanner(container, ctx, params = {}) {
       const q = [];
       if (S.to) { q.push(`to=${r5(S.to.lat)},${r5(S.to.lng)}`, `name=${encodeURIComponent(S.to.name)}`); }
       if (S.from && S.from.source !== 'gps') q.push(`from=${r5(S.from.lat)},${r5(S.from.lng)}`);
-      history.replaceState(history.state, '', `#/plan${q.length ? `?${q.join('&')}` : ''}`);
+      history.replaceState(history.state, '', cityHash(`#/plan${q.length ? `?${q.join('&')}` : ''}`));
     } catch { /* ignore */ }
   }
 
@@ -387,7 +388,7 @@ export function mountPlanner(container, ctx, params = {}) {
     const list = nearestStops(ctx.data.stops, S.to, { limit: 4, maxMeters: 3000 });
     if (!list.length) return null;
     return h('div', { class: 'pl-sug-list' }, h('div', { class: 'pl-sug-head' }, t('Κοντινότερες στάσεις στον προορισμό')),
-      list.map(({ stop, meters }) => h('a', { class: 'pl-sug press', href: `#/stop/${encodeURIComponent(stop.code)}` },
+      list.map(({ stop, meters }) => h('a', { class: 'pl-sug press', href: cityHash(`#/stop/${encodeURIComponent(stop.code)}`) },
         h('span', { class: 'pl-sug-ic is-stop' }, icon('bus')),
         h('span', { class: 'pl-sug-t' }, h('span', { class: 'pl-sug-name' }, stop.displayName), h('span', { class: 'pl-sug-sub' }, t('Στάση {code}', { code: stop.code }))),
         h('span', { class: 'pl-sug-d' }, fmtDist(meters)))));
@@ -397,14 +398,14 @@ export function mountPlanner(container, ctx, params = {}) {
     const walkHint = S.from && S.to ? t('Απόσταση σε ευθεία: {dist}.', { dist: fmtDist(haversine(S.from, S.to)) }) : '';
     const edit = (f) => btn(f === 'from' ? t('Άλλη αφετηρία') : t('Άλλος προορισμός'), () => inputFor(f).focus(), '', 'search');
     const m = {
-      'outside-to': () => stateBox('info', t('Ο προορισμός είναι εκτός Πάτρας'), t('Τα αστικά λεωφορεία Πάτρας δεν εξυπηρετούν αυτή την περιοχή.'), edit('to')),
-      'outside-from': () => stateBox('info', t('Η αφετηρία είναι εκτός Πάτρας'), t('Διάλεξε ένα σημείο μέσα στην περιοχή των αστικών λεωφορείων.'), edit('from')),
+      'outside-to': () => stateBox('info', t('Ο προορισμός είναι εκτός περιοχής'), t('Τα αστικά λεωφορεία δεν εξυπηρετούν αυτή την περιοχή.'), edit('to')),
+      'outside-from': () => stateBox('info', t('Η αφετηρία είναι εκτός περιοχής'), t('Διάλεξε ένα σημείο μέσα στην περιοχή των αστικών λεωφορείων.'), edit('from')),
       'no-data': () => stateBox('alert', t('Τα δεδομένα διαδρομών δεν είναι διαθέσιμα'), t('Δοκίμασε ξανά σε λίγο ή δες τη στάση που σε ενδιαφέρει.'), btn(t('Δοκίμασε ξανά'), () => runPlan(), '', 'refresh')),
       'no-board-stops': () => stateBox('info', t('Δεν υπάρχει στάση κοντά στην αφετηρία'), `${t('Η πλησιέστερη στάση είναι πάνω από 1,5 χλμ μακριά.')} ${walkHint}`, edit('from')),
       'no-alight-stops': () => stateBox('info', t('Δεν υπάρχει στάση κοντά στον προορισμό'), `${walkHint} ${t('Δες τις πιο κοντινές στάσεις παρακάτω.')}`, edit('to')),
     };
     const box = (m[reason] || (() => stateBox('info', t('Δεν βρέθηκε διαδρομή με λεωφορείο'), `${t('Δεν υπάρχει γραμμή, ούτε με μία αλλαγή, που να σε πάει εκεί.')} ${walkHint}`.trim(), edit('to'))))();
-    const links = h('p', { class: 'pl-hint' }, t('Δες τις '), h('a', { href: '#/lines' }, t('γραμμές')), t(' ή δοκίμασε άλλον προορισμό.'));
+    const links = h('p', { class: 'pl-hint' }, t('Δες τις '), h('a', { href: cityHash('#/lines') }, t('γραμμές')), t(' ή δοκίμασε άλλον προορισμό.'));
     body.replaceChildren(box, reason === 'outside-from' || reason === 'outside-to' ? null : nearestToDest(), links);
   }
 
@@ -662,7 +663,7 @@ export function mountPlanner(container, ctx, params = {}) {
     if (at <= Date.now() + 5000) { toast(t('Πρέπει να ξεκινήσεις ήδη τώρα — δεν χρειάζεται υπενθύμιση')); return; }
     bell.disabled = true;
     const granted = await ensurePermission().catch(() => false);
-    scheduleReminder({ at, title: t('Ώρα να φύγεις'), body: reminderBody(it), tag, url: location.hash.startsWith('#/plan') ? location.hash : undefined, trip: reminderTrip(it) });
+    scheduleReminder({ at, title: t('Ώρα να φύγεις'), body: reminderBody(it), tag, url: relHash(location.hash).startsWith('#/plan') ? shareHash(location.hash) : undefined, trip: reminderTrip(it) });
     toast(t('Θα σε ειδοποιήσω στις {clock}, όσο η εφαρμογή είναι ανοιχτή', { clock: fmtClock(at) }) + (granted ? '' : ` ${t('(χωρίς ειδοποίηση συστήματος)')}`));
     if (!dead) render();
   }

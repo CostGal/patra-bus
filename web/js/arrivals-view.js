@@ -8,6 +8,7 @@ import { ageText } from './arrivals.js';
 import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
 import { shareLink } from './share.js';
 import { t, etaTxt, etaSay } from './i18n.js';
+import { cityHash, shareHash } from './route.js';
 
 export { etaTxt as etaText };
 
@@ -23,8 +24,8 @@ const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { 
 // quiet "συνήθως +3′" under a scheduled tile (reliability stats from api.fetchStats; ignored for live ones).
 // With opts.stop (the stop code the tile belongs to) the tile is a link: a live bus opens its route (#/bus/…), a scheduled
 // departure (no vehicle position) opens its line (#/line/…; lineLinks: false turns that off, e.g. inside the line view).
-export const busHash = (v, stop) => `#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`;
-const lineHash = (v) => `#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`;
+export const busHash = (v, stop) => cityHash(`#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`);
+const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`);
 
 export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null } = {}) {
   const live = !!v.live;
@@ -135,7 +136,7 @@ export function mountStop(container, ctx, { code }) {
   const unsubStore = onChange(paintStar);
 
   async function share() {
-    const url = `${location.origin}${location.pathname}#/stop/${encodeURIComponent(code)}`;
+    const url = `${location.origin}${location.pathname}${shareHash(`#/stop/${encodeURIComponent(code)}`)}`;
     const r = await shareLink({ title: t('Στάση {name}', { name: stop.displayName }), text: t('Αφίξεις λεωφορείων στη στάση {name} ({code})', { name: stop.displayName, code }), url });
     if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));

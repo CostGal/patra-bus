@@ -2,7 +2,7 @@
 // classic script: no import/export, nothing leaks into the global scope. `notificationclick` lives in sw.js and reads
 // `notification.data.url` (absolute, or relative to the SW scope), which is what is set here.
 (() => {
-  const FALLBACK_TITLE = 'Patra Bus';
+  const FALLBACK_TITLE = 'Telematica';
   const clip = (v, n) => String(v ?? '').slice(0, n);
 
   // Payload from the server: JSON { title, body, tag, url }; a plain-text payload becomes the body.

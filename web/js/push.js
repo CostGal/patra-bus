@@ -5,6 +5,7 @@
 import { h } from './ui.js';
 import { t, N_ } from './i18n.js';
 import { API_BASE } from './api.js';
+import { cityId, isCity } from './cities.js';
 
 export const FLAG_KEY = 'patra-bus:push'; // '1' once the user enabled push on this device
 export const CANCEL_KEY = 'patra-bus:push-cancel'; // server ids whose DELETE failed (retried later)
@@ -33,7 +34,8 @@ const sameBytes = (a, b) => {
 
 // Body of POST /api/push/reminders (pure; exported for tests).
 export function buildReminderBody(subscription, p) {
-  const body = { subscription, at: Math.round(Number(p.at)), title: clip(p.title, CAP.title), body: clip(p.body, CAP.body), tag: clip(p.tag, CAP.tag), url: clip(p.url, CAP.url) };
+  // `city` tells the server which city's live feed to re-read (stop codes collide across cities).
+  const body = { subscription, at: Math.round(Number(p.at)), title: clip(p.title, CAP.title), body: clip(p.body, CAP.body), tag: clip(p.tag, CAP.tag), url: clip(p.url, CAP.url), city: isCity(p.city) ? p.city : cityId() };
   const t = p.trip;
   if (t && typeof t === 'object') {
     body.trip = {

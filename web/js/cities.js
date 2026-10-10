@@ -37,6 +37,9 @@ export function setActiveCity(id) {
   return true;
 }
 
+// Localized display name ('el' | 'en'); anything else falls back to Greek.
+export const cityName = (c = city(), lang = 'el') => c.name[lang] ?? c.name.el;
+
 // Static data (stops/lines/routes/shapes) of a city, relative to web/. Patras stays at the old path.
 export const dataDir = (c = city()) => (c.id === DEFAULT_CITY ? './data/' : `./data/${c.id}/`);
 
