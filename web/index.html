@@ -13,7 +13,7 @@
   <title>Λεωφορεία Πάτρας</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="css/tokens.css">
@@ -25,7 +25,7 @@
   <script>
     // Apply a forced theme before first paint (best effort; app.js owns the real logic).
     try {
-      var t = (JSON.parse(localStorage.getItem('settings')) || {}).theme;
+      var t = ((JSON.parse(localStorage.getItem('patra-bus:v2')) || {}).settings || {}).theme;
       if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     } catch (e) { /* ignore */ }
   </script>

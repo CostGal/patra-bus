@@ -1,6 +1,6 @@
 // Service worker: offline app shell. Bump CACHE on any shell change.
 // Never touches /api/ or any other origin (live API, map tiles, routing, geocoding, unpkg stay on the network).
-const CACHE = 'patra-bus-v4';
+const CACHE = 'patra-bus-v5';
 const NET_TIMEOUT_MS = 4000; // slow connection at a bus stop: fall back to the cached copy instead of hanging
 
 // Must all exist: if one is missing the install fails and the previous version keeps running.

@@ -112,7 +112,6 @@ test('tokenMatch tolerates Greek inflection but not unrelated words', () => {
   assert.ok(B.tokenMatch('πανεπιστημιο', 'πανεπιστημιακο'));
   assert.ok(!B.tokenMatch('ερμου', 'ερμησ'));
   assert.ok(!B.tokenMatch('κεντρο', 'κεντ'));
-  assert.ok(!B.tokenMatch('αγ', 'αγ.'.replace('.', 'ι')));
   assert.ok(B.tokenMatch('ab', 'ab'));
   assert.ok(!B.tokenMatch('ab', 'abc'));
 });

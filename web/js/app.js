@@ -9,6 +9,7 @@ import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
 import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
+import './notify.js'; // re-arms persisted reminders after a reload
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -160,6 +161,8 @@ onChange(applyTheme);
 
 // ---------------------------------------------------------------- sheet <-> map/floating UI
 const fabsBottom = $('fabs-bottom');
+const fabsTop = $('fabs-top');
+const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
 let attribEl = null;
 const chipsEl = $('chips');
@@ -176,6 +179,11 @@ function onMove({ lift, opacity }) {
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
   fabsBottom.style.opacity = String(opacity);
   fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
+  if (!desktopMQ.matches) {
+    fabsTop.style.opacity = String(opacity);
+    fabsTop.style.pointerEvents = opacity < 0.05 ? 'none' : '';
+    fabsTop.style.visibility = opacity < 0.05 ? 'hidden' : '';
+  } else { fabsTop.style.opacity = ''; fabsTop.style.pointerEvents = ''; fabsTop.style.visibility = ''; }
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
   attribEl ||= appEl.querySelector('.maplibregl-ctrl-bottom-right');
   if (attribEl) attribEl.style.transform = lift ? `translateY(${-lift}px)` : '';
@@ -368,7 +376,7 @@ function schedulePlaces(q) {
     const ctl = (placeCtl = new AbortController());
     try {
       const near = locationService.current ? { lat: locationService.current.lat, lng: locationService.current.lng } : map.getCenter();
-      const results = await searchPlaces(q, { near, signal: ctl.signal });
+      const results = await searchPlaces(q, { near, signal: ctl.signal, data });
       if (ctl.signal.aborted) return;
       places = { q, loading: false, results: (results || []).slice(0, 6), failed: false };
     } catch (err) {
@@ -572,7 +580,7 @@ async function route() {
       break;
     case 'line':
       document.title = `Γραμμή ${arg} · ${TITLE}`;
-      await mount(() => import('./lines-view.js'), (m) => m.mountLine(content, ctx, { code: String(arg), dir: params.dir ? Number(params.dir) : undefined }));
+      await mount(() => import('./lines-view.js'), (m) => m.mountLine(content, ctx, { code: String(arg), dir: params.dir ? Number(params.dir) : undefined, route: params.route || undefined }));
       break;
     case 'settings':
       document.title = `Ρυθμίσεις · ${TITLE}`;
@@ -672,11 +680,10 @@ async function boot() {
     toast,
   };
 
+  if (new URLSearchParams(location.search).has('debug')) window.__app = { map, sheet, ctx, data };
   locationService.subscribe(onLocation);
   onLocation(locationService.current, locationService.status);
-  navigator.permissions?.query({ name: 'geolocation' })
-    .then((r) => { if (r.state === 'granted') locationService.start(); })
-    .catch(() => {});
+  locationService.autoStart?.(); // only if permission is already granted: no prompt on load
 
   window.addEventListener('hashchange', () => route());
   await route();

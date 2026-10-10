@@ -213,11 +213,11 @@ export function mountStop(container, ctx, { code }) {
           tiles.push({ v, el: t });
           return h('li', {}, t);
         });
-        body.replaceChildren(
-          h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items),
-          cut.length < shown.length
-            ? h('button', { type: 'button', class: 'stopv-btn stopv-more', onclick: () => { showAll = true; render(); } }, `Εμφάνιση όλων (${shown.length})`)
-            : null);
+        // replaceChildren would stringify a null child as "null", so only pass real nodes.
+        body.replaceChildren(h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items));
+        if (cut.length < shown.length) {
+          body.append(h('button', { type: 'button', class: 'stopv-btn stopv-more', onclick: () => { showAll = true; render(); } }, `Εμφάνιση όλων (${shown.length})`));
+        }
       }
     }
     paintDynamic(now);

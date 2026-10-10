@@ -6,7 +6,7 @@ import { icon } from './ui.js';
 
 const STYLES = {
   light: 'https://tiles.openfreemap.org/styles/liberty',
-  dark: 'https://tiles.openfreemap.org/styles/dark',
+  dark: 'https://tiles.openfreemap.org/styles/fiord', // 'dark' is near-black (roads #181818 on #0c0c0c): unreadable
 };
 const PATRAS = { lat: 38.2466, lng: 21.7346 };
 const FONT = ['Noto Sans Regular'];
@@ -308,6 +308,7 @@ export function createMap(container, opts = {}) {
   map.on('dragstart', (e) => {
     if (e.originalEvent && follow !== 'off') { follow = 'off'; onUserMove(); }
   });
+  map.on('movestart', (e) => { if (e.originalEvent) lastFit = null; });
   map.on('rotate', () => onBearing(map.getBearing()));
   map.on('moveend', () => { if (tracking()) snapToUser(false); });
 
@@ -401,10 +402,32 @@ export function createMap(container, opts = {}) {
     return { top, bottom, left, right };
   };
 
+  // Last fitTo(), replayed when the padding changes; any camera call or user gesture forgets it.
+  let lastFit = null;
+  function doFit() {
+    const { pts, o } = lastFit;
+    const maxZoom = o.maxZoom ?? 17;
+    if (pts.length === 1) { const keep = lastFit; api.flyTo(pts[0], maxZoom); lastFit = keep; return; }
+    const b = new maplibregl.LngLatBounds(ll(pts[0]), ll(pts[0]));
+    for (const p of pts) b.extend(ll(p));
+    const sp = safePadding();
+    const m = 28; // breathing room around the points
+    // Zoom from cameraForBounds (with a margin), but centre with the real padding ourselves: letting fitBounds apply
+    // the padding itself double-counts it and pushes points under the sheet.
+    try {
+      const cam = map.cameraForBounds(b, {
+        padding: { top: sp.top + m + 24, bottom: sp.bottom + m, left: sp.left + m, right: sp.right + m }, maxZoom, // +24 on top: pins grow upwards from their tip
+      });
+      if (!cam) throw new Error('no fit');
+      map.easeTo({ center: b.getCenter(), zoom: cam.zoom, bearing: map.getBearing(), padding: sp, duration: 700, essential: false });
+    } catch { map.fitBounds(b, { maxZoom, duration: 0 }); }
+  }
+
   // ---------- public API ----------
   const api = {
     available: true,
     ready,
+    _map: map, // debugging only
 
     setStops(stops) {
       stopsFc = {
@@ -509,6 +532,7 @@ export function createMap(container, opts = {}) {
 
     flyTo(p, zoom) {
       if (!okPoint(p)) return;
+      lastFit = null;
       const z = zoom ?? Math.max(map.getZoom(), 16);
       const far = metersBetween(api.getCenter(), p) > 4000;
       const o = { center: ll(p), zoom: z, padding: safePadding(), essential: false };
@@ -518,21 +542,14 @@ export function createMap(container, opts = {}) {
     fitTo(points, o = {}) {
       const pts = (points || []).filter(okPoint);
       if (!pts.length) return;
-      const maxZoom = o.maxZoom ?? 17;
-      if (pts.length === 1) { api.flyTo(pts[0], maxZoom); return; }
-      const b = new maplibregl.LngLatBounds(ll(pts[0]), ll(pts[0]));
-      for (const p of pts) b.extend(ll(p));
-      const sp = safePadding();
-      const m = 28; // breathing room around the points
-      try {
-        map.fitBounds(b, {
-          padding: { top: sp.top + m, bottom: sp.bottom + m, left: sp.left + m, right: sp.right + m },
-          maxZoom, duration: reduced() ? 0 : 700, essential: false,
-        });
-      } catch { map.fitBounds(b, { maxZoom, duration: 0 }); }
+      lastFit = { pts, o };
+      doFit();
     },
     setPadding(p) {
+      const prev = pad;
       pad = { top: 0, bottom: 0, left: 0, right: 0, ...p };
+      // the sheet moved after a fit (e.g. peek -> half): fit again so every point stays in the visible area
+      if (lastFit && ['top', 'bottom', 'left', 'right'].some((k) => Math.abs(pad[k] - prev[k]) > 4)) { doFit(); return; }
       if (tracking() && userItem.cur && !map.isMoving()) map.easeTo({ center: ll(userItem.cur), padding: pad, duration: 300, essential: false });
     },
 
@@ -541,7 +558,7 @@ export function createMap(container, opts = {}) {
       if (next === theme) return;
       theme = next;
       styleReady = false;
-      map.setStyle(STYLES[theme]);
+      map.setStyle(STYLES[theme], { diff: false }); // diffing liberty->dark leaves stale layers behind
     },
     getCenter() {
       // centre of the part of the map that is not under the sheet / top bar
@@ -556,6 +573,7 @@ export function createMap(container, opts = {}) {
     setFollow(mode) {
       const prev = follow;
       follow = mode;
+      lastFit = null;
       if (mode === 'off') {
         if (prev === 'compass' && Math.abs(map.getBearing()) > 1) map.easeTo({ bearing: 0, duration: 400, essential: false });
         return;

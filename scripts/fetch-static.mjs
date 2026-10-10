@@ -36,3 +36,14 @@ const slimStops = stops.map(({ distance, ...s }) => s);
 await writeFile(new URL('stops.json', OUT), JSON.stringify(slimStops) + '\n');
 await writeFile(new URL('lines.json', OUT), JSON.stringify(lines) + '\n');
 console.log(`stops: ${slimStops.length}, lines: ${lines.length}`);
+
+// Rebuild routes.json / shapes.json from the fresh stops. build-routes only talks to OSRM (cached), never to
+// citybus. Skip with --no-routes; a failure here must not lose the stops/lines just written.
+if (!process.argv.includes('--no-routes')) {
+  try {
+    const { main } = await import('./build-routes.mjs');
+    await main(['--quiet']);
+  } catch (e) {
+    console.warn('build-routes failed (stops/lines were saved):', e.message);
+  }
+}

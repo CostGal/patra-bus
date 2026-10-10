@@ -430,3 +430,16 @@ test('stopPlaces groups both sides of a road and prefers the side nearest to the
   assert.equal(places[0].kind, 'stop');
   assert.match(places[0].subtitle, /^Στάση 2 · 201 · 606$/);
 });
+
+test('planTripsDetailed: onUpdate paints with estimates first, then with OSRM walking; final result has pending 0', async () => {
+  const deps = mkDeps({ walk: ownerWalk, live: { s1: res([veh('A1', 1800)]) } });
+  const slow = deps.walkRoute;
+  deps.walkRoute = async (a, b) => { await new Promise((r) => setTimeout(r, 5)); return slow(a, b); };
+  const updates = [];
+  const out = await planTripsDetailed(ctxOf(mkData()), FROM, TO, { now: NOW, deps, onUpdate: (r) => updates.push(r) });
+  assert.ok(updates.length >= 1);
+  assert.ok(updates[0].pending > 0);
+  assert.notEqual(busOf(updates[0]).walkTo.seconds, 600, 'first paint uses the straight-line estimate');
+  assert.equal(out.pending, 0);
+  assert.equal(busOf(out).leaveInSec, 1080);
+});

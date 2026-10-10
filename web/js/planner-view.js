@@ -32,7 +32,11 @@ const dur = (sec) => {
   return m < 60 ? `${m}′` : `${Math.floor(m / 60)} ώ ${String(m % 60).padStart(2, '0')}′`;
 };
 // "ΝΕΟΣ ΔΡΟΜΟΣ-ΤΑΡΑΜΠΟΥΡΑ" → "Ταραμπουρα": route names are "from-to", the bus goes towards the last part.
-const towards = (name) => titleCase(String(name || '').split(/\s*[-–]\s*/).filter(Boolean).at(-1) || name || '');
+// Last terminal of "A - B (via-C)": the bracketed part may contain dashes too, so it is dropped first.
+const towards = (name) => {
+  const base = String(name || '').replace(/\s*\([^)]*\)?\s*$/, '').trim() || String(name || '');
+  return titleCase(base.split(/\s*[-–]\s*/).filter(Boolean).at(-1) || base);
+};
 const svgPin = () => icon('pin');
 
 function lineString(coords) {
@@ -56,7 +60,7 @@ export function mountPlanner(container, ctx, params = {}) {
   const updaters = [];      // per-second DOM updates of the current render
   let planSeq = 0, planCtl = null, lastPlanAt = 0, lastPlanFrom = null, replanTimer = 0;
   let searchCtl = null, searchTimer = 0, keepOpenUntil = 0;
-  let drawSeq = 0, lastFitKey = '', shapesP = null;
+  let drawSeq = 0, lastFitKey = '', lastDrawSig = '', shapesP = null;
   const snapCache = new Map();
   const timers = [];
   const unsubs = [];
@@ -403,7 +407,7 @@ export function mountPlanner(container, ctx, params = {}) {
   function whenInfo(it, now) {
     const st = leaveState(it, now);
     switch (st.kind) {
-      case 'walk': return { kind: 'walk', lead: 'Περπάτημα', big: dur(it.walkTo.seconds), short: `Περπάτημα ${dur(it.walkTo.seconds)}` };
+      case 'walk': return { kind: 'walk', lead: 'Περπάτημα', big: dur(it.walkTo.seconds), short: dur(it.walkTo.seconds) };
       case 'none': return { kind: 'none', lead: '', big: 'Χωρίς δρομολόγιο τώρα', short: 'Χωρίς δρομολόγιο τώρα' };
       case 'later': { const t = etaText(st.leaveInSec); return { kind: 'later', lead: 'Φύγε σε', big: t, short: `Φύγε σε ${t}` }; }
       case 'now': return { kind: 'now', lead: '', big: 'Φύγε τώρα', short: 'Φύγε τώρα' };
@@ -531,7 +535,7 @@ export function mountPlanner(container, ctx, params = {}) {
       items.push(step('bus', '', icon('bus'), `Γραμμή ${it.line?.code ?? it.route.lineCode} προς ${towards(it.route.name)}`, 'Χωρίς δρομολόγιο τώρα'));
       items.push(step('ride', '', icon('route'), `Μετακίνηση ~${dur(it.rideEstSec)} · ${it.nStops} στάσεις`, `Κατέβα στη στάση «${it.alight.displayName}» · εκτίμηση`));
     }
-    items.push(step('walk', bus ? fmtClock(bus.departAt + it.rideSec * 1000) : '', icon('walk'), `Περπάτα ${dur(it.walkFrom.seconds)} ως «${dest}»`, `${fmtDist(it.walkFrom.meters)}${estTag(it.walkFrom)}`));
+    if (it.walkFrom.meters >= 25) items.push(step('walk', bus ? fmtClock(bus.departAt + it.rideSec * 1000) : '', icon('walk'), `Περπάτα ${dur(it.walkFrom.seconds)} ως «${dest}»`, `${fmtDist(it.walkFrom.meters)}${estTag(it.walkFrom)}`));
     items.push(step('arrive', it.arriveAt != null ? fmtClock(it.arriveAt) : '', icon('pin'), 'Άφιξη', it.arriveAt != null ? `«${dest}»` : null));
     const ol = h('ol', { class: 'pl-tl' }, items);
     if (it.line?.color) ol.style.setProperty('--pl-line', it.line.color);
@@ -556,7 +560,11 @@ export function mountPlanner(container, ctx, params = {}) {
     return h('div', { class: 'pl-actions' }, bell, btn('Στάση επιβίβασης', () => ctx.navigate(`#/stop/${encodeURIComponent(it.board.code)}`), '', 'bus'));
   }
 
-  const reminderAt = (it) => it.leaveAt - (getSettings().reminderMin || 0) * 60000;
+  // reminderMin = minutes BEFORE the moment you must leave; if that is already past, remind at the leave time itself.
+const reminderAt = (it) => {
+    const early = it.leaveAt - (getSettings().reminderMin || 0) * 60000;
+    return early > Date.now() + 5000 ? early : it.leaveAt;
+  };
   async function toggleReminder(it, bell) {
     const tag = tagOf(it);
     if (hasReminder(tag)) {
@@ -567,14 +575,14 @@ export function mountPlanner(container, ctx, params = {}) {
     }
     if (!it.bus) { toast('Δεν υπάρχει δρομολόγιο για υπενθύμιση'); return; }
     const at = reminderAt(it);
-    if (at <= Date.now() + 5000) { toast('Πρέπει να ξεκινήσεις σχεδόν τώρα — δεν χρειάζεται υπενθύμιση'); return; }
+    if (at <= Date.now() + 5000) { toast('Πρέπει να ξεκινήσεις ήδη τώρα — δεν χρειάζεται υπενθύμιση'); return; }
     bell.disabled = true;
     const granted = await ensurePermission().catch(() => false);
     scheduleReminder({ at, title: 'Ώρα να φύγεις', body: reminderBody(it), tag, url: location.hash.startsWith('#/plan') ? location.hash : undefined });
-    toast(`Θα σε ειδοποιήσω στις ${fmtClock(at)}${granted ? '' : ' (μόνο όσο η εφαρμογή είναι ανοιχτή)'}`);
+    toast(`Θα σε ειδοποιήσω στις ${fmtClock(at)}, όσο η εφαρμογή είναι ανοιχτή${granted ? '' : ' (χωρίς ειδοποίηση συστήματος)'}`);
     if (!dead) render();
   }
-  const reminderBody = (it) => `Φύγε σε ${getSettings().reminderMin}′ για τη γραμμή ${it.line?.code ?? it.route.lineCode} (${fmtClock(it.bus.departAt)}) από τη στάση «${it.board.displayName}».`;
+  const reminderBody = (it) => `Φύγε ${getSettings().reminderMin ? `σε ${getSettings().reminderMin}′ ` : 'τώρα '}για τη γραμμή ${it.line?.code ?? it.route.lineCode} (${fmtClock(it.bus.departAt)}) από τη στάση «${it.board.displayName}».`;
 
   // Live ETAs drift: move an existing reminder when the leave time shifts by more than a minute.
   function syncReminders() {
@@ -593,7 +601,7 @@ export function mountPlanner(container, ctx, params = {}) {
   // ---------------------------------------------------------------- map
 
   function clearMap() {
-    drawSeq++;
+    drawSeq++; lastDrawSig = '';
     M('clearOverlay', 'plan-walk-1'); M('clearOverlay', 'plan-walk-2'); M('clearOverlay', 'plan-ride');
     M('clearMarkers', 'plan'); M('clearVehicles', 'plan');
   }
@@ -614,10 +622,14 @@ export function mountPlanner(container, ctx, params = {}) {
   function drawMap({ fit = false } = {}) {
     const it = selected();
     if (!it || !S.from || !S.to) { clearMap(); return; }
-    const seq = ++drawSeq;
     const from = S.from, to = S.to;
     const wc = (w, a, b) => (w?.geometry?.length > 1 ? w.geometry : [[a.lng, a.lat], [b.lng, b.lat]]);
     const pts = [from, to];
+    const sig = [it.id, r5(from.lat), r5(from.lng), r5(to.lat), r5(to.lng), it.walkTo?.source, it.walkTo?.seconds | 0, it.walkFrom?.source, it.walkFrom?.seconds | 0].join('|');
+    const same = sig === lastDrawSig;
+    lastDrawSig = sig;
+    const seq = same ? drawSeq : ++drawSeq;
+    if (same && it.kind === 'bus') { pts.push(it.board, it.alight); drawVehicle(it); return fitIfNeeded(it, from, to, pts, fit); }
     if (it.kind === 'walk') {
       M('setOverlay', 'plan-walk-1', lineString(wc(it.walkTo, from, to)), { kind: 'walk' });
       M('clearOverlay', 'plan-walk-2'); M('clearOverlay', 'plan-ride'); M('clearVehicles', 'plan');
@@ -638,11 +650,19 @@ export function mountPlanner(container, ctx, params = {}) {
         { lat: it.alight.lat, lng: it.alight.lng, kind: 'alight', label: it.alight.displayName },
         { lat: to.lat, lng: to.lng, kind: 'dest', label: to.name },
       ]);
-      const b = it.bus;
-      if (b?.live && Number.isFinite(b.lat) && Number.isFinite(b.lng)) {
-        M('setVehicles', 'plan', [{ lat: b.lat, lng: b.lng, lineCode: it.line?.code ?? it.route.lineCode, color: it.line?.color, textColor: it.line?.textColor, label: it.line?.code ?? it.route.lineCode }]);
-      } else M('clearVehicles', 'plan');
+      drawVehicle(it);
     }
+    fitIfNeeded(it, from, to, pts, fit);
+  }
+
+  function drawVehicle(it) {
+    const b = it.bus;
+    if (b?.live && Number.isFinite(b.lat) && Number.isFinite(b.lng)) {
+      M('setVehicles', 'plan', [{ lat: b.lat, lng: b.lng, lineCode: it.line?.code ?? it.route.lineCode, color: it.line?.color, textColor: it.line?.textColor, label: it.line?.code ?? it.route.lineCode, vehicleCode: b.vehicleCode || undefined }]);
+    } else M('clearVehicles', 'plan');
+  }
+
+  function fitIfNeeded(it, from, to, pts, fit) {
     const key = `${it.id}|${r5(to.lat)},${r5(to.lng)}|${from.source === 'gps' ? 'gps' : `${r5(from.lat)},${r5(from.lng)}`}`;
     if (fit || key !== lastFitKey) {
       lastFitKey = key;

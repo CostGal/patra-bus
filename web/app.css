@@ -299,3 +299,12 @@ html.sheet-dragging .toast-host { transition: none; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .veh-ring, .user-dot::after { display: none; }
 }
+
+/* the sheet already provides the 16 px side padding */
+.sheet-content .stopv { padding-inline: 0; }
+.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--surface) 85%, transparent) !important; }
+.maplibregl-ctrl-attrib a, .maplibregl-ctrl-attrib { color: var(--text-2) !important; }
+.maplibregl-ctrl-attrib-button { filter: none; }
+:root[data-theme="dark"] .maplibregl-ctrl-attrib-button { filter: invert(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .maplibregl-ctrl-attrib-button { filter: invert(1); } }
+.fabs-top { transition: opacity .2s; }

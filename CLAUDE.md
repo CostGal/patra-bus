@@ -6,12 +6,14 @@ PWA με live αφίξεις αστικών λεωφορείων Πάτρας, �
 ## Εντολές
 ```
 npm install
-npm run fetch-static     # ανανεώνει web/data/stops.json + lines.json (committed)
+npm run fetch-static     # ανανεώνει web/data/stops.json + lines.json και μετά τρέχει build-routes (committed)
+npm run build-routes     # routes.json + shapes.json από stops/lines + OSRM (cache στο scripts/.cache/)
+npm test                 # node --test tests/*.test.mjs
 npm run dev:worker       # wrangler dev --local στο :8787 (local KV)
 npx wrangler deploy --config worker/wrangler.toml   # deploy του worker στο Cloudflare
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
 ```
-Άνοιγμα: http://localhost:8080/ · demo με fixture: http://localhost:8080/?demo#/stop/1011
+Άνοιγμα: http://localhost:8080/ · demo (προσομοίωση για όλες τις στάσεις): http://localhost:8080/?demo#/stop/1011 · `?demo=nosvc`, `?demo=error` για τις αντίστοιχες καταστάσεις.
 Τα δύο dev servers υπάρχουν και στο `.claude/launch.json` (`worker`, `web`).
 
 ## GitHub / Pages / Cloudflare
@@ -21,7 +23,15 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`, μόνο για το token. Το deploy είναι **χειροκίνητο**: το push στο `main` ανεβάζει μόνο το Pages.
 - `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080`). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
 
-## Δομή
+## Δομή (v2)
+Συμβόλαια modules και ownership: **`docs/ARCHITECTURE.md`**. Χάρτης MapLibre GL 4.7.1 (unpkg) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js`: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`.
+- Shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/map.js`, `js/sheet.js` (bottom sheet / side panel ≥ 900 px), `js/ui.js`.
+- Live: `js/api.js` (`fetchLive` με **global memo 15 s ανά στάση**, και για errors, `createLivePoller` 20 s μόνο visible), `js/demo.js` (ντετερμινιστική προσομοίωση πάνω στο routes.json), `js/arrivals-view.js` (tiles LIVE/ΠΡΟΓΡ.).
+- Τοποθεσία: `js/location.js` (singleton, φίλτρα άλματος/ακρίβειας, πυξίδα), `js/geo.js`, `js/walk.js` (OSRM foot FOSSGIS, ≤ 1 req/s, fallback εκτίμηση), `js/nearby.js` (κάρτα «Επόμενο λεωφορείο κοντά σου»).
+- Διαδρομή: `js/geocode.js` (στάσεις + Photon), `js/planner.js` (μόνο απευθείας λεωφορείο, «Φύγε σε N′» = αναμονή λεωφορείου − περπάτημα − περιθώριο· ίδιο `vehicleCode` σε επιβίβαση/αποβίβαση → ακριβής χρόνος), `js/planner-view.js`.
+- Extras: `js/store.js` (blob `patra-bus:v2` στο localStorage), `js/notify.js` (υπενθυμίσεις μόνο όσο η εφαρμογή είναι ανοιχτή), `js/share.js`, `js/lines-view.js`, `js/settings-view.js`.
+- `js/data.js`: φορτώνει stops/lines/routes (+ `loadShapes` lazy). `web/data/routes.json`: σειρά στάσεων ανά διαδρομή + `legSec` + `confidence`. **Η σειρά συμπεραίνεται** (OSRM trip + έλεγχος πλευράς δρόμου), δεν είναι επίσημη· 10/80 διαδρομές έχουν confidence < 0.5 (φουρκέτες/κύκλοι, π.χ. 502x, 2015).
+- `tests/`: node:test, χωρίς deps.
 - `scripts/fetch-static.mjs`: scrape token → /stops, /lines (250 ms παύση) → `web/data/`. Τα αρχεία γράφονται απευθείας εκεί, ώστε να τα σερβίρει ο static server χωρίς αντίγραφα.
 - `worker/`: Cloudflare Worker, τοπικά (`wrangler dev`) και deployed. Routes: `/api/live/:code` (cache 15 s), `/api/stops` και `/api/lines` (cache 24 h), `/health`.
 - `web/js/arrivals.js`: **κοινό** module worker + frontend. Η λογική live/προγρ. ζει μόνο εδώ.
@@ -38,7 +48,8 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
   - `latitude/longitude` = `"0"/"0"` → **προγραμματισμένη** αναχώρηση. Το `departureMins` = λεπτά ως την ώρα του προγράμματος. Όλα τα άλλα είναι live.
   - Το `departureSeconds` είναι **υπόλοιπο 0–59**, όχι σύνολο (1′14″ → mins 1, secs 14). Μπορεί να είναι ≠0 **και στα προγραμματισμένα**. Γι' αυτό η ώρα προγράμματος = `fetchedAt + etaSec`, και βγαίνει σταθερή ανάμεσα στα fetches (π.χ. 22:45:33).
   - Μία φορά ήρθε **200 με κενό body** (σε γρήγορη επανάληψη). Το χειριζόμαστε ως upstream error και δεν μπαίνει σε cache.
-- Υπάρχουν και trips/sequence/points (`/api/v1/112/lines/{code}/points` χωρίς `el`), αλλά δεν χρησιμοποιούνται στο v1.
+- Υπάρχουν και trips/sequence/points (`/api/v1/112/lines/{code}/points` χωρίς `el`), αλλά δεν χρησιμοποιούνται. Το ακριβές path για τη σειρά στάσεων **δεν** είναι γνωστό και δεν ψάχνεται (κανόνας no probing).
+- Live **404** = καμία αναχώρηση εκείνη την ώρα (επιβεβαιώθηκε 2026-10-10: 404 τη νύχτα, 200 με δεδομένα το πρωί). Ο worker το γυρίζει ως `200 {vehicles: [], noService: true}` με cache 15 s.
 - Στάση για τεστ: **1011** `ΠΑΝΕΠΙΣΤΗΜΙΟΥ & ΑΡΕΘΑ` (201, 606, 609).
 
 ## Κανόνες
@@ -46,12 +57,13 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Κανένα probing σε endpoints εκτός από τα παραπάνω.
 - Συντεταγμένες `0/0` δεν εμφανίζονται και δεν χρησιμοποιούνται πουθενά. Το `normalizeLive` τις αφαιρεί.
 - Ονόματα: Title Case μόνο στην εμφάνιση, με τελικό ς. Οι τόνοι δεν μαντεύονται.
-- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins. Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`.
+- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins (tiles, OSRM, Photon, unpkg). Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
+- Τρίτες υπηρεσίες (χωρίς κλειδί, με attribution στις Ρυθμίσεις): OpenFreeMap, OSRM/FOSSGIS (≤ 1 req/s), Photon/komoot (debounce). Η θέση του χρήστη δεν μπαίνει ποτέ σε URL της εφαρμογής.
 - Minimum viable complexity: vanilla JS, χωρίς build step και χωρίς framework.
 
 ## Dev σημειώσεις
 - Το `npm i` μπλοκάρει το postinstall του `workerd` (npm allow-scripts). Δεν πειράζει: το binary έρχεται από το `@cloudflare/workerd-windows-64` και το `wrangler dev` τρέχει κανονικά.
-- `API_BASE` στο `web/js/app.js`: σε `localhost`/`127.0.0.1` καλεί `http://localhost:8787`, αλλού τον deployed worker.
-- Από τα μεσάνυχτα της 2026-10-10 το upstream live δίνει **404** για τις 1011 και 410, τοπικά και από Cloudflare. Πιθανώς σημαίνει "καμία αναχώρηση" (νύχτα), **ανεπιβεβαίωτο**. Ο worker το δίνει ως 502 και η εφαρμογή δείχνει "Δεν ήταν δυνατή η σύνδεση".
+- `API_BASE` στο `web/js/api.js`: σε `localhost`/`127.0.0.1` καλεί `http://localhost:8787`, αλλού τον deployed worker.
+- `?debug` εκθέτει `window.__app` (και `map._map`).
 - Ο worker στέλνει `X-Cache: HIT|MISS`. Στο HIT το `fetchedAt` είναι αυτό του αρχικού upstream fetch.
-- Το ενσωματωμένο browser pane του Claude desktop δεν κάνει register service workers ("unknown error when fetching the script"). Ο SW επαληθεύεται σε κανονικό Chrome/Edge.
+- Το browser pane του Claude desktop **μερικές φορές** κάνει register τον SW και σερβίρει παλιά αρχεία: στο τεστ κάνε unregister + `caches.delete` πρώτα. Screenshots αποτυγχάνουν όταν το pane δεν είναι ορατό· χρησιμοποίησε DOM checks.

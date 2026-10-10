@@ -211,14 +211,14 @@ const fixLookalike = (t) => (/\p{Script=Greek}/u.test(t) && /[a-z]/.test(t) ? t.
 export function nameTokens(s) {
   return searchKey(s).replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((t) => t.length > 1).map(fixLookalike);
 }
-// Same word modulo Greek inflection: common prefix >= 4 chars and >= 75 % of the shorter token.
+// Same word modulo Greek inflection: common prefix >= 4 chars and >= 70 % of the longer token.
 export function tokenMatch(a, b) {
   if (a === b) return true;
   const m = Math.min(a.length, b.length);
   if (m < 4) return false;
   let k = 0;
   while (k < m && a[k] === b[k]) k++;
-  return k >= 4 && k >= Math.ceil(0.75 * m);
+  return k >= 4 && k >= Math.ceil(0.7 * Math.max(a.length, b.length));
 }
 const NOISE = new Set(['σχολικο', 'express', 'επιστροφη', 'μεταβαση', 'ανω', 'κατω', 'νεο']);
 
@@ -410,7 +410,8 @@ export async function processRoute(rt, pts, ctx) {
   const { items, flags } = parseRouteName(rt.name);
   let f = heur[0], l = heur[n - 1];
   const ev0 = orientationEvidence(items, index, pts[f], pts[l]);
-  if (ev0.e < 0) [f, l] = [l, f];
+  let nameE = ev0.e; // name evidence for f -> l as currently chosen
+  if (ev0.e < 0) { [f, l] = [l, f]; nameE = -ev0.e; }
   diag.nameEvidence = { e: +ev0.e.toFixed(2), w: +ev0.w.toFixed(2) };
 
   let order = null, method = 'osrm-trip', side = { right: 0, left: 0, score: 0 }, flipped = false, res = null;
@@ -425,23 +426,29 @@ export async function processRoute(rt, pts, ctx) {
       const t = await osrm.trip(idx.map((i) => pts[i]));
       return { ...t, order: t.order.map((k) => idx[k]) };
     };
-    res = await runTrip(f, l);
-    const sideOf = (t) => sideTest(t.geometry, t.legs.map((x) => x.distance), t.waypoints.map((w) => w.location), t.order.map((i) => pts[i]));
-    side = sideOf(res);
     // 4. combine evidence: side-of-road (strong), name, stop-code monotonicity (weak)
-    const codes = res.order.map((i) => +pts[i].code), tau = kendallTau(codes, codes.map((_, k) => k));
-    const r = Math.min(1, (side.right + side.left) / 10);
-    const total = 1.6 * side.score * r + 1.0 * ev0.e * ev0.w + 0.3 * tau;
-    diag.side = { right: side.right, left: side.left, tau: +tau.toFixed(2), total: +total.toFixed(2) };
-    if (total < 0 && n > 2) {
-      const flip = await runTrip(l, f);
-      const s2 = sideOf(flip);
-      if (s2.score >= side.score) { res = flip; side = s2; [f, l] = [l, f]; flipped = true; method = 'osrm-trip-flipped'; }
-    } else if (total < 0 && n === 2) { [f, l] = [l, f]; flipped = true; method = 'osrm-trip-flipped'; res = await runTrip(f, l); }
-    diag.orientTotal = flipped ? +(-total).toFixed(2) : +total.toFixed(2);
+    const judge = (t, nameEv) => {
+      const sd = sideTest(t.geometry, t.legs.map((x) => x.distance), t.waypoints.map((w) => w.location), t.order.map((i) => pts[i]));
+      const codes = t.order.map((i) => +pts[i].code), tau = kendallTau(codes, codes.map((_, k) => k));
+      const rel = Math.min(1, (sd.right + sd.left) / 10);
+      return { sd, tau, rel, total: 1.6 * sd.score * rel + nameEv * ev0.w + 0.3 * tau };
+    };
+    res = await runTrip(f, l);
+    let j = judge(res, nameE);
+    const first = j;
+    // wrong-looking or inconclusive: also try the reverse direction and keep the better-supported one
+    if (n > 2 && (j.total < 0 || (Math.abs(j.total) < 0.35 && j.sd.right + j.sd.left >= 4))) {
+      const alt = await runTrip(l, f);
+      const j2 = judge(alt, -nameE);
+      if (j2.total > j.total) { res = alt; j = j2; [f, l] = [l, f]; nameE = -nameE; flipped = true; method = 'osrm-trip-flipped'; }
+    } else if (n === 2 && j.total < 0) { [f, l] = [l, f]; nameE = -nameE; flipped = true; method = 'osrm-trip-flipped'; res = await runTrip(f, l); j = judge(res, nameE); }
+    side = j.sd;
+    diag.side = { right: side.right, left: side.left, tau: +j.tau.toFixed(2), total: +j.total.toFixed(2) };
+    if (flipped) diag.sideFirst = { right: first.sd.right, left: first.sd.left };
+    diag.orientTotal = +j.total.toFixed(2);
     order = res.order;
-    if (ev0.w > 0.2 && Math.sign(ev0.e) !== Math.sign(side.score) && Math.abs(side.score) > 0.4 && r > 0.5 && !flipped) diag.flags.push('name-vs-side');
-    if (flipped && Math.sign(ev0.e) === Math.sign(side.score) && ev0.w > 0.2) diag.flags.push('flip-vs-name');
+    const r = j.rel;
+    if (ev0.w > 0.2 && Math.sign(nameE) !== Math.sign(side.score) && Math.abs(side.score) > 0.4 && r > 0.5) diag.flags.push('name-vs-side');
 
     // 5. legs + geometry over the final order
     let legCar, geometry, dist;
