@@ -113,8 +113,6 @@ const PAIRS = [
   ['Η διαγραφή αφορά αγαπημένα, πρόσφατα, ρυθμίσεις και υπενθυμίσεις αυτής της συσκευής.', 'Deletes favourites, recents, settings and reminders on this device.'],
   ['Χάρτης χωρίς σύνδεση', 'Offline map'],
   ['Εγκατάσταση', 'Install'],
-  ['Εγκατάσταση στη συσκευή', 'Install on this device'],
-  ['Πρόσθεσέ την στην αρχική οθόνη από το μενού του περιηγητή.', 'Add it to your home screen from the browser menu.'],
 
   // ---- settings: about ----
   ['Σχετικά', 'About'],
