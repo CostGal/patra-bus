@@ -394,3 +394,17 @@ html.sheet-dragging .toast-host { transition: none; }
 .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 44px; min-width: 44px; }
 :root[data-theme="dark"] .maplibregl-ctrl-attrib-button { filter: invert(1); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .maplibregl-ctrl-attrib-button { filter: invert(1); } }
+
+/* first-run guide card / install hint under the home card (js/app.js mountHome). Surface: .material (§4); press: .press (§1);
+   entrance: .card-in (css/nearby.css, opacity-only under reduced motion); leave: the same path back, fade + lift. */
+.guide-hint { display: flex; align-items: center; margin-top: 8px; padding: 0 4px 0 12px; border-radius: var(--radius); }
+.guide-hint-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--text); font-weight: 600; font-size: .9375rem; line-height: 1.25; text-decoration: none; }
+.guide-hint-go .icon { color: var(--accent); }
+.guide-hint-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-2); cursor: pointer; }
+.guide-hint-x .icon { --icon: 18px; }
+.guide-hint.is-leaving { animation: guide-hint-out .18s var(--spring-ease) both; pointer-events: none; }
+@keyframes guide-hint-out { to { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .guide-hint.is-leaving { animation: guide-hint-out-reduced .12s linear both; }
+}
+@keyframes guide-hint-out-reduced { to { opacity: 0; } }

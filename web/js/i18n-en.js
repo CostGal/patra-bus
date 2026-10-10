@@ -554,6 +554,13 @@ const PAIRS = [
   [', μετά αλλαγή στη γραμμή {line}.', ', then change to line {line}.'],
   ['{n}′ πριν', '{n}′ before'],
   ['Λεωφορείο {line}', 'Bus {line}'],
+
+  // ---- guide entry points (app.js menu / first-run card, settings-view.js rows); the guide itself is in i18n-en-guide.js ----
+  ['Οδηγός', 'Guide'],
+  ['Οδηγός χρήσης', 'How to use'],
+  ['Εγκατάσταση ως εφαρμογή', 'Install as an app'],
+  ['Πρώτη φορά εδώ; Δες τον οδηγό', 'First time here? See the guide'],
+  ['Βάλε την εφαρμογή στην αρχική οθόνη', 'Add the app to your home screen'],
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.

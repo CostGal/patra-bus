@@ -127,6 +127,15 @@ function build(container, ctx, keep) {
     row(idCity, t('Πόλη'), t('Αλλάζουν οι στάσεις, οι γραμμές και τα δεδομένα. Κάθε πόλη έχει τα δικά της αγαπημένα, μέρη και υπενθυμίσεις.'), citySeg),
     row(idLang, t('Γλώσσα'), null, langSeg));
 
+  // ---------- guide (+ install tutorial when it applies: phone, browser tab) ----------
+  const openLink = (to, labelId) => h('a', { class: 'ex-btn ex-btn-sm press', href: cityHash(to), 'aria-labelledby': labelId }, t('Άνοιγμα'), icon('chevron'));
+  const [idGuide, idInstall] = [id('guide'), id('install-guide')];
+  const guide = h('section', { class: 'set-lang' }, row(idGuide, t('Οδηγός χρήσης'), null, openLink('#/guide', idGuide)));
+  import('./install-guide.js').then((m) => {
+    if (dead || !m.installHint()) return;
+    guide.append(row(idInstall, t('Εγκατάσταση ως εφαρμογή'), null, openLink('#/guide?section=install', idInstall)));
+  }).catch(() => { /* no install helper: no row */ });
+
   // ---------- display & walking ----------
   const mins = (n) => (n === 0 ? t('Καθόλου') : tn(n, '{n} λεπτό', '{n} λεπτά'));
   const display = sec('display', t('Εμφάνιση και περπάτημα'),
@@ -277,7 +286,7 @@ function build(container, ctx, keep) {
     h('header', { class: 'ex-head' },
       h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
       h('h1', {}, t('Ρυθμίσεις'))),
-    language, display, homeSec, notifications, favorites, data, offline, install, about));
+    language, guide, display, homeSec, notifications, favorites, data, offline, install, about));
 
   paintPerm(); paintReminders(); paintFavs();
   offs.push(onChange(() => { if (dead) return; for (const s of syncs) s(); paintFavs(); }));
