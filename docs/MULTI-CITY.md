@@ -1,6 +1,7 @@
 # Multi-city support (issue #1): research + design
 
-Status: **draft for review**. Research done by hand on 2026-10-10; no new upstream endpoints have been called.
+Status: **decided 2026-10-10**, implementation in progress. Owner decisions: (1) Corfu API calls allowed, (2) one
+worker with `/api/{city}/…`, (3) app name **Telematica**.
 
 ## Research: Corfu (Κέρκυρα)
 
@@ -25,11 +26,13 @@ Status: **draft for review**. Research done by hand on 2026-10-10; no new upstre
   Both pages carry `const token = '…'` and point at `rest.citybus.gr`. So the same token scrape and the same
   REST paths should work, with `/api/v1/el/101/…` in place of `/api/v1/el/112/…`.
 
-**Not yet verified, because it needs calls we haven't been allowed to make:**
-- whether `/api/v1/el/101/stops`, `/lines` and `/stops/live/{code}` answer with the same shapes as agency 112;
-- whether one token works across agencies. The JWT payload is only `{exp}`, so it might, but the design below does
-  not depend on it: one token per city;
-- whether the stop codes of the two cities overlap. The design assumes **they can**.
+**Verified 2026-10-10** (with the token scraped from the Corfu page):
+- `/api/v1/el/101/stops` (479 stops) and `/lines` (13 lines, line `16` has no routes) have exactly the Patras shapes.
+- Stop codes **do overlap**: 321 of the 479 Corfu codes also exist in Patras. Every cache/DO/KV key carries the city.
+- `/stops/live/801` (Πλ. Σαρόκου) at 23:34 → 404, i.e. no service at night, as in Patras. Live shape still to be
+  confirmed during service hours.
+- Line codes are not always numeric (`04`, `2A`, `2B`); route codes and stop codes are numeric.
+- Whether one token works across agencies is untested; the design uses one token per city.
 
 The bbox on the Corfu page covers most of the island (~43 × 50 km), much more than the town network. For the
 offline map and for `inArea()`, derive a tighter bbox from the stops' extent (+ margin) once the stops are known.
@@ -83,7 +86,32 @@ touches the SW `SHELL` list, `data.js` and the tests. It happens in the same cha
   confidence review.
 - App name / manifest / repo name. See open question 3.
 
-## Open questions (owner decisions)
+## Contract (binding for the implementation)
+
+**Worker**
+- `GET /api/{city}/live/:code`, `/api/{city}/stops`, `/api/{city}/lines`, `/api/{city}/stats/:route/:stop`.
+  `{city}` must be a key of `CITIES` in `web/js/cities.js`, else 404 `{error:'not_found'}`.
+- Aliases for Patras, kept indefinitely: `/api/live/:code`, `/api/stops`, `/api/lines`, `/api/stats/:route/:stop`.
+- `/health` → `{ ok, now, tokenExp /* patra, back-compat */, cities: { [id]: { tokenExp } } }`.
+- Keys: edge cache `live/{city}/{code}`, `stats/{city}/{route}/{stop}`, `{city}/stops|lines`; KV token `token/{city}`;
+  Stats DO name: **Patras keeps `{route}/{stop}`** (keeps its history), other cities `{city}/{route}/{stop}`.
+- Push routes stay un-prefixed (`/api/push/…`). `POST /api/push/reminders` and `/api/push/routines` take an optional
+  `city` (default `patra`; unknown → 400 `field:'city'`). Reminder/Routine DOs store it and read live through
+  `liveBody(env, ctx, city, code)`, the same 15 s cache as the HTTP route.
+
+**Data**: Patras stays at `web/data/*.json`; other cities at `web/data/{city}/*.json` (`dataDir()` in `cities.js`).
+`fetch-static --city=corfu` and `build-routes --city=corfu` write there.
+
+**Frontend**
+- `api.js` always calls the prefixed routes (`/api/{cityId()}/…`, also for Patras); the memo is keyed by city + code.
+- Active city at boot: hash prefix → `settings.city` → `DEFAULT_CITY`. Hash: `#/corfu/stop/123`; **no prefix = Patras**.
+  New share links always carry the prefix. Switching city = save setting, go to that city's `#/`, reload.
+- User items that reference stops (favorites, places, routines, reminders, recents…) carry `city`; a one-time
+  migration tags existing items `patra`; lists show only the active city's items.
+- Settings has a city picker. The app is called **Telematica** (manifest, `<title>`, about text, notification
+  titles); the active city is shown in the UI. Repo, worker name, localStorage key and SW cache names stay as they are.
+
+## Open questions (resolved, see Status)
 1. **Allow the Corfu API calls?** That means `/stops`, `/lines` and `/stops/live/{code}` under agency `101`, the
    same shapes as the Patras ones, with the agency taken from the official page above. This extends the endpoint
    list in CLAUDE.md, so it needs an explicit yes.
@@ -92,7 +120,7 @@ touches the SW `SHELL` list, `data.js` and the tests. It happens in the same cha
    that shows the active city.
 
 ## Plan (each step ships on its own, tests green)
-1. `cities.js` + constants → city config, Patras only, **no behavior change**. *(started on branch `multi-city`)*
+1. `cities.js` + constants → city config, Patras only, **no behavior change**. *(done)*
 2. Worker: city-aware routes + keys with Patras aliases. Needs decision 2.
 3. Data: `fetch-static --city`, `build-routes --city`, move to `web/data/{city}/`. Corfu data needs decision 1.
 4. Frontend: active city, hash prefix, per-city user data + migration, picker.

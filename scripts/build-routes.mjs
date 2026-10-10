@@ -11,7 +11,8 @@
 // No citybus call happens here. OSRM = public FOSSGIS server (fallback: router.project-osrm.org), >= 1.1 s between
 // requests, responses cached in scripts/.cache/osrm/ (needs a `scripts/.cache/` line in .gitignore).
 //
-// Usage: node scripts/build-routes.mjs [--offline] [--dry] [--only=1014,2015] [--write] [--quiet]
+// Usage: node scripts/build-routes.mjs [--city=corfu] [--offline] [--dry] [--only=1014,2015] [--write] [--quiet]
+//   --city     which city's data dir to read and write (default: Patras, web/data/)
 //   --offline  never touch the network (cache only, else heuristic fallback)
 //   --dry      compute and print, write nothing (diagnostics still go to scripts/.cache/)
 //   --only     process just these routes; implies --dry unless --write is given
@@ -19,9 +20,10 @@ import { readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { searchKey } from '../web/js/text.js';
-import { city } from '../web/js/cities.js';
+import { city, dataDir, setActiveCity, DEFAULT_CITY } from '../web/js/cities.js';
 
-const DATA = new URL('../web/data/', import.meta.url);
+const dataUrl = () => new URL(`../web/${dataDir().slice(2)}`, import.meta.url);
+let DATA = dataUrl();
 const CACHE = new URL('./.cache/osrm/', import.meta.url);
 
 // Tunable constants (documented in docs/ARCHITECTURE.md terms: bus legSec = car seconds x BUS_FACTOR + DWELL_SEC).
@@ -551,6 +553,10 @@ async function atomicWrite(url, text) {
 }
 
 export async function main(argv = process.argv.slice(2)) {
+  const cityArg = (argv.find((a) => a.startsWith('--city=')) || '').slice(7) || DEFAULT_CITY;
+  if (!setActiveCity(cityArg)) throw new Error(`unknown city: ${cityArg}`);
+  DATA = dataUrl();
+  K.CENTER = city().center;
   const opt = { offline: argv.includes('--offline'), write: argv.includes('--write'), dry: argv.includes('--dry'), quiet: argv.includes('--quiet'),
     only: (argv.find((a) => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean) };
   const log = opt.quiet ? () => {} : (m) => console.log(m);
@@ -604,7 +610,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (r.shape.length) shapes[r.code] = r.shape;
   }
   await mkdir(new URL('./.cache/', import.meta.url), { recursive: true });
-  await writeFile(new URL('./.cache/route-diag.json', import.meta.url), JSON.stringify(Object.fromEntries(results.map((r) => [r.code, { ...r.diag, confidence: r.confidence, method: r.method }])), null, 1));
+  await writeFile(new URL(`./.cache/route-diag${city().id === DEFAULT_CITY ? '' : `-${city().id}`}.json`, import.meta.url), JSON.stringify(Object.fromEntries(results.map((r) => [r.code, { ...r.diag, confidence: r.confidence, method: r.method }])), null, 1));
   if (write) {
     await atomicWrite(new URL('shapes.json', DATA), JSON.stringify(shapes));
     await atomicWrite(new URL('routes.json', DATA), JSON.stringify(routesJson));
