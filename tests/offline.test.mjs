@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { CITIES } from '../web/js/cities.js';
 import {
   lon2x, lat2y, tileRange, tileCount, tileList, tileUrl, fontStacks, glyphUrls, spriteUrls,
-  buildPlan, estimateDownload, fmtBytes, PATRAS_BBOX, ZOOMS, GLYPH_RANGES,
+  buildPlan, estimateDownload, fmtBytes, ZOOMS, GLYPH_RANGES,
 } from '../web/js/offline.js';
+
+const PATRAS_BBOX = CITIES.patra.bbox;
 
 // The real pure section of the service worker, evaluated verbatim.
 const swSrc = readFileSync(new URL('../web/sw.js', import.meta.url), 'utf8');

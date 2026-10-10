@@ -4,10 +4,10 @@ import { loadData, searchStops } from './data.js';
 import { t } from './i18n.js';
 import { searchKey } from './text.js';
 import { haversine, inArea } from './geo.js';
+import { city } from './cities.js';
 
 const PHOTON = 'https://photon.komoot.io/api/';
-const BBOX = '21.60,38.13,21.90,38.33'; // minLon,minLat,maxLon,maxLat (Patras)
-const CENTER = { lat: 38.2466, lng: 21.7346 };
+const photonBbox = ({ west, south, east, north }) => `${west},${south},${east},${north}`; // minLon,minLat,maxLon,maxLat
 const TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE = 40;
 const TIMEOUT_MS = 6000;
@@ -31,7 +31,7 @@ export function stopPlaces(data, q, { near, limit = 4 } = {}) {
     g.stops.push(s);
     s.lineCodes.forEach((c) => g.lines.add(c));
   }
-  const ref = near || CENTER;
+  const ref = near || city().center;
   const places = [...groups.entries()].map(([key, g]) => {
     const stop = g.stops.reduce((a, b) => (haversine(ref, b) < haversine(ref, a) ? b : a));
     const lines = [...g.lines].sort((a, b) => a.localeCompare(b, 'el', { numeric: true }));
@@ -49,7 +49,7 @@ export function stopPlaces(data, q, { near, limit = 4 } = {}) {
 // address match from a street/nearby-POI fallback (Greek housenumber coverage in OSM is patchy).
 const queryNumber = (q) => (String(q || '').match(/\d+/) || [])[0] || null;
 
-// Photon GeoJSON feature → Place (null when unusable or outside the Patras area).
+// Photon GeoJSON feature → Place (null when unusable or outside the active city's area).
 // `queryNumber`: when given and the feature's housenumber does not match it, the place is flagged
 // `approx: true` — a street-level or nearby-POI result standing in for an exact address (never silent).
 export function mapPhoton(f, { queryNumber: qNum = null } = {}) {
@@ -80,7 +80,7 @@ export function mergePlaces(local, remote) {
 }
 
 async function photon(q, near, signal) {
-  const ref = near || CENTER;
+  const ref = near || city().center;
   const key = `${searchKey(q)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.places;
@@ -89,7 +89,7 @@ async function photon(q, near, signal) {
   url.searchParams.set('lat', ref.lat.toFixed(2)); // coarse bias only: ~1 km is enough, keeps the position vague
   url.searchParams.set('lon', ref.lng.toFixed(2));
   url.searchParams.set('limit', '8');
-  url.searchParams.set('bbox', BBOX);
+  url.searchParams.set('bbox', photonBbox(city().bbox));
   const ctl = new AbortController();
   const onAbort = () => ctl.abort();
   if (signal?.aborted) throw abortError();

@@ -1,6 +1,7 @@
 # patra-bus
 
-PWA με live αφίξεις αστικών λεωφορείων Πάτρας, πάνω στο API του patra.citybus.gr.
+**Telematica**: PWA με live αφίξεις αστικών λεωφορείων **Πάτρας και Κέρκυρας**, πάνω στο API του citybus.gr
+(patra.citybus.gr, corfu.citybus.gr). Repo, worker, localStorage key και ονόματα cache μένουν `patra-bus`.
 Βασική αξία: ξεχωρίζει **live** οχήματα από **προγραμματισμένες** αναχωρήσεις (η επίσημη σελίδα τα δείχνει ίδια).
 
 ## Εντολές
@@ -27,18 +28,20 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 Συμβόλαια modules και ownership: **`docs/ARCHITECTURE.md`**. Κανόνες κίνησης/υλικών (springs, materials,
 transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτικό για ό,τι αγγίζει ο χρήστης.
 Χτίστηκε/ελέγχθηκε διαβάζοντας μόνο κώδικα· **χρειάζεται έλεγχος από άνθρωπο σε πραγματικό browser/συσκευή**
-πριν θεωρηθεί τελειωμένο οπτικά. Χάρτης MapLibre GL 4.7.1 (unpkg) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js`: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`.
+πριν θεωρηθεί τελειωμένο οπτικά. Χάρτης MapLibre GL 4.7.1 (unpkg) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js` (+ `js/route.js`): προαιρετικό πρόθεμα πόλης (`#/corfu/stop/801`· **χωρίς πρόθεμα = Πάτρα** για stop/line/συντεταγμένες, ενώ γυμνά views όπως `#/lines` παίρνουν το `settings.city`). Τα share links έχουν πάντα πρόθεμα. Η ενεργή πόλη ορίζεται στο `js/boot-city.js` (πρώτο import του app.js)· αλλαγή πόλης = reload. Views: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`.
 - Shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/map.js`, `js/sheet.js` (bottom sheet / side panel ≥ 900 px), `js/ui.js`.
 - Live: `js/api.js` (`fetchLive` με **global memo 15 s ανά στάση**, και για errors, `createLivePoller` 20 s μόνο visible), `js/demo.js` (ντετερμινιστική προσομοίωση πάνω στο routes.json), `js/arrivals-view.js` (tiles LIVE/ΠΡΟΓΡ.).
 - Τοποθεσία: `js/location.js` (singleton, φίλτρα άλματος/ακρίβειας, πυξίδα), `js/geo.js`, `js/walk.js` (OSRM foot FOSSGIS, ≤ 1 req/s, fallback εκτίμηση), `js/nearby.js` (κάρτα «Επόμενο λεωφορείο κοντά σου»).
 - Διαδρομή: `js/geocode.js` (στάσεις + Photon), `js/planner.js` (απευθείας ή με **μία αλλαγή** (ίδια στάση ή ≤ 300 μ), ≤ 5 live στάσεις ανά σχέδιο, «Φύγε σε N′» = αναμονή λεωφορείου − περπάτημα − περιθώριο· ίδιο `vehicleCode` σε επιβίβαση/αποβίβαση → ακριβής χρόνος), `js/planner-view.js`.
-- Extras: `js/store.js` (blob `patra-bus:v2` στο localStorage), `js/notify.js` (υπενθυμίσεις μόνο όσο η εφαρμογή είναι ανοιχτή), `js/share.js`, `js/lines-view.js`, `js/settings-view.js`.
+- Extras: `js/store.js` (blob `patra-bus:v2` στο localStorage, schema 3: αγαπημένα/πρόσφατα/μέρη/ρουτίνες/υπενθυμίσεις έχουν `city`, ό,τι δεν έχει είναι Πάτρα, οι λίστες δείχνουν μόνο την ενεργή πόλη), `js/notify.js` (υπενθυμίσεις μόνο όσο η εφαρμογή είναι ανοιχτή), `js/share.js`, `js/lines-view.js`, `js/settings-view.js`.
 - `js/data.js`: φορτώνει stops/lines/routes (+ `loadShapes` lazy). `web/data/routes.json`: σειρά στάσεων ανά διαδρομή + `legSec` + `confidence`. **Η σειρά συμπεραίνεται** (OSRM trip + έλεγχος πλευράς δρόμου), δεν είναι επίσημη· 10/80 διαδρομές έχουν confidence < 0.5 (φουρκέτες/κύκλοι, π.χ. 502x, 2015).
 - `tests/`: node:test, χωρίς deps.
 - `scripts/fetch-static.mjs`: scrape token → /stops, /lines (250 ms παύση) → `web/data/`. Τα αρχεία γράφονται απευθείας εκεί, ώστε να τα σερβίρει ο static server χωρίς αντίγραφα.
-- `worker/`: Cloudflare Worker, τοπικά (`wrangler dev`) και deployed. Routes: `/api/live/:code` (cache 15 s), `/api/stops` και `/api/lines` (cache 24 h), `/health`.
+- `worker/`: Cloudflare Worker, τοπικά (`wrangler dev`) και deployed. Routes (`worker/src/routes.js`): `/api/{city}/live/:code` (cache 15 s), `/api/{city}/stops` και `/api/{city}/lines` (cache 24 h), `/api/{city}/stats/:route/:stop`, `/health` (tokenExp ανά πόλη). Τα παλιά χωρίς πρόθεμα (`/api/live/:code` κ.λπ.) μένουν ως aliases της Πάτρας. Keys με την πόλη: cache `live/{city}/{code}`, KV `token/{city}`, Stats DO `{route}/{stop}` για Πάτρα (κρατά το ιστορικό) και `{city}/{route}/{stop}` για τις άλλες.
 - `web/js/arrivals.js`: **κοινό** module worker + frontend. Η λογική live/προγρ. ζει μόνο εδώ.
 - `web/js/text.js`: titleCase και searchKey.
+- `web/js/cities.js`: πίνακας πόλεων (agency, σελίδα token, bbox, κέντρο). Ό,τι εξαρτάται από την πόλη το διαβάζει από εκεί (worker, scripts, frontend). Πόλεις: `patra` (agency 112, default) και `corfu` (101). Σχεδιασμός, συμβόλαιο και δεδομένα Κέρκυρας στο **`docs/MULTI-CITY.md`** (issue #1).
+- Δεδομένα: Πάτρα στο `web/data/*.json`, άλλες πόλεις στο `web/data/{city}/` (`dataDir()`). `npm run fetch-static -- --city=corfu`, `npm run build-routes -- --city=corfu` (κέντρο από `CENTER_WORDS` στο build-routes). Κωδικοί είναι **strings** με πιθανά μηδενικά μπροστά (Κέρκυρα: route `093` ≠ `93`, stop `0015`, line `04`)· ποτέ μετατροπή σε αριθμό. Τα ονόματα Κέρκυρας μένουν άτονα (το λεξικό τόνων είναι για την Πάτρα).
 - `web/fixtures/live-1011.json`: πραγματική upstream απάντηση (1 live, 1 προγρ.), για το `?demo`.
 
 ## Upstream API (επαληθευμένο 2026-10-09)
@@ -51,6 +54,7 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
   - `latitude/longitude` = `"0"/"0"` → **προγραμματισμένη** αναχώρηση. Το `departureMins` = λεπτά ως την ώρα του προγράμματος. Όλα τα άλλα είναι live.
   - Το `departureSeconds` είναι **υπόλοιπο 0–59**, όχι σύνολο (1′14″ → mins 1, secs 14). Μπορεί να είναι ≠0 **και στα προγραμματισμένα**. Γι' αυτό η ώρα προγράμματος = `fetchedAt + etaSec`, και βγαίνει σταθερή ανάμεσα στα fetches (π.χ. 22:45:33).
   - Μία φορά ήρθε **200 με κενό body** (σε γρήγορη επανάληψη). Το χειριζόμαστε ως upstream error και δεν μπαίνει σε cache.
+- **Κέρκυρα (agency `101`, σελίδα token `https://corfu.citybus.gr/el/stops`)**: επιτρέπονται τα **ίδια τρία** endpoints (`/stops`, `/lines`, `/stops/live/{code}`) με τους ίδιους κανόνες (έγκριση 2026-10-10). Ίδια σχήματα απαντήσεων· οι κωδικοί στάσεων **επικαλύπτονται** με της Πάτρας (321/479), άρα κάθε key έχει την πόλη.
 - Υπάρχουν και trips/sequence/points (`/api/v1/112/lines/{code}/points` χωρίς `el`), αλλά δεν χρησιμοποιούνται. Το ακριβές path για τη σειρά στάσεων **δεν** είναι γνωστό και δεν ψάχνεται (κανόνας no probing).
 - Live **404** = καμία αναχώρηση εκείνη την ώρα (επιβεβαιώθηκε 2026-10-10: 404 τη νύχτα, 200 με δεδομένα το πρωί). Ο worker το γυρίζει ως `200 {vehicles: [], noService: true}` με cache 15 s.
 - Παρατηρήσεις 2026-10-10 (**ανεπιβεβαίωτες**): το `vehicleCode` μοιάζει με `YYYYMMDD_route_…_HH_MM`, όπου το HH_MM ταίριαξε με ώρες αναχώρησης από την αφετηρία (πιθανή πηγή προγράμματος, δεν χρησιμοποιείται). Το live της αφετηρίας δίνει μόνο 1–2 αναχωρήσεις (~25′ μπροστά). Η διαδρομή 2015 (confidence 0.25) μάλλον έχει αντίστροφη σειρά: οι αναχωρήσεις της «πρώτης» στάσης 372 ανήκουν στη 2021.
@@ -61,12 +65,12 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Κανένα probing σε endpoints εκτός από τα παραπάνω.
 - Συντεταγμένες `0/0` δεν εμφανίζονται και δεν χρησιμοποιούνται πουθενά. Το `normalizeLive` τις αφαιρεί.
 - Ονόματα: Title Case μόνο στην εμφάνιση, με τελικό ς. Τόνοι **μόνο** από το επιμελημένο λεξικό `web/js/accents.js` (λέξεις με μοναδικό σωστό τονισμό, 402 λέξεις, ~70% των ονομάτων πλήρως τονισμένα). Αμφίσημες/άγνωστες λέξεις μένουν άτονες· ποτέ αυτόματη μαντεψιά. Το `searchKey` αγνοεί τόνους.
-- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins, **εκτός από το OpenFreeMap** (style, TileJSON, tiles, glyphs, sprites) σε ξεχωριστά caches: `patra-bus-map-v1` (runtime, ≤ 4000) και `patra-bus-map-offline-v1` (λήψη Πάτρας z8–14, ~7,6 MB, από τις Ρυθμίσεις). Ποτέ OSRM ή Photon. Το MapLibre είναι vendored στο `web/vendor/maplibre-gl/` (4.7.1). Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
+- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins, **εκτός από το OpenFreeMap** (style, TileJSON, tiles, glyphs, sprites) σε ξεχωριστά caches: `patra-bus-map-v1` (runtime, ≤ 4000) και `patra-bus-map-offline-v1` (λήψη της ενεργής πόλης z8–14, μία πόλη τη φορά, ~7,6 MB για την Πάτρα, από τις Ρυθμίσεις). Ποτέ OSRM ή Photon. Το MapLibre είναι vendored στο `web/vendor/maplibre-gl/` (4.7.1). Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
 - Τρίτες υπηρεσίες (χωρίς κλειδί, με attribution στις Ρυθμίσεις): OpenFreeMap, OSRM/FOSSGIS (≤ 1 req/s), Photon/komoot (debounce). Η θέση του χρήστη δεν μπαίνει ποτέ σε URL της εφαρμογής.
 - Minimum viable complexity: vanilla JS, χωρίς build step και χωρίς framework.
 
 ## Push υπενθυμίσεις
-- Worker: `GET /api/push/key`, `POST /api/push/reminders` (όριο 12 / 10′ ανά IP, ανά isolate), `DELETE /api/push/reminders/{id}`. Ένα SQLite Durable Object (`Reminder`) ανά υπενθύμιση, alarm στην ώρα, ξαναδιαβάζει το live μέσα από την ίδια cache 15 s και ξαναοπλίζει (≤ 3) αν το λεωφορείο άργησε > 60 s. Διαγράφονται όλα μετά την αποστολή.
+- Worker: `GET /api/push/key`, `POST /api/push/reminders` (προαιρετικό `city`, default `patra`· όριο 12 / 10′ ανά IP, ανά isolate), `DELETE /api/push/reminders/{id}`. Ένα SQLite Durable Object (`Reminder`) ανά υπενθύμιση, alarm στην ώρα, ξαναδιαβάζει το live μέσα από την ίδια cache 15 s και ξαναοπλίζει (≤ 3) αν το λεωφορείο άργησε > 60 s. Διαγράφονται όλα μετά την αποστολή.
 - VAPID: public key στο `wrangler.toml`, private **μόνο** ως Cloudflare secret (`npx wrangler secret put VAPID_PRIVATE_KEY --config worker/wrangler.toml`) και τοπικά στο `worker/.dev.vars` (gitignored, μαζί με `DEV_ALLOW_LOCAL_PUSH=1`). Αλλαγή κλειδιού = αλλαγή και των δύο.
 - Client: `js/push.js` + `js/notify.js` (ίδιο `tag` τοπικά και στον server), `web/sw-push.js` (importScripts από το `sw.js`). Στο iPhone μόνο ως εγκατεστημένη εφαρμογή.
 

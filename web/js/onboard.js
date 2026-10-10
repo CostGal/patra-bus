@@ -9,6 +9,8 @@ import locationService from './location.js';
 import { scheduleReminder, cancelReminder, hasReminder, onRemindersChange, ensurePermission } from './notify.js';
 import { h, lineBadge } from './ui.js';
 import { t } from './i18n.js';
+import { DEFAULT_CITY, cityId } from './cities.js';
+import { shareHash } from './route.js';
 
 export const KEY = 'patra-bus:onboard';
 export const MAX_AGE_MS = 2 * 60 * 60 * 1000;
@@ -40,14 +42,17 @@ export const passedByEta = (last, now) => !!last && now >= last.at + last.sec * 
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };
 
-export function loadTrip(storage, now = Date.now()) {
+// A trip started in another city stays in storage untouched but is not this city's trip (stop codes collide).
+export function loadTrip(storage, now = Date.now(), city = cityId()) {
   try {
     const s = storage();
     if (!s) return null;
     const raw = s.getItem(KEY);
     if (raw == null) return null;
     const tr = JSON.parse(raw);
-    if (tr && tr.alightStop && tr.routeCode && Number.isFinite(tr.startedAt) && now - tr.startedAt <= MAX_AGE_MS && tr.startedAt <= now + 60000) return tr;
+    if (tr && tr.alightStop && tr.routeCode && Number.isFinite(tr.startedAt) && now - tr.startedAt <= MAX_AGE_MS && tr.startedAt <= now + 60000) {
+      return (tr.city || DEFAULT_CITY) === city ? tr : null;
+    }
     s.removeItem(KEY);
   } catch { /* corrupt or no storage */ }
   return null;
@@ -140,7 +145,7 @@ export function createOnboard(env = {}) {
     if (trip.bookedAt != null && Math.abs(at - trip.bookedAt) <= REBOOK_MS && nt.has(TAG)) return;
     try {
       nt.schedule({
-        at, title: t('Ετοιμάσου να κατέβεις'), body: t('Η στάση «{name}» σε ~1′', { name: trip.stopName }), tag: TAG, url: '#/', kind: 'alight',
+        at, title: t('Ετοιμάσου να κατέβεις'), body: t('Η στάση «{name}» σε ~1′', { name: trip.stopName }), tag: TAG, url: shareHash('#/'), kind: 'alight',
         trip: { stopCode: trip.alightStop, vehicleCode: trip.vehicleCode, routeCode: trip.routeCode, lineCode: trip.lineCode, offsetSec: ALERT_SEC, stopName: trip.stopName },
       });
       trip.bookedAt = at; save();
@@ -209,7 +214,7 @@ export function createOnboard(env = {}) {
     if (trip) teardown();
     trip = {
       v: 1, vehicleCode: vehicleCode ? String(vehicleCode) : null, routeCode: String(routeCode), lineCode: lineCode == null ? '' : String(lineCode),
-      alightStop: String(alightStop), stopName: stopName ? String(stopName) : '', startedAt: now(), alerted: false, bookedAt: null,
+      alightStop: String(alightStop), stopName: stopName ? String(stopName) : '', startedAt: now(), alerted: false, bookedAt: null, city: cityId(),
     };
     save();
     try { Promise.resolve(nt.ensure?.()).catch(() => {}); } catch { /* ignore */ } // notification permission, inside the gesture
@@ -243,7 +248,7 @@ export function createOnboard(env = {}) {
 function defaultAlert(tr) {
   const name = tr.stopName;
   try {
-    scheduleReminder({ at: Date.now(), title: t('Ετοιμάσου να κατέβεις'), body: t('Η στάση «{name}» σε ~1′', { name }), tag: 'alight-now', url: '#/' });
+    scheduleReminder({ at: Date.now(), title: t('Ετοιμάσου να κατέβεις'), body: t('Η στάση «{name}» σε ~1′', { name }), tag: 'alight-now', url: shareHash('#/') });
   } catch { /* ignore */ }
   setTimeout(() => { try { navigator.vibrate?.([400, 150, 400, 150, 800]); } catch { /* ignore */ } }, 300); // after notify's own short buzz
 }

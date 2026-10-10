@@ -89,7 +89,7 @@ test('fetchLive: requests the worker route and returns the LiveResult', async ()
   const w = rig();
   const r = await fetchLive('1011');
   assert.equal(w.calls.length, 1);
-  assert.equal(w.calls[0].url, `${API_BASE}/api/live/1011`);
+  assert.equal(w.calls[0].url, `${API_BASE}/api/patra/live/1011`);
   assert.equal(r.fetchedAt, w.now);
   assert.equal(r.vehicles.length, 1);
   assert.equal(r.vehicles[0].vehicleCode, 'V1');
@@ -447,12 +447,12 @@ test('poller: destroy while a request is in flight does not emit', async () => {
 
 // ---------- fetchStats ----------
 
-test('fetchStats: GET /api/stats/{route}/{stop}, shape checked, memoised 10 min', async () => {
+test('fetchStats: GET /api/{city}/stats/{route}/{stop}, shape checked, memoised 10 min', async () => {
   const w = rig();
   w.handler = () => w.ok({ samples: 31, medianDelaySec: 150, p80DelaySec: 300, updatedAt: 1 });
   const a = await fetchStats('6091', '1011');
   assert.deepEqual(a, { samples: 31, medianDelaySec: 150, p80DelaySec: 300 });
-  assert.equal(w.calls[0].url, `${API_BASE}/api/stats/6091/1011`);
+  assert.equal(w.calls[0].url, `${API_BASE}/api/patra/stats/6091/1011`);
   assert.equal(await fetchStats('6091', '1011'), a);
   await w.advance(9 * 60000);
   await fetchStats('6091', '1011');

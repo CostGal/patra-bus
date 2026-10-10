@@ -2,7 +2,7 @@ name = "patra-bus"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
-# Deployed with `wrangler deploy`. KV "patra-bus-token" holds only the scraped token.
+# Deployed with `wrangler deploy`. KV "patra-bus-token" holds only the scraped tokens (one key per city: token/{city}).
 # `wrangler dev --local` keeps using local KV storage, not this namespace.
 [[kv_namespaces]]
 binding = "KV"

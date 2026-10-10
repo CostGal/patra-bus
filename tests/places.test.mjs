@@ -142,7 +142,7 @@ test('routines: tripFromItinerary keeps only what the server needs', () => {
 test('routines: buildRoutinePayload shape and validation', () => {
   const p = buildRoutinePayload({ subscription: SUB, days: [5, 1, 3], time: '07:45', title: 'Ώρα να φύγεις', url: 'https://x/#/plan', trip: { ...TRIP, vehicleCode: 'V1' }, leadMin: 5 });
   assert.deepEqual(p, {
-    subscription: SUB, days: [1, 3, 5], time: '07:45', tz: 'Europe/Athens', title: 'Ώρα να φύγεις', url: 'https://x/#/plan',
+    subscription: SUB, days: [1, 3, 5], time: '07:45', tz: 'Europe/Athens', title: 'Ώρα να φύγεις', url: 'https://x/#/plan', city: 'patra',
     trip: { stopCode: '1011', routeCode: '609', lineCode: '609', offsetSec: 300, stopName: 'Πανεπιστημίου' }, leadMin: 5,
   });
   assert.equal(buildRoutinePayload({ subscription: SUB, days: [1], time: '07:45', trip: TRIP, leadMin: 99 }).leadMin, 30);

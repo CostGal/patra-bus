@@ -5,6 +5,7 @@
 import { isLive, noServiceResult, normalizeLive } from './arrivals.js';
 import { demoLive, demoReady } from './demo.js';
 import { t } from './i18n.js';
+import { cityId } from './cities.js';
 
 export const MIN_GAP_MS = 15000; // floor between upstream attempts for one stop
 export const POLL_MS = 20000; // poller period
@@ -18,6 +19,11 @@ const DEMO_MODE = params.get('demo') || ''; // ?demo=nosvc | ?demo=error exercis
 export const API_BASE = here && ['localhost', '127.0.0.1'].includes(here.hostname)
   ? 'http://localhost:8787'
   : 'https://patra-bus.patra-bus.workers.dev';
+
+// The worker routes are always city-prefixed (Patras too): /api/{city}/live/:code, /api/{city}/stats/:route/:stop.
+export const liveUrl = (code, city = cityId()) => `${API_BASE}/api/${city}/live/${encodeURIComponent(code)}`;
+export const statsUrl = (route, stop, city = cityId()) => `${API_BASE}/api/${city}/stats/${encodeURIComponent(route)}/${encodeURIComponent(stop)}`;
+const memoKey = (code) => `${cityId()}/${code}`;
 
 // kind: 'network' | 'timeout' | 'upstream' | 'bad'
 export class ApiError extends Error {
@@ -42,8 +48,8 @@ const defaults = () => ({
   demoDelayMs: 250,
 });
 let env = defaults();
-const memo = new Map(); // code -> { at, pending, promise }
-const statsMemo = new Map(); // 'route/stop' -> { at, p }
+const memo = new Map(); // 'city/code' -> { at, pending, promise } (stop codes collide across cities)
+const statsMemo = new Map(); // 'city/route/stop' -> { at, p }
 
 // Tests only. _setTransport({ fetch, now, setTimeout, clearTimeout, doc, timeoutMs, demo, demoMode, demoDelayMs });
 // no argument resets to the real thing. Always clears the memo.
@@ -98,7 +104,7 @@ function parseResult(body) {
 async function request(code, signal) {
   let res;
   try {
-    res = await env.fetch(`${API_BASE}/api/live/${encodeURIComponent(code)}`, { signal, cache: 'no-store' });
+    res = await env.fetch(liveUrl(code), { signal, cache: 'no-store' });
   } catch (e) {
     throw new ApiError('network', e && e.message);
   }
@@ -146,7 +152,7 @@ function withSignal(p, signal) {
 }
 
 // Epoch ms of the last upstream attempt for this stop (any caller), 0 if none.
-export const lastAttemptAt = (code) => memo.get(String(code))?.at ?? 0;
+export const lastAttemptAt = (code) => memo.get(memoKey(String(code)))?.at ?? 0;
 
 // A call within MIN_GAP_MS of the previous attempt for the same stop returns that attempt's result
 // (or error), and concurrent calls share one request. `signal` only detaches this caller.
@@ -154,12 +160,13 @@ export function fetchLive(code, { signal } = {}) {
   code = String(code);
   if (!env.demo && !/^\d{1,6}$/.test(code)) return Promise.reject(new ApiError('bad', 'invalid stop code'));
   const now = env.now();
-  let e = memo.get(code);
+  const key = memoKey(code);
+  let e = memo.get(key);
   if (!e || (!e.pending && now - e.at >= MIN_GAP_MS)) {
     e = { at: now, pending: true, promise: null };
     const mine = e;
     e.promise = attempt(code).finally(() => { mine.pending = false; });
-    memo.set(code, e);
+    memo.set(key, e);
     if (memo.size > 200) for (const [k, v] of memo) if (!v.pending && now - v.at > 4 * MIN_GAP_MS) memo.delete(k);
   }
   return withSignal(e.promise.then(clone), signal);
@@ -255,7 +262,7 @@ export function createLivePoller(code, onUpdate) {
   };
 }
 
-// ---- reliability stats: GET /api/stats/{route}/{stop} -> { samples, medianDelaySec, p80DelaySec } | null ----
+// ---- reliability stats: GET /api/{city}/stats/{route}/{stop} -> { samples, medianDelaySec, p80DelaySec } | null ----
 export const STATS_TTL_MS = 10 * 60 * 1000; // per key, failures included
 export const STATS_MIN_SAMPLES = 10; // fewer samples are not shown or used
 const STATS_TIMEOUT_MS = 5000;
@@ -274,7 +281,7 @@ async function statsRequest(route, stop) {
   const ctl = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = env.setTimeout(() => ctl && ctl.abort(), STATS_TIMEOUT_MS);
   try {
-    const res = await env.fetch(`${API_BASE}/api/stats/${encodeURIComponent(route)}/${encodeURIComponent(stop)}`, { signal: ctl && ctl.signal, cache: 'no-store' });
+    const res = await env.fetch(statsUrl(route, stop), { signal: ctl && ctl.signal, cache: 'no-store' });
     if (!res.ok) return null;
     const b = await res.json();
     const samples = Number(b && b.samples), med = Number(b && b.medianDelaySec);
@@ -292,7 +299,7 @@ async function statsRequest(route, stop) {
 export function fetchStats(routeCode, stopCode) {
   const route = String(routeCode ?? ''), stop = String(stopCode ?? '');
   if (!CODE_RE.test(route) || !CODE_RE.test(stop)) return Promise.resolve(null);
-  const key = `${route}/${stop}`;
+  const key = `${cityId()}/${route}/${stop}`;
   const now = env.now();
   const hit = statsMemo.get(key);
   if (hit && now - hit.at < STATS_TTL_MS) return hit.p;

@@ -181,6 +181,8 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 }
 .pop-item:hover { background: var(--surface-2); }
 .pop-item .icon { color: var(--text-2); --icon: 22px; }
+.pop-city-name { flex: 1; min-width: 0; font-weight: 600; }
+.pop-city-sub { font-size: var(--fs-sm); color: var(--text-2); }
 .pop-sep { height: 1px; margin: var(--s2); background: var(--border); }
 .theme-row { display: flex; gap: var(--s2); padding: 4px 12px 8px; }
 .theme-opt {

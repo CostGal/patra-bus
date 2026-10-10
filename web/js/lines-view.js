@@ -6,7 +6,9 @@ import { loadShapes } from './data.js';
 import { createLivePoller, remainingSec } from './api.js';
 import { arrivalTile } from './arrivals-view.js';
 import { shareLink } from './share.js';
-import { t, tn, onLangChange } from './i18n.js';
+import { t, tn, onLangChange, lang, APP_NAME } from './i18n.js';
+import { cityHash, shareHash } from './route.js';
+import { city, cityName } from './cities.js';
 
 let shapesP = null; // shapes.json is big and optional: load once, only when a line is opened
 const shapes = () => (shapesP ||= loadShapes().catch(() => ({})));
@@ -47,7 +49,7 @@ function buildLines(container, ctx, st) {
     if (terms.length) hits.sort((a, b) => Number(b.line.code.startsWith(terms[0])) - Number(a.line.code.startsWith(terms[0])));
     count.textContent = hits.length ? tn(hits.length, '{n} γραμμή', '{n} γραμμές') : t('Καμία γραμμή δεν ταιριάζει');
     list.replaceChildren(...hits.map(({ line }) => h('li', {},
-      h('a', { class: 'lines-row press', href: `#/line/${encodeURIComponent(line.code)}` },
+      h('a', { class: 'lines-row press', href: cityHash(`#/line/${encodeURIComponent(line.code)}`) },
         h('span', { class: 'lines-badge' }, lineBadge(line)),
         h('span', { class: 'lines-main' }, h('span', { class: 'lines-name' }, line.displayName)),
         icon('chevron')))));
@@ -107,7 +109,7 @@ function buildLine(container, ctx, params) {
     container.replaceChildren(h('div', { class: 'ex-view' },
       h('header', { class: 'ex-head' }, backBtn(t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines')), h('h1', {}, t('Γραμμή'))),
       h('p', { class: 'ex-empty' }, t('Η γραμμή δεν βρέθηκε.')),
-      h('a', { class: 'ex-btn', href: '#/lines' }, t('Όλες οι γραμμές'))));
+      h('a', { class: 'ex-btn', href: cityHash('#/lines') }, t('Όλες οι γραμμές'))));
     return { destroy() {} };
   }
 
@@ -141,7 +143,7 @@ function buildLine(container, ctx, params) {
   let term = null; // { code, poller, ticker, state, tiles } — the terminal stop's poller (one at a time)
 
   const share = h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Κοινοποίηση γραμμής'), onclick: async () => {
-    const r = await shareLink({ title: t('Γραμμή {code} · {name}', { code: line.code, name: line.displayName }), text: t('Γραμμή {code} {name} — Λεωφορεία Πάτρας', { code: line.code, name: line.displayName }), url: `${location.origin}${location.pathname}${location.hash}` });
+    const r = await shareLink({ title: t('Γραμμή {code} · {name}', { code: line.code, name: line.displayName }), text: t('Γραμμή {code} {name} — {app} · {city}', { code: line.code, name: line.displayName, app: APP_NAME, city: cityName(city(), lang()) }), url: `${location.origin}${location.pathname}${shareHash(location.hash)}` });
     if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
   } }, icon('share'));
@@ -171,7 +173,7 @@ function buildLine(container, ctx, params) {
     routeCode = code;
     current = stopsFor(ctx, routeCode);
     const r = line.routes.find((x) => x.code === code);
-    try { history.replaceState(history.state, '', `#/line/${encodeURIComponent(line.code)}?dir=${r?.direction ?? ''}&route=${encodeURIComponent(code)}`); } catch { /* ignore */ }
+    try { history.replaceState(history.state, '', cityHash(`#/line/${encodeURIComponent(line.code)}?dir=${r?.direction ?? ''}&route=${encodeURIComponent(code)}`)); } catch { /* ignore */ }
     paint();
     draw();
     startTimes();
@@ -192,7 +194,7 @@ function buildLine(container, ctx, params) {
       return;
     }
     const first = ctx.data.stopByCode.get(term.code);
-    timesStop.replaceChildren(`${t('Αφετηρία')}: `, h('a', { href: `#/stop/${encodeURIComponent(term.code)}` }, first ? first.displayName : term.code), mins ? ` · ~${mins}′` : '');
+    timesStop.replaceChildren(`${t('Αφετηρία')}: `, h('a', { href: cityHash(`#/stop/${encodeURIComponent(term.code)}`) }, first ? first.displayName : term.code), mins ? ` · ~${mins}′` : '');
     const s = term.state;
     const now = Date.now();
     term.tiles = [];
@@ -236,7 +238,7 @@ function buildLine(container, ctx, params) {
       return h('li', { class: `lines-stop${end ? ' is-end' : ''}`, 'data-code': s.code },
         h('span', { class: 'lines-dot', 'aria-hidden': 'true' }),
         h('div', { class: 'lines-stop-row' },
-          h('a', { class: 'lines-stop-link press', href: `#/stop/${encodeURIComponent(s.code)}` },
+          h('a', { class: 'lines-stop-link press', href: cityHash(`#/stop/${encodeURIComponent(s.code)}`) },
             h('span', { class: 'lines-stop-name' }, s.displayName),
             end ? h('span', { class: 'ex-sub' }, end) : null),
           btn),

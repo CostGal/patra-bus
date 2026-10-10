@@ -1,10 +1,13 @@
 // Persistent app state (owner: extras): favourites, recents, settings.
 // One versioned JSON blob in localStorage; every storage access is guarded and falls back to memory
 // (private mode, storage disabled, quota). Other tabs are picked up via the `storage` event.
+// Favourites and recents reference stop codes, which collide across cities, so each item carries a `city`
+// (schema 3; older blobs are read as Patras). The public getters only ever show the active city's items.
+import { DEFAULT_CITY, cityId, isCity } from './cities.js';
 
 export const KEY = 'patra-bus:v2';
 const LEGACY_FAVS = 'favs'; // v1 (array of stop codes)
-const SCHEMA = 2;
+const SCHEMA = 3;
 const MAX_RECENTS = 10;
 const MAX_FAVS = 100;
 
@@ -16,6 +19,7 @@ const VALID = {
   walkSpeed: (v) => ['slow', 'normal', 'fast'].includes(v),
   bufferMin: intIn(0, 30),
   reminderMin: intIn(0, 30),
+  city: isCity, // absent until the user picks one: the default city applies
 };
 const NUMERIC = new Set(['bufferMin', 'reminderMin']);
 
@@ -25,24 +29,32 @@ const defaultEvents = () => (typeof globalThis.addEventListener === 'function' ?
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const code = (c) => (c == null ? '' : String(c).trim());
 
-// Identity of a recent item: stops by code, places by rounded coordinates (~11 m), else by name.
+// Items saved before multi-city (no `city`) belong to Patras.
+const cityOf = (x) => (x && typeof x === 'object' && isCity(x.city) ? x.city : DEFAULT_CITY);
+
+// Identity of a recent item: stops by code, places by rounded coordinates (~11 m), else by name; always per city.
 function recentKey(item) {
   if (item == null) return null;
-  if (typeof item !== 'object') return `s:${item}`;
-  if (item.stopCode != null) return `s:${item.stopCode}`;
-  if (item.code != null) return `s:${item.code}`;
-  if (Number.isFinite(item.lat) && Number.isFinite(item.lng)) return `p:${item.lat.toFixed(4)},${item.lng.toFixed(4)}`;
-  if (item.name) return `n:${String(item.name).toLowerCase()}`;
-  return `j:${JSON.stringify(item)}`;
+  if (typeof item !== 'object') return `${DEFAULT_CITY}|s:${item}`;
+  const c = cityOf(item);
+  if (item.stopCode != null) return `${c}|s:${item.stopCode}`;
+  if (item.code != null) return `${c}|s:${item.code}`;
+  if (Number.isFinite(item.lat) && Number.isFinite(item.lng)) return `${c}|p:${item.lat.toFixed(4)},${item.lng.toFixed(4)}`;
+  if (item.name) return `${c}|n:${String(item.name).toLowerCase()}`;
+  return `${c}|j:${JSON.stringify(item)}`;
 }
 
+// Newest first, deduped, at most MAX_RECENTS per city. Bare codes become `{ code }`; every item ends up with a `city`.
 function cleanRecents(list) {
-  const out = []; const seen = new Set();
-  for (const it of Array.isArray(list) ? list : []) {
+  const out = []; const seen = new Set(); const per = {};
+  for (let it of Array.isArray(list) ? list : []) {
+    if (it != null && typeof it !== 'object') it = { code: String(it) };
     let k; try { k = recentKey(it); } catch { k = null; }
     if (k == null || seen.has(k)) continue;
-    seen.add(k); out.push(it);
-    if (out.length >= MAX_RECENTS) break;
+    const c = cityOf(it);
+    if ((per[c] ?? 0) >= MAX_RECENTS) continue;
+    seen.add(k); per[c] = (per[c] ?? 0) + 1;
+    out.push({ ...it, city: c });
   }
   return out;
 }
@@ -53,13 +65,26 @@ function cleanSettings(s) {
   return out;
 }
 
-function sanitize(o) {
-  o = o && typeof o === 'object' ? o : {};
-  const favs = [...new Set((Array.isArray(o.favorites) ? o.favorites : []).map(code).filter(Boolean))].slice(0, MAX_FAVS);
-  return { v: SCHEMA, favorites: favs, recents: { stop: cleanRecents(o.recents?.stop), place: cleanRecents(o.recents?.place) }, settings: cleanSettings(o.settings) };
+// Favourites: [{ code, city }], deduped, at most MAX_FAVS per city. Schema <= 2 stored bare code strings (Patras).
+function cleanFavorites(list) {
+  const out = []; const seen = new Set(); const per = {};
+  for (const f of Array.isArray(list) ? list : []) {
+    const c = cityOf(f), cd = code(f && typeof f === 'object' ? f.code : f);
+    const k = `${c}|${cd}`;
+    if (!cd || seen.has(k) || (per[c] ?? 0) >= MAX_FAVS) continue;
+    seen.add(k); per[c] = (per[c] ?? 0) + 1;
+    out.push({ code: cd, city: c });
+  }
+  return out;
 }
 
-export function createStore({ storage = defaultStorage, events = defaultEvents() } = {}) {
+export function sanitize(o) {
+  o = o && typeof o === 'object' ? o : {};
+  return { v: SCHEMA, favorites: cleanFavorites(o.favorites), recents: { stop: cleanRecents(o.recents?.stop), place: cleanRecents(o.recents?.place) }, settings: cleanSettings(o.settings) };
+}
+
+// `city` = which city the getters show (injectable for tests).
+export function createStore({ storage = defaultStorage, events = defaultEvents(), city = cityId } = {}) {
   let state = sanitize(null);
   let lastRaw; // undefined = never read; null = key absent; string = last blob we saw/wrote
   const subs = new Set();
@@ -94,7 +119,11 @@ export function createStore({ storage = defaultStorage, events = defaultEvents()
         if (back.ok && back.raw === lastRaw) { try { storage().removeItem(LEGACY_FAVS); } catch { /* ignore */ } }
       }
     } else {
-      try { state = sanitize(JSON.parse(r.raw)); } catch { state = sanitize(null); }
+      let o = null;
+      try { o = JSON.parse(r.raw); } catch { /* corrupt: start empty */ }
+      state = sanitize(o);
+      // One-time migration to schema 3: persist the city tags now, so other readers of the blob see them too.
+      if (o && typeof o === 'object' && o.v !== SCHEMA) save();
     }
     return true;
   }
@@ -106,17 +135,19 @@ export function createStore({ storage = defaultStorage, events = defaultEvents()
   const onStorage = (e) => { if ((e.key == null || e.key === KEY) && sync()) emit('all'); };
   events?.addEventListener?.('storage', onStorage);
 
-  // --- favourites ---
-  const getFavorites = () => { sync(); return [...state.favorites]; };
-  const isFavorite = (c) => { sync(); return state.favorites.includes(code(c)); };
+  // --- favourites (active city only; other cities' items are kept untouched) ---
+  const mine = () => state.favorites.filter((f) => f.city === city());
+  const getFavorites = () => { sync(); return mine().map((f) => f.code); };
+  const isFavorite = (c) => { sync(); return mine().some((f) => f.code === code(c)); };
   function addFavorite(c) {
     c = code(c); sync();
-    if (!c || state.favorites.includes(c) || state.favorites.length >= MAX_FAVS) return false;
-    state.favorites.push(c); save(); emit('favorites'); return true;
+    const m = mine();
+    if (!c || m.some((f) => f.code === c) || m.length >= MAX_FAVS) return false;
+    state.favorites.push({ code: c, city: city() }); save(); emit('favorites'); return true;
   }
   function removeFavorite(c) {
     c = code(c); sync();
-    const i = state.favorites.indexOf(c); if (i < 0) return false;
+    const i = state.favorites.findIndex((f) => f.city === city() && f.code === c); if (i < 0) return false;
     state.favorites.splice(i, 1); save(); emit('favorites'); return true;
   }
   // Returns the new state (true = now a favourite).
@@ -124,33 +155,41 @@ export function createStore({ storage = defaultStorage, events = defaultEvents()
   // delta -1 = up, +1 = down. Returns the new index or -1.
   function moveFavorite(c, delta) {
     c = code(c); sync();
-    const from = state.favorites.indexOf(c); if (from < 0) return -1;
-    const to = Math.max(0, Math.min(state.favorites.length - 1, from + Math.sign(delta) * Math.max(1, Math.abs(delta | 0))));
+    const m = mine();
+    const from = m.findIndex((f) => f.code === c); if (from < 0) return -1;
+    const to = Math.max(0, Math.min(m.length - 1, from + Math.sign(delta) * Math.max(1, Math.abs(delta | 0))));
     if (to === from) return from;
-    state.favorites.splice(from, 1); state.favorites.splice(to, 0, c);
+    const [it] = m.splice(from, 1); m.splice(to, 0, it);
+    state.favorites = [...state.favorites.filter((f) => f.city !== city()), ...m];
     save(); emit('favorites'); return to;
   }
 
-  // --- recents (newest first, deduped, max 10 per kind) ---
+  // --- recents (newest first, deduped, max 10 per kind and city; the getters show the active city) ---
   const kindOf = (k) => (k === 'place' ? 'place' : 'stop');
-  const getRecents = (kind) => { sync(); return clone(state.recents[kindOf(kind)]); };
+  const getRecents = (kind) => { sync(); return clone(state.recents[kindOf(kind)].filter((x) => x.city === city())); };
+  const asItem = (x) => (x != null && typeof x !== 'object' ? { code: String(x) } : x);
   function addRecent(kind, item) {
     kind = kindOf(kind); sync();
-    let copy; try { copy = clone(item); } catch { return; }
+    let copy; try { copy = asItem(clone(item)); } catch { return; }
+    if (copy == null) return;
+    copy.city = city();
     const k = recentKey(copy); if (k == null) return;
     state.recents[kind] = cleanRecents([copy, ...state.recents[kind].filter((x) => recentKey(x) !== k)]);
     save(); emit('recents');
   }
   function removeRecent(kind, item) {
     kind = kindOf(kind); sync();
-    const k = recentKey(item), before = state.recents[kind].length;
+    const probe = asItem(item);
+    if (probe == null) return false;
+    const k = recentKey({ ...probe, city: city() }), before = state.recents[kind].length;
     state.recents[kind] = state.recents[kind].filter((x) => recentKey(x) !== k);
     if (state.recents[kind].length === before) return false;
     save(); emit('recents'); return true;
   }
+  // Clears the active city's recents only.
   function clearRecents(kind) {
     sync();
-    for (const k of kind ? [kindOf(kind)] : ['stop', 'place']) state.recents[k] = [];
+    for (const k of kind ? [kindOf(kind)] : ['stop', 'place']) state.recents[k] = state.recents[k].filter((x) => x.city !== city());
     save(); emit('recents');
   }
 
@@ -165,7 +204,8 @@ export function createStore({ storage = defaultStorage, events = defaultEvents()
     if (getSettings()[key] !== value) { state.settings[key] = value; save(); emit('settings'); }
     return true;
   }
-  function resetSettings() { sync(); state.settings = {}; save(); emit('settings'); }
+  // The chosen city is a place, not a preference: it survives "reset settings".
+  function resetSettings() { sync(); state.settings = state.settings.city ? { city: state.settings.city } : {}; save(); emit('settings'); }
 
   function clearAll() {
     state = sanitize(null);

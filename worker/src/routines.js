@@ -2,7 +2,8 @@
 // One DO per routine (name = random 128-bit id). index.js subclasses RoutineBase to supply getLive().
 // Per matching day: at time - 20' read live, pick the first bus of the route we can still catch,
 // alarm at leave - leadMin, push, then arm the next matching day. Expires after 120 days.
-import { cleanSubscription, isObj, str, LATE_TOLERANCE_MS, MAX_AHEAD_MS, MAX_REARMS } from './reminders.js';
+import { DEFAULT_CITY } from '../../web/js/cities.js';
+import { cleanSubscription, cleanCity, isObj, str, LATE_TOLERANCE_MS, MAX_AHEAD_MS, MAX_REARMS } from './reminders.js';
 import { sendPush } from './push.js';
 
 export const TZ = 'Europe/Athens';
@@ -20,6 +21,8 @@ export function validateRoutine(raw, { allowLocal = false } = {}) {
 
   const sub = cleanSubscription(s, { allowLocal });
   if (sub.error) return bad(sub.error);
+  const city = cleanCity(raw.city);
+  if (city.error) return bad(city.error);
 
   if (!Array.isArray(days) || days.length < 1 || days.length > 7 || !days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) {
     return bad('days');
@@ -42,6 +45,7 @@ export function validateRoutine(raw, { allowLocal = false } = {}) {
     ok: true,
     value: {
       subscription: sub.value,
+      city: city.value,
       days: [...new Set(days)].sort((a, b) => a - b),
       time,
       tz: TZ,
@@ -162,7 +166,7 @@ export class RoutineBase {
   }
 
   // Overridden in index.js: normalized LiveResult for a stop via the shared 15 s cache.
-  async getLive() {
+  async getLive(city, code) {
     throw new Error('getLive not implemented');
   }
 
@@ -225,7 +229,7 @@ export class RoutineBase {
 
   async live(r) {
     try {
-      return await this.getLive(r.trip.stopCode);
+      return await this.getLive(r.city || DEFAULT_CITY, r.trip.stopCode); // stored before multi-city -> Patras
     } catch (err) {
       console.error(`routine live: ${err.message}`);
       return null;

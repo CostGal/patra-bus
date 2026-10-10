@@ -258,7 +258,7 @@ test('notify: push on → server booked with same tag + trip, id stored', async 
   x.r.scheduleReminder({ at: NOW + 60_000, title: 'T', body: 'B', tag: 'plan:1', url: '#/plan', trip });
   await x.flush();
   assert.equal(x.calls.schedule.length, 1);
-  assert.deepEqual(x.calls.schedule[0], { at: NOW + 60_000, title: 'T', body: 'B', tag: 'plan:1', url: '#/plan', trip });
+  assert.deepEqual(x.calls.schedule[0], { at: NOW + 60_000, title: 'T', body: 'B', tag: 'plan:1', url: '#/plan', city: 'patra', trip });
   // local behaviour untouched
   assert.equal(x.r.hasReminder('plan:1'), true);
   assert.deepEqual(x.r.listReminders().map((q) => q.tag), ['plan:1']);
@@ -384,7 +384,7 @@ test('sw-push: JSON payload → notification with tag, url and icons', async () 
 test('sw-push: empty, plain-text and broken payloads still show something', async () => {
   let sw = swRun();
   await sw.fire('push', {});
-  assert.equal(sw.shown[0].title, 'Patra Bus');
+  assert.equal(sw.shown[0].title, 'Telematica');
   assert.equal(sw.shown[0].opts.data.url, './');
   assert.ok(sw.shown[0].opts.tag);
   sw = swRun();
@@ -395,7 +395,7 @@ test('sw-push: empty, plain-text and broken payloads still show something', asyn
   assert.equal(sw.shown.length, 1);
   sw = swRun();
   await sw.fire('push', data('{"title":'));
-  assert.equal(sw.shown[0].title, 'Patra Bus');
+  assert.equal(sw.shown[0].title, 'Telematica');
 });
 
 test('sw-push: pushsubscriptionchange resubscribes with the old key; never throws', async () => {

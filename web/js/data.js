@@ -1,6 +1,7 @@
 // Static data loader and indexes (owner: data). Contracts: docs/ARCHITECTURE.md, section D.
 // buildIndex() is pure (tests); loadData() / loadShapes() fetch once and memoize.
 import { titleCase, searchKey } from './text.js';
+import { dataDir } from './cities.js';
 
 const getJSON = async (u) => {
   const r = await fetch(u);
@@ -59,8 +60,9 @@ export function buildIndex(rawStops, rawLines, rawRoutes) {
 let dataPromise = null;
 export function loadData() {
   if (!dataPromise) {
+    const dir = dataDir(); // the active city's folder (Patras ./data/, others ./data/{city}/)
     dataPromise = Promise.all([
-      getJSON('./data/stops.json'), getJSON('./data/lines.json'), getJSON('./data/routes.json').catch(() => null),
+      getJSON(dir + 'stops.json'), getJSON(dir + 'lines.json'), getJSON(dir + 'routes.json').catch(() => null), // routes: optional
     ]).then(([s, l, r]) => buildIndex(s, l, r)).catch((e) => { dataPromise = null; throw e; });
   }
   return dataPromise;
@@ -68,7 +70,8 @@ export function loadData() {
 
 let shapesPromise = null;
 export function loadShapes() {
-  if (!shapesPromise) shapesPromise = getJSON('./data/shapes.json').catch(() => { shapesPromise = null; return {}; });
+  // A city without shapes.json (404) just has no drawn geometry; any other failure may be transient, so retry later.
+  if (!shapesPromise) shapesPromise = getJSON(dataDir() + 'shapes.json').catch((e) => { if (!/HTTP 404/.test(e?.message)) shapesPromise = null; return {}; });
   return shapesPromise;
 }
 

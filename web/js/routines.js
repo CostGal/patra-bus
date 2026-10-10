@@ -7,6 +7,8 @@ import { jsonStore, getPlaces, onPlacesChange, placeLabel } from './places.js';
 import { planTrips, reminderTrip } from './planner.js';
 import { pushState, onPushChange, enablePush, syncPushState } from './push.js';
 import { titleCase } from './text.js';
+import { DEFAULT_CITY, cityId, isCity } from './cities.js';
+import { shareHash } from './route.js';
 
 export const KEY = 'patra-bus:routines';
 export const CANCEL_KEY = 'patra-bus:routines-cancel'; // server ids whose DELETE failed (retried later)
@@ -51,11 +53,11 @@ export function tripFromItinerary(it, stopName = '') {
 }
 
 // Body of POST /api/push/routines. Returns null when anything required is missing or malformed.
-export function buildRoutinePayload({ subscription, days, time, title = '', url = '', trip, leadMin = DEFAULT_LEAD }) {
+export function buildRoutinePayload({ subscription, days, time, title = '', url = '', trip, leadMin = DEFAULT_LEAD, city = cityId() }) {
   const ds = normDays(days);
   if (!subscription?.endpoint || !ds.length || !validTime(time) || !trip?.stopCode || !trip?.routeCode) return null;
   const body = {
-    subscription, days: ds, time, tz: TZ, title: String(title).slice(0, 100), url: String(url).slice(0, 500),
+    subscription, days: ds, time, tz: TZ, title: String(title).slice(0, 100), url: String(url).slice(0, 500), city: isCity(city) ? city : DEFAULT_CITY,
     trip: { stopCode: String(trip.stopCode), routeCode: String(trip.routeCode), lineCode: String(trip.lineCode ?? ''), offsetSec: Math.max(0, Math.round(Number(trip.offsetSec) || 0)) },
     leadMin: Math.min(30, Math.max(0, Math.round(Number(leadMin)) || 0)),
   };
@@ -71,18 +73,21 @@ export function cleanRoutine(r) {
   return {
     id: String(r.id), days, time: r.time, placeId: String(r.placeId ?? ''), placeName: String(r.placeName ?? '').slice(0, 40),
     trip: { ...r.trip }, leadMin: Math.min(30, Math.max(0, Math.round(Number(r.leadMin)) || 0)),
+    city: isCity(r.city) ? r.city : DEFAULT_CITY, // older routines: Patras
   };
 }
 
 // ---------------------------------------------------------------- store + server
 
-export function createRoutines({ storage, fetchFn, apiBase = API_BASE } = {}) {
+// Routines are per city: getRoutines() shows the active city's, writes keep the other cities' untouched.
+export function createRoutines({ storage, fetchFn, apiBase = API_BASE, city = cityId } = {}) {
   const kv = jsonStore(KEY, { storage });
   const cancels = jsonStore(CANCEL_KEY, { storage });
   const subs = new Set();
   const doFetch = (...a) => (fetchFn || globalThis.fetch)(...a);
   const emit = () => { for (const fn of [...subs]) { try { fn(); } catch { /* ignore */ } } };
-  const getRoutines = () => (Array.isArray(kv.read([])) ? kv.read([]) : []).map(cleanRoutine).filter(Boolean);
+  const all = () => (Array.isArray(kv.read([])) ? kv.read([]) : []).map(cleanRoutine).filter(Boolean);
+  const getRoutines = () => all().filter((r) => r.city === city());
 
   async function http(path, init = {}) {
     const ctl = typeof AbortController === 'function' ? new AbortController() : null;
@@ -107,15 +112,15 @@ export function createRoutines({ storage, fetchFn, apiBase = API_BASE } = {}) {
       let id = null;
       try { id = (await res.json())?.id; } catch { /* no body */ }
       if (id == null || id === '') return { ok: false, error: 'server' };
-      const routine = cleanRoutine({ id, days: payload.days, time: payload.time, trip: payload.trip, leadMin: payload.leadMin, ...meta });
-      kv.write([...getRoutines(), routine]);
+      const routine = cleanRoutine({ id, days: payload.days, time: payload.time, trip: payload.trip, leadMin: payload.leadMin, ...meta, city: city() });
+      kv.write([...all(), routine]);
       emit();
       return { ok: true, routine };
     },
     // Local removal is immediate; the server DELETE is retried (flushCancels) if it fails.
     async removeRoutine(id) {
       id = String(id);
-      kv.write(getRoutines().filter((r) => r.id !== id));
+      kv.write(all().filter((r) => r.id !== id));
       emit();
       if (!(await del(id))) { const a = pending(); if (!a.includes(id)) setPending([...a, id]); return false; }
       return true;
@@ -194,7 +199,7 @@ export function mountRoutinesSettings(container, ctx = {}) {
       const it = its.find((x) => x.board && x.route);
       const trip = it && tripFromItinerary(it, stopName(it.board.code));
       if (!trip) return fail('no-route');
-      const url = new URL(`#/plan?to=${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}&name=${encodeURIComponent(dest.name)}`, document.baseURI).href;
+      const url = new URL(shareHash(`#/plan?to=${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}&name=${encodeURIComponent(dest.name)}`), document.baseURI).href;
       const payload = buildRoutinePayload({ subscription, days: form.days, time: form.time, title: t('Ώρα να φύγεις'), url, trip, leadMin: form.lead });
       if (!payload) return fail('no-route');
       const res = await bookRoutine(payload, { placeId: dest.id, placeName: dest.name });

@@ -1,7 +1,8 @@
 // Reliability stats: how late buses really are vs the schedule, per routeCode+stopCode.
 // Fed only by live responses the worker already fetched (cache MISS), never by extra upstream calls.
 // A vehicle seen as scheduled at stop S (time T) that later shows live at S with eta <= 5' yields
-// delay = liveArrival - T, recorded once. One Durable Object per routeCode+stopCode.
+// delay = liveArrival - T, recorded once. One Durable Object per city+routeCode+stopCode.
+import { DEFAULT_CITY } from '../../web/js/cities.js';
 
 export const MAX_SAMPLES = 200;
 export const PENDING_TTL_MS = 3 * 3600 * 1000;
@@ -10,6 +11,10 @@ const MAX_ABS_DELAY_SEC = 45 * 60; // beyond this it is a different lap, not a d
 const SAME_T_MS = 120 * 1000; // scheduled times are stable; this absorbs rounding
 const STALE_T_MS = 20 * 60 * 1000;
 const RESEEN_MS = 10 * 60 * 1000; // refresh a pending's "seen" at most this often (saves writes)
+
+// DO name. Patras keeps the original `{route}/{stop}` (its history predates multi-city); other cities are prefixed.
+export const statsName = (city, routeCode, stopCode) =>
+  city === DEFAULT_CITY ? `${routeCode}/${stopCode}` : `${city}/${routeCode}/${stopCode}`;
 
 export const validCode = (c) => typeof c === 'string' && /^\d{1,8}$/.test(c);
 
@@ -105,12 +110,12 @@ export class StatsBase {
 }
 
 // Called from the live path after a real upstream fetch. Best effort, never throws.
-export async function recordStats(env, stopCode, result) {
+export async function recordStats(env, city, stopCode, result) {
   if (!env.STATS) return;
   try {
     const calls = [];
     for (const [routeCode, vehicles] of sightingsByRoute(result)) {
-      const stub = env.STATS.get(env.STATS.idFromName(`${routeCode}/${stopCode}`));
+      const stub = env.STATS.get(env.STATS.idFromName(statsName(city, routeCode, stopCode)));
       calls.push(stub.fetch('https://stats/', { method: 'POST', body: JSON.stringify({ fetchedAt: result.fetchedAt, vehicles }) }));
     }
     await Promise.allSettled(calls);
@@ -119,8 +124,8 @@ export async function recordStats(env, stopCode, result) {
   }
 }
 
-export async function readStats(env, routeCode, stopCode) {
-  const stub = env.STATS.get(env.STATS.idFromName(`${routeCode}/${stopCode}`));
+export async function readStats(env, city, routeCode, stopCode) {
+  const stub = env.STATS.get(env.STATS.idFromName(statsName(city, routeCode, stopCode)));
   const res = await stub.fetch('https://stats/');
   return res.text();
 }

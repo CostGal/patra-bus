@@ -35,6 +35,12 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 | `#/plan` / `#/plan?to=lat,lng&name=…&from=lat,lng` | trip planner (`planner-view.js`) |
 | `#/lines` / `#/line/{lineCode}?dir=1` | line browser / one line on the map (`lines-view.js`) |
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
+**City prefix** (docs/MULTI-CITY.md, `js/route.js`): any hash may start with a city id, `#/corfu/stop/123`. Views and links use
+city-relative hashes; `cityHash()` adds the prefix for every city but Patras (links, `navigate`, `replaceState`), `shareHash()`
+always adds it (share links, reminder/push urls). `js/boot-city.js` (first import of `app.js`) sets the active city: prefix, else an
+unprefixed link to a stop/line/coordinates (= Patras, old links keep working), else `settings.city`, else Patras. A prefix of another
+city while running, or the picker in the settings, saves `settings.city` and reloads. Stored favourites, recents, places, routines,
+reminders and the onboard trip carry a `city`; older items are Patras; lists show only the active city's.
 `?demo` in the page query (not the hash) switches the whole app to synthetic data (`demo.js`); a DEMO tag is shown.
 
 ## View mounting contract
@@ -129,6 +135,9 @@ LocationService = { start(): void; stop(): void; current: Fix|null; status: LocS
 ### D — data & routes: `scripts/fetch-static.mjs`, `scripts/build-routes.mjs`, `web/data/routes.json`, `web/data/shapes.json`, `web/js/data.js`, `package.json`, `tests/routes.test.mjs`, `tests/data.test.mjs`
 - `routes.json`: `{ version: 1, generatedAt, routes: { [routeCode]: { code, lineCode, name, direction, stops: string[] /*ordered stop codes*/, legSec: number[] /*bus seconds between consecutive stops, length stops-1*/, confidence: number /*0..1*/, method: string } } }`
 - `shapes.json` (lazy): `{ [routeCode]: [lng, lat][] }` road geometry, simplified.
+- Other cities keep the same files under `web/data/{city}/` (Patras stays at `web/data/`); `fetch-static.mjs` and
+  `build-routes.mjs` take `--city=`. `build-routes.mjs` has a per-city `CENTER_WORDS` table (the route-name tokens that mean
+  the town hub: Patras `κεντρο`, Corfu `σαροκο`/`μεθοδιου`/`πολη`); see `docs/MULTI-CITY.md` for the Corfu data review.
 - `data.js`: `loadData() → Promise<Data>`, `loadShapes() → Promise<Record<string, [number,number][]>>`, `searchStops(data, q, limit)`.
 ```ts
 type Stop = { code, name, displayName, lat, lng, lineCodes: string[], routeCodes: string[], key: string };
