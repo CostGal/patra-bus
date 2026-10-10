@@ -166,3 +166,37 @@ type Data = { stops: Stop[], lines: Line[], routes: Route[], stopByCode: Map, li
 - Never run git commands that change state (commit, checkout, stash, reset, push). Never deploy.
 - Dev servers already run: web `http://localhost:8080/` (no HTTP cache), worker `http://localhost:8787/`. Don't start others on those ports.
 - Browser checks: open your **own** tab (`tabs_create`) and only drive that tab. Use `?demo` for data at night.
+
+## Round 2 (transfers, push, offline map, accents, polish)
+
+### T — transfers: `js/planner.js`, `js/planner-view.js`, `css/planner.css`, `tests/planner.test.mjs`
+`Itinerary.kind` gains `'transfer'` with `legs: [{ route, line, board, alight, bus, rideSec, rideSource }, …]` (2 bus legs) and `transfer: { stop|walk, waitSec }`.
+The reminder button passes `trip` to `scheduleReminder` (below) for the FIRST bus leg.
+
+### PW — push server: `worker/src/index.js`, `worker/src/push.js`, `worker/src/reminders.js`, `worker/wrangler.toml`, `tests/push-worker.test.mjs`, `.dev.vars` (gitignored, local keys only)
+- `GET /api/push/key` → `{ publicKey }` (VAPID, base64url, uncompressed P-256 point).
+- `POST /api/push/reminders` JSON `{ subscription: PushSubscriptionJSON, at: epochMs, title, body, tag, url, trip?: { stopCode, routeCode, lineCode, vehicleCode|null, offsetSec } }` → `201 { id }`.
+  `at` must be within the next 3 h; bodies ≤ 4 KB; text fields length-capped.
+- `DELETE /api/push/reminders/{id}` → `204`.
+- At `at` (Durable Object alarm, one object per reminder): if `trip` is set, re-read live for `stopCode` through the same 15 s cache,
+  find the bus (`vehicleCode`, else first of `routeCode`), recompute leave time = bus eta − `offsetSec`; if it moved later by > 60 s re-arm (max 3 times),
+  else send the push (title/body updated with the fresh minutes). Then delete everything stored. Expired/410 subscriptions are dropped.
+- Web Push per RFC 8291 (aes128gcm) + VAPID (RFC 8292, ES256 via WebCrypto). Secrets: `VAPID_PRIVATE_KEY` (secret), `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` = `https://github.com/CostGal/patra-bus`.
+- CORS: same allowlist; methods GET, POST, DELETE, OPTIONS; header Content-Type.
+
+### PC — push client: `js/push.js`, `js/notify.js`, `web/sw-push.js`, `tests/push-client.test.mjs`
+- `push.js`: `isPushSupported()`, `pushState() → 'unsupported'|'needs-install'|'denied'|'off'|'on'`, `enablePush()` (user gesture), `disablePush()`,
+  `schedulePushReminder(payload) → id|null`, `cancelPushReminder(id)`, `mountPushCard(container, ctx) → {destroy}` (settings card; explains iPhone needs the installed app).
+- `notify.js`: `scheduleReminder({ at, title, body, tag, trip? })` keeps working locally and, when push is on, also books a server reminder (same `tag`), cancels it on cancel.
+- `sw-push.js` (imported by `sw.js` via `importScripts`): `push` → `showNotification(title, { body, tag, data: { url } })`. `notificationclick` stays in `sw.js`.
+
+### OM — offline map: `web/sw.js`, `web/vendor/**`, `web/index.html`, `js/offline.js`, `tests/offline.test.mjs`
+- MapLibre GL 4.7.1 self-hosted under `web/vendor/maplibre-gl/` (precached).
+- `sw.js` may now cache **OpenFreeMap only** (style, tilejson, tiles, glyphs, sprites) in a separate bounded cache; still never `/api/`, OSRM, Photon or any other origin.
+- `offline.js`: `offlineMapStatus()`, `downloadPatrasMap({ onProgress, signal })`, `clearOfflineMap()`, `mountOfflineCard(container, ctx) → {destroy}` (opt-in download with size estimate, progress, cancel, delete).
+
+### AC — accented names: `js/text.js`, `js/accents.js`, `tests/text.test.mjs`
+`titleCase()` applies a curated word dictionary (`ACCENTS`) of unambiguous Greek words; unknown or ambiguous words stay unaccented. `searchKey()` unchanged.
+
+### PO — polish + integration: `js/app.js`, `js/nearby.js`, `js/location.js`, `js/map.js`, `js/settings-view.js`, `app.css`, `css/extras.css`, `tests/location.test.mjs`, `tests/nearby.test.mjs`
+Settings mounts `mountPushCard` and `mountOfflineCard`; offline indicator; 4th nearby stop; compass in landscape; map pins clear of the floating buttons.
