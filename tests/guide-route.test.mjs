@@ -48,3 +48,10 @@ test('service worker precaches the guide files and index.html links their styles
   const html = read('index.html');
   for (const f of ['css/guide.css', 'css/install.css']) assert.ok(html.includes(`href="${f}"`), `${f} not linked`);
 });
+
+test('an unprefixed guide link keeps the saved city (the query does not make it city-bound)', () => {
+  assert.equal(resolveBootCity('#/guide?section=install', 'corfu'), 'corfu');
+  assert.equal(resolveBootCity('#/guide', 'corfu'), 'corfu');
+  assert.equal(resolveBootCity('#/stop/1011', 'corfu'), 'patra');
+  assert.equal(resolveBootCity('#/patra/guide?section=install', 'corfu'), 'patra');
+});
