@@ -143,7 +143,7 @@ test('EN: every t(\'…\') / tn / N_ literal in web/js has an English entry (sta
   const dir = new URL('../web/js/', import.meta.url);
   const lit = String.raw`(?:'(?:\.|[^'\\n])*'|"(?:\.|[^"\\n])*")`;
   const re = new RegExp(String.raw`(?<![\w.$])(?:(?:t|N_)\(\s*(${lit})|tn\(\s*[^,]+,\s*(${lit})\s*,\s*(${lit}))`, 'g');
-  const SKIP = new Set(['i18n-en.js', 'arrivals.js', 'accents.js']); // arrivals.js is shared with the worker: Greek only
+  const SKIP = new Set(['i18n-en.js', 'i18n-en-guide.js', 'i18n-en-install.js', 'arrivals.js', 'accents.js']); // arrivals.js is shared with the worker: Greek only
   let seen = 0;
   const missing = [];
   for (const f of readdirSync(dir).filter((n) => n.endsWith('.js') && !SKIP.has(n))) {

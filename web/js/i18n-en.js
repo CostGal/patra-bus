@@ -1,5 +1,8 @@
 // Greek source string -> English (owner: i18n). Keys are EXACTLY the Greek text passed to t(); {name} placeholders must match.
 // Stop and line names are data and are never translated. Keep UI English short.
+import { PAIRS as GUIDE_PAIRS } from './i18n-en-guide.js';
+import { PAIRS as INSTALL_PAIRS } from './i18n-en-install.js';
+
 const PAIRS = [
   // ---- shared: arrivals, status, common controls ----
   ['LIVE', 'LIVE'],
@@ -553,4 +556,5 @@ const PAIRS = [
   ['Λεωφορείο {line}', 'Bus {line}'],
 ];
 
-export const EN = new Map(PAIRS);
+// Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
+export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS]);
