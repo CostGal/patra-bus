@@ -6,9 +6,13 @@
 // onSnap({state, visible, desktop}) fires when a target is chosen (padding for the map);
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
 import { t, N_ } from './i18n.js';
+import { createSpringLoop, rubberband, project } from './motion.js';
 const STATES = ['peek', 'half', 'full'];
 const PEEK_PX = 152; // handle + a header row
 const LABEL = { peek: N_('κλειστός'), half: N_('μισός'), full: N_('πλήρης') };
+const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point (docs/DESIGN.md §2)
+const MOMENTUM = { damping: 0.8, response: 0.3 }; // spring after a flick (release velocity)
+const SETTLE = { damping: 1, response: 0.35 }; // spring for a snap with no preceding gesture
 
 export function createSheet(root, { onSnap, onMove } = {}) {
   const handle = root.querySelector('.sheet-handle');
@@ -28,7 +32,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let y = 0; // current translateY in px
   let dragging = false;
   let suppressClick = false;
-  let raf = 0;
+  let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
   let peekPx = PEEK_PX; // the home card sets this to its own height (setPeek)
 
   const isDesktop = () => desktopMQ.matches;
@@ -50,7 +54,26 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     onMove?.({ visible: vis, lift, opacity });
   }
 
-  function apply(animate) {
+  // Drives --sheet-y with the spring while not dragging; the pointer sets it directly during a drag.
+  const spring = createSpringLoop({ get: () => y, set: setY });
+
+  // prefers-reduced-motion: bypass physics entirely, a short opacity cross-fade on the content instead
+  // (docs/DESIGN.md §7). Position itself jumps straight to the target.
+  function reducedMotionTo(targetY) {
+    setY(targetY);
+    content.style.transition = 'none';
+    content.style.opacity = '0';
+    requestAnimationFrame(() => {
+      content.style.transition = 'opacity .15s linear';
+      content.style.opacity = '1';
+    });
+    content.addEventListener('transitionend', () => { content.style.transition = ''; }, { once: true });
+  }
+
+  // Moves to a state's resting position: unanimated (resize/boot), settled (plain programmatic snap),
+  // or with momentum (after a flick, via dragEnd). `spring` here is a {damping, response} pair, not the
+  // module-level spring loop above.
+  function moveTo(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
     measure();
     if (inert()) {
       root.style.removeProperty('--sheet-y');
@@ -58,18 +81,26 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       onSnap?.({ state, visible: 0, desktop: isDesktop() });
       return;
     }
-    root.classList.toggle('animating', animate && !reduceMQ.matches);
-    setY(yFor(state));
-    onSnap?.({ state, visible: SZ[state], desktop: false });
+    const targetY = yFor(to);
+    if (!animate) {
+      spring.stop();
+      setY(targetY);
+    } else if (reduceMQ.matches) {
+      spring.stop();
+      reducedMotionTo(targetY);
+    } else {
+      spring.to(targetY, { velocity, damping: cfg.damping, response: cfg.response });
+    }
+    onSnap?.({ state, visible: SZ[to], desktop: false });
   }
 
-  function snap(to, { animate = true } = {}) {
+  function snap(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
     if (!STATES.includes(to)) return;
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;
     handle.setAttribute('aria-label', t('Αλλαγή μεγέθους πίνακα (τώρα: {state})', { state: t(LABEL[to]) }));
-    apply(animate);
+    moveTo(to, { animate, velocity, spring: cfg });
   }
 
   // ---- dragging ----
@@ -79,38 +110,38 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   function dragBegin(clientY) {
     measure();
     dragging = true;
+    spring.stop(); // interrupt any in-flight snap; the drag takes over the live y from here
     startY = y;
     pointerStart = clientY;
     samples = [{ t: performance.now(), y: clientY }];
-    root.classList.remove('animating');
     root.classList.add('dragging');
     docEl.classList.add('sheet-dragging');
   }
   function dragMove(clientY) {
     let ny = startY + (clientY - pointerStart);
     const maxY = H - SZ.peek;
-    // light rubber band beyond the ends
-    if (ny < 0) ny *= 0.25;
-    if (ny > maxY) ny = maxY + (ny - maxY) * 0.25;
+    // rubber-band resistance past the first/last snap point, never a hard stop (docs/DESIGN.md §2)
+    if (ny < 0) ny = -rubberband(-ny, RUBBER_DIM);
+    else if (ny > maxY) ny = maxY + rubberband(ny - maxY, RUBBER_DIM);
     samples.push({ t: performance.now(), y: clientY });
     if (samples.length > 6) samples.shift();
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => setY(ny));
+    cancelAnimationFrame(dragRaf);
+    dragRaf = requestAnimationFrame(() => setY(ny));
     y = ny;
   }
   function dragEnd(moved) {
-    cancelAnimationFrame(raf);
+    cancelAnimationFrame(dragRaf);
     dragging = false;
     root.classList.remove('dragging');
     docEl.classList.remove('sheet-dragging');
-    // flick bias: project 120 ms ahead using the recent velocity (no inertia, just a nudge)
+    // release velocity from the recent pointer history, in px/s
     let v = 0;
     if (samples.length > 1) {
       const a = samples[0];
       const b = samples[samples.length - 1];
-      v = (b.y - a.y) / Math.max(16, b.t - a.t);
+      v = ((b.y - a.y) / Math.max(16, b.t - a.t)) * 1000;
     }
-    const proj = y + Math.max(-1, Math.min(1, v)) * 120;
+    const proj = y + project(v);
     let best = state;
     let bd = Infinity;
     for (const s of STATES) {
@@ -118,7 +149,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
-    snap(best);
+    snap(best, { velocity: v, spring: MOMENTUM });
   }
 
   let handleMoved = false;
@@ -187,8 +218,8 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   });
 
   // Re-measure on size changes (rotation, keyboard, breakpoint).
-  new ResizeObserver(() => { if (!dragging) apply(false); }).observe(root);
-  desktopMQ.addEventListener('change', () => apply(false));
+  new ResizeObserver(() => { if (!dragging) moveTo(state, { animate: false }); }).observe(root);
+  desktopMQ.addEventListener('change', () => moveTo(state, { animate: false }));
 
   snap(state, { animate: false });
 
@@ -202,7 +233,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     setFixed(v) {
       fixed = !!v;
       root.classList.toggle('fixed', fixed);
-      apply(false);
+      moveTo(state, { animate: false });
     },
     scrollToTop() { body.scrollTop = 0; },
     // Peek height = handle + the single home card; null restores the default.
@@ -210,7 +241,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       const next = px == null ? PEEK_PX : Math.max(96, Math.min(Math.round(px), Math.round(innerHeight * 0.45)));
       if (next === peekPx) return;
       peekPx = next;
-      if (!dragging) apply(false);
+      if (!dragging) moveTo(state, { animate: false });
     },
   };
 }

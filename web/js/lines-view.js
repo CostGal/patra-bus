@@ -47,7 +47,7 @@ function buildLines(container, ctx, st) {
     if (terms.length) hits.sort((a, b) => Number(b.line.code.startsWith(terms[0])) - Number(a.line.code.startsWith(terms[0])));
     count.textContent = hits.length ? tn(hits.length, '{n} γραμμή', '{n} γραμμές') : t('Καμία γραμμή δεν ταιριάζει');
     list.replaceChildren(...hits.map(({ line }) => h('li', {},
-      h('a', { class: 'lines-row', href: `#/line/${encodeURIComponent(line.code)}` },
+      h('a', { class: 'lines-row press', href: `#/line/${encodeURIComponent(line.code)}` },
         h('span', { class: 'lines-badge' }, lineBadge(line)),
         h('span', { class: 'lines-main' }, h('span', { class: 'lines-name' }, line.displayName)),
         icon('chevron')))));
@@ -129,12 +129,12 @@ function buildLine(container, ctx, params) {
   // "Πρόγραμμα": live/scheduled departures from the first stop of the route + estimated end-to-end time. NOT a timetable.
   const timesId = `lt${Math.random().toString(36).slice(2, 7)}`;
   const timesStop = h('p', { class: 'ex-sub' });
-  const timesList = h('ul', { class: 'lines-deps' });
+  const timesList = h('ul', { class: 'lines-deps tabular' });
   const timesMsg = h('p', { class: 'ex-sub', 'aria-live': 'polite' });
   const timesHint = h('p', { class: 'ex-sub lines-times-note', hidden: true }, t('Πλήρες ημερήσιο πρόγραμμα: όχι ακόμη διαθέσιμο — χρειάζεται τα επίσημα δεδομένα δρομολογίων.'));
   const times = h('section', { class: 'lines-times', 'aria-labelledby': timesId },
     h('h2', { id: timesId, class: 'lines-times-title' }, icon('clock'), h('span', { class: 'ex-grow' }, t('Αναχωρήσεις από την αφετηρία')),
-      h('button', { type: 'button', class: 'ex-info', 'aria-label': t('Περισσότερα'), 'aria-expanded': 'false', onclick: (e) => {
+      h('button', { type: 'button', class: 'ex-info press', 'aria-label': t('Περισσότερα'), 'aria-expanded': 'false', onclick: (e) => {
         const on = timesHint.hidden; timesHint.hidden = !on; e.currentTarget.setAttribute('aria-expanded', String(on));
       } }, icon('info'))),
     timesHint, timesStop, timesList, timesMsg);
@@ -160,7 +160,7 @@ function buildLine(container, ctx, params) {
     chips.hidden = line.routes.length < 2;
     chips.replaceChildren(...line.routes.map((r) => {
       const name = routeName(ctx, r);
-      return h('button', { type: 'button', class: 'lines-chip', 'aria-pressed': String(r.code === routeCode), title: name, onclick: () => setRoute(r.code) }, name);
+      return h('button', { type: 'button', class: 'lines-chip press', 'aria-pressed': String(r.code === routeCode), title: name, onclick: () => setRoute(r.code) }, name);
     }));
     const on = chips.querySelector('[aria-pressed="true"]'); // bring the active chip into view (horizontal only)
     if (on) chips.scrollLeft = Math.max(0, on.offsetLeft - (chips.clientWidth - on.offsetWidth) / 2);
@@ -231,12 +231,12 @@ function buildLine(container, ctx, params) {
     list.replaceChildren(...stops.map((s, i) => {
       const end = ordered && (i === 0 ? t('Αφετηρία') : i === stops.length - 1 ? t('Τέρμα') : '');
       const panel = h('div', { class: 'lines-next', hidden: true });
-      const btn = h('button', { type: 'button', class: 'lines-next-btn', 'aria-expanded': 'false', 'aria-label': t('Επόμενα λεωφορεία στη στάση {name}', { name: s.displayName }), title: t('Επόμενα'), onclick: () => toggleNext(s, btn, panel) },
+      const btn = h('button', { type: 'button', class: 'lines-next-btn press', 'aria-expanded': 'false', 'aria-label': t('Επόμενα λεωφορεία στη στάση {name}', { name: s.displayName }), title: t('Επόμενα'), onclick: () => toggleNext(s, btn, panel) },
         icon('clock'));
       return h('li', { class: `lines-stop${end ? ' is-end' : ''}`, 'data-code': s.code },
         h('span', { class: 'lines-dot', 'aria-hidden': 'true' }),
         h('div', { class: 'lines-stop-row' },
-          h('a', { class: 'lines-stop-link', href: `#/stop/${encodeURIComponent(s.code)}` },
+          h('a', { class: 'lines-stop-link press', href: `#/stop/${encodeURIComponent(s.code)}` },
             h('span', { class: 'lines-stop-name' }, s.displayName),
             end ? h('span', { class: 'ex-sub' }, end) : null),
           btn),

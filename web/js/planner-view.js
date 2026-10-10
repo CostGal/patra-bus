@@ -85,8 +85,8 @@ export function mountPlanner(container, ctx, params = {}) {
 
   const fromInput = h('input', { class: 'pl-input', type: 'search', id: 'pl-from', enterkeyhint: 'search', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': t('Αφετηρία') });
   const toInput = h('input', { class: 'pl-input', type: 'search', id: 'pl-to', enterkeyhint: 'search', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: t('Πού πάμε;'), 'aria-label': t('Προορισμός') });
-  const swapBtn = h('button', { type: 'button', class: 'pl-icon-btn pl-swap', 'aria-label': t('Αντιστροφή αφετηρίας και προορισμού'), onclick: () => swap() }, icon('swap'));
-  const backBtn = h('button', { type: 'button', class: 'pl-icon-btn', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back'));
+  const swapBtn = h('button', { type: 'button', class: 'pl-icon-btn pl-swap press', 'aria-label': t('Αντιστροφή αφετηρίας και προορισμού'), onclick: () => swap() }, icon('swap'));
+  const backBtn = h('button', { type: 'button', class: 'pl-icon-btn press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back'));
   const head = h('header', { class: 'pl-head' },
     h('div', { class: 'pl-head-top' }, backBtn, h('h2', { class: 'pl-title' }, t('Διαδρομή'))),
     h('div', { class: 'pl-route' },
@@ -174,9 +174,12 @@ export function mountPlanner(container, ctx, params = {}) {
   function sugRow(place, { iconName, sub, onPick }) {
     const n = near();
     const dist = n && Number.isFinite(place.lat) ? fmtDist(haversine(n, place)) : '';
-    return h('button', { type: 'button', class: 'pl-sug', onclick: onPick },
+    const subText = sub ?? place.subtitle;
+    // Honest, quiet flag: a street/nearby-POI match standing in for an exact house number (never silently wrong).
+    const full = place.approx ? [subText, t('κατά προσέγγιση')].filter(Boolean).join(' · ') : subText;
+    return h('button', { type: 'button', class: 'pl-sug press', onclick: onPick },
       h('span', { class: `pl-sug-ic${place.kind === 'stop' ? ' is-stop' : ''}` }, icon(iconName)),
-      h('span', { class: 'pl-sug-t' }, h('span', { class: 'pl-sug-name' }, place.name), (sub ?? place.subtitle) ? h('span', { class: 'pl-sug-sub' }, sub ?? place.subtitle) : null),
+      h('span', { class: 'pl-sug-t' }, h('span', { class: 'pl-sug-name' }, place.name), full ? h('span', { class: 'pl-sug-sub' }, full) : null),
       dist && !place.special ? h('span', { class: 'pl-sug-d' }, dist) : null);
   }
   const placeIcon = (p) => (p.kind === 'stop' ? 'bus' : 'pin');
@@ -224,7 +227,7 @@ export function mountPlanner(container, ctx, params = {}) {
 
   function pick(field, place, source) {
     keepOpenUntil = 0;
-    const p = { lat: place.lat, lng: place.lng, name: place.name, subtitle: place.subtitle, kind: place.kind, ...(place.stopCode ? { stopCode: place.stopCode } : {}) };
+    const p = { lat: place.lat, lng: place.lng, name: place.name, subtitle: place.subtitle, kind: place.kind, ...(place.stopCode ? { stopCode: place.stopCode } : {}), ...(place.approx ? { approx: true } : {}) };
     if (field === 'to') {
       S.to = p;
       if (source === 'place') addRecent('place', { ...p, subtitle: p.subtitle || '' });
@@ -257,8 +260,8 @@ export function mountPlanner(container, ctx, params = {}) {
   function swap() {
     if (!S.to) return;
     const a = S.from, b = S.to;
-    S.from = { lat: b.lat, lng: b.lng, name: b.name, source: 'place' };
-    S.to = a ? { lat: a.lat, lng: a.lng, name: a.source === 'gps' ? MY_LOCATION : a.name } : null;
+    S.from = { lat: b.lat, lng: b.lng, name: b.name, source: 'place', ...(b.approx ? { approx: true } : {}) };
+    S.to = a ? { lat: a.lat, lng: a.lng, name: a.source === 'gps' ? MY_LOCATION() : a.name, ...(a.approx ? { approx: true } : {}) } : null;
     S.editing = null;
     resetPlan(); writeUrl(); runPlan();
   }
@@ -344,7 +347,7 @@ export function mountPlanner(container, ctx, params = {}) {
   function stateBox(iconName, title, sub, ...extra) {
     return h('div', { class: 'pl-state' }, icon(iconName), h('p', { class: 'pl-state-title' }, title), sub ? h('p', { class: 'pl-state-sub' }, sub) : null, ...extra);
   }
-  const btn = (label, onclick, cls = '', ic = null) => h('button', { type: 'button', class: `pl-btn ${cls}`.trim(), onclick }, ic ? icon(ic) : null, label);
+  const btn = (label, onclick, cls = '', ic = null) => h('button', { type: 'button', class: `pl-btn press ${cls}`.trim(), onclick }, ic ? icon(ic) : null, label);
   // secondary text / actions live behind "⋯"
   const moreBox = (...kids) => h('details', { class: 'pl-more' }, h('summary', { 'aria-label': t('Περισσότερα'), title: t('Περισσότερα') }, '⋯'), h('div', { class: 'pl-more-body' }, ...kids));
 
@@ -384,7 +387,7 @@ export function mountPlanner(container, ctx, params = {}) {
     const list = nearestStops(ctx.data.stops, S.to, { limit: 4, maxMeters: 3000 });
     if (!list.length) return null;
     return h('div', { class: 'pl-sug-list' }, h('div', { class: 'pl-sug-head' }, t('Κοντινότερες στάσεις στον προορισμό')),
-      list.map(({ stop, meters }) => h('a', { class: 'pl-sug', href: `#/stop/${encodeURIComponent(stop.code)}` },
+      list.map(({ stop, meters }) => h('a', { class: 'pl-sug press', href: `#/stop/${encodeURIComponent(stop.code)}` },
         h('span', { class: 'pl-sug-ic is-stop' }, icon('bus')),
         h('span', { class: 'pl-sug-t' }, h('span', { class: 'pl-sug-name' }, stop.displayName), h('span', { class: 'pl-sug-sub' }, t('Στάση {code}', { code: stop.code }))),
         h('span', { class: 'pl-sug-d' }, fmtDist(meters)))));
@@ -436,6 +439,7 @@ export function mountPlanner(container, ctx, params = {}) {
       notes.push(h('div', { class: 'pl-banner' }, h('span', {}, t('Δεν υπάρχουν αναχωρήσεις αυτή τη στιγμή για αυτές τις γραμμές (ίσως έχουν τελειώσει τα δρομολόγια).'))));
     }
     if (S.pending > 0) notes.push(h('p', { class: 'pl-hint pl-hint-busy' }, t('Υπολογίζω ακριβώς τον χρόνο περπατήματος…')));
+    if (S.from?.approx || S.to?.approx) notes.push(h('p', { class: 'pl-hint' }, t('Η διεύθυνση αντιστοιχήθηκε κατά προσέγγιση (οδός ή κοντινό σημείο, όχι ο ακριβής αριθμός).')));
     body.replaceChildren(...notes, h('div', { class: 'pl-cards' }, cards),
       moreBox(h('p', { class: 'pl-foot' }, t('LIVE = θέση οχήματος σε πραγματικό χρόνο · ΠΡΟΓΡ. = ώρα από το πρόγραμμα. Ο χρόνος διαδρομής είναι εκτίμηση, εκτός αν αναγράφεται «από το όχημα».')
         + (S.its.some((i) => i.kind === 'transfer') ? ` ${t('Στις διαδρομές με αλλαγή, η ώρα του δεύτερου λεωφορείου είναι εκτίμηση όταν δεν υπάρχει καταχωρημένη αναχώρηση.')}` : '')
@@ -459,7 +463,7 @@ export function mountPlanner(container, ctx, params = {}) {
       : isX ? h('span', { class: 'pl-xlead', role: 'img', 'aria-label': t('Γραμμή {a}, μετά γραμμή {b}', { a: it.legs[0].route.lineCode, b: it.legs[1].route.lineCode }) },
         lineBadge(it.legs[0].line || { code: it.legs[0].route.lineCode }), h('span', { class: 'pl-xarrow', 'aria-hidden': 'true' }, '→'), lineBadge(it.legs[1].line || { code: it.legs[1].route.lineCode }))
         : lineBadge(it.line || { code: it.route.lineCode });
-    const headBtn = h('button', { type: 'button', class: 'pl-card-head', 'aria-expanded': String(isSel), onclick: () => select(it.id) },
+    const headBtn = h('button', { type: 'button', class: 'pl-card-head press', 'aria-expanded': String(isSel), onclick: () => select(it.id) },
       h('span', { class: 'pl-card-lead' }, lead),
       h('span', { class: 'pl-card-main' }, h('span', { class: 'pl-card-dest' }, dest),
         h('span', { class: 'pl-card-when' }, when, !isWalk && it.bus ? flag(it.bus.live) : null, guess ? h('span', { class: 'pl-flag is-est' }, t('αλλαγή: εκτίμηση')) : null), meta),

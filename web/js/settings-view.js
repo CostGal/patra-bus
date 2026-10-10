@@ -60,7 +60,7 @@ function build(container, ctx, keep) {
   // Collapsible section: <details> keeps its open state across re-renders via openKeys.
   const sec = (key, title, ...kids) => {
     const d = h('details', { class: 'set-sec', 'data-k': key, ontoggle: () => { if (d.open) openKeys.add(key); else openKeys.delete(key); } },
-      h('summary', { class: 'set-sum' }, h('span', { class: 'set-sum-title' }, title), icon('chevron-down')),
+      h('summary', { class: 'set-sum press' }, h('span', { class: 'set-sum-title' }, title), icon('chevron-down')),
       h('div', { class: 'set-body' }, ...kids));
     d.open = openKeys.has(key);
     return d;
@@ -68,7 +68,7 @@ function build(container, ctx, keep) {
   // (i) button + the explanation it reveals.
   const info = (text) => {
     const p = h('p', { class: 'ex-sub set-hint', hidden: true }, text);
-    const b = h('button', { type: 'button', class: 'ex-info', 'aria-label': t('Περισσότερα'), 'aria-expanded': 'false', onclick: () => {
+    const b = h('button', { type: 'button', class: 'ex-info press', 'aria-label': t('Περισσότερα'), 'aria-expanded': 'false', onclick: () => {
       const on = p.hidden; p.hidden = !on; b.setAttribute('aria-expanded', String(on));
     } }, icon('info'));
     return [b, p];
@@ -96,7 +96,7 @@ function build(container, ctx, keep) {
   // ---------- controls bound to a setting ----------
   const syncs = [];
   function segmented(key, labelId, options, apply) {
-    const btns = options.map(([value, text]) => h('button', { type: 'button', class: 'ex-seg-btn', 'data-v': String(value), onclick: () => {
+    const btns = options.map(([value, text]) => h('button', { type: 'button', class: 'ex-seg-btn press', 'data-v': String(value), onclick: () => {
       if (apply) apply(value); else setSetting(key, value);
       if (key === 'theme') applyTheme(value);
     } }, text));

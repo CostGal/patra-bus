@@ -24,7 +24,10 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080`). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
 
 ## Δομή (v2)
-Συμβόλαια modules και ownership: **`docs/ARCHITECTURE.md`**. Χάρτης MapLibre GL 4.7.1 (unpkg) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js`: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`.
+Συμβόλαια modules και ownership: **`docs/ARCHITECTURE.md`**. Κανόνες κίνησης/υλικών (springs, materials,
+transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτικό για ό,τι αγγίζει ο χρήστης.
+Χτίστηκε/ελέγχθηκε διαβάζοντας μόνο κώδικα· **χρειάζεται έλεγχος από άνθρωπο σε πραγματικό browser/συσκευή**
+πριν θεωρηθεί τελειωμένο οπτικά. Χάρτης MapLibre GL 4.7.1 (unpkg) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js`: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`.
 - Shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/map.js`, `js/sheet.js` (bottom sheet / side panel ≥ 900 px), `js/ui.js`.
 - Live: `js/api.js` (`fetchLive` με **global memo 15 s ανά στάση**, και για errors, `createLivePoller` 20 s μόνο visible), `js/demo.js` (ντετερμινιστική προσομοίωση πάνω στο routes.json), `js/arrivals-view.js` (tiles LIVE/ΠΡΟΓΡ.).
 - Τοποθεσία: `js/location.js` (singleton, φίλτρα άλματος/ακρίβειας, πυξίδα), `js/geo.js`, `js/walk.js` (OSRM foot FOSSGIS, ≤ 1 req/s, fallback εκτίμηση), `js/nearby.js` (κάρτα «Επόμενο λεωφορείο κοντά σου»).

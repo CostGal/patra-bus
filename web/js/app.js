@@ -4,6 +4,7 @@ import { h, icon, toast, lineBadge } from './ui.js';
 import { loadData, searchStops } from './data.js';
 import { createMap } from './map.js';
 import { createSheet } from './sheet.js';
+import { createSpringLoop } from './motion.js';
 import locationService from './location.js';
 import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
@@ -91,17 +92,35 @@ function recentPlaces(limit = 4) {
 const noteStop = (stop) => addRecent('stop', { code: stop.code, name: stop.displayName });
 
 // ---------------------------------------------------------------- popovers
+// Scale/fade from the trigger (DESIGN.md §3): transform-origin at the button, not the popover's centre.
+// Driven by the shared spring (§2: "popovers" are explicitly in the spring list, not a fixed-duration
+// transition), so a quick re-tap while it's still closing reverses from exactly where it is, no jump.
+const SETTLE = { damping: 1, response: 0.35 }; // DESIGN.md §2 default for UI moves
+function popOrigin(btn, pop) {
+  const br = btn.getBoundingClientRect();
+  const pr = pop.getBoundingClientRect();
+  pop.style.transformOrigin = `${br.left + br.width / 2 - pr.left}px ${br.top + br.height / 2 - pr.top}px`;
+}
 const pops = [];
 function makePopover(btn, pop) {
+  let v = 0; // 0 hidden .. 1 shown
+  const paint = (val) => { pop.style.opacity = String(val); pop.style.transform = `scale(${0.86 + 0.14 * val})`; };
+  const loop = createSpringLoop({
+    get: () => v,
+    set: (val) => { v = val; paint(val); },
+    onSettle: () => { if (v < 0.5) pop.hidden = true; },
+  });
   const onDown = (e) => { if (!pop.contains(e.target) && !btn.contains(e.target)) close(false); };
   const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(true); } };
   function close(focusBtn) {
     if (pop.hidden) return;
-    pop.hidden = true;
     btn.setAttribute('aria-expanded', 'false');
     document.removeEventListener('pointerdown', onDown, true);
     document.removeEventListener('keydown', onKey, true);
     if (focusBtn) btn.focus();
+    if (reduceMotion.matches) { loop.stop(); v = 0; paint(0); pop.hidden = true; return; }
+    popOrigin(btn, pop);
+    loop.to(0, SETTLE);
   }
   function open() {
     pops.forEach((p) => p.close(false));
@@ -110,12 +129,18 @@ function makePopover(btn, pop) {
     document.addEventListener('pointerdown', onDown, true);
     document.addEventListener('keydown', onKey, true);
     (pop.querySelector('[aria-checked="true"], [aria-current="page"], a, button'))?.focus();
+    popOrigin(btn, pop);
+    if (reduceMotion.matches) { loop.stop(); v = 1; paint(1); return; }
+    loop.to(1, SETTLE);
   }
   const p = { open, close };
   pops.push(p);
   pop.addEventListener('click', (e) => { if (e.target.closest('a, button:not([data-keep])')) close(false); });
   return p;
 }
+// Press feedback (DESIGN.md §1): `.sb-btn` has no :active rule of its own. app.css's shared `.press`
+// utility (scale .97 on :active, instant down / eased up) covers it — just opt the trigger in.
+function pressable(btn) { btn.classList.add('press'); }
 
 // ---------------------------------------------------------------- menu popover (navigation + map theme)
 const menuBtn = $('menu-btn');
@@ -344,6 +369,8 @@ function renderSearch(keepActive = false) {
     } else {
       out.push(h('p', { class: 'sr-msg' }, t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
     }
+    // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
+    out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
   } else {
     const stops = searchStops(data, q, 6);
     if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops));
@@ -451,6 +478,27 @@ function mountHome(container, c) {
   let dead = false;
   let nearbyBusy = false;
   let nearbyFailed = false;
+  const LEAVE_MS = 180; // matches .home-slot's transition duration (css/nearby.css)
+  const hideTimers = {};
+  // Cross-fades which card is shown (DESIGN.md §3): the leaving slot fades/lifts out, then hides; the
+  // entering one shows right away (its own module adds "card-in" for its content's entrance animation).
+  const showTop = (top) => {
+    for (const k of Object.keys(box)) {
+      if (k === top) {
+        clearTimeout(hideTimers[k]); hideTimers[k] = null;
+        box[k].classList.remove('is-leaving');
+        box[k].hidden = false;
+      } else if (!box[k].hidden && !hideTimers[k]) {
+        box[k].classList.add('is-leaving');
+        hideTimers[k] = setTimeout(() => {
+          hideTimers[k] = null;
+          if (dead) return;
+          box[k].hidden = true;
+          box[k].classList.remove('is-leaving');
+        }, LEAVE_MS);
+      }
+    }
+  };
   const load = (key, file, fn, after) => import(file).then((m) => {
     if (dead) return;
     views[key] = m[fn](box[key], c);
@@ -461,7 +509,7 @@ function mountHome(container, c) {
   const evaluate = () => {
     if (dead) return;
     const top = box.onboard.childElementCount ? 'onboard' : box.places.childElementCount ? 'places' : 'nearby';
-    for (const k of Object.keys(box)) box[k].hidden = k !== top;
+    showTop(top);
     if (top === 'nearby') {
       if (views.nearby || nearbyBusy || nearbyFailed) return;
       nearbyBusy = true;
@@ -499,6 +547,7 @@ function mountHome(container, c) {
       mo.disconnect();
       ro.disconnect();
       sheet.setPeek(null);
+      Object.values(hideTimers).forEach((id) => id && clearTimeout(id));
       offs.forEach((f) => f?.());
       Object.values(views).forEach((v) => v?.destroy?.());
     },
@@ -710,6 +759,7 @@ function buildChrome() {
   northBtn.append(icon('compass'));
   locateBtn.append(icon('locate'));
   menuPopover = makePopover(menuBtn, menuPop);
+  pressable(menuBtn);
   localizeChrome();
   if (DEMO) $('demo-tag').hidden = false;
 }

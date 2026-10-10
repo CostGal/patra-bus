@@ -186,8 +186,8 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       const name = h('span', { class: 'bv-name' }, s ? s.displayName : t('Στάση {code}', { code: c }));
       const li = h('li', { class: `bv-row${end ? ' is-end' : ''}`, 'data-i': String(i) },
         h('span', { class: 'bv-dot', 'aria-hidden': 'true' }),
-        h('a', { class: 'bv-link', href: `#/stop/${encodeURIComponent(c)}` }, name, h('span', { class: 'ex-sub' }, end ? `${end} · #${c}` : `#${c}`)),
-        h('span', { class: 'bv-when' }, clock, inn, tag));
+        h('a', { class: 'bv-link press', href: `#/stop/${encodeURIComponent(c)}` }, name, h('span', { class: 'ex-sub' }, end ? `${end} · #${c}` : `#${c}`)),
+        h('span', { class: 'bv-when tabular' }, clock, inn, tag));
       rowEls.push({ li, clock, inn, tag, i });
       list.append(li);
     });
@@ -328,8 +328,8 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       const items = [];
       for (let i = Math.max(0, tl.next); i < route.stops.length; i++) {
         const row = tl.rows[i];
-        items.push(h('li', {}, h('button', { type: 'button', class: 'ob-pick', onclick: () => pickStop(i) },
-          h('span', { class: 'ob-pick-name' }, nameOf(route.stops[i])), h('span', { class: 'ob-pick-in' }, row ? inText(row.etaSec) : ''))));
+        items.push(h('li', {}, h('button', { type: 'button', class: 'ob-pick press', onclick: () => pickStop(i) },
+          h('span', { class: 'ob-pick-name' }, nameOf(route.stops[i])), h('span', { class: 'ob-pick-in tabular' }, row ? inText(row.etaSec) : ''))));
       }
       kids.push(h('ul', { class: 'ob-picker', role: 'list' }, items));
     }

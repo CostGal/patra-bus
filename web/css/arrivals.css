@@ -35,7 +35,8 @@
 .stopv-more { align-self: center; color: var(--accent); font-weight: 600; margin-top: 4px; }
 
 /* ---- filter chips ---- */
-.stopv-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px; scrollbar-width: none; }
+/* sticky under the header while the list scrolls past; .fade-edge-bottom (app.css) replaces a hard divider line */
+.stopv-chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px; scrollbar-width: none; position: sticky; top: 0; z-index: 2; background: var(--surface); }
 .stopv-chips::-webkit-scrollbar { display: none; }
 .stopv-chips[hidden], .stopv-banner[hidden] { display: none; }
 .stopv-chip { display: inline-flex; flex: none; align-items: center; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
@@ -74,7 +75,7 @@
 .atile-usual { color: var(--text-2); font-size: .78rem; font-weight: 400; }
 .atile-usual[hidden] { display: none; }
 .atile-eta { text-align: right; }
-.atile-num { display: block; min-width: 3.4ch; font-size: 1.9rem; font-weight: 700; line-height: 1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--sched); }
+.atile-num { display: block; min-width: 3.4ch; font-size: 1.9rem; font-weight: 700; line-height: 1; letter-spacing: var(--track-display, -0.02em); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--sched); }
 .atile-live .atile-num { color: var(--live); }
 .atile-now .atile-num { font-size: 1.5rem; }
 

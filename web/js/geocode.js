@@ -45,8 +45,14 @@ export function stopPlaces(data, q, { near, limit = 4 } = {}) {
   return places.slice(0, limit).map((x) => x.place);
 }
 
+// A housenumber-looking token in the user's own query ("Κορίνθου 121" -> "121"), to tell an exact
+// address match from a street/nearby-POI fallback (Greek housenumber coverage in OSM is patchy).
+const queryNumber = (q) => (String(q || '').match(/\d+/) || [])[0] || null;
+
 // Photon GeoJSON feature → Place (null when unusable or outside the Patras area).
-export function mapPhoton(f) {
+// `queryNumber`: when given and the feature's housenumber does not match it, the place is flagged
+// `approx: true` — a street-level or nearby-POI result standing in for an exact address (never silent).
+export function mapPhoton(f, { queryNumber: qNum = null } = {}) {
   const p = f?.properties || {};
   const [lng, lat] = f?.geometry?.coordinates || [];
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !inArea({ lat, lng })) return null;
@@ -55,7 +61,8 @@ export function mapPhoton(f) {
   if (!name) return null;
   const area = p.locality || cleanArea(p.city) || cleanArea(p.district);
   const parts = [p.name ? street : '', area].filter((x) => x && x !== name);
-  return { kind: 'place', name, subtitle: [...new Set(parts)].join(' · '), lat, lng };
+  const approx = !!qNum && p.housenumber !== qNum;
+  return { kind: 'place', name, subtitle: [...new Set(parts)].join(' · '), lat, lng, ...(approx ? { approx: true } : {}) };
 }
 
 // Drop remote places that duplicate a local one (same name nearby, or practically the same spot).
@@ -92,7 +99,8 @@ async function photon(q, near, signal) {
     const r = await fetch(url, { signal: ctl.signal });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const j = await r.json();
-    const places = (j.features || []).map(mapPhoton).filter(Boolean);
+    const qNum = queryNumber(q);
+    const places = (j.features || []).map((f) => mapPhoton(f, { queryNumber: qNum })).filter(Boolean);
     cache.set(key, { at: Date.now(), places });
     if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
     return places;

@@ -21,6 +21,25 @@
   /* calm scale: 8 px spacing, two text sizes per card (body + meta) */
   --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px;
   --fs: 1rem; --fs-sm: .8125rem;
+
+  /* materials (DESIGN.md §4): translucent surface, computed from --surface so it adapts per theme.
+     Small chip (search bar, FAB, toast) vs big surface (sheet) use the same bg but different blur/shadow weight. */
+  --material-bg: color-mix(in srgb, var(--surface) 72%, transparent);
+  --material-edge: rgba(255, 255, 255, .65); /* faint bright top edge, light mode */
+  --blur-chip: 12px; --blur-surface: 20px; --blur-saturate: 180%;
+
+  /* typography (DESIGN.md §5): tracking/leading pairs per size step.
+     display = big numbers/headlines (tight, slightly negative tracking); title = sheet h1s;
+     body = default text (near-0 tracking, open leading); label = tiny meta/caption text (slightly positive tracking). */
+  --track-display: -.02em; --lead-display: 1.08;
+  --track-title: -.01em; --lead-title: 1.2;
+  --track-body: 0em; --lead-body: 1.45;
+  --track-label: .01em; --lead-label: 1.3;
+
+  /* critically-damped-spring approximation for CSS transitions (reduced-motion fallback / simple non-gesture
+     fades that can't use the JS spring helper). Close to damping 1.0 / response .35 s: fast initial move,
+     settles with no overshoot. Real gesture-driven motion (sheet, popovers) still uses the JS spring, not this. */
+  --spring-ease: cubic-bezier(.32, .72, 0, 1);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -31,6 +50,7 @@
     --accent-soft: #28334a; --scrim: rgba(0,0,0,.6); --focus: #8ab4f8;
     --map-walk: #8ab4f8; --map-casing: #1e2227;
     --toast-bg: #e8eaed; --toast-text: #1f1f1f; --toast-action: #1a73e8;
+    --material-edge: rgba(255, 255, 255, .08);
   }
 }
 :root[data-theme="dark"] {
@@ -41,4 +61,5 @@
   --accent-soft: #28334a; --scrim: rgba(0,0,0,.6); --focus: #8ab4f8;
   --map-walk: #8ab4f8; --map-casing: #1e2227;
   --toast-bg: #e8eaed; --toast-text: #1f1f1f; --toast-action: #1a73e8;
+  --material-edge: rgba(255, 255, 255, .08);
 }

@@ -76,7 +76,7 @@ export function toast(text, opts = {}) {
     setTimeout(() => el.remove(), 200);
   };
   if (action) {
-    el.append(h('button', { type: 'button', class: 'toast-action', onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
+    el.append(h('button', { type: 'button', class: 'toast-action press', onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
   }
   toastHost.replaceChildren(el);
   requestAnimationFrame(() => el.classList.add('show'));

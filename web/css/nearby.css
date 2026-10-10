@@ -20,7 +20,8 @@
 .nb-btn-link { min-height: 36px; padding: 0 10px; border-color: transparent; background: transparent; color: var(--accent); font-size: .85rem; }
 
 /* ---- state panels: one short line + at most one primary button ---- */
-.nb-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+/* surface comes from the .material utility (app.css); .nb-warn overrides it below with a solid, high-contrast background */
+.nb-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--radius-lg); }
 .nb-warn { background: var(--warn-bg); border-color: transparent; }
 .nb-text { margin: 0; font-size: .95rem; line-height: 1.4; color: var(--text); }
 .nb-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -45,10 +46,11 @@
 .nb-notice-warn { background: var(--warn-bg); color: var(--warn); }
 
 /* ---- hero ---- */
-.nb-hero { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--border); border-left: 6px solid var(--sched); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-1); }
-.nb-hero-live { border-left-color: var(--live); background: linear-gradient(180deg, var(--live-bg), var(--surface) 70%); }
+/* surface + blur come from .material (app.css); only the status accent (border-left) stays here */
+.nb-hero { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-left: 6px solid var(--sched); border-radius: var(--radius-lg); }
+.nb-hero-live { border-left-color: var(--live); }
 .nb-hero-missed { border-left-color: var(--danger); }
-.nb-hero-none { border-left-color: var(--border); box-shadow: none; align-items: flex-start; }
+.nb-hero-none { border-left-color: var(--border); align-items: flex-start; }
 .nb-hero-msg { margin: 0; color: var(--text-2); font-size: .95rem; line-height: 1.4; }
 .nb-hero-main { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .nb-hero-badge .badge { min-width: 3em; padding: .15em .5em; font-size: 1.6rem; line-height: 1.25; border-radius: 10px; }
@@ -57,7 +59,7 @@
 .nb-hero-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: .85rem; }
 .nb-hero-eta { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1; }
 .nb-hero-in { font-size: .8rem; color: var(--text-2); margin-bottom: 2px; }
-.nb-hero-num { font-size: 2.6rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--sched); }
+.nb-hero-num { font-size: 2.6rem; font-weight: 800; letter-spacing: var(--track-display, -.02em); line-height: var(--lead-display, 1.08); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--sched); }
 .nb-hero-live .nb-hero-num { color: var(--live); }
 .nb-hero-now .nb-hero-num { font-size: 2rem; }
 .nb-hero-missed .nb-hero-num { color: var(--text-2); }
@@ -121,7 +123,27 @@
   .nb-hero-num { font-size: 2.2rem; }
   .nb-hero-badge .badge { font-size: 1.35rem; }
 }
+
+/* ---- home-card swap: a short entrance instead of a hard cut, shared by the three home-screen
+   cards (.nb-hero/.nb-panel here, .plc-card in css/places.css, .ob-card from onboard.js). Each
+   mount function adds "card-in" only when the card's content actually changed (not every tick),
+   so this plays once per real swap, not on every refresh. */
+.card-in { animation: home-card-in .32s var(--spring-ease) both; }
+@keyframes home-card-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes home-card-in-reduced { from { opacity: 0; } to { opacity: 1; } }
+
+/* The onboard/places/nearby slots themselves (app.js owns the swap logic): fade the outgoing
+   slot before it is hidden. app.js needs to, in mountHome()'s evaluate(), add "is-leaving" to the
+   slot being hidden and wait ~180ms (transitionend, or a short setTimeout) before setting its
+   `hidden` attribute — instead of setting `hidden` immediately — and clear "is-leaving" on the
+   slot being shown. Without that change these rules are inert (hidden cuts instantly either way). */
+.home-slot { transition: opacity .18s var(--spring-ease), transform .18s var(--spring-ease); }
+.home-slot.is-leaving { opacity: 0; transform: translateY(-4px); pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .nb-dot::after, .nb-spinner { animation: none; }
   .nb-toggle .icon { transition: none; }
+  .card-in { animation: home-card-in-reduced .15s linear both; }
+  .home-slot { transition: opacity .12s linear; }
+  .home-slot.is-leaving { transform: none; }
 }

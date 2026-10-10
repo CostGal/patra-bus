@@ -17,6 +17,50 @@ a { color: var(--accent); }
 
 .icon { width: var(--icon); height: var(--icon); flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+/* ---------- materials (DESIGN.md §4): generic vocabulary, reuse on any card/surface.
+   .material = small chip weight (search bar, FAB, toast, popovers). .material-lg = big surface weight
+   (bottom sheet / side panel): stronger blur + deeper shadow. NEVER apply .material to an element that is
+   already inside another .material/.material-lg — translucent-on-translucent reads as mud, not depth.
+   A plain opaque child (e.g. a button) inside a material surface is fine; a second material layer is not. */
+.material, .material-lg {
+  background: var(--material-bg);
+  -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  border-top: 1px solid var(--material-edge);
+  box-shadow: var(--shadow-1);
+}
+.material-lg {
+  -webkit-backdrop-filter: blur(var(--blur-surface)) saturate(var(--blur-saturate));
+  backdrop-filter: blur(var(--blur-surface)) saturate(var(--blur-saturate));
+  box-shadow: var(--shadow-2);
+}
+/* optional entrance for a material that pops in (not applied anywhere by default — opt in per view).
+   Reduced-motion: the existing global `*` rule below already forces animation-duration to ~0, which already
+   satisfies "no overshoot, plain fade" for this; no separate override needed. */
+.material-enter { animation: material-in .22s var(--spring-ease) both; }
+@keyframes material-in { from { opacity: 0; transform: scale(.98); } }
+
+/* ---------- press feedback (§1): for JS-driven press states on non-native-button elements.
+   Native <button>/<a> already get real :active; this class exists so a div/li/custom control can opt in
+   the same way. Press is instant (no transition while pressed), release eases out over ~100ms. */
+.press { transform: scale(1); transition: transform .1s ease-out; }
+.press:active, .press.is-pressed { transform: scale(.97); transition: transform 0s; }
+
+/* ---------- misc utilities ---------- */
+.tabular { font-variant-numeric: tabular-nums; }
+/* scroll-edge fade under sticky chrome, instead of a hard 1px divider (§4) */
+.fade-edge-top { mask-image: linear-gradient(to bottom, transparent, #000 var(--s4)); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--s4)); }
+.fade-edge-bottom { mask-image: linear-gradient(to top, transparent, #000 var(--s4)); -webkit-mask-image: linear-gradient(to top, transparent, #000 var(--s4)); }
+
+@media (prefers-reduced-transparency: reduce) {
+  .material, .material-lg, .searchbar, .fab, .sheet { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .toast { background: var(--toast-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .material, .material-lg, .searchbar, .fab, .sheet { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--border); }
+  .toast { background: var(--toast-bg); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--toast-text); }
+}
+
 /* ---------- layout ---------- */
 .app {
   --top-inset: calc(var(--safe-top) + 68px); /* below the search bar */
@@ -36,8 +80,9 @@ html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 /* ---------- search bar ---------- */
 .searchbar {
   position: fixed; z-index: 50; top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px); right: calc(var(--safe-right) + 12px);
-  height: 52px; display: flex; align-items: center; background: var(--surface); border-radius: 26px; box-shadow: var(--shadow-1);
+  height: 52px; display: flex; align-items: center; border-radius: 26px;
 }
+.searchbar { background: var(--material-bg); backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); border-top: 1px solid var(--material-edge); box-shadow: var(--shadow-1); } /* material (§4): floating chrome */
 .searchbar:focus-within { box-shadow: var(--shadow-1), 0 0 0 2px var(--focus); }
 .sb-btn {
   flex: none; width: 48px; height: 48px; border: 0; border-radius: 50%; background: none; color: var(--text-2);
@@ -102,11 +147,15 @@ html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 /* ---------- FABs: locate (+ contextual north reset) ---------- */
 .fab {
   width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
-  background: var(--surface); color: var(--text-2); box-shadow: var(--shadow-1); cursor: pointer;
+  color: var(--text-2); cursor: pointer;
   transition: background .15s, color .15s, transform .1s;
+  /* material (§4): floating chrome */
+  background: var(--material-bg); backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  border-top: 1px solid var(--material-edge); box-shadow: var(--shadow-1);
 }
 .fab:hover { background: var(--surface-2); }
-.fab:active { transform: scale(.94); }
+.fab:active { transform: scale(.97); } /* matches .press (§1) */
 .fab-sm { width: 44px; height: 44px; }
 .fab-sm .icon { --icon: 20px; }
 .fabs-bottom {
@@ -144,10 +193,13 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 /* ---------- sheet / side panel ---------- */
 .sheet {
   position: fixed; z-index: 20; left: 0; right: 0; top: var(--top-inset); bottom: 0;
-  display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  display: flex; flex-direction: column; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   box-shadow: 0 -1px 8px rgba(0, 0, 0, .12); transform: translate3d(0, var(--sheet-y, 100%), 0); will-change: transform;
+  /* material-lg (§4): big surface, stronger blur than the small chips above */
+  background: var(--material-bg); backdrop-filter: blur(var(--blur-surface)) saturate(var(--blur-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-surface)) saturate(var(--blur-saturate));
+  border-top: 1px solid var(--material-edge);
 }
-.sheet.animating { transition: transform .3s var(--ease); }
 .sheet-handle {
   flex: none; position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; margin: 0; padding: 0;
   border: 0; background: none; cursor: grab; touch-action: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -165,8 +217,8 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 .sheet-content { padding: 0 16px 24px; }
 .sheet-content.enter { animation: view-in .18s ease-out; }
 @keyframes view-in { from { opacity: 0; transform: translateY(6px); } }
-.sheet-content h1 { font-size: 1.125rem; line-height: 1.3; font-weight: 600; }
-.sheet-content h2 { font-size: var(--fs-sm); font-weight: 500; color: var(--text-2); margin: var(--s3) 0 var(--s2); }
+.sheet-content h1 { font-size: 1.125rem; line-height: var(--lead-title); letter-spacing: var(--track-title); font-weight: 600; }
+.sheet-content h2 { font-size: var(--fs-sm); font-weight: 500; color: var(--text-2); letter-spacing: var(--track-label); margin: var(--s3) 0 var(--s2); }
 
 .map-note { margin: 4px var(--s3) var(--s2); padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: 14px; }
 
@@ -212,10 +264,16 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 html.sheet-dragging .toast-host { transition: none; }
 .toast {
   display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 8px 6px 16px; border-radius: 12px; pointer-events: auto;
-  background: var(--toast-bg); color: var(--toast-text); box-shadow: var(--shadow-1); font-size: 14px;
-  opacity: 0; transform: translateY(8px); transition: opacity .18s, transform .18s;
+  color: var(--toast-text); box-shadow: var(--shadow-1); font-size: 14px;
+  /* material (§4), but keeps its own inverted colour pair (--toast-bg/-text swap per theme) instead of
+     --material-bg: a toast is meant to read as a fixed dark pill in both themes, not a theme-coloured surface. */
+  background: color-mix(in srgb, var(--toast-bg) 85%, transparent);
+  backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  border-top: 1px solid var(--material-edge);
+  opacity: 0; transform: scale(.92); transition: opacity .18s var(--spring-ease), transform .18s var(--spring-ease);
 }
-.toast.show { opacity: 1; transform: none; }
+.toast.show { opacity: 1; transform: scale(1); }
 .toast-text { flex: 1; padding: 4px 0; }
 .toast-action {
   flex: none; min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: var(--toast-action); font-weight: 600; cursor: pointer;
@@ -251,8 +309,8 @@ html.sheet-dragging .toast-host { transition: none; }
 }
 
 .view-head { display: flex; align-items: center; gap: 4px; margin: 0 -8px 4px; min-height: 48px; }
-.view-head h1 { flex: 1; min-width: 0; padding-left: 4px; overflow-wrap: anywhere; }
-.view-head .sub { display: block; margin-top: 2px; font-size: var(--fs-sm); font-weight: 400; color: var(--text-2); }
+.view-head h1 { flex: 1; min-width: 0; padding-left: 4px; overflow-wrap: anywhere; letter-spacing: var(--track-title); line-height: var(--lead-title); }
+.view-head .sub { display: block; margin-top: 2px; font-size: var(--fs-sm); font-weight: 400; color: var(--text-2); letter-spacing: var(--track-label); }
 .view-head.root { margin-left: 0; }
 .view-head.root h1 { padding-left: 0; }
 
@@ -275,7 +333,11 @@ html.sheet-dragging .toast-host { transition: none; }
 .hint { padding: var(--s2) 0; color: var(--text-2); font-size: 14px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: 12px; }
 
-/* home: ONE contextual card (onboard > place > nearby); favourites/recents only when the sheet is expanded */
+/* home: ONE contextual card (onboard > place > nearby); favourites/recents only when the sheet is expanded.
+   .home-card stacks its slots in one grid cell so the outgoing and incoming card overlap during the
+   ~180ms cross-fade (js/app.js showTop()) instead of both taking block-flow space and doubling the height. */
+.home-card { position: relative; display: grid; }
+.home-slot { grid-area: 1 / 1; min-width: 0; }
 .home-more { display: none; margin-top: var(--s2); }
 [data-sheet="full"] .home-more { display: block; }
 .home-more[hidden] { display: none; }

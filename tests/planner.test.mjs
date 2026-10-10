@@ -411,6 +411,24 @@ test('mapPhoton builds Greek-friendly labels and rejects points outside Patras',
   assert.equal(mapPhoton({ properties: { name: 'x' } }), null);
 });
 
+// Address-to-address: Greek housenumber coverage in OSM is patchy, so a street/nearby-POI result standing in
+// for the exact number the user typed must say so (quiet, honest), never pass as an exact match.
+test('mapPhoton flags approx when the query housenumber is not matched, exact matches are not flagged', () => {
+  const f = (props, c = [21.7355, 38.2466]) => ({ type: 'Feature', properties: props, geometry: { type: 'Point', coordinates: c } });
+  // user typed "...121" but the nearest known address point is 139
+  const near139 = mapPhoton(f({ name: 'Κοινωνικό Κέντρο Πάτρας', street: 'Κορίνθου', housenumber: '139' }), { queryNumber: '121' });
+  assert.equal(near139.approx, true);
+  // street-level result, no housenumber at all, same query
+  const streetOnly = mapPhoton(f({ name: 'Κορίνθου', street: 'Κορίνθου' }), { queryNumber: '121' });
+  assert.equal(streetOnly.approx, true);
+  // exact housenumber match -> no flag
+  const exact = mapPhoton(f({ street: 'Κορίνθου', housenumber: '121' }), { queryNumber: '121' });
+  assert.equal(exact.approx, undefined);
+  // no number in the query (e.g. a place name) -> never flagged
+  const noNumber = mapPhoton(f({ name: 'Πλατεία Γεωργίου' }));
+  assert.equal(noNumber.approx, undefined);
+});
+
 test('mergePlaces drops remote duplicates of local stops', () => {
   const local = [{ kind: 'stop', name: 'Πανεπιστημίου', subtitle: '', ...pt(0) }];
   const remote = [

@@ -35,14 +35,14 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
   const dest = titleCase(v.routeName);
   const badge = lineBadge({ code: v.lineCode, color: line?.color || v.color, textColor: line?.textColor || v.textColor });
 
-  const num = h('span', { class: 'atile-num' });
+  const num = h('span', { class: 'atile-num tabular' });
   const flag = live
     ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'))
     : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock));
   const usual = h('span', { class: 'atile-usual', hidden: true });
   const status = h('div', { class: 'atile-status' }, flag, live ? null : usual);
 
-  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${compact ? ' atile-compact' : ''}${href ? ' atile-link' : ''}`, role: href ? null : 'img', href },
+  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
     h('div', { class: 'atile-badge' }, badge),
     h('div', { class: 'atile-body' }, h('div', { class: 'atile-dest' }, dest), status),
     h('div', { class: 'atile-eta' }, num),
@@ -167,7 +167,7 @@ export function mountStop(container, ctx, { code }) {
   const bannerText = h('span', { class: 'stopv-banner-text' });
   const bannerBtn = h('button', { type: 'button', class: 'stopv-btn stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
   const banner = h('div', { class: 'stopv-banner', role: 'status', hidden: true }, icon('alert'), bannerText, bannerBtn);
-  const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής'), hidden: true });
+  const chips = h('div', { class: 'stopv-chips fade-edge-bottom', role: 'group', 'aria-label': t('Φίλτρο γραμμής'), hidden: true });
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'stopv-btn stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));

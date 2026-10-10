@@ -232,3 +232,57 @@ Applies the principles above; home composition; links `css/places.css`; SW shell
 
 ### L — English + settings: `js/i18n.js`, `js/i18n-en.js`, `js/store.js`, `js/settings-view.js`, `js/lines-view.js`, `css/extras.css`, `tests/i18n.test.mjs`, `tests/store.test.mjs`
 `t()`, `lang()`, `setLang('el'|'en')`, `onLangChange`; language auto from `navigator.language`, override in Settings; `<html lang>` updated. Stop/line names stay Greek. Settings mounts `mountPlacesSettings`, `mountRoutinesSettings`, push and offline cards; settings and lines follow the UI principles.
+
+## Round 4 (Apple-design motion pass)
+
+Spec: **`docs/DESIGN.md`** (binding). Applies the spring/material/response language from that doc to the
+existing shell, sheet and views; no new user-facing feature.
+
+### M — motion engine: `js/motion.js`, `tests/motion.test.mjs`
+Pure, no DOM. Exports:
+- `springStep(state: {value, velocity}, target, dt, {damping=1, response=0.35}) → {value, velocity}` — one analytic
+  step of a damped harmonic oscillator (critically/under/over-damped), exact for any `dt`.
+- `rubberband(overshoot, dimension, constant=0.55)` — DESIGN.md §2 resistance curve past a drag limit.
+- `project(velocity, decelerationRate=0.998)` — flick projection, returns a displacement (caller adds its own position).
+- `createSpringLoop({get, set, onSettle, raf?, caf?, now?}) → { to(target, {velocity, damping, response}), stop(), isAnimating() }`
+  — rAF-driven; `get`/`set` work on any single scalar (a position, or an opacity/scale progress 0..1), so a retarget
+  mid-flight always continues from the live value and the loop's own velocity (never jumps). Used by `sheet.js`
+  (drag/snap) and by `app.js`'s popover (open/close progress).
+
+### CSS (M2): `web/css/tokens.css`, `web/app.css`
+New tokens: `--material-bg`, `--material-edge`, `--blur-chip` (12px), `--blur-surface` (20px), `--blur-saturate`
+(180%), `--spring-ease` (CSS-transition approximation of damping 1 / response .35 — for things that fade only,
+not for gesture-driven motion, which stays on the JS spring), `--track-*`/`--lead-*` per type step (display/title/
+body/label, DESIGN.md §5). New utility classes in `app.css`: `.material` / `.material-lg` (translucent surface,
+small-chip vs big-surface blur+shadow weight — never nested on each other), `.material-enter` (opt-in pop-in
+keyframe), `.press` (JS-opt-in `:active`-style scale(.97) for non-native-button elements — native buttons already
+get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-edge-top`/`.fade-edge-bottom` (mask
+instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
+`(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
+
+### Shell & map (M5): `js/map.js`, `js/app.js` (menu/popover/FAB only)
+- `map.js`: touch long-press now shows an immediate dot at `pointerdown` (DESIGN.md §1 — feedback on press-down,
+  not only at completion), growing over the same 500 ms as the long-press timer, themed via the existing palette.
+  Live vehicle markers were already gliding via a custom rAF tween (not a CSS transition) between position
+  updates; confirmed still correct, left as is — it already satisfies §2 for passive (non-gesture) motion.
+  Attribution control nesting checked: its default `hsla(0,0%,100%,.5)` background sits only on the opaque map
+  canvas in the areas where it can appear next to the FAB column, never on another translucent layer (§4) —
+  no change needed.
+- `app.js`: the menu popover (`makePopover`) now scales/fades from the trigger button's centre
+  (`transform-origin`, DESIGN.md §3) using `createSpringLoop` (§2's "popovers" belong on the spring, not a
+  fixed-duration transition) — interruptible if re-tapped mid-close. The menu trigger (`#menu-btn`, a `.sb-btn`
+  with no prior `:active` styling) opts into M2's `.press` utility for pointerdown feedback (§1).
+- `sheet.js` (M1, in progress at the time of this note): imports `createSpringLoop`/`rubberband`/`project` from
+  `motion.js`; drag-follow stays 1:1 (no physics while the finger is down), release hands velocity to the spring.
+
+### Not yet landed / needs a follow-up from someone who owns the file
+- `sheet.js`'s spring integration was still being extended as this note was written (constants for the
+  momentum/settle spring presets were in place; full snap-point/rubber-band wiring may need a second pass by M1).
+
+### Human verification needed
+This round is motion/visual feel (springs, transform-origin, materials, press states). It was built and
+reviewed by reading code only — **no browser or device was available in this session**. Before shipping:
+open the app on a phone and a desktop, check the popover grows from the menu button (not its own centre),
+check the long-press dot appears immediately on touch, drag the sheet and confirm it still follows 1:1 with
+no stutter, and toggle `prefers-reduced-motion`/`prefers-reduced-transparency` in devtools to confirm the
+fallbacks actually look right, not just that the media query exists.

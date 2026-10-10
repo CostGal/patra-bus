@@ -19,6 +19,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Snap target from **projected** momentum: `end = pos + (v/1000) * d / (1 - d)`, `d ≈ 0.998`, then nearest snap point.
 - Past the first/last snap point: rubber-band resistance `f(x) = x·D·c / (D + c·|x|)`, `c = 0.55`, never a hard stop.
 - Animate only `transform` and `opacity`; `requestAnimationFrame`; `will-change` only while moving.
+- The spring (`js/motion.js`, `createSpringLoop`) drives any single scalar, not only an x/y position: a popover's
+  open/close progress (0..1, painted as opacity + scale) uses the same spring and the same interruptibility —
+  a re-tap while it is still closing reverses from exactly where it is.
 
 ## 3. Spatial consistency
 - Enter and leave along the same path (a sheet that rises sinks back; a popover grows from its trigger and shrinks back to it).

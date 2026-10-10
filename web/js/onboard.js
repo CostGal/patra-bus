@@ -254,20 +254,29 @@ const stopsText = (n) => (n <= 0 ? t('τώρα') : n === 1 ? t('στην επό�
 
 // ONE compact card while a trip is active, nothing otherwise. The only action is "Τέλος".
 export function mountOnboardCard(container, ctx = {}) {
+  let lastSig = null;
   const draw = (tr) => {
-    if (!tr) { container.replaceChildren(); return; }
+    if (!tr) { lastSig = null; container.replaceChildren(); return; } // next trip is a fresh appearance, not a refresh
     const line = ctx.data?.lineByCode?.get(tr.lineCode);
     const stop = tr.stopName || ctx.data?.stopByCode?.get(tr.alightStop)?.displayName || '';
     let meta = '';
     if (tr.alerted) meta = t('Η επόμενη στάση!');
     else if (tr.stopsToGo != null) meta = stopsText(tr.stopsToGo);
     else if (tr.etaSec != null) meta = t('σε ~{n}′', { n: Math.max(1, Math.round(tr.etaSec / 60)) });
-    container.replaceChildren(h('div', { class: `ob-card${tr.alerted ? ' is-alert' : ''}`, role: 'status' },
+    // Only replay the entrance on a genuinely new moment (new trip, or the alert kicking in), not every poll.
+    const sig = `${tr.vehicleCode || ''}|${tr.alightStop}|${tr.alerted}`;
+    const changed = sig !== lastSig;
+    lastSig = sig;
+    // NOTE for planner.css's owner: .ob-card sets its own opaque background/border-left there, so this
+    // .material class is currently a no-op (its blur has nothing to show through) — remove .ob-card's
+    // background/box-shadow in planner.css to let .material's translucent surface render, same as
+    // .nb-hero/.plc-card already do in css/nearby.css and css/places.css.
+    container.replaceChildren(h('div', { class: `ob-card material${tr.alerted ? ' is-alert' : ''}${changed ? ' card-in' : ''}`, role: 'status' },
       line || tr.lineCode ? lineBadge(line || { code: tr.lineCode }) : null,
       h('div', { class: 'ob-main' },
         h('div', { class: 'ob-title' }, t('Κατεβαίνεις: «{name}»', { name: stop })),
         meta ? h('div', { class: 'ob-meta' }, meta) : null),
-      h('button', { type: 'button', class: 'ob-end', onclick: () => stopOnboard() }, t('Τέλος'))));
+      h('button', { type: 'button', class: 'ob-end press', onclick: () => stopOnboard() }, t('Τέλος'))));
   };
   draw(activeTrip());
   const off = onTripChange(draw);

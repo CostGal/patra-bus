@@ -291,14 +291,28 @@ export function createMap(container, opts = {}) {
   map.on('contextmenu', (e) => triggerLong(e.lngLat));
 
   // Touch long press (~500 ms, cancelled by movement or a second finger).
+  // Immediate visual feedback on pointerdown (DESIGN.md §1): a dot that grows for the whole 500 ms wait,
+  // so the press itself is visible, not only the result once it fires.
   const cc = map.getCanvasContainer();
   let lp = null;
+  let lpDot = null;
   let fired = false; // a long press just fired: swallow the click that follows the release
-  const lpCancel = () => { if (lp) { clearTimeout(lp.timer); lp = null; } };
+  function lpShow(x, y, rect) {
+    lpDot = el('lp-dot');
+    Object.assign(lpDot.style, {
+      position: 'absolute', left: `${x - rect.left}px`, top: `${y - rect.top}px`, width: '14px', height: '14px',
+      margin: '-7px 0 0 -7px', borderRadius: '50%', background: palette().accent, opacity: '.45', pointerEvents: 'none', zIndex: '5',
+    });
+    cc.appendChild(lpDot);
+    if (!reduced()) lpDot.animate([{ transform: 'scale(.6)', opacity: .5 }, { transform: 'scale(2.2)', opacity: 0 }], { duration: 500, easing: 'linear', fill: 'forwards' });
+  }
+  function lpHide() { lpDot?.remove(); lpDot = null; }
+  const lpCancel = () => { if (lp) { clearTimeout(lp.timer); lp = null; } lpHide(); };
   cc.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
     if (!e.isPrimary) { lpCancel(); return; }
     const rect = cc.getBoundingClientRect();
+    lpShow(e.clientX, e.clientY, rect);
     lp = {
       x: e.clientX, y: e.clientY,
       timer: setTimeout(() => {

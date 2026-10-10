@@ -174,8 +174,8 @@ export function mountNearby(container, ctx) {
   const lineOf = (code) => ctx.data && ctx.data.lineByCode && ctx.data.lineByCode.get(String(code));
   const tile = (v, fetchedAt, now) => (tileFn ? tileFn(v, fetchedAt, { compact: true, now, line: lineOf(v.lineCode) }) : miniTile(v, fetchedAt, { now, line: lineOf(v.lineCode) }));
   const go = (e, hash) => { if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); ctx.navigate(hash); };
-  const link = (cls, code, ...kids) => h('a', { class: cls, href: hashFor(code), onclick: (e) => go(e, hashFor(code)) }, ...kids);
-  const btn = (cls, label, fn, ...kids) => h('button', { type: 'button', class: `nb-btn ${cls}`, onclick: fn }, ...(kids.length ? kids : [label]));
+  const link = (cls, code, ...kids) => h('a', { class: `${cls} press`, href: hashFor(code), onclick: (e) => go(e, hashFor(code)) }, ...kids);
+  const btn = (cls, label, fn, ...kids) => h('button', { type: 'button', class: `nb-btn press ${cls}`, onclick: fn }, ...(kids.length ? kids : [label]));
 
   // ----- location → stops -----
   const useGpsNow = () => { try { loc.start(); } catch { /* ignore */ } };
@@ -295,7 +295,7 @@ export function mountNearby(container, ctx) {
   const title = () => h('h2', { class: 'nb-sr-title', id: titleId }, t('Επόμενο λεωφορείο κοντά σου'));
   const manualBtn = (label = t('Όρισε θέση στον χάρτη'), cls = 'nb-btn-ghost') => btn(cls, label, pinMapCentre, icon('pin'), label);
   // one text line + one primary button side by side (fits the peek sheet); anything else sits behind "More"
-  const panel = (cls, text, primary, ...more) => h('div', { class: `nb-panel nb-compact ${cls || ''}` },
+  const panel = (cls, text, primary, ...more) => h('div', { class: `nb-panel material nb-compact ${cls || ''}` },
     h('div', { class: 'nb-line' }, h('p', { class: 'nb-text', role: 'status' }, text), primary || null),
     more.length ? h('details', { class: 'nb-how' }, h('summary', {}, t('Περισσότερα')), ...more) : null);
   const retryBtn = () => btn('nb-btn-primary', t('Δοκίμασε ξανά'), useGpsNow, t('Δοκίμασε ξανά'));
@@ -356,7 +356,7 @@ export function mountNearby(container, ctx) {
       const noSvc = st.states.some((s) => s.live) && st.states.filter((s) => s.live).every((s) => s.noService || (s.vehicles && !s.vehicles.length));
       const loading = st.states.some((s) => s.live && !s.vehicles && !s.error);
       const failed = st.states.filter((s) => s.live).every((s) => s.error && !s.vehicles);
-      r.el = h('div', { class: 'nb-hero nb-hero-none' },
+      r.el = h('div', { class: 'nb-hero nb-hero-none material card-in' },
         h('p', { class: 'nb-hero-msg' }, loading ? t('Φόρτωση αφίξεων…') : failed ? t('Δεν φορτώθηκαν οι αφίξεις') : noSvc ? t('Δεν υπάρχει εξυπηρέτηση αυτή την ώρα') : t('Δεν υπάρχουν προσεχή δρομολόγια στις κοντινές στάσεις')),
         failed && !loading ? btn('nb-btn-ghost', t('Δοκίμασε ξανά'), manualRefresh, t('Δοκίμασε ξανά')) : null);
       if (loading) r.el.setAttribute('aria-busy', 'true');
@@ -367,10 +367,10 @@ export function mountNearby(container, ctx) {
     r.walk = h('span', { class: 'nb-walk' });
     stopLine.append(r.walk);
     r.in = h('span', { class: 'nb-hero-in' }, t('σε'));
-    r.num = h('span', { class: 'nb-hero-num' });
+    r.num = h('span', { class: 'nb-hero-num tabular' });
     r.act = h('div', { class: 'nb-action' });
     r.note = h('div', { class: 'nb-note' });
-    r.el = h('div', { class: `nb-hero nb-hero-${m.kind} ${v.live ? 'nb-hero-live' : 'nb-hero-sched'}` },
+    r.el = h('div', { class: `nb-hero nb-hero-${m.kind} material card-in ${v.live ? 'nb-hero-live' : 'nb-hero-sched'}` },
       h('div', { class: 'nb-hero-main' },
         h('div', { class: 'nb-hero-badge' }, lineBadge({ code: v.lineCode, color: line?.color || v.color, textColor: line?.textColor || v.textColor })),
         h('div', { class: 'nb-hero-mid' },

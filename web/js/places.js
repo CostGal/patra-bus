@@ -129,7 +129,7 @@ export function leaveText(st, it) {
 // ---------------------------------------------------------------- home card
 
 export function mountPlacesCard(container, ctx = {}) {
-  let dead = false, ctl = null, best = null, place = null, planFrom = null, lastPlanAt = 0;
+  let dead = false, ctl = null, best = null, place = null, planFrom = null, lastPlanAt = 0, lastSig = null;
   const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
 
   function paint() {
@@ -138,6 +138,7 @@ export function mountPlacesCard(container, ctx = {}) {
     const st = best && place ? leaveState(best, now) : null;
     if (!st || !['walk', 'later', 'now', 'run'].includes(st.kind)) {
       best = null;
+      lastSig = null; // next real card is a fresh appearance, not a refresh
       container.replaceChildren();
       return;
     }
@@ -151,13 +152,17 @@ export function mountPlacesCard(container, ctx = {}) {
       metaBits.push(t('Φτάνεις {time}', { time: fmtClock(best.arriveAt) }));
       if (best.walkTo?.seconds >= 60) metaBits.push(t('{n}′ περπάτημα', { n: Math.round(best.walkTo.seconds / 60) }));
     }
-    head.push(h('span', { class: 'plc-sep', 'aria-hidden': 'true' }, '·'), h('b', { class: 'plc-leave' }, leaveText(st, best)));
+    head.push(h('span', { class: 'plc-sep', 'aria-hidden': 'true' }, '·'), h('b', { class: 'plc-leave tabular' }, leaveText(st, best)));
     if (best.kind !== 'walk') {
       head.push(best.bus?.live
         ? h('span', { class: 'ex-chip ex-chip-live plc-flag' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), 'LIVE')
         : h('span', { class: 'ex-chip ex-chip-sched plc-flag' }, icon('clock'), t('ΠΡΟΓΡ.')));
     }
-    container.replaceChildren(h('a', { class: 'plc-card', href: placeHash(place) },
+    // Only replay the entrance when the card is a genuinely different thing (place/kind/vehicle), not every countdown tick.
+    const sig = `${place.id}|${best.kind}|${best.bus?.vehicleCode || best.route?.lineCode || ''}`;
+    const changed = sig !== lastSig;
+    lastSig = sig;
+    container.replaceChildren(h('a', { class: `plc-card material press${changed ? ' card-in' : ''}`, href: placeHash(place) },
       h('div', { class: 'plc-head' }, ...head),
       h('div', { class: 'plc-meta' }, metaBits.join(' · '))));
   }
