@@ -18,7 +18,7 @@ export const CITIES = {
     // Stops' extent (19.805–19.927 E, 39.525–39.708 N on 2026-10-10) + ~2 km. The official page's bbox covers
     // most of the island (19.65–20.15 E, 39.35–39.80 N), far more than the network.
     bbox: { west: 19.78, south: 39.50, east: 19.95, north: 39.73 },
-    center: { lat: 39.6243, lng: 19.9217 }, // Πλ. Σαρόκου (San Rocco), the town's bus hub
+    center: { lat: 39.6219, lng: 19.9182 }, // Πλ. Σαρόκου (San Rocco) stops 801/401, the town's bus hub
   },
 };
 
