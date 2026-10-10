@@ -1,14 +1,25 @@
 {
+  "id": "./",
   "name": "Λεωφορεία Πάτρας",
   "short_name": "Πάτρα Bus",
+  "description": "Αφίξεις αστικών λεωφορείων Πάτρας σε πραγματικό χρόνο, χάρτης και σχεδιασμός διαδρομής. Ανεπίσημη εφαρμογή.",
   "lang": "el",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0b5394",
+  "background_color": "#f6f7f9",
+  "theme_color": "#f6f7f9",
+  "categories": ["travel", "navigation", "utilities"],
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Κοντά μου", "short_name": "Κοντά μου", "description": "Το επόμενο λεωφορείο κοντά σου", "url": "./#/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Διαδρομή", "short_name": "Διαδρομή", "description": "Σχεδίασε διαδρομή και δες πότε να φύγεις", "url": "./#/plan", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Γραμμές", "short_name": "Γραμμές", "description": "Όλες οι γραμμές και οι στάσεις τους", "url": "./#/lines", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

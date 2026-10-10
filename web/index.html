@@ -2,26 +2,77 @@
 <html lang="el">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0f1216" media="(prefers-color-scheme: dark)">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e2227" media="(prefers-color-scheme: dark)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Live αφίξεις και προγραμματισμένα δρομολόγια αστικών λεωφορείων Πάτρας, πάνω στον χάρτη.">
   <title>Λεωφορεία Πάτρας</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="css/arrivals.css">
+  <link rel="stylesheet" href="css/nearby.css">
+  <link rel="stylesheet" href="css/planner.css">
+  <link rel="stylesheet" href="css/extras.css">
+  <script>
+    // Apply a forced theme before first paint (best effort; app.js owns the real logic).
+    try {
+      var t = (JSON.parse(localStorage.getItem('settings')) || {}).theme;
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    } catch (e) { /* ignore */ }
+  </script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <header class="app-header">
-    <div class="header-inner">
-      <a id="back" class="back" href="#/" aria-label="Πίσω" hidden>&larr;</a>
-      <a class="brand" href="#/">Λεωφορεία Πάτρας</a>
-      <span id="demo-tag" class="demo-tag" hidden>DEMO</span>
+  <div id="app" class="app">
+    <div id="map" class="map"></div>
+
+    <div class="searchbar" id="searchbar" role="search">
+      <button type="button" class="sb-btn" id="menu-btn" aria-label="Μενού" aria-haspopup="true" aria-expanded="false" aria-controls="menu-pop"></button>
+      <input id="search-input" class="sb-input" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off"
+             autocorrect="off" spellcheck="false" placeholder="Πού πάμε;" aria-label="Αναζήτηση στάσης ή τόπου"
+             role="combobox" aria-expanded="false" aria-controls="search-list" aria-autocomplete="list">
+      <span id="demo-tag" class="demo-tag" title="Δεδομένα επίδειξης" hidden>DEMO</span>
+      <button type="button" class="sb-btn" id="search-clear" aria-label="Καθαρισμός αναζήτησης" hidden></button>
+      <span class="sb-btn sb-decor" id="search-decor" aria-hidden="true"></span>
     </div>
-  </header>
-  <main id="app">
-    <noscript>Απαιτείται JavaScript.</noscript>
-  </main>
+    <div class="pop" id="menu-pop" hidden></div>
+
+    <nav class="chips" id="chips" aria-label="Συντομεύσεις"></nav>
+
+    <div class="search-panel" id="search-panel" hidden>
+      <div id="search-list" class="search-list" role="listbox" aria-label="Αποτελέσματα αναζήτησης"></div>
+    </div>
+
+    <div class="fabs-top" id="fabs-top">
+      <button type="button" class="fab" id="layers-btn" aria-label="Εμφάνιση χάρτη" aria-haspopup="true" aria-expanded="false" aria-controls="layers-pop"></button>
+      <button type="button" class="fab fab-sm" id="north-btn" aria-label="Επαναφορά βορρά" hidden></button>
+    </div>
+    <div class="pop pop-fab" id="layers-pop" hidden></div>
+    <div class="fabs-bottom" id="fabs-bottom">
+      <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
+    </div>
+
+    <section class="sheet" id="sheet" aria-label="Πληροφορίες" data-state="half">
+      <button type="button" class="sheet-handle" id="sheet-handle" aria-label="Αλλαγή μεγέθους πίνακα"><span class="sheet-pill"></span></button>
+      <div class="sheet-body" id="sheet-body" tabindex="-1">
+        <p id="map-note" class="map-note" hidden></p>
+        <div class="sheet-content" id="sheet-content">
+          <p class="state-msg">Φόρτωση…</p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div id="toasts" class="toast-host" aria-live="polite" aria-atomic="true" role="status"></div>
+  <noscript><p class="noscript">Απαιτείται JavaScript για να λειτουργήσει η εφαρμογή.</p></noscript>
 </body>
 </html>

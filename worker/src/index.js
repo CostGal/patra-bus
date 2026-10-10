@@ -1,4 +1,4 @@
-import { normalizeLive } from '../../web/js/arrivals.js';
+import { normalizeLive, noServiceResult } from '../../web/js/arrivals.js';
 
 const PAGE = 'https://patra.citybus.gr/el/stops';
 const API = 'https://rest.citybus.gr/api/v1/el/112';
@@ -51,7 +51,8 @@ async function call(path, headers) {
   }
 }
 
-async function upstream(env, path) {
+// opts.notFound: if set, an upstream 404 resolves to that value instead of throwing.
+async function upstream(env, path, opts = {}) {
   let token = await getToken(env);
   let res = await call(path, { Authorization: `Bearer ${token}` });
   if (res.status === 401 || res.status === 403) {
@@ -61,6 +62,7 @@ async function upstream(env, path) {
       Referer: 'https://patra.citybus.gr/',
     });
   }
+  if (res.status === 404 && 'notFound' in opts) return opts.notFound;
   const text = await res.text();
   // Upstream has been seen answering 200 with an empty body.
   if (!res.ok || !text.trim()) throw new UpstreamError(`upstream ${res.status}`);
@@ -140,8 +142,10 @@ export default {
       if (live) {
         const code = live[1];
         return await cached(cors, ctx, `live/${code}`, 15, async () => {
-          const raw = await upstream(env, `/stops/live/${code}`);
-          return JSON.stringify(normalizeLive(raw, Date.now()));
+          // 404 = nothing scheduled for this stop right now: a normal answer, cached like any other.
+          const raw = await upstream(env, `/stops/live/${code}`, { notFound: null });
+          const now = Date.now();
+          return JSON.stringify(raw === null ? noServiceResult(now) : normalizeLive(raw, now));
         });
       }
       if (pathname === '/api/stops' || pathname === '/api/lines') {

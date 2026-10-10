@@ -1,11 +1,23 @@
-/* Design tokens shared by every stylesheet. Names are a contract (docs/ARCHITECTURE.md); values may change. */
+/* Design tokens shared by every stylesheet. Names are a contract (docs/ARCHITECTURE.md); values may change.
+   Dark mode: follows the OS unless <html data-theme="light|dark"> forces it (set by app.js from the theme setting). */
 :root {
   --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f4; --text: #1f1f1f; --text-2: #5f6368;
   --border: #dadce0; --accent: #1a73e8; --accent-text: #ffffff; --live: #188038; --live-bg: #e6f4ea;
   --sched: #5f6368; --sched-bg: #f1f3f4; --warn: #b06000; --warn-bg: #fef7e0; --danger: #c5221f;
-  --radius: 12px; --radius-lg: 20px; --shadow-1: 0 1px 3px rgba(60,64,67,.3), 0 1px 2px rgba(60,64,67,.15);
-  --shadow-2: 0 4px 12px rgba(60,64,67,.25); --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 12px; --radius-lg: 20px;
+  --shadow-1: 0 1px 3px rgba(60,64,67,.3), 0 1px 2px rgba(60,64,67,.15);
+  --shadow-2: 0 4px 12px rgba(60,64,67,.25);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
+
+  /* shell extras (safe to use from any stylesheet) */
+  --accent-soft: #e8f0fe; --scrim: rgba(32,33,36,.45); --focus: #1a73e8;
+  --map-walk: #4a78b8; --map-casing: #ffffff;
+  --toast-bg: #323232; --toast-text: #ffffff; --toast-action: #8ab4f8;
+  --safe-top: env(safe-area-inset-top, 0px); --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --icon: 24px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -13,6 +25,9 @@
     --border: #3c4043; --accent: #8ab4f8; --accent-text: #0f1216; --live: #81c995; --live-bg: #1e3a2a;
     --sched: #9aa0a6; --sched-bg: #2a2f35; --warn: #fdd663; --warn-bg: #3a3320; --danger: #f28b82;
     --shadow-1: 0 1px 3px rgba(0,0,0,.6); --shadow-2: 0 4px 12px rgba(0,0,0,.6); color-scheme: dark;
+    --accent-soft: #28334a; --scrim: rgba(0,0,0,.6); --focus: #8ab4f8;
+    --map-walk: #8ab4f8; --map-casing: #1e2227;
+    --toast-bg: #e8eaed; --toast-text: #1f1f1f; --toast-action: #1a73e8;
   }
 }
 :root[data-theme="dark"] {
@@ -20,4 +35,7 @@
   --border: #3c4043; --accent: #8ab4f8; --accent-text: #0f1216; --live: #81c995; --live-bg: #1e3a2a;
   --sched: #9aa0a6; --sched-bg: #2a2f35; --warn: #fdd663; --warn-bg: #3a3320; --danger: #f28b82;
   --shadow-1: 0 1px 3px rgba(0,0,0,.6); --shadow-2: 0 4px 12px rgba(0,0,0,.6); color-scheme: dark;
+  --accent-soft: #28334a; --scrim: rgba(0,0,0,.6); --focus: #8ab4f8;
+  --map-walk: #8ab4f8; --map-casing: #1e2227;
+  --toast-bg: #e8eaed; --toast-text: #1f1f1f; --toast-action: #1a73e8;
 }

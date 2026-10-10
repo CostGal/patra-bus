@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "fetch-static": "node scripts/fetch-static.mjs",
+    "build-routes": "node scripts/build-routes.mjs",
+    "test": "node --test tests/*.test.mjs",
     "dev:worker": "wrangler dev --local --config worker/wrangler.toml --port 8787",
     "dev:web": "http-server web -p 8080 -c-1"
   },
