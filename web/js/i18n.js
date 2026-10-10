@@ -4,6 +4,8 @@ import { getSettings, setSetting, onChange } from './store.js';
 import { EN } from './i18n-en.js';
 import { etaText } from './arrivals.js';
 
+// The app's name is the same in every language.
+export const APP_NAME = 'Telematica';
 export const LANGS = ['el', 'en'];
 export const PREFS = ['auto', 'el', 'en'];
 

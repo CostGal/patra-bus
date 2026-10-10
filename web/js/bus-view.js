@@ -7,8 +7,9 @@ import { createLivePoller, DEMO, STALE_MS } from './api.js';
 import { ageText } from './arrivals.js';
 import { loadShapes } from './data.js';
 import { closestOnPath } from './geo.js';
-import { t, N_, etaTxt } from './i18n.js';
+import { t, N_, etaTxt, APP_NAME } from './i18n.js';
 import { activeTrip, onTripChange, startOnboard, stopOnboard } from './onboard.js';
+import { cityHash } from './route.js';
 
 export const MAX_SNAP_M = 250; // a GPS fix farther than this from the stop polyline is not trusted for placement
 const TICK_MS = 5000;
@@ -186,7 +187,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       const name = h('span', { class: 'bv-name' }, s ? s.displayName : t('Στάση {code}', { code: c }));
       const li = h('li', { class: `bv-row${end ? ' is-end' : ''}`, 'data-i': String(i) },
         h('span', { class: 'bv-dot', 'aria-hidden': 'true' }),
-        h('a', { class: 'bv-link press', href: `#/stop/${encodeURIComponent(c)}` }, name, h('span', { class: 'ex-sub' }, end ? `${end} · #${c}` : `#${c}`)),
+        h('a', { class: 'bv-link press', href: cityHash(`#/stop/${encodeURIComponent(c)}`) }, name, h('span', { class: 'ex-sub' }, end ? `${end} · #${c}` : `#${c}`)),
         h('span', { class: 'bv-when tabular' }, clock, inn, tag));
       rowEls.push({ li, clock, inn, tag, i });
       list.append(li);
@@ -202,7 +203,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     badgeBox.replaceChildren(lineBadge(l || { code: found ? found.v.lineCode : route ? route.lineCode : '' }));
     title.textContent = route ? route.displayName : found ? found.v.routeName : t('Διαδρομή οχήματος');
     sub.textContent = l ? t('Γραμμή {code} · διαδρομή οχήματος', { code: l.code }) : t('Διαδρομή οχήματος');
-    document.title = `${title.textContent} · ${t('Λεωφορεία Πάτρας')}`;
+    document.title = `${title.textContent} · ${APP_NAME}`;
     flagBox.replaceChildren();
     if (found && !gone) flagBox.append(found.v.live ? LIVE_FLAG() : h('span', { class: 'ex-chip ex-chip-sched' }, icon('clock'), t('ΠΡΟΓΡ.')));
     else if (gone) flagBox.append(h('span', { class: 'ex-chip ex-chip-sched' }, t('Εκτός live')));

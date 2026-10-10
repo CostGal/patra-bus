@@ -1,5 +1,6 @@
 // App shell and integrator (owner: shell). Boots data + map + sheet, wires location, search, theme and the hash router.
 // Views are lazy-loaded modules with `mountX(container, ctx, params) -> { destroy() }` (docs/ARCHITECTURE.md).
+import './boot-city.js'; // must stay first: picks the active city before any other module reads it
 import { h, icon, toast, lineBadge } from './ui.js';
 import { loadData, searchStops } from './data.js';
 import { createMap } from './map.js';
@@ -8,7 +9,9 @@ import { createSpringLoop } from './motion.js';
 import locationService from './location.js';
 import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
-import { t, N_, onLangChange } from './i18n.js';
+import { t, N_, onLangChange, lang, APP_NAME } from './i18n.js';
+import { city, cityId, cityName, isCity } from './cities.js';
+import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
@@ -18,7 +21,7 @@ const root = document.documentElement;
 const appEl = $('app');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
-const title = () => t('Λεωφορεία Πάτρας');
+const title = () => `${APP_NAME} · ${cityName(city(), lang())}`;
 const pinName = () => t('Επιλεγμένο σημείο');
 
 let data = null;
@@ -48,17 +51,16 @@ const parsePt = (s) => {
   return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
 };
 const ptStr = (p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
-const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
-const planHash = (to, name) => `#/plan?to=${ptStr(to)}${name ? `&name=${encodeURIComponent(name)}` : ''}`;
+const planHash = (to, name) => cityHash(`#/plan?to=${ptStr(to)}${name ? `&name=${encodeURIComponent(name)}` : ''}`);
 const msgEl = (text) => h('p', { class: 'state-msg' }, text);
 const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, t('Δοκίμασε ξανά')));
-const backBtn = (to = '#/') => h('a', { class: 'icon-btn', href: to, 'aria-label': t('Πίσω') }, icon('back'));
+const backBtn = (to = '#/') => h('a', { class: 'icon-btn', href: cityHash(to), 'aria-label': t('Πίσω') }, icon('back'));
 
 function lineBadges(stop, max = 6) {
   return stop.lineCodes.slice(0, max).map((c) => lineBadge(data.lineByCode.get(c) || { code: c }));
 }
 function stopRow(stop, meters) {
-  return h('a', { class: 'stop-row', href: `#/stop/${encodeURIComponent(stop.code)}` },
+  return h('a', { class: 'stop-row', href: cityHash(`#/stop/${encodeURIComponent(stop.code)}`) },
     h('span', { class: 'stop-ico' }, icon('bus')),
     h('span', { class: 'stop-main' },
       h('div', { class: 'stop-name' }, stop.displayName),
@@ -149,8 +151,12 @@ let menuPopover;
 
 const THEMES = [['auto', 'layers', N_('Αυτόματο')], ['light', 'sun', N_('Φωτεινό')], ['dark', 'moon', N_('Σκοτεινό')]];
 function buildMenu() {
-  const item = (href, ico, label) => h('a', { class: 'pop-item', href }, icon(ico), label);
+  const item = (href, ico, label) => h('a', { class: 'pop-item', href: cityHash(href) }, icon(ico), label);
   menuPop.replaceChildren(
+    // The active city, one tap from the picker in the settings.
+    h('a', { class: 'pop-item pop-city', href: cityHash('#/settings') }, icon('pin'),
+      h('span', { class: 'pop-city-name' }, cityName(city(), lang())), h('span', { class: 'pop-city-sub' }, t('Αλλαγή πόλης'))),
+    h('div', { class: 'pop-sep' }),
     item('#/', 'home', t('Αρχική')),
     item('#/favorites', 'star', t('Αγαπημένες στάσεις')),
     item('#/lines', 'bus', t('Γραμμές')),
@@ -241,7 +247,7 @@ function onLocation(fix, status) {
     if (status === 'timeout') toast(t('Δεν βρέθηκε η τοποθεσία σου. Δοκίμασε ξανά.'), { action: { label: t('Ξανά'), onClick: () => requestCentre() } });
     else if (LOC_ERR[status]) toast(t(LOC_ERR[status]));
   }
-  // First fix of the session while browsing the home screen inside Patras: show where you are.
+  // First fix of the session while browsing the home screen inside the active city: show where you are.
   if (fix && !firstFixHandled && inArea(fix)) {
     firstFixHandled = true;
     if (currentHead === '' && locMode === 'idle') map?.flyTo(fix, 15.5);
@@ -594,10 +600,12 @@ let currentHead = '';
 let booted = false;
 const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full' };
 
-function parseHash() {
-  const raw = location.hash.replace(/^#/, '') || '/';
-  const [path, qs = ''] = raw.split('?');
-  return { parts: path.split('/').filter(Boolean).map(safeDecode), params: Object.fromEntries(new URLSearchParams(qs)) };
+// Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
+function switchCity(id) {
+  if (!isCity(id) || id === cityId()) return;
+  setSetting('city', id);
+  try { history.replaceState(null, '', formatHash('#/', id)); } catch { /* ignore */ }
+  location.reload();
 }
 function teardown() {
   try { view?.destroy?.(); } catch (err) { console.error('[view destroy]', err); }
@@ -618,14 +626,19 @@ function paintChips() {
 
 async function route() {
   const token = ++routeToken;
+  const { city: hashCity, rel, parts, params } = parseHash(location.hash);
+  // A link into the other city (pasted, shared, history): the page is per city, so remember it and reload on that hash.
+  if (hashCity && hashCity !== cityId()) { setSetting('city', hashCity); location.reload(); return; }
+  // Canonical form: prefix for every city but the default (an unprefixed hash means "this city" while running).
+  const canon = formatHash(rel);
+  if ((location.hash || '#/') !== canon) { try { history.replaceState(history.state, '', canon); } catch { /* ignore */ } }
   closeSearch();
   menuPopover.close(false);
   teardown();
-  const { parts, params } = parseHash();
   const head = parts[0] || '';
   const arg = parts[1];
   currentHead = SNAP[head] != null ? head : '';
-  if (SNAP[head] == null) history.replaceState(null, '', '#/');
+  if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
   content.replaceChildren();
   sheet.scrollToTop();
@@ -705,8 +718,9 @@ async function route() {
 
 function navigate(hash, opts = {}) {
   nextSnap = opts.snap || null;
-  const cur = location.hash || '#/';
-  if (cur === hash || (hash === '#/' && (cur === '#' || cur === '#/'))) route();
+  hash = cityHash(hash); // views pass city-relative hashes
+  const cur = location.hash === '#' || !location.hash ? '#/' : location.hash;
+  if (cur === hash) route();
   else location.hash = hash;
 }
 
@@ -722,7 +736,7 @@ function onMapClick() {
   else if (currentHead === '' && sheet.state !== 'peek') sheet.snap('peek');
 }
 function onLongPress(p) {
-  if (!inArea(p)) toast(t('Το σημείο είναι εκτός της περιοχής της Πάτρας.'));
+  if (!inArea(p)) toast(t('Το σημείο είναι εκτός της περιοχής: {city}.', { city: cityName(city(), lang()) }));
   navigate(`#/pin?lat=${p.lat.toFixed(5)}&lng=${p.lng.toFixed(5)}`);
 }
 
@@ -783,7 +797,7 @@ async function boot() {
   ctx = {
     data, map, location: locationService, navigate,
     sheet: { snap: (to) => sheet.snap(to), get state() { return sheet.state; } },
-    toast,
+    toast, switchCity,
   };
 
   if (new URLSearchParams(location.search).has('debug')) window.__app = { map, sheet, ctx, data };

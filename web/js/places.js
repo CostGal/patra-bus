@@ -5,6 +5,8 @@ import { t, N_ } from './i18n.js';
 import { haversine } from './geo.js';
 import { planTrips, leaveState } from './planner.js';
 import { searchPlaces } from './geocode.js';
+import { DEFAULT_CITY, cityId, isCity } from './cities.js';
+import { cityHash } from './route.js';
 
 export const KEY = 'patra-bus:places';
 export const MAX_CUSTOM = 3;
@@ -36,27 +38,30 @@ export function cleanPlace(p) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (!lat && !lng)) return null;
   const id = clip(p.id, 40);
   if (!id) return null;
-  return { id, name: clip(p.name, 40) || DEFAULT_NAMES[id] || PLACE_NAME, lat, lng };
+  return { id, name: clip(p.name, 40) || DEFAULT_NAMES[id] || PLACE_NAME, lat, lng, city: isCity(p.city) ? p.city : DEFAULT_CITY };
 }
 
 const slotOrder = (p) => (p.id === 'home' ? 0 : p.id === 'work' ? 1 : 2);
 
-export function createPlaces({ storage, now = Date.now, rand = Math.random } = {}) {
+// Places are per city (a «Σπίτι» in Patras means nothing in Corfu); older ones have no `city` = Patras.
+// The getters show the active city's places, writes keep the other cities' untouched.
+export function createPlaces({ storage, now = Date.now, rand = Math.random, city = cityId } = {}) {
   const kv = jsonStore(KEY, { storage });
   const subs = new Set();
+  const all = () => (Array.isArray(kv.read([])) ? kv.read([]) : []).map(cleanPlace).filter(Boolean);
   const load = () => {
     const seen = new Set();
-    const list = (Array.isArray(kv.read([])) ? kv.read([]) : []).map(cleanPlace).filter((p) => p && !seen.has(p.id) && seen.add(p.id));
+    const list = all().filter((p) => p.city === city() && !seen.has(p.id) && seen.add(p.id));
     const custom = list.filter((p) => slotOrder(p) === 2).slice(0, MAX_CUSTOM);
     return [...list.filter((p) => slotOrder(p) < 2), ...custom].sort((a, b) => slotOrder(a) - slotOrder(b));
   };
-  const save = (list) => { kv.write(list); for (const fn of [...subs]) { try { fn(list); } catch { /* ignore */ } } };
+  const save = (list) => { kv.write([...all().filter((p) => p.city !== city()), ...list]); for (const fn of [...subs]) { try { fn(list); } catch { /* ignore */ } } };
   return {
     getPlaces: load,
     // → the stored place, or null (invalid, or a 4th custom place). No id = a new custom place.
     setPlace(p) {
       const list = load();
-      const raw = { ...p, id: p?.id || `p${now().toString(36)}${Math.floor(rand() * 1296).toString(36)}` };
+      const raw = { ...p, id: p?.id || `p${now().toString(36)}${Math.floor(rand() * 1296).toString(36)}`, city: city() };
       const clean = cleanPlace(raw);
       if (!clean) return null;
       const i = list.findIndex((x) => x.id === clean.id);
@@ -95,7 +100,7 @@ export function placeTitle(p) {
   return t('Προς {name}', { name: p.name });
 }
 const fix2 = (n) => Number(n).toFixed(5);
-export const placeHash = (p) => `#/plan?to=${fix2(p.lat)},${fix2(p.lng)}&name=${encodeURIComponent(p.name)}`;
+export const placeHash = (p) => cityHash(`#/plan?to=${fix2(p.lat)},${fix2(p.lng)}&name=${encodeURIComponent(p.name)}`);
 
 export const athensHour = (ms = Date.now()) =>
   Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Europe/Athens' }).format(new Date(ms)));

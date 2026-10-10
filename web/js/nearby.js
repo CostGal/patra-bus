@@ -8,6 +8,7 @@ import { getSettings, onChange } from './store.js';
 import { haversine, nearestStops, fmtDist, inArea } from './geo.js';
 import { walkRoute, walkEstimate, walkSpeed } from './walk.js';
 import { t, etaTxt, etaSay } from './i18n.js';
+import { cityHash } from './route.js';
 
 export const RADIUS_M = 500; // stops considered "near"
 export const FAR_RADIUS_M = 1500; // fallback when nothing is within RADIUS_M
@@ -137,7 +138,7 @@ export async function findNextBuses(ctx, fix, { signal, walk = 'route', now = Da
 // ---------- the card ----------
 
 const mapDo = (ctx, fn) => { try { fn(ctx.map); } catch { /* map not ready / absent */ } };
-const hashFor = (code) => `#/stop/${encodeURIComponent(code)}`;
+const hashFor = (code) => cityHash(`#/stop/${encodeURIComponent(code)}`);
 const minText = (sec) => `${Math.max(1, Math.round(sec / 60))}′`;
 const isIOS = () => /iP(hone|ad|od)/.test(globalThis.navigator?.userAgent || '');
 

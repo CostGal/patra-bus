@@ -2,7 +2,9 @@
 import { h, icon, fmtClock } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
 import { ensurePermission, permissionState, listReminders, cancelReminder, cancelAll as cancelAllReminders, scheduleReminder, onRemindersChange } from './notify.js';
-import { t, tn, N_, setLang, onLangChange, locale } from './i18n.js';
+import { t, tn, N_, setLang, onLangChange, locale, lang, APP_NAME } from './i18n.js';
+import { CITIES, city, cityId, cityName, dataDir } from './cities.js';
+import { cityHash } from './route.js';
 
 export const VERSION = '2.0.0';
 
@@ -23,8 +25,9 @@ const LINKS = [
   ['MapLibre GL JS', 'https://maplibre.org', N_('απεικόνιση χάρτη')],
   ['OSRM / FOSSGIS routing', 'https://routing.openstreetmap.de', N_('διαδρομές περπατήματος')],
   ['Photon by komoot', 'https://photon.komoot.io', N_('αναζήτηση τόπων')],
-  ['patra.citybus.gr', 'https://patra.citybus.gr', N_('στάσεις, γραμμές και αφίξεις')],
 ];
+// The transit data comes from the active city's citybus.gr site.
+const dataSource = () => { const u = new URL(city().page); return [u.host, u.origin, N_('στάσεις, γραμμές και αφίξεις')]; };
 
 // Open sections survive a re-mount that follows within 1.5 s (the app re-routes on a language change), nothing longer.
 let openKeys = new Set();
@@ -112,12 +115,17 @@ function build(container, ctx, keep) {
     return el;
   }
   const id = (n) => `set-${n}-${++uid}`;
-  const [idLang, idTheme, idWalk, idBuf, idRem] = [id('lang'), id('theme'), id('walk'), id('buffer'), id('reminder')];
+  const [idLang, idTheme, idWalk, idBuf, idRem, idCity] = [id('lang'), id('theme'), id('walk'), id('buffer'), id('reminder'), id('city')];
 
   // ---------- language (always visible, first) ----------
   const langSeg = segmented('lang', idLang, [['auto', t('Αυτόματα')], ['el', 'Ελληνικά'], ['en', 'English']], setLang);
   langSeg.dataset.langSeg = '';
-  const language = h('section', { class: 'set-lang' }, row(idLang, t('Γλώσσα'), null, langSeg));
+  // City: a switch reloads the app on that city (data, map and the saved items are per city).
+  const citySeg = h('div', { class: 'ex-seg', role: 'group', 'aria-labelledby': idCity },
+    ...Object.values(CITIES).map((c) => h('button', { type: 'button', class: 'ex-seg-btn press', 'data-v': c.id, 'aria-pressed': String(c.id === cityId()), onclick: () => ctx.switchCity?.(c.id) }, cityName(c, lang()))));
+  const language = h('section', { class: 'set-lang' },
+    row(idCity, t('Πόλη'), t('Αλλάζουν οι στάσεις, οι γραμμές και τα δεδομένα. Κάθε πόλη έχει τα δικά της αγαπημένα, μέρη και υπενθυμίσεις.'), citySeg),
+    row(idLang, t('Γλώσσα'), null, langSeg));
 
   // ---------- display & walking ----------
   const mins = (n) => (n === 0 ? t('Καθόλου') : tn(n, '{n} λεπτό', '{n} λεπτά'));
@@ -191,7 +199,7 @@ function build(container, ctx, keep) {
       const s = ctx.data.stopByCode.get(code);
       const name = s?.displayName || t('Στάση {code}', { code });
       return h('li', { class: 'set-item' },
-        h('a', { class: 'set-item-main set-fav-link', href: `#/stop/${encodeURIComponent(code)}` }, h('div', { class: 'set-label' }, name), s ? null : h('div', { class: 'ex-sub' }, t('δεν βρέθηκε στα τρέχοντα δεδομένα'))),
+        h('a', { class: 'set-item-main set-fav-link', href: cityHash(`#/stop/${encodeURIComponent(code)}`) }, h('div', { class: 'set-label' }, name), s ? null : h('div', { class: 'ex-sub' }, t('δεν βρέθηκε στα τρέχοντα δεδομένα'))),
         btn(code, 'up', t('Μετακίνηση πάνω: {name}', { name }), 'chevron-up', i === 0),
         btn(code, 'down', t('Μετακίνηση κάτω: {name}', { name }), 'chevron-down', i === favs.length - 1),
         btn(code, 'remove', t('Αφαίρεση από τα αγαπημένα: {name}', { name }), 'trash'));
@@ -213,7 +221,7 @@ function build(container, ctx, keep) {
   const known = d.generatedAt ?? d.routesGeneratedAt ?? d.meta?.generatedAt;
   fillFreshness(known);
   if (!known && d.routes.length) { // routes.json carries its own build date; read it once, only here
-    fetch('./data/routes.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (!dead && j?.generatedAt) fillFreshness(j.generatedAt); }).catch(() => {});
+    fetch(dataDir() + 'routes.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (!dead && j?.generatedAt) fillFreshness(j.generatedAt); }).catch(() => {});
   }
   const clearRecentsBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => { clearRecents(); say(t('Τα πρόσφατα καθαρίστηκαν')); } }, t('Καθαρισμός πρόσφατων αναζητήσεων'));
   let armed = null;
@@ -252,17 +260,17 @@ function build(container, ctx, keep) {
 
   // ---------- about (full LIVE / ΠΡΟΓΡ. legend lives here) ----------
   const about = sec('about', t('Σχετικά'),
-    h('p', { class: 'set-p' }, h('strong', {}, t('Λεωφορεία Πάτρας')), ` · ${t('έκδοση {v}', { v: VERSION })}`),
+    h('p', { class: 'set-p' }, h('strong', {}, APP_NAME), ` · ${cityName(city(), lang())} · ${t('έκδοση {v}', { v: VERSION })}`),
     h('div', { class: 'set-def' },
       h('span', { class: 'ex-chip ex-chip-live' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), t('LIVE')),
       h('p', { class: 'set-p' }, t('Το λεωφορείο στέλνει τη θέση του και τη βλέπεις στον χάρτη. Ο χρόνος άφιξης είναι εκτίμηση με βάση τη θέση του.'))),
     h('div', { class: 'set-def' },
       h('span', { class: 'ex-chip ex-chip-sched' }, t('ΠΡΟΓΡ.')),
       h('p', { class: 'set-p' }, t('Δεν υπάρχει θέση οχήματος. Πρόκειται για την προγραμματισμένη ώρα, και το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'))),
-    h('p', { class: 'ex-note', role: 'note' }, t('Ανεπίσημη εφαρμογή· δεν σχετίζεται με τον φορέα που εκτελεί τα δρομολόγια. Τα δεδομένα προέρχονται από το patra.citybus.gr και μπορεί να έχουν λάθη ή καθυστερήσεις. Μην βασίζεσαι σε αυτά για κρίσιμες μετακινήσεις.')),
+    h('p', { class: 'ex-note', role: 'note' }, t('Ανεπίσημη εφαρμογή· δεν σχετίζεται με τον φορέα που εκτελεί τα δρομολόγια. Τα δεδομένα προέρχονται από το {host} και μπορεί να έχουν λάθη ή καθυστερήσεις. Μην βασίζεσαι σε αυτά για κρίσιμες μετακινήσεις.', { host: dataSource()[0] })),
     h('p', { class: 'set-p' }, t('Η τοποθεσία σου μένει στη συσκευή. Όταν ζητάς διαδρομή ή ψάχνεις τόπο, στέλνονται στις υπηρεσίες χαρτών (OSRM, Photon) μόνο οι συντεταγμένες και το κείμενο που χρειάζονται. Δεν υπάρχουν λογαριασμοί ούτε αναλυτικά στοιχεία χρήσης.')),
     h('h3', { class: 'set-sub' }, t('Πηγές και άδειες')),
-    h('ul', { class: 'set-list' }, LINKS.map(([name, href, what]) => h('li', { class: 'set-item' },
+    h('ul', { class: 'set-list' }, [...LINKS, dataSource()].map(([name, href, what]) => h('li', { class: 'set-item' },
       h('a', { class: 'set-link', href, target: '_blank', rel: 'noopener noreferrer' }, name), h('span', { class: 'ex-sub' }, t(what))))));
 
   container.replaceChildren(h('div', { class: 'ex-view' },

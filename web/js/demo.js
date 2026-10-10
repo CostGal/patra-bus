@@ -4,6 +4,7 @@
 // Trips already underway and within LIVE_HORIZON_SEC are live (position interpolated between stops);
 // the rest are scheduled (no coordinates). Output goes through normalizeLive, i.e. the real shape.
 import { normalizeLive, noServiceResult } from './arrivals.js';
+import { dataDir } from './cities.js';
 
 const LIVE_HORIZON_SEC = 20 * 60; // live only when the bus is on its way and this close
 const LOOKAHEAD_SEC = 60 * 60;
@@ -104,7 +105,8 @@ export function demoReady() {
     const get = async (u, optional) => {
       try { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return await r.json(); } catch (e) { if (optional) return null; throw e; }
     };
-    loading = Promise.all([get('./data/stops.json'), get('./data/lines.json'), get('./data/routes.json', true)])
+    const dir = dataDir(); // the active city's data; a city without routes.json falls back to chained stops
+    loading = Promise.all([get(dir + 'stops.json'), get(dir + 'lines.json'), get(dir + 'routes.json', true)])
       .then(([stops, lines, routes]) => { model = build({ stops, lines, routes }); return true; })
       .catch(() => { loading = null; return false; });
   }
