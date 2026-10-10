@@ -4,18 +4,18 @@
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
 import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, STALE_MS } from './api.js';
-import { etaText, etaSpoken, ageText } from './arrivals.js';
+import { ageText } from './arrivals.js';
 import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
 import { shareLink } from './share.js';
-import { t } from './i18n.js';
+import { t, etaTxt, etaSay } from './i18n.js';
 
-export { etaText };
+export { etaTxt as etaText };
 
 const GONE_SEC = 30; // a vehicle this far past its ETA has left: drop its tile
 const MAX_TILES = 10; // beyond this, behind a "show all" button
 const NOW_SEC = 15; // under this a tile reads "τώρα"
 
-const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaSpoken(rem) }));
+const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaSay(rem) }));
 
 // ---- one arrival tile ----
 // v: normalised Vehicle. opts: { compact, now, line, stop, lineLinks, stat }. The element has .tick(now) to refresh the countdown in
@@ -57,7 +57,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
   };
   el.tick = (t0 = Date.now()) => {
     const rem = remainingSec(v, fetchedAt, t0);
-    const text = etaText(rem);
+    const text = etaTxt(rem);
     el.classList.toggle('atile-now', rem < NOW_SEC);
     if (text === lastText) return;
     lastText = text;

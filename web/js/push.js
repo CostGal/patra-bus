@@ -3,6 +3,7 @@
 // (the PushSubscription) plus each reminder's time/text; nothing is stored beyond the reminder itself.
 // Everything is best-effort: no function here throws to its caller.
 import { h } from './ui.js';
+import { t, N_ } from './i18n.js';
 import { API_BASE } from './api.js';
 
 export const FLAG_KEY = 'patra-bus:push'; // '1' once the user enabled push on this device
@@ -233,18 +234,18 @@ try {
 // ---- settings card ----
 
 const COPY = {
-  unsupported: 'Αυτός ο browser δεν υποστηρίζει ειδοποιήσεις με κλειστή εφαρμογή. Οι υπενθυμίσεις θα εμφανίζονται μόνο όσο η εφαρμογή είναι ανοιχτή.',
-  'needs-install': 'Στο iPhone και στο iPad οι ειδοποιήσεις λειτουργούν μόνο από την εγκατεστημένη εφαρμογή. Πάτα «Κοινοποίηση» και μετά «Προσθήκη στην οικ. οθόνη», άνοιξε την εφαρμογή από την οθόνη σου και γύρνα εδώ για να τις ενεργοποιήσεις.',
-  denied: 'Οι ειδοποιήσεις είναι μπλοκαρισμένες για αυτό το site. Επέτρεψέ τις από τις ρυθμίσεις του browser (ή της συσκευής) και ξαναδοκίμασε.',
-  off: 'Ανενεργές. Ενεργοποίησέ τες για να σε ειδοποιούμε «Ώρα να φύγεις» ακόμα και με κλειστή εφαρμογή ή κλειδωμένη οθόνη.',
-  on: 'Ενεργές. Οι υπενθυμίσεις «Ώρα να φύγεις» θα φτάνουν και με κλειστή εφαρμογή.',
+  unsupported: N_('Αυτός ο browser δεν υποστηρίζει ειδοποιήσεις με κλειστή εφαρμογή. Οι υπενθυμίσεις θα εμφανίζονται μόνο όσο η εφαρμογή είναι ανοιχτή.'),
+  'needs-install': N_('Στο iPhone και στο iPad οι ειδοποιήσεις λειτουργούν μόνο από την εγκατεστημένη εφαρμογή. Πάτα «Κοινοποίηση» και μετά «Προσθήκη στην οικ. οθόνη», άνοιξε την εφαρμογή από την οθόνη σου και γύρνα εδώ για να τις ενεργοποιήσεις.'),
+  denied: N_('Οι ειδοποιήσεις είναι μπλοκαρισμένες για αυτό το site. Επέτρεψέ τις από τις ρυθμίσεις του browser (ή της συσκευής) και ξαναδοκίμασε.'),
+  off: N_('Ανενεργές. Ενεργοποίησέ τες για να σε ειδοποιούμε «Ώρα να φύγεις» ακόμα και με κλειστή εφαρμογή ή κλειδωμένη οθόνη.'),
+  on: N_('Ενεργές. Οι υπενθυμίσεις «Ώρα να φύγεις» θα φτάνουν και με κλειστή εφαρμογή.'),
 };
 const ERRORS = {
-  dismissed: 'Δεν δόθηκε άδεια. Πάτα ξανά «Ενεργοποίηση» όταν θέλεις.',
+  dismissed: N_('Δεν δόθηκε άδεια. Πάτα ξανά «Ενεργοποίηση» όταν θέλεις.'),
   denied: COPY.denied,
-  key: 'Δεν μπόρεσα να επικοινωνήσω με τον server. Έλεγξε τη σύνδεσή σου και ξαναδοκίμασε.',
-  'no-sw': 'Η εφαρμογή δεν είναι έτοιμη για ειδοποιήσεις ακόμα. Ξαναφόρτωσε τη σελίδα και δοκίμασε πάλι.',
-  subscribe: 'Ο browser δεν επέτρεψε την εγγραφή. Ξαναδοκίμασε σε λίγο.',
+  key: N_('Δεν μπόρεσα να επικοινωνήσω με τον server. Έλεγξε τη σύνδεσή σου και ξαναδοκίμασε.'),
+  'no-sw': N_('Η εφαρμογή δεν είναι έτοιμη για ειδοποιήσεις ακόμα. Ξαναφόρτωσε τη σελίδα και δοκίμασε πάλι.'),
+  subscribe: N_('Ο browser δεν επέτρεψε την εγγραφή. Ξαναδοκίμασε σε λίγο.'),
 };
 
 export function mountPushCard(container, ctx = {}, api = real) {
@@ -255,23 +256,23 @@ export function mountPushCard(container, ctx = {}, api = real) {
   const btn = h('button', { type: 'button', class: 'ex-btn push-btn' });
   // No border of its own: settings wraps every module in its own titled card.
   const card = h('section', { class: 'push-card' },
-    h('h3', { class: 'set-sub push-title' }, 'Ειδοποιήσεις με κλειστή εφαρμογή'),
+    h('h3', { class: 'set-sub push-title' }, t('Ειδοποιήσεις με κλειστή εφαρμογή')),
     state, err,
     h('div', { class: 'set-actions' }, btn),
     h('p', { class: 'ex-sub push-fine' },
-      'Πώς δουλεύει: η ειδοποίηση περνά από την υπηρεσία push του browser σου (Google, Apple ή Mozilla). ',
-      'Στον server μας στέλνεται μόνο η διεύθυνση push αυτής της συσκευής και, για κάθε υπενθύμιση, η ώρα και η γραμμή. ',
-      'Διαγράφονται μόλις σταλεί η ειδοποίηση ή την ακυρώσεις. Δεν αποθηκεύουμε τη θέση σου ούτε προφίλ.'));
+      t('Πώς δουλεύει: η ειδοποίηση περνά από την υπηρεσία push του browser σου (Google, Apple ή Mozilla).'), ' ',
+      t('Στον server μας στέλνεται μόνο η διεύθυνση push αυτής της συσκευής και, για κάθε υπενθύμιση, η ώρα και η γραμμή.'), ' ',
+      t('Διαγράφονται μόλις σταλεί η ειδοποίηση ή την ακυρώσεις. Δεν αποθηκεύουμε τη θέση σου ούτε προφίλ.')));
 
   function render() {
     if (dead) return;
     const s = api.pushState();
-    state.textContent = COPY[s];
+    state.textContent = t(COPY[s]);
     const e = busy ? null : api.pushError();
     err.hidden = !(e && ERRORS[e] && s !== 'denied');
-    err.textContent = err.hidden ? '' : ERRORS[e];
+    err.textContent = err.hidden ? '' : t(ERRORS[e]);
     btn.hidden = s !== 'off' && s !== 'on';
-    btn.textContent = busy ? 'Μισό λεπτό…' : s === 'on' ? 'Απενεργοποίηση' : 'Ενεργοποίηση';
+    btn.textContent = busy ? t('Μισό λεπτό…') : s === 'on' ? t('Απενεργοποίηση') : t('Ενεργοποίηση');
     btn.disabled = busy;
     btn.classList.toggle('ex-btn-danger', s === 'on');
   }
@@ -283,7 +284,7 @@ export function mountPushCard(container, ctx = {}, api = real) {
     let ok = false;
     try { ok = turningOn ? await api.enablePush() : await api.disablePush(); } catch { ok = false; }
     busy = false; render();
-    if (ok) { try { ctx.toast?.(turningOn ? 'Οι ειδοποιήσεις ενεργοποιήθηκαν' : 'Οι ειδοποιήσεις απενεργοποιήθηκαν'); } catch { /* ignore */ } }
+    if (ok) { try { ctx.toast?.(turningOn ? t('Οι ειδοποιήσεις ενεργοποιήθηκαν') : t('Οι ειδοποιήσεις απενεργοποιήθηκαν')); } catch { /* ignore */ } }
   });
 
   const off = api.onPushChange?.(() => render());

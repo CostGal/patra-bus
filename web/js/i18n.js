@@ -2,6 +2,7 @@
 // Missing English falls back to Greek (logged once with ?debug). Stop/line names are data, never translated.
 import { getSettings, setSetting, onChange } from './store.js';
 import { EN } from './i18n-en.js';
+import { etaText } from './arrivals.js';
 
 export const LANGS = ['el', 'en'];
 export const PREFS = ['auto', 'el', 'en'];
@@ -54,3 +55,21 @@ export function t(s, vars) {
 export const tn = (n, one, many) => t(n === 1 ? one : many, { n });
 // Minutes in the compact form used everywhere ("5′").
 export const fmtMin = (n) => `${n}′`;
+// Marks a Greek literal that is translated later with t(variable); the test scan requires an EN entry for it.
+export const N_ = (s) => s;
+
+// Display forms of the shared (Greek-only) arrivals.js helpers: compact "7′" / "1 h 05′" and spoken "5 minutes".
+export function etaTxt(sec) {
+  const s = etaText(sec);
+  return s === 'τώρα' ? t('τώρα') : s.replace(' ώ ', ` ${t('ώ')} `);
+}
+export function etaSay(sec) {
+  const s = Number(sec);
+  if (!Number.isFinite(s) || s < 15) return t('τώρα');
+  if (s < 60) return t('λιγότερο από ένα λεπτό');
+  const m = Math.floor(s / 60);
+  const min = (n) => tn(n, '{n} λεπτό', '{n} λεπτά');
+  if (m < 60) return min(m);
+  const hours = tn(Math.floor(m / 60), '{n} ώρα', '{n} ώρες');
+  return m % 60 ? t('{hours} και {min}', { hours, min: min(m % 60) }) : hours;
+}

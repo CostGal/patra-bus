@@ -1,7 +1,7 @@
 // Weekly "when to leave" routines (owner: places). Booked on the push server (POST /api/push/routines), mirrored locally.
 // Contract: docs/ARCHITECTURE.md Round 3 (P + W). The server only gets the push address, days/time and the boarding trip.
 import { h, icon } from './ui.js';
-import { t } from './i18n.js';
+import { t, N_ } from './i18n.js';
 import { API_BASE } from './api.js';
 import { jsonStore, getPlaces, onPlacesChange, placeLabel } from './places.js';
 import { planTrips, reminderTrip } from './planner.js';
@@ -16,7 +16,7 @@ export const LEADS = [2, 5, 10, 15];
 const DEFAULT_LEAD = 5;
 const HTTP_MS = 8000;
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first; 0 = Κυριακή
-const DAY_NAMES = { 0: 'Κυρ', 1: 'Δευ', 2: 'Τρί', 3: 'Τετ', 4: 'Πέμ', 5: 'Παρ', 6: 'Σάβ' };
+const DAY_NAMES = { 0: N_('Κυρ'), 1: N_('Δευ'), 2: N_('Τρί'), 3: N_('Τετ'), 4: N_('Πέμ'), 5: N_('Παρ'), 6: N_('Σάβ') };
 
 // ---------------------------------------------------------------- pure helpers
 
@@ -150,15 +150,15 @@ export async function currentSubscription(ms = 6000) {
 // ---------------------------------------------------------------- settings UI
 
 const ERR = {
-  'no-place': 'Όρισε πρώτα έναν τόπο (σπίτι ή δουλειά) στους αγαπημένους τόπους.',
-  'no-days': 'Διάλεξε τουλάχιστον μία μέρα.',
-  'no-time': 'Βάλε την ώρα που θέλεις να φύγεις.',
-  'no-start': 'Δεν ξέρω από πού ξεκινάς. Άνοιξε τη θέση σου ή όρισε πρώτα σπίτι.',
-  'no-route': 'Δεν βρέθηκε λεωφορείο για αυτή τη διαδρομή.',
-  'no-push': 'Οι ειδοποιήσεις δεν είναι έτοιμες. Ξαναφόρτωσε τη σελίδα και δοκίμασε πάλι.',
-  limit: 'Έχεις ήδη τον μέγιστο αριθμό υπενθυμίσεων. Διέγραψε μία πρώτα.',
-  server: 'Ο server δεν δέχτηκε την υπενθύμιση. Ξαναδοκίμασε σε λίγο.',
-  network: 'Δεν μπόρεσα να επικοινωνήσω με τον server. Έλεγξε τη σύνδεσή σου.',
+  'no-place': N_('Όρισε πρώτα έναν τόπο (σπίτι ή δουλειά) στους αγαπημένους τόπους.'),
+  'no-days': N_('Διάλεξε τουλάχιστον μία μέρα.'),
+  'no-time': N_('Βάλε την ώρα που θέλεις να φύγεις.'),
+  'no-start': N_('Δεν ξέρω από πού ξεκινάς. Άνοιξε τη θέση σου ή όρισε πρώτα σπίτι.'),
+  'no-route': N_('Δεν βρέθηκε λεωφορείο για αυτή τη διαδρομή.'),
+  'no-push': N_('Οι ειδοποιήσεις δεν είναι έτοιμες. Ξαναφόρτωσε τη σελίδα και δοκίμασε πάλι.'),
+  limit: N_('Έχεις ήδη τον μέγιστο αριθμό υπενθυμίσεων. Διέγραψε μία πρώτα.'),
+  server: N_('Ο server δεν δέχτηκε την υπενθύμιση. Ξαναδοκίμασε σε λίγο.'),
+  network: N_('Δεν μπόρεσα να επικοινωνήσω με τον server. Έλεγξε τη σύνδεσή σου.'),
 };
 
 export function mountRoutinesSettings(container, ctx = {}) {
@@ -206,11 +206,11 @@ export function mountRoutinesSettings(container, ctx = {}) {
 
   function pushBlock(state) {
     const msg = {
-      off: 'Οι υπενθυμίσεις χρειάζονται ειδοποιήσεις.',
-      denied: 'Οι ειδοποιήσεις είναι μπλοκαρισμένες για αυτό το site. Επέτρεψέ τες από τις ρυθμίσεις του browser.',
-      'needs-install': 'Στο iPhone και στο iPad χρειάζεται η εγκατεστημένη εφαρμογή (Κοινοποίηση → Προσθήκη στην οικ. οθόνη).',
-      unsupported: 'Αυτός ο browser δεν υποστηρίζει ειδοποιήσεις με κλειστή εφαρμογή.',
-    }[state] || 'Οι υπενθυμίσεις χρειάζονται ειδοποιήσεις.';
+      off: N_('Οι υπενθυμίσεις χρειάζονται ειδοποιήσεις.'),
+      denied: N_('Οι ειδοποιήσεις είναι μπλοκαρισμένες για αυτό το site. Επέτρεψέ τες από τις ρυθμίσεις του browser.'),
+      'needs-install': N_('Στο iPhone και στο iPad χρειάζεται η εγκατεστημένη εφαρμογή (Κοινοποίηση → Προσθήκη στην οικ. οθόνη).'),
+      unsupported: N_('Αυτός ο browser δεν υποστηρίζει ειδοποιήσεις με κλειστή εφαρμογή.'),
+    }[state] || N_('Οι υπενθυμίσεις χρειάζονται ειδοποιήσεις.');
     return h('div', { class: 'plc-push' },
       h('p', { class: 'set-p' }, t(msg)),
       state === 'off' ? h('button', { type: 'button', class: 'ex-btn', onclick: async () => { await enablePush(); render(); } }, icon('bell'), t('Ενεργοποίηση ειδοποιήσεων')) : null);

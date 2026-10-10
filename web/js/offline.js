@@ -2,6 +2,7 @@
 // Opt-in download of the OpenFreeMap tiles around Patras into the cache `patra-bus-map-offline-v1`, which sw.js
 // serves from first and never trims. Only tiles.openfreemap.org is fetched; live arrivals still need the internet.
 import { h, icon } from './ui.js';
+import { t, lang, locale } from './i18n.js';
 
 export const OFFLINE_CACHE = 'patra-bus-map-offline-v1';
 const HOST = 'https://tiles.openfreemap.org';
@@ -90,7 +91,8 @@ export function fmtBytes(b) {
   if (!(b > 0)) return '0 MB';
   const mb = b / 1048576;
   if (mb < 0.95) return `${Math.max(1, Math.round(b / 1024))} KB`;
-  return `${mb.toFixed(mb < 10 ? 1 : 0).replace('.', ',')} MB`;
+  const n = mb.toFixed(mb < 10 ? 1 : 0);
+  return `${lang() === 'en' ? n : n.replace('.', ',')} MB`;
 }
 
 // ---------- cache access ----------
@@ -157,7 +159,7 @@ async function getFile(url, signal) {
 // on network trouble (ok = false, error = message). onProgress({ phase, done, total, bytes }).
 export async function downloadPatrasMap({ onProgress, signal } = {}) {
   const fail = (error) => ({ ok: false, cancelled: false, failed: 0, skipped: 0, error, ...emptyStatus() });
-  if (!hasCaches()) return fail('Ο browser δεν υποστηρίζει αποθήκευση για χρήση χωρίς σύνδεση.');
+  if (!hasCaches()) return fail(t('Ο browser δεν υποστηρίζει αποθήκευση για χρήση χωρίς σύνδεση.'));
   try { navigator.storage?.persist?.(); } catch { /* best effort: keeps the browser from evicting the map */ }
   const report = (p) => { try { onProgress?.(p); } catch { /* UI callback must not break the download */ } };
   const cache = await caches.open(OFFLINE_CACHE);
@@ -230,11 +232,11 @@ export async function downloadPatrasMap({ onProgress, signal } = {}) {
     const complete = failed === 0;
     await writeMeta(cache, { complete, at: Date.now(), bytes, tiles: plan.tiles.length, total });
     report({ phase: 'done', done, total, bytes });
-    return { ok: complete, cancelled: false, failed, skipped, error: complete ? '' : 'Κάποια αρχεία δεν κατέβηκαν.', ...(await offlineMapStatus()) };
+    return { ok: complete, cancelled: false, failed, skipped, error: complete ? '' : t('Κάποια αρχεία δεν κατέβηκαν.'), ...(await offlineMapStatus()) };
   } catch (e) {
     if (signal?.aborted) return { ok: false, cancelled: true, failed, skipped, ...(await offlineMapStatus()) };
     try { await writeMeta(cache, { complete: wasComplete, at: Date.now(), bytes, tiles: prev?.tiles || 0, total }); } catch { /* ignore */ }
-    return { ...fail(navigator.onLine === false ? 'Δεν υπάρχει σύνδεση στο ίντερνετ.' : 'Η λήψη απέτυχε. Δοκίμασε ξανά.'), ...(await offlineMapStatus()) };
+    return { ...fail(navigator.onLine === false ? t('Δεν υπάρχει σύνδεση στο ίντερνετ.') : t('Η λήψη απέτυχε. Δοκίμασε ξανά.')), ...(await offlineMapStatus()) };
   }
 }
 const emptyStatus = () => ({ supported: true, downloaded: false, partial: false, tiles: 0, files: 0, bytes: 0, at: 0 });
@@ -253,8 +255,7 @@ function startJob() {
   return j;
 }
 
-const dateFmt = (() => { try { return new Intl.DateTimeFormat('el-GR', { dateStyle: 'medium' }); } catch { return null; } })();
-const fmtDate = (ms) => (ms && dateFmt ? dateFmt.format(new Date(ms)) : '');
+const fmtDate = (ms) => { try { return ms ? new Intl.DateTimeFormat(locale(), { dateStyle: 'medium' }).format(new Date(ms)) : ''; } catch { return ''; } };
 
 export function mountOfflineCard(container, ctx = {}) {
   let dead = false;
@@ -266,18 +267,18 @@ export function mountOfflineCard(container, ctx = {}) {
   const supported = hasCaches() && typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
 
   const statusP = h('p', { class: 'set-p', 'aria-live': 'polite' });
-  const bar = h('progress', { max: '1', value: '0', 'aria-label': 'Πρόοδος λήψης χάρτη', hidden: true });
+  const bar = h('progress', { max: '1', value: '0', 'aria-label': t('Πρόοδος λήψης χάρτη'), hidden: true });
   const barP = h('p', { class: 'ex-sub', 'aria-live': 'off', hidden: true });
   const storageP = h('p', { class: 'ex-sub' });
   const errP = h('p', { class: 'ex-note', role: 'alert', hidden: true });
   const dlBtn = h('button', { type: 'button', class: 'ex-btn', onclick: () => start() });
-  const cancelBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => myJob?.ctl.abort() }, icon('close'), 'Ακύρωση');
-  const delBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm ex-btn-danger', onclick: () => remove() }, icon('trash'), 'Διαγραφή');
+  const cancelBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => myJob?.ctl.abort() }, icon('close'), t('Ακύρωση'));
+  const delBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm ex-btn-danger', onclick: () => remove() }, icon('trash'), t('Διαγραφή'));
   const actions = h('div', { class: 'set-actions' }, dlBtn, cancelBtn, delBtn);
   const note = h('p', { class: 'ex-note' },
-    'Οι ζωντανές αφίξεις λεωφορείων χρειάζονται πάντα ίντερνετ. Χωρίς σύνδεση θα βλέπεις μόνο τον χάρτη της Πάτρας, τις στάσεις και τα αγαπημένα σου.');
+    t('Οι ζωντανές αφίξεις λεωφορείων χρειάζονται πάντα ίντερνετ. Χωρίς σύνδεση θα βλέπεις μόνο τον χάρτη της Πάτρας, τις στάσεις και τα αγαπημένα σου.'));
   const card = h('section', { class: 'set-card' },
-    h('h2', { class: 'set-title' }, 'Χάρτης χωρίς σύνδεση'), statusP, bar, barP, errP, actions, storageP, note);
+    h('h2', { class: 'set-title' }, t('Χάρτης χωρίς σύνδεση')), statusP, bar, barP, errP, actions, storageP, note);
   container.replaceChildren(card);
 
   function paint() {
@@ -285,26 +286,26 @@ export function mountOfflineCard(container, ctx = {}) {
     const busy = !!myJob;
     const s = status;
     if (!supported) {
-      statusP.textContent = 'Αυτός ο browser δεν υποστηρίζει χάρτη χωρίς σύνδεση.';
+      statusP.textContent = t('Αυτός ο browser δεν υποστηρίζει χάρτη χωρίς σύνδεση.');
       actions.hidden = true; storageP.hidden = true; return;
     }
     if (busy) {
       const p = myJob.last;
-      statusP.textContent = 'Λήψη του χάρτη της Πάτρας…';
+      statusP.textContent = t('Λήψη του χάρτη της Πάτρας…');
       bar.hidden = false; barP.hidden = false;
       if (p.total) { bar.max = p.total; bar.value = p.done; } else bar.removeAttribute('value');
-      barP.textContent = p.total ? `${p.done} από ${p.total} αρχεία · ${fmtBytes(p.bytes)}` : 'Προετοιμασία…';
+      barP.textContent = p.total ? t('{done} από {total} αρχεία · {size}', { done: p.done, total: p.total, size: fmtBytes(p.bytes) }) : t('Προετοιμασία…');
     } else {
       bar.hidden = true; barP.hidden = true;
       if (!s) statusP.textContent = '';
-      else if (s.downloaded) statusP.textContent = `Αποθηκευμένος: ${s.tiles} πλακίδια, ${fmtBytes(s.bytes)}${s.at ? `, ενημερώθηκε ${fmtDate(s.at)}` : ''}.`;
-      else if (s.partial) statusP.textContent = `Η λήψη δεν ολοκληρώθηκε (${s.files} αρχεία αποθηκεύτηκαν). Συνέχισέ την όταν έχεις σύνδεση.`;
-      else statusP.textContent = `Κατέβασε τον χάρτη της Πάτρας για να τον βλέπεις και χωρίς ίντερνετ. Μέγεθος περίπου ${fmtBytes(est.bytes)}, καλύτερα με Wi-Fi.`;
+      else if (s.downloaded) statusP.textContent = t('Αποθηκευμένος: {tiles} πλακίδια, {size}', { tiles: s.tiles, size: fmtBytes(s.bytes) }) + (s.at ? t(', ενημερώθηκε {date}', { date: fmtDate(s.at) }) : '') + '.';
+      else if (s.partial) statusP.textContent = t('Η λήψη δεν ολοκληρώθηκε ({n} αρχεία αποθηκεύτηκαν). Συνέχισέ την όταν έχεις σύνδεση.', { n: s.files });
+      else statusP.textContent = t('Κατέβασε τον χάρτη της Πάτρας για να τον βλέπεις και χωρίς ίντερνετ. Μέγεθος περίπου {size}, καλύτερα με Wi-Fi.', { size: fmtBytes(est.bytes) });
     }
     errP.hidden = !error; errP.textContent = error;
     const has = !!s && (s.downloaded || s.partial);
     dlBtn.hidden = busy;
-    dlBtn.replaceChildren(icon(has ? 'refresh' : 'pin'), s?.downloaded ? 'Ενημέρωση χάρτη' : s?.partial ? 'Συνέχιση λήψης' : `Λήψη χάρτη (~${fmtBytes(est.bytes)})`);
+    dlBtn.replaceChildren(icon(has ? 'refresh' : 'pin'), s?.downloaded ? t('Ενημέρωση χάρτη') : s?.partial ? t('Συνέχιση λήψης') : t('Λήψη χάρτη (~{size})', { size: fmtBytes(est.bytes) }));
     cancelBtn.hidden = !busy;
     delBtn.hidden = busy || !has;
   }
@@ -315,7 +316,7 @@ export function mountOfflineCard(container, ctx = {}) {
     if (dead) return;
     storageP.hidden = !si.quota;
     storageP.textContent = si.quota
-      ? `Χώρος συσκευής: ${fmtBytes(si.usage)} από ${fmtBytes(si.quota)}${si.persisted ? ' · προστατευμένος από αυτόματο καθαρισμό' : ''}.`
+      ? t('Χώρος συσκευής: {used} από {quota}', { used: fmtBytes(si.usage), quota: fmtBytes(si.quota) }) + (si.persisted ? ` · ${t('προστατευμένος από αυτόματο καθαρισμό')}` : '') + '.'
       : '';
     paint();
   }
@@ -325,8 +326,8 @@ export function mountOfflineCard(container, ctx = {}) {
     const f = (res) => {
       if (res) { // finished
         myJob = null;
-        error = res.cancelled ? '' : res.ok ? '' : res.error || 'Η λήψη απέτυχε.';
-        if (res.ok) say('Ο χάρτης αποθηκεύτηκε για χρήση χωρίς σύνδεση.');
+        error = res.cancelled ? '' : res.ok ? '' : res.error || t('Η λήψη απέτυχε.');
+        if (res.ok) say(t('Ο χάρτης αποθηκεύτηκε για χρήση χωρίς σύνδεση.'));
         j.listeners.delete(f);
         refresh();
       } else paint();
@@ -338,14 +339,14 @@ export function mountOfflineCard(container, ctx = {}) {
 
   function start() {
     error = '';
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) { error = 'Χρειάζεται σύνδεση στο ίντερνετ για τη λήψη.'; paint(); return; }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { error = t('Χρειάζεται σύνδεση στο ίντερνετ για τη λήψη.'); paint(); return; }
     attach(job || startJob());
   }
 
   async function remove() {
     await clearOfflineMap();
     error = '';
-    say('Ο χάρτης χωρίς σύνδεση διαγράφηκε.');
+    say(t('Ο χάρτης χωρίς σύνδεση διαγράφηκε.'));
     refresh();
   }
 

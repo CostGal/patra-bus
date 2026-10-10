@@ -4,10 +4,10 @@
 // ESTIMATE, labelled so). Route order itself is inferred (routes.json), see route.confidence. Styles: css/extras.css (bv-).
 import { h, icon, lineBadge, fmtClock, toast } from './ui.js';
 import { createLivePoller, DEMO, STALE_MS } from './api.js';
-import { etaText, ageText } from './arrivals.js';
+import { ageText } from './arrivals.js';
 import { loadShapes } from './data.js';
 import { closestOnPath } from './geo.js';
-import { t } from './i18n.js';
+import { t, N_, etaTxt } from './i18n.js';
 import { activeTrip, onTripChange, startOnboard, stopOnboard } from './onboard.js';
 
 export const MAX_SNAP_M = 250; // a GPS fix farther than this from the stop polyline is not trusted for placement
@@ -91,7 +91,7 @@ export function busTimeline(route, anchorStop, anchorEtaSec, fetchedAt, vehicleP
 }
 
 // "τώρα" / "σε 9′" / "σε 1 ώ 05′"
-export const inText = (sec) => (sec < NOW_SEC ? 'τώρα' : `σε ${etaText(sec)}`);
+export const inText = (sec) => (sec < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaTxt(sec) }));
 
 // ---------------------------------------------------------------- view
 
@@ -102,10 +102,10 @@ const routeFc = (coordinates, routeCode) => ({ type: 'FeatureCollection', featur
 const LIVE_FLAG = () => h('span', { class: 'ex-chip ex-chip-live' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), 'LIVE');
 
 const ERR_TEXT = {
-  network: 'Δεν υπάρχει σύνδεση με το διαδίκτυο.',
-  timeout: 'Η απάντηση άργησε πολύ.',
-  upstream: 'Η υπηρεσία πληροφόρησης δεν ανταποκρίνεται αυτή τη στιγμή.',
-  bad: 'Η απάντηση του διακομιστή δεν ήταν έγκυρη.',
+  network: N_('Δεν υπάρχει σύνδεση με το διαδίκτυο.'),
+  timeout: N_('Η απάντηση άργησε πολύ.'),
+  upstream: N_('Η υπηρεσία πληροφόρησης δεν ανταποκρίνεται αυτή τη στιγμή.'),
+  bad: N_('Η απάντηση του διακομιστή δεν ήταν έγκυρη.'),
 };
 
 export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop: stopParam } = {}) {
@@ -140,11 +140,11 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   // ---- skeleton ----
   const root = h('div', { class: 'ex-view bv' });
   const badgeBox = h('span', { class: 'bv-badge' });
-  const title = h('h1', {}, 'Διαδρομή οχήματος');
+  const title = h('h1', {}, t('Διαδρομή οχήματος'));
   const sub = h('p', { class: 'ex-sub', hidden: true });
   const flagBox = h('span', { class: 'bv-flag' });
   const closeBtn = h('button', {
-    type: 'button', class: 'ex-icon-btn', 'aria-label': 'Κλείσιμο', title: 'Κλείσιμο',
+    type: 'button', class: 'ex-icon-btn', 'aria-label': t('Κλείσιμο'), title: t('Κλείσιμο'),
     onclick: () => ctx.navigate(origin ? `#/stop/${encodeURIComponent(origin)}` : '#/'),
   }, icon('close'));
   const moreBtn = h('button', {
@@ -162,7 +162,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const alightBox = h('div', { class: 'ob-box', hidden: true });
   // secondary text lives behind the "⋯" button
   const more = h('div', { class: 'ob-more', hidden: true }, caveat, foot, legend,
-    DEMO ? h('p', { class: 'ex-note' }, 'Δεδομένα προσομοίωσης (demo): δεν είναι πραγματικά λεωφορεία.') : null);
+    DEMO ? h('p', { class: 'ex-note' }, t('Δεδομένα προσομοίωσης (demo): δεν είναι πραγματικά λεωφορεία.')) : null);
   root.append(head, banner, summary, alightBox, toggle, list, more);
   container.replaceChildren(root);
 
@@ -179,11 +179,11 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     const n = route.stops.length;
     route.stops.forEach((c, i) => {
       const s = data.stopByCode.get(c);
-      const end = i === 0 ? 'Αφετηρία' : i === n - 1 ? 'Τέρμα' : '';
+      const end = i === 0 ? t('Αφετηρία') : i === n - 1 ? t('Τέρμα') : '';
       const clock = h('span', { class: 'bv-clock' });
       const inn = h('span', { class: 'bv-in' });
       const tag = h('span', { class: 'bv-tag' });
-      const name = h('span', { class: 'bv-name' }, s ? s.displayName : `Στάση ${c}`);
+      const name = h('span', { class: 'bv-name' }, s ? s.displayName : t('Στάση {code}', { code: c }));
       const li = h('li', { class: `bv-row${end ? ' is-end' : ''}`, 'data-i': String(i) },
         h('span', { class: 'bv-dot', 'aria-hidden': 'true' }),
         h('a', { class: 'bv-link', href: `#/stop/${encodeURIComponent(c)}` }, name, h('span', { class: 'ex-sub' }, end ? `${end} · #${c}` : `#${c}`)),
@@ -200,15 +200,15 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     root.style.setProperty('--lc', (l && l.color) || (found && found.v.color) || 'var(--accent)');
     root.style.setProperty('--lc-text', (l && l.textColor) || '#fff');
     badgeBox.replaceChildren(lineBadge(l || { code: found ? found.v.lineCode : route ? route.lineCode : '' }));
-    title.textContent = route ? route.displayName : found ? found.v.routeName : 'Διαδρομή οχήματος';
-    sub.textContent = l ? `Γραμμή ${l.code} · διαδρομή οχήματος` : 'Διαδρομή οχήματος';
-    document.title = `${title.textContent} · Λεωφορεία Πάτρας`;
+    title.textContent = route ? route.displayName : found ? found.v.routeName : t('Διαδρομή οχήματος');
+    sub.textContent = l ? t('Γραμμή {code} · διαδρομή οχήματος', { code: l.code }) : t('Διαδρομή οχήματος');
+    document.title = `${title.textContent} · ${t('Λεωφορεία Πάτρας')}`;
     flagBox.replaceChildren();
-    if (found && !gone) flagBox.append(found.v.live ? LIVE_FLAG() : h('span', { class: 'ex-chip ex-chip-sched' }, icon('clock'), 'ΠΡΟΓΡ.'));
-    else if (gone) flagBox.append(h('span', { class: 'ex-chip ex-chip-sched' }, 'Εκτός live'));
+    if (found && !gone) flagBox.append(found.v.live ? LIVE_FLAG() : h('span', { class: 'ex-chip ex-chip-sched' }, icon('clock'), t('ΠΡΟΓΡ.')));
+    else if (gone) flagBox.append(h('span', { class: 'ex-chip ex-chip-sched' }, t('Εκτός live')));
   }
 
-  const nameOf = (c) => (data.stopByCode.get(c) || {}).displayName || `Στάση ${c}`;
+  const nameOf = (c) => (data.stopByCode.get(c) || {}).displayName || t('Στάση {code}', { code: c });
 
   // ---- one paint: cheap, called after every poll and every TICK_MS ----
   function paint(now) {
@@ -220,11 +220,11 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     const age = st.data ? (now - st.data.fetchedAt) / 1000 : 0;
     const stale = !!st.data && now - st.data.fetchedAt > STALE_MS;
     const msgs = [];
-    if (!anchorCode) msgs.push('Άνοιξε το όχημα από μια στάση (ή από τον χάρτη) για να δεις τη ζωντανή του θέση.');
-    else if (st.error && !st.data) msgs.push(`Δεν φορτώθηκαν τα δεδομένα. ${ERR_TEXT[st.error.kind] || ERR_TEXT.upstream}`);
-    else if (gone) msgs.push('Το όχημα δεν εμφανίζεται πλέον στα live δεδομένα. Η διαδρομή παραμένει στον χάρτη.');
-    else if (stale) msgs.push(`Παλιά δεδομένα: ενημερώθηκαν πριν ${ageText(age)}.${st.error ? ` ${ERR_TEXT[st.error.kind] || ''}` : ''}`);
-    else if (found && !found.v.live) msgs.push('Δεν υπάρχει ζωντανή θέση για αυτό το δρομολόγιο: οι ώρες βασίζονται στο πρόγραμμα της στάσης και μπορεί να μην τηρηθούν.');
+    if (!anchorCode) msgs.push(t('Άνοιξε το όχημα από μια στάση (ή από τον χάρτη) για να δεις τη ζωντανή του θέση.'));
+    else if (st.error && !st.data) msgs.push(`${t('Δεν φορτώθηκαν τα δεδομένα.')} ${t(ERR_TEXT[st.error.kind] || ERR_TEXT.upstream)}`);
+    else if (gone) msgs.push(t('Το όχημα δεν εμφανίζεται πλέον στα live δεδομένα. Η διαδρομή παραμένει στον χάρτη.'));
+    else if (stale) msgs.push(t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageText(age) }) + (st.error ? ` ${ERR_TEXT[st.error.kind] ? t(ERR_TEXT[st.error.kind]) : ''}` : ''));
+    else if (found && !found.v.live) msgs.push(t('Δεν υπάρχει ζωντανή θέση για αυτό το δρομολόγιο: οι ώρες βασίζονται στο πρόγραμμα της στάσης και μπορεί να μην τηρηθούν.'));
     banner.hidden = !msgs.length;
     banner.textContent = msgs.join(' ');
     banner.classList.toggle('is-bad', gone || !!(st.error && !st.data));
@@ -236,10 +236,10 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       tl = busTimeline(route, found.stop, found.v.etaSec, found.fetchedAt, found.pos, now);
     }
     caveat.hidden = !(route && Number(route.confidence) < LOW_CONF);
-    caveat.textContent = 'Η σειρά των στάσεων αυτής της διαδρομής συμπεραίνεται και ίσως έχει λάθη (κυκλική ή με φουρκέτες)· οι ώρες είναι ενδεικτικές.';
+    caveat.textContent = t('Η σειρά των στάσεων αυτής της διαδρομής συμπεραίνεται και ίσως έχει λάθη (κυκλική ή με φουρκέτες)· οι ώρες είναι ενδεικτικές.');
 
     if (!route) {
-      list.replaceChildren(h('li', { class: 'ex-empty' }, 'Δεν υπάρχει γνωστή σειρά στάσεων για αυτή τη διαδρομή.'));
+      list.replaceChildren(h('li', { class: 'ex-empty' }, t('Δεν υπάρχει γνωστή σειρά στάσεων για αυτή τη διαδρομή.')));
       summary.hidden = true; toggle.hidden = true;
     } else {
       const seg = tl ? tl.seg : -1;
@@ -253,11 +253,11 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
         r.li.hidden = !!row && passed && r.i < seg && !passedOpen;
         r.li.removeAttribute('aria-current');
         if (!row) { r.clock.textContent = ''; r.inn.textContent = ''; r.tag.textContent = ''; continue; }
-        if (passed) { r.clock.textContent = ''; r.inn.textContent = 'πέρασε'; r.tag.textContent = ''; continue; }
+        if (passed) { r.clock.textContent = ''; r.inn.textContent = t('πέρασε'); r.tag.textContent = ''; continue; }
         const exact = row.kind === 'anchor';
         r.clock.textContent = `${exact ? '' : '≈ '}${fmtClock(row.at)}`;
         r.inn.textContent = inText(row.etaSec);
-        r.tag.textContent = exact ? 'live' : ''; // the "≈" already says estimate; the rest is in "⋯"
+        r.tag.textContent = exact ? t('live') : ''; // the "≈" already says estimate; the rest is in "⋯"
         r.tag.className = `bv-tag${exact ? ' bv-tag-live' : ''}`;
         if (isNext) r.li.setAttribute('aria-current', 'step');
       }
@@ -286,7 +286,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
         if (nx && tl.next < n) parts.push(h('div', { class: 'bv-sum-main' }, t('Επόμενη: '), h('b', {}, nameOf(nx.code)), ` · ${inText(nx.etaSec)}`));
         summary.replaceChildren(...parts);
         summary.hidden = !parts.length;
-        terminus = last && last.state === 'upcoming' && last !== nx ? `Τέρμα «${nameOf(last.code)}»: ≈ ${fmtClock(last.at)} · ${inText(last.etaSec)} (εκτίμηση)` : '';
+        terminus = last && last.state === 'upcoming' && last !== nx ? t('Τέρμα «{name}»: ≈ {clock} · {when} (εκτίμηση)', { name: nameOf(last.code), clock: fmtClock(last.at), when: inText(last.etaSec) }) : '';
       } else { summary.hidden = true; terminus = ''; }
     }
     paintAlight();
@@ -294,13 +294,13 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     // footer + legend (behind "⋯")
     const bits = [];
     if (terminus) bits.push(terminus);
-    if (st.data) bits.push(`ενημερώθηκε πριν ${ageText(age)}`);
-    if (st.loading) bits.push('ανανέωση…');
+    if (st.data) bits.push(t('ενημερώθηκε πριν {age}', { age: ageText(age) }));
+    if (st.loading) bits.push(t('ανανέωση…'));
     foot.textContent = bits.join(' · ');
     foot.hidden = !bits.length;
     legend.textContent = tl
-      ? `Μόνο η ώρα στη στάση «${nameOf(found.stop)}» προέρχεται από live δεδομένα. Οι υπόλοιπες ώρες είναι εκτίμηση από τυπικούς χρόνους διαδρομής, όχι πρόγραμμα.`
-      : 'Οι ώρες υπολογίζονται από live δεδομένα στάσης και τυπικούς χρόνους διαδρομής (εκτίμηση), όχι από πρόγραμμα.';
+      ? t('Μόνο η ώρα στη στάση «{name}» προέρχεται από live δεδομένα. Οι υπόλοιπες ώρες είναι εκτίμηση από τυπικούς χρόνους διαδρομής, όχι πρόγραμμα.', { name: nameOf(found.stop) })
+      : t('Οι ώρες υπολογίζονται από live δεδομένα στάσης και τυπικούς χρόνους διαδρομής (εκτίμηση), όχι από πρόγραμμα.');
     pushMap();
   }
 

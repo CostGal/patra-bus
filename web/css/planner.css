@@ -110,6 +110,7 @@
 .pl-hero.is-none { background: var(--surface-2); color: var(--text-2); }
 .pl-hero.is-none .pl-hero-big { font-size: 1.35rem; letter-spacing: 0; }
 .pl-hero-sub { margin-top: 6px; color: var(--text); font-size: .88rem; line-height: 1.4; opacity: .85; }
+.pl-hero-delay { margin-top: 2px; font-size: .78rem; color: var(--text-2); opacity: .8; }
 .pl-note { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: .88rem; line-height: 1.4; }
 .pl-note.is-warn { background: var(--warn-bg); color: var(--warn); }
 

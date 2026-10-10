@@ -4,6 +4,7 @@
 // also booked on the server (same tag) so it reaches the phone with the app closed; its server id is kept
 // with the reminder and cancelled together with it.
 import { toast } from './ui.js';
+import { t } from './i18n.js';
 import { pushState, schedulePushReminder, cancelPushReminder, onPushChange } from './push.js';
 
 const KEY = 'patra-bus:reminders';
@@ -158,7 +159,7 @@ function deliver(r) {
   const viaPush = !!r.sid && globalThis.document?.visibilityState === 'hidden';
   const text = r.body ? `${r.title} · ${r.body}` : r.title;
   const href = r.url && String(r.url).startsWith('#') ? r.url : null;
-  try { toast(text, { ms: 12000, action: href ? { label: 'Άνοιγμα', onClick: () => { location.hash = href; } } : undefined }); } catch { /* ignore */ }
+  try { toast(text, { ms: 12000, action: href ? { label: t('Άνοιγμα'), onClick: () => { location.hash = href; } } : undefined }); } catch { /* ignore */ }
   try { navigator.vibrate?.([200, 100, 200]); } catch { /* ignore */ }
   if (!viaPush) showSystem(r).catch(() => {});
 }

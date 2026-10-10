@@ -2,7 +2,7 @@
 import { h, icon, fmtClock } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
 import { ensurePermission, permissionState, listReminders, cancelReminder, cancelAll as cancelAllReminders, scheduleReminder, onRemindersChange } from './notify.js';
-import { t, tn, setLang, onLangChange, locale } from './i18n.js';
+import { t, tn, N_, setLang, onLangChange, locale } from './i18n.js';
 
 export const VERSION = '2.0.0';
 
@@ -18,12 +18,12 @@ const isStandalone = () => { try { return matchMedia('(display-mode: standalone)
 let uid = 0;
 
 const LINKS = [
-  ['© OpenStreetMap contributors', 'https://www.openstreetmap.org/copyright', 'δεδομένα χάρτη'],
-  ['OpenFreeMap', 'https://openfreemap.org', 'πλακίδια χάρτη'],
-  ['MapLibre GL JS', 'https://maplibre.org', 'απεικόνιση χάρτη'],
-  ['OSRM / FOSSGIS routing', 'https://routing.openstreetmap.de', 'διαδρομές περπατήματος'],
-  ['Photon by komoot', 'https://photon.komoot.io', 'αναζήτηση τόπων'],
-  ['patra.citybus.gr', 'https://patra.citybus.gr', 'στάσεις, γραμμές και αφίξεις'],
+  ['© OpenStreetMap contributors', 'https://www.openstreetmap.org/copyright', N_('δεδομένα χάρτη')],
+  ['OpenFreeMap', 'https://openfreemap.org', N_('πλακίδια χάρτη')],
+  ['MapLibre GL JS', 'https://maplibre.org', N_('απεικόνιση χάρτη')],
+  ['OSRM / FOSSGIS routing', 'https://routing.openstreetmap.de', N_('διαδρομές περπατήματος')],
+  ['Photon by komoot', 'https://photon.komoot.io', N_('αναζήτηση τόπων')],
+  ['patra.citybus.gr', 'https://patra.citybus.gr', N_('στάσεις, γραμμές και αφίξεις')],
 ];
 
 // Open sections survive a re-mount that follows within 1.5 s (the app re-routes on a language change), nothing longer.
@@ -154,10 +154,10 @@ function build(container, ctx, keep) {
   } }, t('Δοκιμή υπενθύμισης'));
   const remList = h('ul', { class: 'set-list' });
   const PERM = {
-    granted: 'Οι ειδοποιήσεις είναι ενεργές.',
-    denied: 'Οι ειδοποιήσεις είναι αποκλεισμένες από τον περιηγητή· επίτρεψέ τες από τα δικαιώματα του ιστότοπου.',
-    default: 'Οι ειδοποιήσεις δεν έχουν ενεργοποιηθεί.',
-    unsupported: 'Αυτή η συσκευή δεν υποστηρίζει ειδοποιήσεις.',
+    granted: N_('Οι ειδοποιήσεις είναι ενεργές.'),
+    denied: N_('Οι ειδοποιήσεις είναι αποκλεισμένες από τον περιηγητή· επίτρεψέ τες από τα δικαιώματα του ιστότοπου.'),
+    default: N_('Οι ειδοποιήσεις δεν έχουν ενεργοποιηθεί.'),
+    unsupported: N_('Αυτή η συσκευή δεν υποστηρίζει ειδοποιήσεις.'),
   };
   function paintPerm() {
     const p = permissionState();

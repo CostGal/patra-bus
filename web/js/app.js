@@ -7,7 +7,7 @@ import { createSheet } from './sheet.js';
 import locationService from './location.js';
 import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
-import { t, onLangChange } from './i18n.js';
+import { t, N_, onLangChange } from './i18n.js';
 import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
@@ -122,7 +122,7 @@ const menuBtn = $('menu-btn');
 const menuPop = $('menu-pop');
 let menuPopover;
 
-const THEMES = [['auto', 'layers', 'Αυτόματο'], ['light', 'sun', 'Φωτεινό'], ['dark', 'moon', 'Σκοτεινό']];
+const THEMES = [['auto', 'layers', N_('Αυτόματο')], ['light', 'sun', N_('Φωτεινό')], ['dark', 'moon', N_('Σκοτεινό')]];
 function buildMenu() {
   const item = (href, ico, label) => h('a', { class: 'pop-item', href }, icon(ico), label);
   menuPop.replaceChildren(
@@ -181,8 +181,8 @@ const locateBtn = $('locate-btn');
 const northBtn = $('north-btn');
 const LOC_ICON = { idle: 'locate', centre: 'locate-fixed', follow: 'locate-fixed', compass: 'compass' };
 const LOC_LABEL = {
-  idle: 'Εντοπισμός τοποθεσίας', centre: 'Ακολούθησε τη θέση μου',
-  follow: 'Περιστροφή χάρτη με την πυξίδα', compass: 'Σταμάτα την περιστροφή του χάρτη',
+  idle: N_('Εντοπισμός τοποθεσίας'), centre: N_('Ακολούθησε τη θέση μου'),
+  follow: N_('Περιστροφή χάρτη με την πυξίδα'), compass: N_('Σταμάτα την περιστροφή του χάρτη'),
 };
 const locLabel = (m) => t(LOC_LABEL[m]);
 let locMode = 'idle';
@@ -204,9 +204,9 @@ function paintLocating() {
   locateBtn.classList.toggle('locating', wantFix || locationService.status === 'locating');
 }
 const LOC_ERR = {
-  denied: 'Δεν δόθηκε άδεια τοποθεσίας. Μπορείς να την ενεργοποιήσεις από τις ρυθμίσεις του προγράμματος περιήγησης.',
-  unavailable: 'Η τοποθεσία δεν είναι διαθέσιμη αυτή τη στιγμή.',
-  insecure: 'Η τοποθεσία χρειάζεται ασφαλή σύνδεση (https).',
+  denied: N_('Δεν δόθηκε άδεια τοποθεσίας. Μπορείς να την ενεργοποιήσεις από τις ρυθμίσεις του προγράμματος περιήγησης.'),
+  unavailable: N_('Η τοποθεσία δεν είναι διαθέσιμη αυτή τη στιγμή.'),
+  insecure: N_('Η τοποθεσία χρειάζεται ασφαλή σύνδεση (https).'),
 };
 function onLocation(fix, status) {
   map?.setUserFix(fix);

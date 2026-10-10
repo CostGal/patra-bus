@@ -5,10 +5,10 @@
 // Desktop: static panel, snap() is remembered but has no visual effect.
 // onSnap({state, visible, desktop}) fires when a target is chosen (padding for the map);
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
-import { t } from './i18n.js';
+import { t, N_ } from './i18n.js';
 const STATES = ['peek', 'half', 'full'];
 const PEEK_PX = 152; // handle + a header row
-const LABEL = { peek: 'κλειστός', half: 'μισός', full: 'πλήρης' };
+const LABEL = { peek: N_('κλειστός'), half: N_('μισός'), full: N_('πλήρης') };
 
 export function createSheet(root, { onSnap, onMove } = {}) {
   const handle = root.querySelector('.sheet-handle');

@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 const html = {};
 globalThis.document = { documentElement: html };
 Object.defineProperty(globalThis, 'navigator', { value: { language: 'el-GR' }, configurable: true, writable: true });
-const { t, tn, lang, langPref, setLang, onLangChange, resolveLang, locale, fmtMin } = await import('../web/js/i18n.js');
+const { t, tn, lang, langPref, setLang, onLangChange, resolveLang, locale, fmtMin, etaTxt, etaSay } = await import('../web/js/i18n.js');
 const { EN } = await import('../web/js/i18n-en.js');
 const { getSettings } = await import('../web/js/store.js');
 
@@ -136,4 +136,39 @@ test('EN: covers every Greek UI string of settings-view.js and lines-view.js', (
     const missing = lits.filter((s) => !EN.has(s));
     assert.deepEqual(missing, [], `${file}: no English for ${JSON.stringify(missing)}`);
   }
+});
+
+test('EN: every t(\'…\') / tn / N_ literal in web/js has an English entry (static scan)', async () => {
+  const { readdirSync } = await import('node:fs');
+  const dir = new URL('../web/js/', import.meta.url);
+  const lit = String.raw`(?:'(?:\.|[^'\\n])*'|"(?:\.|[^"\\n])*")`;
+  const re = new RegExp(String.raw`(?<![\w.$])(?:(?:t|N_)\(\s*(${lit})|tn\(\s*[^,]+,\s*(${lit})\s*,\s*(${lit}))`, 'g');
+  const SKIP = new Set(['i18n-en.js', 'arrivals.js', 'accents.js']); // arrivals.js is shared with the worker: Greek only
+  let seen = 0;
+  const missing = [];
+  for (const f of readdirSync(dir).filter((n) => n.endsWith('.js') && !SKIP.has(n))) {
+    const src = readFileSync(new URL(f, dir), 'utf8');
+    for (const m of src.matchAll(re)) {
+      for (const l of m.slice(1).filter(Boolean)) {
+        const k = new Function(`return ${l}`)();
+        if (!/[Α-Ωα-ω]/.test(k)) continue;
+        seen++;
+        if (!EN.has(k)) missing.push(`${f}: ${k}`);
+      }
+    }
+  }
+  assert.ok(seen > 300, `scan found only ${seen} literals`);
+  assert.deepEqual(missing, []);
+});
+
+test('etaTxt / etaSay follow the language', () => {
+  setLang('en');
+  try {
+    assert.equal(etaTxt(0), 'now');
+    assert.equal(etaTxt(125 * 60), '2 h 05′');
+    assert.equal(etaSay(5 * 60), '5 minutes');
+    assert.equal(etaSay(65 * 60), '1 hour and 5 minutes');
+  } finally { setLang('el'); }
+  assert.equal(etaTxt(125 * 60), '2 ώ 05′');
+  assert.equal(etaSay(60), '1 λεπτό');
 });

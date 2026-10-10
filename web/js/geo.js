@@ -1,4 +1,5 @@
 // Geometry helpers (owner: location). Pure functions, no DOM; also imported by node tests.
+import { t, lang } from './i18n.js';
 const RAD = Math.PI / 180;
 const EARTH_R = 6371000;
 const M_PER_DEG = 111320; // metres per degree of latitude (good enough at city scale)
@@ -21,7 +22,9 @@ export function bearing(a, b) {
 
 export function fmtDist(m) {
   if (!Number.isFinite(m)) return '—';
-  return m < 1000 ? `${Math.round(m / 10) * 10} μ` : `${(m / 1000).toFixed(1).replace('.', ',')} χλμ`;
+  if (m < 1000) return t('{n} μ', { n: Math.round(m / 10) * 10 });
+  const km = (m / 1000).toFixed(1);
+  return t('{n} χλμ', { n: lang() === 'en' ? km : km.replace('.', ',') });
 }
 
 // ---- angles ----

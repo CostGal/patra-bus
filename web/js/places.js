@@ -1,7 +1,7 @@
 // Saved places (Σπίτι/Δουλειά + up to 3 custom) and the one-line home card (owner: places). See docs/ARCHITECTURE.md (Round 3).
 // Storage is its own key and never throws: when localStorage is unavailable the places live in memory for the page.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
-import { t } from './i18n.js';
+import { t, N_ } from './i18n.js';
 import { haversine } from './geo.js';
 import { planTrips, leaveState } from './planner.js';
 import { searchPlaces } from './geocode.js';
@@ -11,7 +11,8 @@ export const MAX_CUSTOM = 3;
 export const FAR_M = 300;        // the card appears only when you are farther than this from the place
 export const REPLAN_MS = 60000;  // plan refresh floor while visible
 const TICK_MS = 15000;           // repaint of the countdown
-const DEFAULT_NAMES = { home: 'Σπίτι', work: 'Δουλειά' };
+const DEFAULT_NAMES = { home: N_('Σπίτι'), work: N_('Δουλειά') };
+const PLACE_NAME = N_('Τόπος'); // stored default name for custom places, shown translated
 
 // JSON in localStorage with a memory fallback (private mode, quota, no storage at all).
 export function jsonStore(key, { storage } = {}) {
@@ -35,7 +36,7 @@ export function cleanPlace(p) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (!lat && !lng)) return null;
   const id = clip(p.id, 40);
   if (!id) return null;
-  return { id, name: clip(p.name, 40) || DEFAULT_NAMES[id] || 'Τόπος', lat, lng };
+  return { id, name: clip(p.name, 40) || DEFAULT_NAMES[id] || PLACE_NAME, lat, lng };
 }
 
 const slotOrder = (p) => (p.id === 'home' ? 0 : p.id === 'work' ? 1 : 2);
@@ -86,7 +87,7 @@ export const saveAsWork = (pt) => saveAs('work', pt);
 // ---------------------------------------------------------------- pure logic
 
 // Display name: the default Σπίτι/Δουλειά is translated, anything the user typed is shown as is.
-export const placeLabel = (p) => (DEFAULT_NAMES[p.id] === p.name ? t(p.name) : p.name);
+export const placeLabel = (p) => (DEFAULT_NAMES[p.id] === p.name || p.name === PLACE_NAME ? t(p.name) : p.name);
 // "Για το σπίτι" / "Για τη δουλειά" / "Προς {name}"
 export function placeTitle(p) {
   if (p.id === 'home' && p.name === DEFAULT_NAMES.home) return t('Για το σπίτι');
@@ -154,7 +155,7 @@ export function mountPlacesCard(container, ctx = {}) {
     if (best.kind !== 'walk') {
       head.push(best.bus?.live
         ? h('span', { class: 'ex-chip ex-chip-live plc-flag' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), 'LIVE')
-        : h('span', { class: 'ex-chip ex-chip-sched plc-flag' }, icon('clock'), 'ΠΡΟΓΡ.'));
+        : h('span', { class: 'ex-chip ex-chip-sched plc-flag' }, icon('clock'), t('ΠΡΟΓΡ.')));
     }
     container.replaceChildren(h('a', { class: 'plc-card', href: placeHash(place) },
       h('div', { class: 'plc-head' }, ...head),
@@ -221,7 +222,7 @@ export function mountPlacesSettings(container, ctx = {}) {
   function store(slot, pt, fallbackName) {
     const cur = getPlaces().find((p) => p.id === slot.id);
     const typed = slot.nameEl?.value.trim();
-    const name = DEFAULT_NAMES[slot.id] ? (cur?.name || DEFAULT_NAMES[slot.id]) : (typed || cur?.name || fallbackName || 'Τόπος');
+    const name = DEFAULT_NAMES[slot.id] ? (cur?.name || DEFAULT_NAMES[slot.id]) : (typed || cur?.name || fallbackName || PLACE_NAME);
     const saved = setPlace({ id: slot.id === 'new' ? undefined : slot.id, name, lat: pt.lat, lng: pt.lng });
     if (!saved) { ctx.toast?.(t('Έχεις ήδη 3 δικούς σου τόπους')); return; }
     ctx.toast?.(t('Αποθηκεύτηκε: {name}', { name: placeLabel(saved) }));

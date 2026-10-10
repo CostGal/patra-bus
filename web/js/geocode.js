@@ -1,6 +1,7 @@
 // Destination search (owner: planner): local stops first, then Photon (OSM geocoder, no key).
 // Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode? }
 import { loadData, searchStops } from './data.js';
+import { t } from './i18n.js';
 import { searchKey } from './text.js';
 import { haversine, inArea } from './geo.js';
 
@@ -36,7 +37,7 @@ export function stopPlaces(data, q, { near, limit = 4 } = {}) {
     const lines = [...g.lines].sort((a, b) => a.localeCompare(b, 'el', { numeric: true }));
     const shown = lines.slice(0, 5).join(' · ') + (lines.length > 5 ? ' …' : '');
     return {
-      place: { kind: 'stop', name: stop.displayName, subtitle: `Στάση ${stop.code}${shown ? ` · ${shown}` : ''}`, lat: stop.lat, lng: stop.lng, stopCode: stop.code },
+      place: { kind: 'stop', name: stop.displayName, subtitle: t('Στάση {code}', { code: stop.code }) + (shown ? ` · ${shown}` : ''), lat: stop.lat, lng: stop.lng, stopCode: stop.code },
       prefix: key.startsWith(k) || stop.code === q.trim() ? 0 : 1, dist: haversine(ref, stop),
     };
   });

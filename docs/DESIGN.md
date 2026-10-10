@@ -1,0 +1,58 @@
+# Design and motion rules (Apple-style, adapted for patra-bus)
+
+Source of inspiration: the "apple-design" skill by Emil Kowalski (ui-skills.com), itself based on Apple's WWDC talks
+("Designing Fluid Interfaces", "The Details of UI Typography"). Summarised here in our own words, only what applies to this app.
+Vanilla JS, no animation library: springs are implemented in a small local helper.
+
+## 1. Response
+- Visual feedback on `pointerdown`, never only on click/release. Pressed state: `transform: scale(.97)` within ~100 ms.
+- No artificial delays on the input path (debounce only network calls, never visual feedback).
+- Drags (bottom sheet) follow the finger 1:1 for the whole gesture, keeping the grab offset; use `setPointerCapture`.
+
+## 2. Motion = springs, interruptible
+- Anything the user can touch (sheet, cards that move, popovers) animates with a spring, not a fixed-duration CSS transition.
+- Springs start from the **current on-screen value** and keep the current velocity when re-targeted, so a moving sheet can be
+  grabbed and reversed at any moment without a jump.
+- Two parameters: damping ratio and response (s). Defaults: UI moves `damping 1.0, response 0.35` (no overshoot);
+  after a flick (gesture with momentum) `damping 0.8, response 0.3`.
+- Release velocity is handed to the spring (no visible seam between drag and animation).
+- Snap target from **projected** momentum: `end = pos + (v/1000) * d / (1 - d)`, `d ≈ 0.998`, then nearest snap point.
+- Past the first/last snap point: rubber-band resistance `f(x) = x·D·c / (D + c·|x|)`, `c = 0.55`, never a hard stop.
+- Animate only `transform` and `opacity`; `requestAnimationFrame`; `will-change` only while moving.
+
+## 3. Spatial consistency
+- Enter and leave along the same path (a sheet that rises sinks back; a popover grows from its trigger and shrinks back to it).
+- Popovers/menus: `transform-origin` at the trigger.
+- Route changes inside the sheet: content cross-fades in place; detail views slide in from the right and go back to the right.
+
+## 4. Materials and depth
+- Floating chrome (search bar, bottom sheet, locate button, toasts) = translucent material:
+  `background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`,
+  a faint bright top edge, soft shadow; bigger surfaces = stronger blur + deeper shadow than small chips.
+- Never stack translucent on translucent. Text on materials: slightly heavier weight, full-contrast colour.
+- Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
+- Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
+- `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
+
+## 5. Typography
+- System font stack (`system-ui`), which already has optical sizing.
+- Size-specific tracking: big numbers/headlines `letter-spacing: -0.02em`, tight leading (1.05–1.15);
+  body near 0 and leading ~1.45; tiny labels slightly positive tracking.
+- Hierarchy from weight + size + leading together; emphasis by weight, not by new sizes.
+- Spacing in `rem` so the user's text size scales the layout.
+- Countdowns use `font-variant-numeric: tabular-nums` so digits don't jitter.
+
+## 6. Feedback (multimodal, sparingly)
+- Haptics (`navigator.vibrate`) only for meaningful moments: sheet snaps to a new detent, reminder set, "leave now", alight alert.
+  Same frame as the visual change. Never on every tap.
+- Four kinds of feedback: status, completion, warning, error — short, inline.
+
+## 7. Reduced motion
+- `prefers-reduced-motion: reduce` → springs become short opacity cross-fades (≤ 200 ms), no overshoot, no sliding/parallax.
+  Feedback stays, motion doesn't.
+- Theme changes ease (no abrupt brightness jumps).
+
+## 8. Principles we check every screen against
+Purpose (every element earns its place), simplicity over minimalism (common path first, advanced one level deeper),
+familiarity (same thing looks and behaves the same everywhere), wayfinding (where am I, how do I get back),
+craft (deliberate spacing/timing values from tokens, nothing random).

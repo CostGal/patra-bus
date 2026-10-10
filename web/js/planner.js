@@ -2,7 +2,7 @@
 // Pure helpers are exported for tests; everything networked is injected through `deps`
 // (defaults load lazily so this module imports cleanly in Node).
 import { haversine, nearestStops, inArea } from './geo.js';
-import { t } from './i18n.js';
+import { t, N_ } from './i18n.js';
 
 export const DEFAULTS = {
   boardRadius: 800, alightRadius: 800, farRadius: 1500, // metres, straight line
@@ -217,7 +217,7 @@ export function departuresAt(route, res) {
 // there, when ≥ MIN_STAT_SAMPLES samples exist. Only positive delays count; capped. The original time stays in `scheduledAt`.
 export const MIN_STAT_SAMPLES = 10;
 export const MAX_DELAY_SHIFT_SEC = 900;
-export const DELAY_LABEL = 'προσαρμοσμένο με βάση την ιστορική καθυστέρηση';
+export const DELAY_LABEL = N_('προσαρμοσμένο με βάση την ιστορική καθυστέρηση');
 export function delayShiftSec(stat) {
   if (!stat || !(stat.samples >= MIN_STAT_SAMPLES) || !Number.isFinite(stat.medianDelaySec) || stat.medianDelaySec < 1) return 0;
   return Math.min(MAX_DELAY_SHIFT_SEC, Math.round(stat.medianDelaySec));
