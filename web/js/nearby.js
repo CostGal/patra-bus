@@ -11,7 +11,7 @@ import { walkRoute, walkEstimate, walkSpeed } from './walk.js';
 export const RADIUS_M = 500; // stops considered "near"
 export const FAR_RADIUS_M = 1500; // fallback when nothing is within RADIUS_M
 export const MAX_STOPS = 4; // listed / highlighted on the map
-export const LIVE_STOPS = 3; // of those, how many we fetch live data for
+export const LIVE_STOPS = 3; // of those, how many we fetch live data for; the rest load on demand ("Δες αφίξεις")
 const ROUTE_WORTH_M = 80; // a stop that adds a new route is worth this many extra metres of walking
 const GONE_SEC = 30; // a vehicle this far past its ETA has left
 const ROWS_PER_STOP = 3;
@@ -47,6 +47,9 @@ export function pickStops(stops, p, { radius = RADIUS_M, farRadius = FAR_RADIUS_
   }
   return { stops: chosen, far };
 }
+
+// Live data for the first LIVE_STOPS (nearest) stops, and for any other stop the user asked for.
+export const wantsLive = (index, code, demand) => index < LIVE_STOPS || !!(demand && demand.has(String(code)));
 
 // state: { vehicles, fetchedAt }. Every departure gets remaining / walk / leave-in and a verdict:
 //   leaveInSec = remaining − walkSec − bufferSec;  'ok' (leaveIn ≥ 0) · 'tight' (arrive before it, no margin) · 'missed'.
@@ -116,9 +119,9 @@ async function loadWalk(s, fix, signal) {
 // One-shot: stops near `fix` with live departures and walking times (OSRM, or the estimate on failure).
 // → NearbyStop[] sorted by distance: { stop, meters, live, vehicles, fetchedAt, noService, error, walkMeters, walkSource,
 //   walkGeom, walkSec, far, departures: [{ v, key, remaining, walkSec, leaveInSec, verdict, catchable, live, fetchedAt }] }
-export async function findNextBuses(ctx, fix, { signal, walk = 'route', now = Date.now() } = {}) {
+export async function findNextBuses(ctx, fix, { signal, walk = 'route', now = Date.now(), demand } = {}) {
   const { stops: picked, far } = pickStops((ctx.data && ctx.data.stops) || [], fix);
-  const states = picked.map((c, i) => makeState(c.stop, c.meters, i < LIVE_STOPS, fix));
+  const states = picked.map((c, i) => makeState(c.stop, c.meters, wantsLive(i, c.stop.code, demand), fix));
   await Promise.all(states.filter((s) => s.live).map((s) => Promise.all([loadLive(s, signal), walk === 'route' ? loadWalk(s, fix, signal) : null])));
   const bufferSec = bufferOf();
   for (const s of states) {
@@ -153,7 +156,7 @@ function miniTile(v, fetchedAt, { now = Date.now(), line } = {}) {
 export function mountNearby(container, ctx) {
   const loc = ctx.location;
   const st = {
-    fix: loc.current, status: loc.status, anchor: null, states: [], far: false, fitted: false,
+    fix: loc.current, status: loc.status, anchor: null, states: [], far: false, fitted: false, demand: new Set(),
     lastRecompute: 0, lastRefreshAt: 0, mode: null, heroKey: null, srKey: null, markersKey: null, overlayKey: null,
   };
   let dead = false, tickTimer = null, refreshTimer = null, recomputeTimer = null, walkCtl = null, tileFn = null;
@@ -214,7 +217,7 @@ export function mountNearby(container, ctx) {
     st.far = far;
     const prev = new Map(st.states.map((s) => [s.stop.code, s]));
     st.states = stops.map((c, i) => {
-      const s = makeState(c.stop, c.meters, i < LIVE_STOPS, fix);
+      const s = makeState(c.stop, c.meters, wantsLive(i, c.stop.code, st.demand), fix);
       const old = prev.get(c.stop.code);
       if (old) { s.vehicles = old.vehicles; s.fetchedAt = old.fetchedAt; s.noService = old.noService; s.error = old.error; }
       return s;
@@ -254,6 +257,16 @@ export function mountNearby(container, ctx) {
     refreshTimer = setTimeout(async () => { await refreshLive(); scheduleRefresh(); }, REFRESH_MS);
   }
   const manualRefresh = () => { refreshLive().then(scheduleRefresh); };
+  // The stops beyond LIVE_STOPS cost one upstream request each, so they load only when asked (fetchLive keeps the 15 s floor).
+  function loadMore(code) {
+    const s = st.states.find((x) => x.stop.code === code);
+    if (!s || s.live) return;
+    st.demand.add(String(code));
+    s.live = true;
+    paint();
+    refreshLive([s]).then(scheduleRefresh);
+    if (st.anchor) loadWalk(s, st.anchor, walkCtl && !walkCtl.signal.aborted ? walkCtl.signal : undefined).then(() => { if (!dead) paint(); }, () => {});
+  }
 
   // ----- rendering -----
   function setMode(mode) {
@@ -411,10 +424,12 @@ export function mountNearby(container, ctx) {
     g.meta = h('span', { class: 'nb-stop-meta' });
     g.list = h('ul', { class: 'nb-rows' });
     g.msg = h('p', { class: 'nb-stop-msg' });
+    g.more = btn('nb-btn-ghost nb-more', '', () => loadMore(s.stop.code), icon('clock'), 'Δες αφίξεις');
+    g.more.setAttribute('aria-label', `Δες αφίξεις: ${s.stop.displayName || titleCase(s.stop.name)}`);
     g.el = h('section', { class: 'nb-stop', 'aria-label': `Στάση ${s.stop.displayName || s.stop.name}` },
       h('div', { class: 'nb-stop-head' },
         link('nb-stop-name', s.stop.code, s.stop.displayName || titleCase(s.stop.name), icon('chevron')), g.meta),
-      g.msg, g.list);
+      g.msg, g.more, g.list);
     return g;
   }
   function updateGroup(g, s, now) {
@@ -422,7 +437,8 @@ export function mountNearby(container, ctx) {
     g.meta.textContent = s.walkMeters < 40 ? 'Είσαι εδώ' : `${fmtDist(s.walkSource === 'osrm' ? s.walkMeters : s.meters)} · ${minText(walkSecOf(s))}`;
     g.meta.title = 'Απόσταση και χρόνος με τα πόδια';
     const deps = s.departures.slice(0, ROWS_PER_STOP);
-    const msg = !s.live ? 'Δες τις αφίξεις'
+    g.more.hidden = s.live;
+    const msg = !s.live ? ''
       : !s.vehicles ? (s.error ? 'Δεν φορτώθηκαν οι αφίξεις' : 'Φόρτωση…')
         : !s.departures.length ? (s.noService ? 'Δεν υπάρχει εξυπηρέτηση αυτή την ώρα' : 'Καμία προσεχής άφιξη') : '';
     if (g.msg.textContent !== msg) g.msg.textContent = msg;

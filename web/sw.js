@@ -1,17 +1,49 @@
-// Service worker: offline app shell. Bump CACHE on any shell change.
-// Never touches /api/ or any other origin (live API, map tiles, routing, geocoding, unpkg stay on the network).
+// Service worker: offline app shell + OpenFreeMap assets. Bump CACHE on any shell change.
+// Never touches /api/ or any other origin except tiles.openfreemap.org (routing, geocoding etc. stay on the network).
 // Push handlers live in sw-push.js (owned separately).
 importScripts('sw-push.js');
 
-const CACHE = 'patra-bus-v5';
+const CACHE = 'patra-bus-v7';
+const MAP_CACHE = 'patra-bus-map-v1'; // runtime OpenFreeMap cache, bounded (oldest tiles trimmed first)
+const MAP_OFFLINE = 'patra-bus-map-offline-v1'; // filled by js/offline.js (opt-in download), never trimmed
+const MAP_MAX = 4000;
+const KEEP_CACHES = [CACHE, MAP_CACHE, MAP_OFFLINE];
+
+// <pure> (loaded verbatim by tests/offline.test.mjs: no outer references)
+// 'static' = immutable per versioned URL (cache-first); 'dynamic' = style + TileJSON (network-first); null = not ours.
+function mapKind(href) {
+  let u;
+  try { u = new URL(href); } catch { return null; }
+  if (u.hostname !== 'tiles.openfreemap.org') return null;
+  const p = u.pathname;
+  if (p.startsWith('/styles/') || p === '/planet' || p === '/planet/') return 'dynamic';
+  if (/^\/(planet|fonts|sprites)\/./.test(p)) return 'static';
+  return null;
+}
+// Which cached URLs (oldest first) to delete so at most `max` remain; 10% slack avoids trimming on every put.
+// Style/TileJSON entries are never picked: they are few and needed to boot offline.
+function trimSelect(urls, max) {
+  if (urls.length <= max) return [];
+  const drop = urls.length - Math.floor(max * 0.9);
+  const out = [];
+  for (const u of urls) {
+    if (out.length >= drop) break;
+    if (mapKind(u) === 'static') out.push(u);
+  }
+  return out;
+}
+// </pure>
 const NET_TIMEOUT_MS = 4000; // slow connection at a bus stop: fall back to the cached copy instead of hanging
 
 // Must all exist: if one is missing the install fails and the previous version keeps running.
 const SHELL = [
   './',
+  'vendor/maplibre-gl/maplibre-gl.js',
+  'vendor/maplibre-gl/maplibre-gl.css',
   'index.html',
   'app.css',
   'manifest.webmanifest',
+  'sw-push.js',
   'icon.svg',
   'css/tokens.css',
   'css/arrivals.css',
@@ -40,6 +72,9 @@ const SHELL = [
   'js/share.js',
   'js/lines-view.js',
   'js/settings-view.js',
+  'js/accents.js',
+  'js/push.js',
+  'js/offline.js',
   'data/stops.json',
   'data/lines.json',
 ];
@@ -69,7 +104,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => !KEEP_CACHES.includes(k)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -107,10 +142,68 @@ async function networkFirst(event) {
   }
 }
 
+// ---- OpenFreeMap (the only foreign origin we cache) ----
+const mapFirst = async (request) => { // downloaded copy wins over the runtime one
+  for (const name of [MAP_OFFLINE, MAP_CACHE]) {
+    const hit = await (await caches.open(name)).match(request, { ignoreVary: true });
+    if (hit) return hit;
+  }
+  return null;
+};
+let mapPuts = 0;
+async function mapPut(request, res) {
+  const cache = await caches.open(MAP_CACHE);
+  await cache.put(request, res);
+  if (++mapPuts % 50) return;
+  const urls = (await cache.keys()).map((r) => r.url);
+  await Promise.all(trimSelect(urls, MAP_MAX).map((u) => cache.delete(u)));
+}
+const cacheable = (res) => res.ok && (res.type === 'cors' || res.type === 'basic');
+
+async function mapStatic(event) {
+  const { request } = event;
+  const hit = await mapFirst(request);
+  if (hit) return hit;
+  try {
+    const res = await fetch(request);
+    if (cacheable(res)) keep(event, mapPut(request, res.clone()));
+    return res;
+  } catch {
+    return Response.error(); // uncached area while offline: MapLibre just leaves it blank
+  }
+}
+
+async function mapDynamic(event) {
+  const { request } = event;
+  const net = fetch(request).then((res) => {
+    if (cacheable(res)) keep(event, mapPut(request, res.clone()));
+    return res;
+  });
+  let timer;
+  const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), NET_TIMEOUT_MS); });
+  try {
+    const res = await Promise.race([net, timeout]);
+    clearTimeout(timer);
+    if (res && res.ok) return res;
+    const hit = await mapFirst(request);
+    if (hit) { keep(event, net); return hit; }
+    return res || await net;
+  } catch {
+    clearTimeout(timer);
+    return (await mapFirst(request)) || Response.error();
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  if (url.hostname === 'tiles.openfreemap.org') {
+    // cache: 'reload' marks js/offline.js downloads: straight to the network, js/offline.js stores them itself
+    const kind = request.cache === 'reload' ? null : mapKind(url.href);
+    if (kind) event.respondWith(kind === 'static' ? mapStatic(event) : mapDynamic(event));
+    return;
+  }
   if (url.origin !== self.location.origin || url.pathname.includes('/api/')) return;
   event.respondWith(networkFirst(event));
 });

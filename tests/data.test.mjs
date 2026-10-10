@@ -23,14 +23,14 @@ test('buildIndex: types, maps and route positions', () => {
   const d = buildIndex(RAW_STOPS, RAW_LINES, RAW_ROUTES);
   assert.equal(d.stops.length, RAW_STOPS.length);
   const s = d.stopByCode.get('11');
-  assert.equal(s.displayName, 'Αρεθα');
+  assert.equal(s.displayName, 'Αρέθα'); // accents.js dictionary
   assert.equal(s.key, 'αρεθα');
   assert.deepEqual([s.lat, s.lng], [38.24, 21.73]);
-  assert.equal(d.lineByCode.get('1').displayName, 'Εγλυκαδα');
+  assert.equal(d.lineByCode.get('1').displayName, 'Εγλυκάδα');
   const r = d.routeByCode.get('r1');
   assert.deepEqual(r.stops, ['11', '12', '13', '14']);
   assert.equal(r.pos.get('13'), 2);
-  assert.equal(r.displayName, 'Αρεθα-Μαρουδα');
+  assert.equal(r.displayName, 'Αρέθα-Μαρουδα'); // ΜΑΡΟΥΔΑ is deliberately not in the dictionary
   assert.equal(r.confidence, 0.8);
   assert.deepEqual(d.routesByStop.get('12').map((x) => x.code), ['r1']);
   assert.equal(d.routesByStop.get('10'), undefined);

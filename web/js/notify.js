@@ -1,7 +1,10 @@
-// Reminders (owner: extras). In-app toast + vibration at the due time, plus a system notification when
-// permission was granted. Everything runs in the page: reminders only fire while the app is open
-// (foreground or background tab). Pending ones are persisted so a reload re-arms them.
+// Reminders (owner: extras, push part: push client). In-app toast + vibration at the due time, plus a system
+// notification when permission was granted. The local timer only fires while the app is open (foreground or
+// background tab); pending ones are persisted so a reload re-arms them. When Web Push is on, each reminder is
+// also booked on the server (same tag) so it reaches the phone with the app closed; its server id is kept
+// with the reminder and cancelled together with it.
 import { toast } from './ui.js';
+import { pushState, schedulePushReminder, cancelPushReminder, onPushChange } from './push.js';
 
 const KEY = 'patra-bus:reminders';
 const GRACE_MS = 2 * 60 * 1000; // a reminder this late is still useful; later than that it would mislead
@@ -10,8 +13,9 @@ const TICK_MAX_MS = 30 * 1000; // re-check at least this often (throttled timers
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };
 
 // Pure scheduling core; `onFire` and the timer/clock/storage are injectable (tests).
-export function createReminders({ storage = defaultStorage, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, onFire = () => {}, events = null } = {}) {
-  let map = new Map(); // tag -> { id, tag, at, title, body, url }
+// `push` = { state() → 'on'|…, schedule(payload) → Promise<serverId|null>, cancel(serverId) } (fakes in tests).
+export function createReminders({ storage = defaultStorage, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, onFire = () => {}, events = null, push = null } = {}) {
+  let map = new Map(); // tag -> { id, tag, at, title, body, url, sid? } (sid = server reminder id)
   let lastRaw; // undefined = never read
   let timer = null;
   let seq = 0;
@@ -22,7 +26,7 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
     const m = new Map();
     try {
       for (const r of JSON.parse(raw)?.items ?? []) {
-        if (r && typeof r.tag === 'string' && Number.isFinite(r.at)) m.set(r.tag, { id: String(r.id ?? r.at), tag: r.tag, at: r.at, title: String(r.title ?? ''), body: String(r.body ?? ''), url: r.url ? String(r.url) : undefined });
+        if (r && typeof r.tag === 'string' && Number.isFinite(r.at)) m.set(r.tag, { id: String(r.id ?? r.at), tag: r.tag, at: r.at, title: String(r.title ?? ''), body: String(r.body ?? ''), url: r.url ? String(r.url) : undefined, sid: r.sid ? String(r.sid) : undefined });
       }
     } catch { /* corrupt → empty */ }
     return m;
@@ -44,7 +48,8 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
     return true;
   }
   const emit = () => { for (const fn of [...subs]) { try { fn(list()); } catch { /* ignore */ } } };
-  const list = () => [...map.values()].sort((a, b) => a.at - b.at).map(({ id, ...r }) => ({ ...r }));
+  const list = () => [...map.values()].sort((a, b) => a.at - b.at).map(({ id, sid, ...r }) => ({ ...r }));
+  const dropServer = (sid) => { if (sid && push) { try { Promise.resolve(push.cancel(sid)).catch(() => {}); } catch { /* ignore */ } } };
 
   function arm() {
     if (timer != null) { clearTimer(timer); timer = null; }
@@ -65,23 +70,43 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
     if (due.length || changed) emit();
   }
 
-  function scheduleReminder({ at, title, body = '', tag, url } = {}) {
+  // Book the server copy. The id arrives later; if the reminder was replaced/cancelled/fired meanwhile, drop it again.
+  function book(r, trip) {
+    let p;
+    try { if (!push || push.state() !== 'on') return; p = push.schedule({ at: r.at, title: r.title, body: r.body, tag: r.tag, url: r.url, trip }); } catch { return; }
+    Promise.resolve(p).then((sid) => {
+      if (!sid) return;
+      sync();
+      const cur = map.get(r.tag);
+      if (cur?.id !== r.id) return dropServer(sid);
+      cur.sid = sid; write();
+    }).catch(() => {});
+  }
+
+  function scheduleReminder({ at, title, body = '', tag, url, trip } = {}) {
     at = Number(at);
     if (!Number.isFinite(at)) throw new TypeError('scheduleReminder: `at` must be epoch milliseconds');
     tag = tag ? String(tag) : `r-${now()}-${seq}`;
     if (at < now() - GRACE_MS) return { tag, at, dropped: true, cancel() {} }; // too late to be useful: not scheduled
     sync();
     const id = `${now()}-${seq++}`;
-    map.set(tag, { id, tag, at, title: String(title ?? ''), body: String(body ?? ''), url: url ? String(url) : undefined }); // same tag replaces
+    dropServer(map.get(tag)?.sid); // same tag replaces, server copy included
+    const r = { id, tag, at, title: String(title ?? ''), body: String(body ?? ''), url: url ? String(url) : undefined };
+    map.set(tag, r);
     write(); arm(); emit();
+    book(r, trip);
     return { tag, at, cancel() { sync(); if (map.get(tag)?.id === id) cancelReminder(tag); } };
   }
   function cancelReminder(tag) {
     sync();
+    const sid = map.get(String(tag))?.sid;
     if (!map.delete(String(tag))) return false;
+    dropServer(sid);
     write(); arm(); emit(); return true;
   }
-  function cancelAll() { sync(); const had = map.size > 0; map.clear(); write(); arm(); if (had) emit(); }
+  function cancelAll() { sync(); const had = map.size > 0; for (const r of map.values()) dropServer(r.sid); map.clear(); write(); arm(); if (had) emit(); }
+  // Push was switched off: forget the server copies (the server drops them; the local timers stay).
+  function serverGone() { sync(); let n = 0; for (const r of map.values()) if (r.sid) { dropServer(r.sid); delete r.sid; n++; } if (n) write(); }
   const listReminders = () => { sync(); return list(); };
   const hasReminder = (tag) => { sync(); return map.has(String(tag)); };
   function onRemindersChange(fn) { subs.add(fn); return () => subs.delete(fn); }
@@ -89,7 +114,7 @@ export function createReminders({ storage = defaultStorage, now = Date.now, setT
   function start() { lastRaw = undefined; sync(); tick(); }
 
   events?.addEventListener?.('storage', (e) => { if (e.key == null || e.key === KEY) { if (sync()) { arm(); emit(); } } });
-  return { scheduleReminder, cancelReminder, cancelAll, listReminders, hasReminder, onRemindersChange, tick, start };
+  return { scheduleReminder, cancelReminder, cancelAll, listReminders, hasReminder, onRemindersChange, tick, start, serverGone };
 }
 
 // ---- browser delivery ----
@@ -129,18 +154,25 @@ async function showSystem(r) {
 }
 
 function deliver(r) {
+  // A server copy exists and the page is hidden: the push shows the system notification (same tag anyway).
+  const viaPush = !!r.sid && globalThis.document?.visibilityState === 'hidden';
   const text = r.body ? `${r.title} · ${r.body}` : r.title;
   const href = r.url && String(r.url).startsWith('#') ? r.url : null;
   try { toast(text, { ms: 12000, action: href ? { label: 'Άνοιγμα', onClick: () => { location.hash = href; } } : undefined }); } catch { /* ignore */ }
   try { navigator.vibrate?.([200, 100, 200]); } catch { /* ignore */ }
-  showSystem(r).catch(() => {});
+  if (!viaPush) showSystem(r).catch(() => {});
 }
 
-const reminders = createReminders({ onFire: deliver, events: typeof globalThis.addEventListener === 'function' ? globalThis : null });
+const reminders = createReminders({
+  onFire: deliver,
+  events: typeof globalThis.addEventListener === 'function' ? globalThis : null,
+  push: { state: () => pushState(), schedule: (p) => schedulePushReminder(p), cancel: (id) => cancelPushReminder(id) },
+});
 export const { scheduleReminder, cancelReminder, cancelAll, listReminders, hasReminder, onRemindersChange } = reminders;
 
 // Re-arm persisted reminders on load, and re-check when the page comes back (timers are throttled in the background).
 reminders.start();
+try { onPushChange((s) => { if (s !== 'on') reminders.serverGone(); }); } catch { /* ignore */ }
 try {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reminders.tick(); });
   globalThis.addEventListener('pageshow', () => reminders.tick());

@@ -5,7 +5,7 @@ import { arrivalTile } from './arrivals-view.js';
 import { etaText } from './arrivals.js';
 import { fmtDist, haversine, nearestStops } from './geo.js';
 import { searchPlaces, stopPlaces } from './geocode.js';
-import { planTripsDetailed, retime, leaveState, rankItineraries, rideGeometry, snapStopsToShape } from './planner.js';
+import { planTripsDetailed, reminderTrip, retime, leaveState, rankItineraries, rideGeometry, snapStopsToShape } from './planner.js';
 import { loadShapes } from './data.js';
 import { getRecents, addRecent, getSettings } from './store.js';
 import { scheduleReminder, cancelReminder, hasReminder, listReminders, ensurePermission } from './notify.js';
@@ -397,7 +397,7 @@ export function mountPlanner(container, ctx, params = {}) {
       'no-board-stops': () => stateBox('info', 'Δεν υπάρχει στάση κοντά στην αφετηρία', `Η πλησιέστερη στάση είναι πάνω από 1,5 χλμ μακριά. ${walkHint}`, edit('from')),
       'no-alight-stops': () => stateBox('info', 'Δεν υπάρχει στάση κοντά στον προορισμό', `${walkHint} Δες τις πιο κοντινές στάσεις παρακάτω.`, edit('to')),
     };
-    const box = (m[reason] || (() => stateBox('info', 'Δεν βρέθηκε απευθείας λεωφορείο', `Δεν υπάρχει γραμμή που να σε πάει εκεί χωρίς αλλαγή. ${walkHint}`.trim(), edit('to'))))();
+    const box = (m[reason] || (() => stateBox('info', 'Δεν βρέθηκε διαδρομή με λεωφορείο', `Δεν υπάρχει γραμμή, ούτε με μία αλλαγή, που να σε πάει εκεί. ${walkHint}`.trim(), edit('to'))))();
     const links = h('p', { class: 'pl-hint' }, 'Δες τις ', h('a', { href: '#/lines' }, 'γραμμές'), ' ή δοκίμασε άλλον προορισμό.');
     body.replaceChildren(box, reason === 'outside-from' || reason === 'outside-to' ? null : nearestToDest(), links);
   }
@@ -427,31 +427,37 @@ export function mountPlanner(container, ctx, params = {}) {
     const cards = S.its.map((it) => card(it, it.id === S.selectedId));
     const notes = [];
     const r = S.result;
-    if (r && r.liveTotal && r.liveFailed >= r.liveTotal && S.its.some((i) => i.kind === 'bus')) {
+    if (r && r.liveTotal && r.liveFailed >= r.liveTotal && S.its.some((i) => i.kind !== 'walk')) {
       notes.push(h('div', { class: 'pl-banner' }, h('span', {}, 'Δεν φορτώθηκαν δεδομένα live για τις στάσεις — οι ώρες αναχώρησης λείπουν.'), btn('Δοκίμασε ξανά', () => runPlan({ silent: true }), 'is-small')));
-    } else if (S.its.length && S.its.every((i) => i.kind === 'bus' && i.status === 'none')) {
+    } else if (S.its.length && S.its.every((i) => i.kind !== 'walk' && i.status === 'none')) {
       notes.push(h('div', { class: 'pl-banner' }, h('span', {}, 'Δεν υπάρχουν αναχωρήσεις αυτή τη στιγμή για αυτές τις γραμμές (ίσως έχουν τελειώσει τα δρομολόγια).')));
     }
     if (S.pending > 0) notes.push(h('p', { class: 'pl-hint pl-hint-busy' }, 'Υπολογίζω ακριβώς τον χρόνο περπατήματος…'));
     body.replaceChildren(...notes, h('div', { class: 'pl-cards' }, cards),
-      h('p', { class: 'pl-foot' }, `LIVE = θέση οχήματος σε πραγματικό χρόνο · ΠΡΟΓΡ. = ώρα από το πρόγραμμα. Ο χρόνος διαδρομής είναι εκτίμηση, εκτός αν αναγράφεται «από το όχημα».${getSettings().bufferMin ? ` Η ώρα εκκίνησης έχει περιθώριο ${getSettings().bufferMin}′ (ρυθμίσεις).` : ''}`));
+      h('p', { class: 'pl-foot' }, `LIVE = θέση οχήματος σε πραγματικό χρόνο · ΠΡΟΓΡ. = ώρα από το πρόγραμμα. Ο χρόνος διαδρομής είναι εκτίμηση, εκτός αν αναγράφεται «από το όχημα».${S.its.some((i) => i.kind === 'transfer') ? ' Στις διαδρομές με αλλαγή, η ώρα του δεύτερου λεωφορείου είναι εκτίμηση όταν δεν υπάρχει καταχωρημένη αναχώρηση.' : ''}${getSettings().bufferMin ? ` Η ώρα εκκίνησης έχει περιθώριο ${getSettings().bufferMin}′ (ρυθμίσεις).` : ''}`));
   }
 
   function card(it, isSel) {
     const now = Date.now();
     const isWalk = it.kind === 'walk';
     const w = whenInfo(it, now);
-    const dest = isWalk ? 'Περπάτημα' : `προς ${towards(it.bus?.routeName || it.route.name)}`;
+    const isX = it.kind === 'transfer';
+    const dest = isWalk ? 'Περπάτημα' : isX ? `Αλλαγή: ${it.transfer.stop.displayName}` : `προς ${towards(it.bus?.routeName || it.route.name)}`;
     const when = h('span', { class: `pl-when is-${w.kind}` }, w.short);
+    const guess = isX && it.transfer.estimated;
     const arrive = h('span', { class: 'pl-card-end' },
-      it.arriveAt != null ? [h('strong', {}, fmtClock(it.arriveAt)), h('small', {}, 'άφιξη')] : [h('strong', {}, `~${dur(it.estTotalSec)}`), h('small', {}, 'διαδρομή')]);
-    const walkTotal = (it.walkTo?.seconds || 0) + (it.walkFrom?.seconds || 0);
+      it.arriveAt != null ? [h('strong', {}, `${guess ? '~' : ''}${fmtClock(it.arriveAt)}`), h('small', {}, guess ? 'εκτίμηση' : 'άφιξη')] : [h('strong', {}, `~${dur(it.estTotalSec)}`), h('small', {}, 'διαδρομή')]);
+    const walkTotal = (it.walkTo?.seconds || 0) + (it.walkFrom?.seconds || 0) + (it.transfer?.walk?.seconds || 0);
     const meta = h('span', { class: 'pl-card-meta' },
-      isWalk ? `${fmtDist(it.walkTo.meters)}` : [icon('walk'), `${dur(walkTotal)}`, ` · ${it.nStops} στάσεις`]);
+      isWalk ? `${fmtDist(it.walkTo.meters)}` : [icon('walk'), `${dur(walkTotal)}`, ` · ${it.nStops} στάσεις${isX ? ' · 1 αλλαγή' : ''}`]);
+    const lead = isWalk ? h('span', { class: 'pl-walk-ic' }, icon('walk'))
+      : isX ? h('span', { class: 'pl-xlead', role: 'img', 'aria-label': `Γραμμή ${it.legs[0].route.lineCode}, μετά γραμμή ${it.legs[1].route.lineCode}` },
+        lineBadge(it.legs[0].line || { code: it.legs[0].route.lineCode }), h('span', { class: 'pl-xarrow', 'aria-hidden': 'true' }, '→'), lineBadge(it.legs[1].line || { code: it.legs[1].route.lineCode }))
+        : lineBadge(it.line || { code: it.route.lineCode });
     const headBtn = h('button', { type: 'button', class: 'pl-card-head', 'aria-expanded': String(isSel), onclick: () => select(it.id) },
-      h('span', { class: 'pl-card-lead' }, isWalk ? h('span', { class: 'pl-walk-ic' }, icon('walk')) : lineBadge(it.line || { code: it.route.lineCode })),
+      h('span', { class: 'pl-card-lead' }, lead),
       h('span', { class: 'pl-card-main' }, h('span', { class: 'pl-card-dest' }, dest),
-        h('span', { class: 'pl-card-when' }, when, !isWalk && it.bus ? flag(it.bus.live) : null), meta),
+        h('span', { class: 'pl-card-when' }, when, !isWalk && it.bus ? flag(it.bus.live) : null, guess ? h('span', { class: 'pl-flag is-est' }, 'αλλαγή: εκτίμηση') : null), meta),
       arrive);
     const el = h('article', { class: `pl-card${isSel ? ' is-selected' : ''}${it.status === 'none' ? ' is-none' : ''}`, 'data-id': it.id }, headBtn);
     updaters.push((t) => {
@@ -496,18 +502,27 @@ export function mountPlanner(container, ctx, params = {}) {
     if (!isWalk && it.bus && it.next) {
       notes.push(h('p', { class: 'pl-note' }, `Επόμενο: φεύγει στις ${fmtClock(it.next.bus.departAt)} (σε ${etaText(it.next.bus.remainingSec)}) — άφιξη ${fmtClock(it.next.arriveAt)}.`));
     }
+    if (it.kind === 'transfer' && it.bus) {
+      const tr = it.transfer, B = it.legs[1];
+      if (tr.missed) notes.push(h('p', { class: 'pl-note is-warn' }, `Η γραμμή ${B.route.lineCode} των ${fmtClock(tr.missed.departAt)} θα έχει φύγει όταν φτάσεις στη στάση αλλαγής — περιμένεις το επόμενο.`));
+      if (it.xLiveError) notes.push(h('p', { class: 'pl-note' }, 'Δεν φορτώθηκαν δεδομένα live για τη στάση αλλαγής — η αναμονή είναι εκτίμηση.'));
+      else if (tr.estimated) notes.push(h('p', { class: 'pl-note' }, `Δεν υπάρχει ακόμη καταχωρημένη αναχώρηση της γραμμής ${B.route.lineCode} για την ώρα που θα φτάσεις — η αναμονή (~${dur(tr.waitSec)}) είναι εκτίμηση.`));
+    }
     if (!isWalk && !it.bus && it.estTotalSec) {
-      notes.push(h('p', { class: 'pl-note' }, `Όταν υπάρξει δρομολόγιο: περίπου ${dur(it.estTotalSec)} συνολικά (περπάτημα ${dur(it.walkTo.seconds + it.walkFrom.seconds)} + λεωφορείο ${dur(it.rideEstSec)}).`));
+      notes.push(h('p', { class: 'pl-note' }, `Όταν υπάρξει δρομολόγιο: περίπου ${dur(it.estTotalSec)} συνολικά (περπάτημα ${dur(it.walkTo.seconds + it.walkFrom.seconds + (it.transfer?.walk?.seconds || 0))} + λεωφορείο ${dur(it.rideEstSec)}).`));
     }
 
     return h('div', { class: 'pl-detail' }, hero, ...notes, timeline(it, now), actions(it));
   }
 
-  function step(kind, time, ic, title, subText, extra) {
-    return h('li', { class: `pl-step is-${kind}` },
+  function step(kind, time, ic, title, subText, extra, line) {
+    const li = h('li', { class: `pl-step is-${kind}` },
       h('span', { class: 'pl-step-time' }, time || ''),
       h('span', { class: 'pl-step-ic' }, ic),
       h('div', { class: 'pl-step-body' }, h('div', { class: 'pl-step-title' }, title), subText ? h('div', { class: 'pl-step-sub' }, subText) : null, extra || null));
+    if (line?.color) li.style.setProperty('--pl-line', line.color);
+    if (line?.textColor) li.style.setProperty('--pl-line-text', line.textColor);
+    return li;
   }
   const estTag = (w) => (w?.source === 'estimate' ? ' · εκτίμηση' : '');
 
@@ -518,6 +533,7 @@ export function mountPlanner(container, ctx, params = {}) {
         step('walk', fmtClock(now), icon('walk'), `Περπάτα ${dur(it.walkTo.seconds)}`, `${fmtDist(it.walkTo.meters)} ως «${dest}»${estTag(it.walkTo)}`),
         step('arrive', fmtClock(it.arriveAt), icon('pin'), `Άφιξη στο «${dest}»`));
     }
+    if (it.kind === 'transfer') return timelineTransfer(it, now, dest);
     const items = [];
     const bus = it.bus;
     items.push(step('walk', bus ? fmtClock(it.leaveAt) : '', icon('walk'), `Περπάτα ${dur(it.walkTo.seconds)} ως τη στάση «${it.board.displayName}»`,
@@ -543,6 +559,40 @@ export function mountPlanner(container, ctx, params = {}) {
     return ol;
   }
 
+  // walk → bus A → ride → change (wait, walk) → bus B → ride → walk → arrive
+  function timelineTransfer(it, now, dest) {
+    const [A, B] = it.legs, tr = it.transfer, items = [];
+    const code = (l) => l.line?.code ?? l.route.lineCode;
+    const lineVars = (l) => ({ color: l.line?.color, textColor: l.line?.textColor });
+    const tile = (l) => {
+      const b = l.bus;
+      const t = arrivalTile({ lineCode: code(l), routeName: b.routeName || l.route.name, live: b.live, etaSec: (b.departAt - b.fetchedAt) / 1000, color: l.line?.color, textColor: l.line?.textColor },
+        b.fetchedAt, { compact: true, line: l.line || undefined, now });
+      updaters.push((t2) => t.tick?.(t2));
+      return t;
+    };
+    const rideNote = (l, name) => `Κατέβα στη στάση «${name}» · ${l.rideSource === 'live-match' ? 'από το ίδιο όχημα' : 'εκτίμηση'}`;
+    items.push(step('walk', it.bus ? fmtClock(it.leaveAt) : '', icon('walk'), `Περπάτα ${dur(it.walkTo.seconds)} ως τη στάση «${it.board.displayName}»`, `${fmtDist(it.walkTo.meters)}${estTag(it.walkTo)}`));
+    if (!it.bus) {
+      items.push(step('bus', '', icon('bus'), `Γραμμή ${code(A)} προς ${towards(A.route.name)}`, 'Χωρίς δρομολόγιο τώρα', null, lineVars(A)));
+      items.push(step('arrive', '', icon('pin'), 'Άφιξη', null));
+      return h('ol', { class: 'pl-tl' }, items);
+    }
+    items.push(step('bus', fmtClock(A.bus.departAt), icon('bus'), `Γραμμή ${code(A)} προς ${towards(A.bus.routeName || A.route.name)}`,
+      it.bufferSec ? `Περίμενε ~${dur(it.bufferSec)} στη στάση` : '', tile(A), lineVars(A)));
+    items.push(step('ride', fmtClock(tr.arriveAt), icon('route'), `Μετακίνηση ${dur(A.rideSec)} · ${A.nStops} στάσεις`, rideNote(A, tr.stop.displayName), null, lineVars(A)));
+    const wait = `Περίμενε ${dur(tr.waitSec)}${tr.estimated ? ' · εκτίμηση' : ''} για τη γραμμή ${code(B)}`;
+    items.push(step('change', fmtClock(tr.arriveAt), icon('swap'),
+      tr.walk ? `Αλλαγή: περπάτα ${dur(tr.walk.seconds)} ως τη στάση «${tr.to.displayName}»` : `Αλλαγή λεωφορείου στη στάση «${tr.stop.displayName}»`,
+      tr.walk ? `${fmtDist(tr.walk.meters)} · ${wait}` : wait));
+    items.push(step('bus', `${tr.estimated ? '~' : ''}${fmtClock(B.bus.departAt)}`, icon('bus'), `Γραμμή ${code(B)} προς ${towards(B.bus.routeName || B.route.name)}`,
+      tr.estimated ? 'Εκτίμηση: δεν υπάρχει καταχωρημένη αναχώρηση' : '', tr.estimated ? null : tile(B), lineVars(B)));
+    items.push(step('ride', fmtClock(B.bus.departAt + B.rideSec * 1000), icon('route'), `Μετακίνηση ${dur(B.rideSec)} · ${B.nStops} στάσεις`, rideNote(B, it.alight.displayName), null, lineVars(B)));
+    if (it.walkFrom.meters >= 25) items.push(step('walk', fmtClock(B.bus.departAt + B.rideSec * 1000), icon('walk'), `Περπάτα ${dur(it.walkFrom.seconds)} ως «${dest}»`, `${fmtDist(it.walkFrom.meters)}${estTag(it.walkFrom)}`));
+    items.push(step('arrive', `${tr.estimated ? '~' : ''}${fmtClock(it.arriveAt)}`, icon('pin'), 'Άφιξη', `«${dest}»`));
+    return h('ol', { class: 'pl-tl' }, items);
+  }
+
   // ---- reminder + actions
 
   const tagOf = (it) => `plan:${it.id}`;
@@ -561,7 +611,7 @@ export function mountPlanner(container, ctx, params = {}) {
   }
 
   // reminderMin = minutes BEFORE the moment you must leave; if that is already past, remind at the leave time itself.
-const reminderAt = (it) => {
+  const reminderAt = (it) => {
     const early = it.leaveAt - (getSettings().reminderMin || 0) * 60000;
     return early > Date.now() + 5000 ? early : it.leaveAt;
   };
@@ -578,21 +628,21 @@ const reminderAt = (it) => {
     if (at <= Date.now() + 5000) { toast('Πρέπει να ξεκινήσεις ήδη τώρα — δεν χρειάζεται υπενθύμιση'); return; }
     bell.disabled = true;
     const granted = await ensurePermission().catch(() => false);
-    scheduleReminder({ at, title: 'Ώρα να φύγεις', body: reminderBody(it), tag, url: location.hash.startsWith('#/plan') ? location.hash : undefined });
+    scheduleReminder({ at, title: 'Ώρα να φύγεις', body: reminderBody(it), tag, url: location.hash.startsWith('#/plan') ? location.hash : undefined, trip: reminderTrip(it) });
     toast(`Θα σε ειδοποιήσω στις ${fmtClock(at)}, όσο η εφαρμογή είναι ανοιχτή${granted ? '' : ' (χωρίς ειδοποίηση συστήματος)'}`);
     if (!dead) render();
   }
-  const reminderBody = (it) => `Φύγε ${getSettings().reminderMin ? `σε ${getSettings().reminderMin}′ ` : 'τώρα '}για τη γραμμή ${it.line?.code ?? it.route.lineCode} (${fmtClock(it.bus.departAt)}) από τη στάση «${it.board.displayName}».`;
+  const reminderBody = (it) => `Φύγε ${getSettings().reminderMin ? `σε ${getSettings().reminderMin}′ ` : 'τώρα '}για τη γραμμή ${it.line?.code ?? it.route.lineCode} (${fmtClock(it.bus.departAt)}) από τη στάση «${it.board.displayName}»${it.kind === 'transfer' ? `, μετά αλλαγή στη γραμμή ${it.legs[1].line?.code ?? it.legs[1].route.lineCode}` : ''}.`;
 
   // Live ETAs drift: move an existing reminder when the leave time shifts by more than a minute.
   function syncReminders() {
     try {
       const list = listReminders();
       for (const it of S.its) {
-        if (it.kind !== 'bus' || !it.bus) continue;
+        if (it.kind === 'walk' || !it.bus) continue;
         const r = list.find((x) => x.tag === tagOf(it));
         if (r && Math.abs(r.at - reminderAt(it)) > 60000 && reminderAt(it) > Date.now() + 5000) {
-          scheduleReminder({ at: reminderAt(it), title: r.title, body: reminderBody(it), tag: r.tag, url: r.url });
+          scheduleReminder({ at: reminderAt(it), title: r.title, body: reminderBody(it), tag: r.tag, url: r.url, trip: reminderTrip(it) });
         }
       }
     } catch { /* ignore */ }
@@ -602,7 +652,7 @@ const reminderAt = (it) => {
 
   function clearMap() {
     drawSeq++; lastDrawSig = '';
-    M('clearOverlay', 'plan-walk-1'); M('clearOverlay', 'plan-walk-2'); M('clearOverlay', 'plan-ride');
+    for (const id of ['plan-walk-1', 'plan-walk-2', 'plan-walk-3', 'plan-ride', 'plan-ride-2']) M('clearOverlay', id);
     M('clearMarkers', 'plan'); M('clearVehicles', 'plan');
   }
 
@@ -619,47 +669,65 @@ const reminderAt = (it) => {
     return { shape, snapped };
   }
 
+  // Ride overlay: straight through the stops at once, swapped for the sliced road shape when it has loaded.
+  function drawRide(id, leg, seq) {
+    const color = leg.line?.color || undefined;
+    M('setOverlay', id, lineString(rideGeometry(leg.route, ctx.data.stopByCode, null, leg.bi, leg.ai)), { kind: 'ride', color });
+    shapeFor(leg.route).then(({ shape, snapped }) => {
+      if (dead || seq !== drawSeq || !shape) return;
+      M('setOverlay', id, lineString(rideGeometry(leg.route, ctx.data.stopByCode, shape, leg.bi, leg.ai, snapped)), { kind: 'ride', color });
+    });
+  }
+
   function drawMap({ fit = false } = {}) {
     const it = selected();
     if (!it || !S.from || !S.to) { clearMap(); return; }
     const from = S.from, to = S.to;
     const wc = (w, a, b) => (w?.geometry?.length > 1 ? w.geometry : [[a.lng, a.lat], [b.lng, b.lat]]);
+    const isX = it.kind === 'transfer';
     const pts = [from, to];
+    if (it.kind !== 'walk') pts.push(it.board, it.alight);
+    if (isX) pts.push(it.transfer.stop, it.transfer.to);
     const sig = [it.id, r5(from.lat), r5(from.lng), r5(to.lat), r5(to.lng), it.walkTo?.source, it.walkTo?.seconds | 0, it.walkFrom?.source, it.walkFrom?.seconds | 0].join('|');
     const same = sig === lastDrawSig;
     lastDrawSig = sig;
     const seq = same ? drawSeq : ++drawSeq;
-    if (same && it.kind === 'bus') { pts.push(it.board, it.alight); drawVehicle(it); return fitIfNeeded(it, from, to, pts, fit); }
+    if (same && it.kind !== 'walk') { drawVehicle(it); return fitIfNeeded(it, from, to, pts, fit); }
     if (it.kind === 'walk') {
       M('setOverlay', 'plan-walk-1', lineString(wc(it.walkTo, from, to)), { kind: 'walk' });
-      M('clearOverlay', 'plan-walk-2'); M('clearOverlay', 'plan-ride'); M('clearVehicles', 'plan');
+      for (const id of ['plan-walk-2', 'plan-walk-3', 'plan-ride', 'plan-ride-2']) M('clearOverlay', id);
+      M('clearVehicles', 'plan');
       M('setMarkers', 'plan', [{ lat: from.lat, lng: from.lng, kind: 'origin', label: from.name }, { lat: to.lat, lng: to.lng, kind: 'dest', label: to.name }]);
     } else {
-      const color = it.line?.color || undefined;
-      pts.push(it.board, it.alight);
       M('setOverlay', 'plan-walk-1', lineString(wc(it.walkTo, from, it.board)), { kind: 'walk' });
       M('setOverlay', 'plan-walk-2', lineString(wc(it.walkFrom, it.alight, to)), { kind: 'walk' });
-      M('setOverlay', 'plan-ride', lineString(rideGeometry(it.route, ctx.data.stopByCode, null, it.bi, it.ai)), { kind: 'ride', color });
-      shapeFor(it.route).then(({ shape, snapped }) => {
-        if (dead || seq !== drawSeq || !shape) return;
-        M('setOverlay', 'plan-ride', lineString(rideGeometry(it.route, ctx.data.stopByCode, shape, it.bi, it.ai, snapped)), { kind: 'ride', color });
-      });
-      M('setMarkers', 'plan', [
-        { lat: from.lat, lng: from.lng, kind: 'origin', label: from.name },
-        { lat: it.board.lat, lng: it.board.lng, kind: 'board', label: it.board.displayName },
-        { lat: it.alight.lat, lng: it.alight.lng, kind: 'alight', label: it.alight.displayName },
-        { lat: to.lat, lng: to.lng, kind: 'dest', label: to.name },
-      ]);
+      const marks = [{ lat: from.lat, lng: from.lng, kind: 'origin', label: from.name }, { lat: it.board.lat, lng: it.board.lng, kind: 'board', label: it.board.displayName }];
+      if (isX) {
+        const [A, B] = it.legs, tr = it.transfer;
+        drawRide('plan-ride', A, seq);
+        drawRide('plan-ride-2', B, seq);
+        if (tr.walk) M('setOverlay', 'plan-walk-3', lineString(wc(tr.walk, tr.stop, tr.to)), { kind: 'walk' }); else M('clearOverlay', 'plan-walk-3');
+        // transfer marker(s): one at a shared stop, alight + board when the change crosses the road
+        if (tr.walk) marks.push({ lat: tr.stop.lat, lng: tr.stop.lng, kind: 'alight', label: `Αλλαγή · κατέβα: ${tr.stop.displayName}` }, { lat: tr.to.lat, lng: tr.to.lng, kind: 'board', label: `Αλλαγή · ανέβα: ${tr.to.displayName}` });
+        else marks.push({ lat: tr.stop.lat, lng: tr.stop.lng, kind: 'board', label: `Αλλαγή: ${tr.stop.displayName}` });
+      } else {
+        drawRide('plan-ride', it, seq);
+        M('clearOverlay', 'plan-ride-2'); M('clearOverlay', 'plan-walk-3');
+      }
+      marks.push({ lat: it.alight.lat, lng: it.alight.lng, kind: 'alight', label: it.alight.displayName }, { lat: to.lat, lng: to.lng, kind: 'dest', label: to.name });
+      M('setMarkers', 'plan', marks);
       drawVehicle(it);
     }
     fitIfNeeded(it, from, to, pts, fit);
   }
 
   function drawVehicle(it) {
-    const b = it.bus;
-    if (b?.live && Number.isFinite(b.lat) && Number.isFinite(b.lng)) {
-      M('setVehicles', 'plan', [{ lat: b.lat, lng: b.lng, lineCode: it.line?.code ?? it.route.lineCode, color: it.line?.color, textColor: it.line?.textColor, label: it.line?.code ?? it.route.lineCode, vehicleCode: b.vehicleCode || undefined }]);
-    } else M('clearVehicles', 'plan');
+    const legs = it.kind === 'transfer' ? it.legs : [it];
+    const vs = legs.filter((l) => l.bus?.live && Number.isFinite(l.bus.lat) && Number.isFinite(l.bus.lng)).map((l) => {
+      const code = l.line?.code ?? l.route.lineCode;
+      return { lat: l.bus.lat, lng: l.bus.lng, lineCode: code, color: l.line?.color, textColor: l.line?.textColor, label: code, vehicleCode: l.bus.vehicleCode || undefined };
+    });
+    if (vs.length) M('setVehicles', 'plan', vs); else M('clearVehicles', 'plan');
   }
 
   function fitIfNeeded(it, from, to, pts, fit) {
@@ -677,7 +745,7 @@ const reminderAt = (it) => {
     const now = Date.now();
     let changed = false;
     for (const it of S.its) {
-      if (it.kind !== 'bus' || !it.bus) continue;
+      if (it.kind === 'walk' || !it.bus) continue;
       if (leaveState(it, now).kind === 'missed') {
         const before = it.bus.key;
         retime(it, now);

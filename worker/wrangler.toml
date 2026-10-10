@@ -10,3 +10,15 @@ id = "f69d669e1cac4ac68b732266017c4453"
 
 [vars]
 ALLOWED_ORIGIN = "https://costgal.github.io,http://localhost:8080"
+VAPID_PUBLIC_KEY = "BI5a9-dh0HzqMWI4zt1knxm5qyTNmJtGE9LDCbKLPzAJLY4d1L1nmg-zQJH5AgzUBJBA-jWct4icLLwZaNM9pqU"
+VAPID_SUBJECT = "https://github.com/CostGal/patra-bus"
+
+# One SQLite-backed Durable Object per push reminder (works on the free plan).
+# Secret (not here): VAPID_PRIVATE_KEY -> `npx wrangler secret put VAPID_PRIVATE_KEY --config worker/wrangler.toml`
+[[durable_objects.bindings]]
+name = "REMINDERS"
+class_name = "Reminder"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Reminder"]

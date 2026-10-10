@@ -86,6 +86,18 @@ html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 .chip[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
 [data-sheet="full"] .chips { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
 
+/* ---------- offline cue (under the chips; hidden while the sheet covers the map) ---------- */
+.offline-pill {
+  position: fixed; z-index: 15; top: calc(var(--safe-top) + 116px); left: calc(var(--safe-left) + 12px); max-width: calc(100% - 96px - var(--safe-left));
+  display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px 6px 10px; border: 1px solid var(--warn); border-radius: 16px;
+  background: var(--warn-bg); color: var(--text); box-shadow: var(--shadow-1); font-size: 13px; font-weight: 500; line-height: 1.3; pointer-events: none;
+  transition: opacity .2s;
+}
+.offline-pill .icon { --icon: 16px; margin-top: 1px; color: var(--warn); }
+[data-sheet="full"] .offline-pill { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
+.no-map .offline-pill { top: calc(var(--top-inset) + 50px); max-width: calc(100% - 24px - var(--safe-left)); }
+.no-map.is-offline .sheet { top: calc(var(--top-inset) + 48px + 44px); }
+
 /* ---------- FABs ---------- */
 .fab {
   width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
@@ -174,6 +186,10 @@ html.sheet-dragging .fabs-bottom { transition: none; }
   .sheet-handle { display: none; }
   .sheet-body, .sheet[data-state] .sheet-body { overflow-y: auto; touch-action: auto; }
   .chips { top: 16px; left: calc(var(--panel-w) + 16px); right: 80px; padding: 2px 4px; }
+  .offline-pill { top: 68px; left: calc(var(--panel-w) + 20px); max-width: min(420px, calc(100% - var(--panel-w) - 120px)); }
+  [data-sheet="full"] .offline-pill { opacity: 1; visibility: visible; }
+  .no-map .offline-pill { top: 68px; max-width: min(420px, calc(100% - var(--panel-w) - 120px)); }
+  .no-map.is-offline .sheet { top: 0; }
   [data-sheet="full"] .chips { opacity: 1; visibility: visible; }
   .fabs-top { top: 16px; right: 16px; }
   #layers-pop { top: 16px; right: 72px; }

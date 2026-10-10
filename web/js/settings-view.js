@@ -33,6 +33,19 @@ export function mountSettings(container, ctx) {
   const after = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
   const say = (text) => { try { ctx.toast(text); } catch { /* ignore */ } };
   const card = (title, ...kids) => h('section', { class: 'set-card' }, h('h2', { class: 'set-title' }, title), ...kids);
+  // Cards owned by other modules (push, offline map): loaded lazily and guarded, so a failing one never breaks settings.
+  const ext = [];
+  // They bring their own heading (push: inside the notifications card, offline: its own card), so no wrapper title here.
+  function extSlot(load, mountName) {
+    const el = h('div', { class: 'set-ext' });
+    load().then((m) => {
+      if (dead) return;
+      const v = m[mountName](el, ctx);
+      if (dead) { try { v && v.destroy && v.destroy(); } catch { /* ignore */ } return; }
+      if (v) ext.push(v);
+    }).catch((err) => { console.warn(`[settings] ${mountName} failed`, err); el.hidden = true; });
+    return el;
+  }
   const row = (id, label, hint, control) => h('div', { class: 'set-row' },
     h('div', { class: 'set-row-text' }, h('div', { class: 'set-label', id }, label), hint ? h('div', { class: 'ex-sub' }, hint) : null), control);
 
@@ -97,9 +110,10 @@ export function mountSettings(container, ctx) {
       h('div', { class: 'set-item-main' }, h('div', { class: 'set-label' }, r.title || 'Υπενθύμιση'), h('div', { class: 'ex-sub' }, `στις ${fmtClock(r.at)}${r.body ? ` · ${r.body}` : ''}`)),
       h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': `Ακύρωση υπενθύμισης: ${r.title || r.tag}`, onclick: () => cancelReminder(r.tag) }, icon('close')))));
   }
+  const push = extSlot(() => import('./push.js'), 'mountPushCard');
   const notifications = card('Ειδοποιήσεις και υπενθυμίσεις', permText,
-    h('div', { class: 'set-actions' }, permBtn, testBtn), remList,
-    h('p', { class: 'ex-note', role: 'note' }, 'Οι υπενθυμίσεις λειτουργούν μόνο όσο η εφαρμογή είναι ανοιχτή (ακόμη και στο παρασκήνιο). Αν την κλείσεις εντελώς ή το τηλέφωνο την σταματήσει, δεν θα χτυπήσουν.'));
+    h('div', { class: 'set-actions' }, permBtn, testBtn), remList, push,
+    h('p', { class: 'ex-note', role: 'note' }, 'Χωρίς ειδοποιήσεις με κλειστή εφαρμογή, οι υπενθυμίσεις λειτουργούν μόνο όσο η εφαρμογή είναι ανοιχτή (ακόμη και στο παρασκήνιο). Αν την κλείσεις εντελώς ή το τηλέφωνο την σταματήσει, δεν θα χτυπήσουν.'));
 
   // ---------- favourites ----------
   const favList = h('ul', { class: 'set-list' });
@@ -161,6 +175,8 @@ export function mountSettings(container, ctx) {
     h('div', { class: 'set-actions' }, clearRecentsBtn, wipeBtn),
     h('p', { class: 'ex-sub' }, 'Η διαγραφή αφορά αγαπημένα, πρόσφατα, ρυθμίσεις και υπενθυμίσεις αυτής της συσκευής.'));
 
+  const offline = extSlot(() => import('./offline.js'), 'mountOfflineCard');
+
   // ---------- install ----------
   const installNote = h('p', { class: 'set-p' });
   const installBtn = h('button', { type: 'button', class: 'ex-btn', onclick: async () => {
@@ -196,7 +212,7 @@ export function mountSettings(container, ctx) {
     h('header', { class: 'ex-head' },
       h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': 'Πίσω', onclick: () => ctx.navigate('#/') }, icon('back')),
       h('h1', {}, 'Ρυθμίσεις')),
-    display, timing, notifications, favorites, data, install, about));
+    display, timing, notifications, favorites, data, offline, install, about));
 
   paintPerm(); paintReminders(); paintFavs();
   offs.push(onChange(() => { for (const s of syncs) s(); paintFavs(); }));
@@ -208,6 +224,7 @@ export function mountSettings(container, ctx) {
     destroy() {
       dead = true;
       for (const off of offs) off();
+      for (const v of ext) { try { v.destroy && v.destroy(); } catch (err) { console.warn('[settings] card destroy failed', err); } }
       for (const t of timers) clearTimeout(t);
       document.removeEventListener('visibilitychange', onVis);
     },

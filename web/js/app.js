@@ -255,6 +255,23 @@ function onBearing(b) {
 }
 function onUserMove() { wantFix = false; setLocMode('idle'); paintLocating(); }
 
+// ---------------------------------------------------------------- offline cue
+// A persistent pill under the search bar while offline; a toast when the connection returns.
+const offlinePill = h('div', { class: 'offline-pill', id: 'offline-pill', role: 'status', hidden: true },
+  icon('alert'), h('span', {}, 'Εκτός σύνδεσης — δείχνω αποθηκευμένα δεδομένα'));
+appEl.append(offlinePill);
+let wasOffline = false;
+function paintOnline(announce) {
+  const off = navigator.onLine === false;
+  offlinePill.hidden = !off;
+  appEl.classList.toggle('is-offline', off);
+  if (announce && wasOffline && !off) toast('Ξανά σε σύνδεση');
+  wasOffline = off;
+}
+window.addEventListener('online', () => paintOnline(true));
+window.addEventListener('offline', () => paintOnline(true));
+paintOnline(false);
+
 // ---------------------------------------------------------------- search
 const searchInput = $('search-input');
 const searchPanel = $('search-panel');
@@ -661,7 +678,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), onStopClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-top', '#fabs-bottom'] }, onStopClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

@@ -62,6 +62,8 @@ const el = (cls, html) => {
 
 export function createMap(container, opts = {}) {
   const { onStopClick = noop, onMapClick = noop, onLongPress = noop, onUserMove = noop, onBearing = noop } = opts;
+  // Floating UI that fitTo / flyTo keep clear of: { top: [selector], right: [selector] }, measured on every call.
+  const avoid = { top: opts.avoid?.top || [], right: opts.avoid?.right || [] };
   if (typeof maplibregl === 'undefined') return fallbackApi('script');
   if (!webglOk()) return fallbackApi('webgl');
 
@@ -310,6 +312,13 @@ export function createMap(container, opts = {}) {
   });
   map.on('movestart', (e) => { if (e.originalEvent) lastFit = null; });
   map.on('rotate', () => onBearing(map.getBearing()));
+  // Window / phone rotation: the floating UI moved, so fit again (debounced; any gesture has already forgotten the fit).
+  let refitTimer = 0;
+  map.on('resize', () => {
+    if (!lastFit) return;
+    clearTimeout(refitTimer);
+    refitTimer = setTimeout(() => { if (lastFit) doFit(); }, 150);
+  });
   map.on('moveend', () => { if (tracking()) snapToUser(false); });
 
   // ---------- user fix ----------
@@ -393,12 +402,23 @@ export function createMap(container, opts = {}) {
   }
 
   // ---------- camera helpers ----------
+  // How far the visible floating elements (search bar + chips on top, the FAB column on the right) reach into the map.
+  const GAP = 8;
+  function floatingInsets() {
+    const mr = container.getBoundingClientRect();
+    const out = { top: 0, right: 0 };
+    const shown = (sel) => [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+    for (const r of avoid.top.flatMap(shown)) out.top = Math.max(out.top, r.bottom - mr.top + GAP);
+    for (const r of avoid.right.flatMap(shown)) if (r.left > mr.left + mr.width / 2) out.right = Math.max(out.right, mr.right - r.left + GAP);
+    return out;
+  }
   const safePadding = () => {
     const w = container.clientWidth;
     const hgt = container.clientHeight;
+    const f = floatingInsets();
     const cl = (a, b, max) => { const s = a + b; const k = s > max ? max / s : 1; return [a * k, b * k]; };
-    const [top, bottom] = cl(pad.top, pad.bottom, hgt * 0.7);
-    const [left, right] = cl(pad.left, pad.right, w * 0.7);
+    const [top, bottom] = cl(Math.max(pad.top, f.top), pad.bottom, hgt * 0.7);
+    const [left, right] = cl(pad.left, Math.max(pad.right, f.right), w * 0.7);
     return { top, bottom, left, right };
   };
 
@@ -412,6 +432,8 @@ export function createMap(container, opts = {}) {
     for (const p of pts) b.extend(ll(p));
     const sp = safePadding();
     const m = 28; // breathing room around the points
+    // Nothing visible left once the padding is taken off (hidden / collapsing layout): the next resize or snap refits.
+    if (container.clientWidth - sp.left - sp.right - 2 * m < 40 || container.clientHeight - sp.top - sp.bottom - 2 * m - 24 < 40) return;
     // Zoom from cameraForBounds (with a margin), but centre with the real padding ourselves: letting fitBounds apply
     // the padding itself double-counts it and pushes points under the sheet.
     try {

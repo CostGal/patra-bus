@@ -71,6 +71,9 @@
 .pl-card.is-none:not(.is-selected) { opacity: .8; }
 .pl-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .pl-card-lead { display: flex; }
+.pl-xlead { display: inline-flex; align-items: center; gap: 3px; }
+.pl-xlead .badge { min-width: 2.3em; padding: .22em .38em; font-size: .92rem; }
+.pl-xarrow { color: var(--text-2); font-weight: 700; line-height: 1; }
 .pl-walk-ic { display: inline-flex; align-items: center; justify-content: center; width: 2.7em; height: 2.2em; border-radius: 8px; background: var(--surface-2); color: var(--text-2); }
 .pl-card-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .pl-card-dest { font-weight: 600; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -89,6 +92,7 @@
 /* LIVE / ΠΡΟΓΡ. */
 .pl-flag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 7px; border-radius: 999px; background: var(--sched-bg); color: var(--sched); font-size: .7rem; font-weight: 700; letter-spacing: .05em; line-height: 1.5; }
 .pl-flag.is-live { background: var(--live-bg); color: var(--live); }
+.pl-flag.is-est { background: var(--surface-2); color: var(--text-2); letter-spacing: 0; font-weight: 600; }
 .pl-flag .icon { width: 12px; height: 12px; stroke-width: 2.4; }
 .pl-dot { position: relative; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
 .pl-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--live); animation: pl-pulse 1.6s ease-out infinite; }
@@ -121,6 +125,8 @@
 .pl-step-ic { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); color: var(--text-2); box-shadow: 0 0 0 3px var(--surface); }
 .pl-step-ic .icon { width: 16px; height: 16px; }
 .pl-step.is-bus .pl-step-ic { background: var(--pl-line); color: var(--pl-line-text); }
+.pl-step.is-change .pl-step-ic { background: var(--warn-bg); color: var(--warn); }
+.pl-step.is-change .pl-step-title { color: var(--warn); }
 .pl-step.is-arrive .pl-step-ic { background: var(--danger); color: #fff; }
 .pl-step.is-arrive .pl-step-title { font-size: 1.05rem; }
 .pl-step-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-top: 3px; }
@@ -146,6 +152,7 @@
 }
 @media (max-width: 380px) {
   .pl-card-head { gap: 8px; padding: 10px 8px; }
+  .pl-xlead .badge { min-width: 2em; padding: .2em .3em; font-size: .85rem; }
   .pl-step { grid-template-columns: 2.7rem 28px minmax(0, 1fr); gap: 0 8px; }
   .pl-step::before { left: calc(2.7rem + 8px + 13px); }
   .pl-step.is-bus::before, .pl-step.is-ride::before { left: calc(2.7rem + 8px + 12px); }

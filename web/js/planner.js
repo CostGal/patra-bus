@@ -1,4 +1,4 @@
-// Trip planner core (owner: planner). Single bus ride (+ walk-only). See docs/ARCHITECTURE.md.
+// Trip planner core (owner: planner). Single bus ride, one-change two-bus trips, walk-only. See docs/ARCHITECTURE.md.
 // Pure helpers are exported for tests; everything networked is injected through `deps`
 // (defaults load lazily so this module imports cleanly in Node).
 import { haversine, nearestStops, inArea } from './geo.js';
@@ -8,7 +8,14 @@ export const DEFAULTS = {
   nearestBoard: 8, nearestAlight: 8,                    // candidate stops per end
   maxRoutes: 4, maxBoardStops: 3, maxAlightStops: 2, maxPerLine: 2, // live-fetch budget: ≤3 + ≤2 stops
   walkOnlyMaxSec: 1200, walkOnlyFallbackSec: 2700, bufferSec: 120,
+  // transfers: change stops within transferWalkM, ≤ maxTransfers options fetched, ≤ liveBudget live-fetched stops per plan (direct + transfer)
+  transferWalkM: 300, nearestXfer: 6, maxTransfers: 3, maxTransferShown: 2, liveBudget: 5,
+  waitEstSec: 300,         // wait assumed at the change stop while ranking candidates (no live data yet)
 };
+const XFER_MARGIN_SEC = 60;       // minimum slack between reaching the change stop and bus B leaving
+const XFER_EST_WAIT_SEC = 600;    // wait assumed when bus B has no live/scheduled entry at the change stop
+const XFER_PENALTY_SEC = 300;     // ranking handicap of a transfer (+5′), so a direct bus wins ties
+const XFER_EST_PENALTY_SEC = 600; // extra handicap when the connection is only an estimate
 const LEG_FALLBACK_SEC = 90; // bus seconds per stop when legSec is missing
 const MAX_STALE_SEC = 20;    // a bus due "now" stays listed for a few seconds
 const estWalkSec = (a, b) => (haversine(a, b) * 1.3) / 1.3; // straight ×1.3 at 1.3 m/s
@@ -78,6 +85,105 @@ export function shortlist(cands, opts = {}) {
     if (!alights.has(c.alight.code) && alights.size >= o.maxAlightStops) continue;
     boards.add(c.board.code); alights.add(c.alight.code);
     perLine.set(c.route.lineCode, (perLine.get(c.route.lineCode) || 0) + 1);
+    out.push(c);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- transfers
+
+const confOf = (r) => (Number.isFinite(r.confidence) ? Math.min(1, Math.max(0, r.confidence)) : 1);
+
+// Two-bus trips: bus A board → x1, walk x1 → x2 (≤ transferWalkM, none when same stop), bus B x2 → alight.
+// Joins "stops after a board stop" with "stops before an alight stop" on the same or a nearby stop (grid index).
+// Routes that alone link the two ends are skipped (that is a direct trip). One option per line pair, cheapest
+// first; low-confidence routes cost extra. Estimate only: the real wait comes from live data later.
+export function transferCandidates(data, from, to, opts = {}) {
+  const o = { ...DEFAULTS, ...opts };
+  const walk = o.walkEst || estWalkSec;
+  const boards = nearestStops(data.stops, from, { limit: o.nearestBoard, maxMeters: o.boardRadius });
+  const alights = nearestStops(data.stops, to, { limit: o.nearestAlight, maxMeters: o.alightRadius });
+  if (!boards.length || !alights.length) return [];
+  const direct = walk(from, to);
+  const wTo = new Map(boards.map(({ stop }) => [stop.code, walk(from, stop)]));
+  const wFrom = new Map(alights.map(({ stop }) => [stop.code, walk(stop, to)]));
+  const keep = (list, e, cost) => { // best entry per route
+    const k = list.findIndex((x) => x.route === e.route);
+    if (k < 0) list.push(e); else if (cost(e) < cost(list[k])) list[k] = e;
+  };
+  const fwd = new Map(); // stop code → [{ route, board, bi, xi, rideEst, walkToEst }]
+  for (const { stop: board } of boards) {
+    for (const route of data.routesByStop.get(board.code) || []) {
+      const pos = positions(route);
+      const bi = pos.get(board.code)?.[0];
+      if (bi === undefined || alights.some(({ stop }) => pos.get(stop.code)?.some((i) => i > bi))) continue;
+      const walkToEst = wTo.get(board.code);
+      let ride = 0;
+      for (let i = bi + 1; i < route.stops.length; i++) {
+        ride += route.legSec?.[i - 1] ?? LEG_FALLBACK_SEC;
+        if (walkToEst + ride >= direct) break;
+        const code = route.stops[i];
+        if (!data.stopByCode.has(code)) continue;
+        keep(fwd.get(code) || fwd.set(code, []).get(code), { route, board, bi, xi: i, rideEst: ride, walkToEst }, (e) => e.rideEst + e.walkToEst);
+      }
+    }
+  }
+  const bwd = new Map(); // stop code → [{ route, alight, ai, xj, rideEst, walkFromEst }]
+  for (const { stop: alight } of alights) {
+    for (const route of data.routesByStop.get(alight.code) || []) {
+      const pos = positions(route);
+      const ai = pos.get(alight.code)?.at(-1);
+      if (ai === undefined || boards.some(({ stop }) => pos.get(stop.code)?.some((i) => i < ai))) continue;
+      const walkFromEst = wFrom.get(alight.code);
+      let ride = 0;
+      for (let j = ai - 1; j >= 0; j--) {
+        ride += route.legSec?.[j] ?? LEG_FALLBACK_SEC;
+        if (walkFromEst + ride >= direct) break;
+        const code = route.stops[j];
+        if (!data.stopByCode.has(code)) continue;
+        keep(bwd.get(code) || bwd.set(code, []).get(code), { route, alight, ai, xj: j, rideEst: ride, walkFromEst }, (e) => e.rideEst + e.walkFromEst);
+      }
+    }
+  }
+  const best = new Map(); // "lineA>lineB" → candidate
+  for (const [code, fs] of fwd) {
+    const x1 = data.stopByCode.get(code);
+    for (const { stop: x2, meters } of nearestStops(data.stops, x1, { limit: o.nearestXfer, maxMeters: o.transferWalkM })) {
+      const bs = bwd.get(x2.code);
+      if (!bs) continue;
+      const same = x2.code === code;
+      const walkXEst = same ? 0 : walk(x1, x2);
+      for (const f of fs) {
+        for (const b of bs) {
+          if (f.route.lineCode === b.route.lineCode || f.board.code === b.alight.code) continue;
+          const base = f.walkToEst + f.rideEst + walkXEst + o.waitEstSec + b.rideEst + b.walkFromEst;
+          if (base >= direct) continue; // walking straight there is no worse
+          const cost = base + (2 - confOf(f.route) - confOf(b.route)) * 300;
+          const key = `${f.route.lineCode}>${b.route.lineCode}`;
+          if (best.get(key)?.cost <= cost) continue;
+          best.set(key, {
+            kind: 'transfer', x1, x2, xferMeters: same ? 0 : meters, walkXEst, walkToEst: f.walkToEst, walkFromEst: b.walkFromEst,
+            a: { route: f.route, board: f.board, alight: x1, bi: f.bi, ai: f.xi, nStops: f.xi - f.bi, rideEst: f.rideEst },
+            b: { route: b.route, board: x2, alight: b.alight, bi: b.xj, ai: b.ai, nStops: b.ai - b.xj, rideEst: b.rideEst },
+            rideEst: f.rideEst + b.rideEst, minConf: Math.min(confOf(f.route), confOf(b.route)), cost,
+          });
+        }
+      }
+    }
+  }
+  return [...best.values()].sort((a, b) => a.cost - b.cost);
+}
+
+// Greedy shortlist within the shared live-fetch budget; `used` = stop codes already fetched for direct trips.
+export function shortlistTransfers(tcands, used = new Set(), opts = {}) {
+  const o = { ...DEFAULTS, ...opts };
+  const codes = new Set(used), perLine = new Map(), out = [];
+  for (const c of tcands) {
+    if (out.length >= o.maxTransfers) break;
+    const need = new Set([c.a.board.code, c.b.board.code].filter((x) => !codes.has(x)));
+    if (codes.size + need.size > o.liveBudget || (perLine.get(c.a.route.lineCode) || 0) >= 2) continue;
+    need.forEach((x) => codes.add(x));
+    perLine.set(c.a.route.lineCode, (perLine.get(c.a.route.lineCode) || 0) + 1);
     out.push(c);
   }
   return out;
@@ -154,6 +260,7 @@ const busInfo = (dep, now) => ({
 
 // (Re)select the departure from it.departures at time `now` and refresh the time-dependent fields.
 export function retime(it, now = Date.now(), bufferSec = it.bufferSec, prefer = it.bus?.key ?? null) {
+  if (it.kind === 'transfer') return retimeTransfer(it, now, bufferSec, prefer);
   if (it.kind !== 'bus') return it;
   it.bufferSec = bufferSec;
   const d = chooseDeparture(it.departures, { walkSec: it.walkTo.seconds, bufferSec, now, prefer });
@@ -202,6 +309,101 @@ export function buildBusItinerary(cand, { line = null, boardRes, alightRes, walk
   return retime(it, now, bufferSec, prefer);
 }
 
+// ---- transfer itineraries
+// Bus A is chosen exactly like a direct trip. Bus B is the first departure at x2 after
+// arrival at x1 + transfer walk + margin; with none listed, the wait is an estimate (`transfer.estimated`).
+const estBus = (departAt, now) => ({
+  key: null, live: false, estimated: true, vehicleCode: null, departAt, fetchedAt: now,
+  remainingSec: Math.max(0, (departAt - now) / 1000), scheduledAt: undefined, routeName: '',
+});
+
+// Timing of one concrete bus A departure.
+function connect(it, depA) {
+  const [L0, L1] = it.legs;
+  const rideA = depA.rideSec ?? L0.rideEstSec;
+  const rideSrcA = depA.rideSource || 'estimate';
+  const walkX = it.transfer.walk?.seconds || 0;
+  const arriveX = depA.departAt + rideA * 1000;
+  const margin = XFER_MARGIN_SEC + (rideSrcA === 'live-match' ? 0 : Math.min(120, rideA * 0.1)); // estimated rides drift
+  const readyAt = arriveX + (walkX + margin) * 1000;
+  const ds = L1.departures;
+  const depB = ds.find((d) => d.departAt >= readyAt) || null;
+  // Past the listed departures: extend with the observed headway (≥ 2 listed), else assume a fixed wait. Either way an estimate.
+  const gap = ds.length > 1 ? Math.max(120000, (ds.at(-1).departAt - ds[0].departAt) / (ds.length - 1)) : 0;
+  const departB = depB ? depB.departAt
+    : gap && ds.at(-1).departAt < readyAt ? ds.at(-1).departAt + Math.ceil((readyAt - ds.at(-1).departAt) / gap) * gap
+      : arriveX + (walkX + XFER_EST_WAIT_SEC) * 1000;
+  const rideB = depB?.rideSec ?? L1.rideEstSec;
+  const missedB = depB ? ds.filter((d) => d.departAt < readyAt && d.departAt > arriveX - 120000).at(-1) || null : null;
+  return {
+    rideA, rideSrcA, arriveX, depB, departB, rideB, rideSrcB: depB?.rideSource || 'estimate', missedB,
+    waitSec: (departB - (arriveX + walkX * 1000)) / 1000, estimated: !depB,
+    arriveAt: departB + (rideB + it.walkFrom.seconds) * 1000,
+  };
+}
+
+export function retimeTransfer(it, now = Date.now(), bufferSec = it.bufferSec, prefer = it.bus?.key ?? null) {
+  it.bufferSec = bufferSec;
+  const [L0, L1] = it.legs;
+  const d = chooseDeparture(L0.departures, { walkSec: it.walkTo.seconds, bufferSec, now, prefer });
+  const arrive = (x) => connect(it, x.dep).arriveAt;
+  it.missed = d.missed ? { ...busInfo(d.missed.dep, now), needSec: it.walkTo.seconds } : null;
+  it.hurry = d.hurry ? { bus: busInfo(d.hurry.dep, now), leaveInSec: d.hurry.leaveInSec, arriveAt: arrive(d.hurry) } : null;
+  it.next = d.next ? { bus: busInfo(d.next.dep, now), leaveInSec: d.next.leaveInSec, arriveAt: arrive(d.next) } : null;
+  if (!d.chosen) {
+    L0.bus = L1.bus = null;
+    Object.assign(it, { bus: null, leaveAt: null, leaveInSec: null, arriveAt: null, rideSec: L0.rideEstSec, rideSource: 'estimate', status: 'none', rankPenaltySec: XFER_PENALTY_SEC });
+    Object.assign(it.transfer, { waitSec: null, estimated: true, arriveAt: null, missed: null });
+    return it;
+  }
+  const c = d.chosen, k = connect(it, c.dep);
+  L0.bus = busInfo(c.dep, now); L0.rideSec = k.rideA; L0.rideSource = k.rideSrcA;
+  L1.bus = k.depB ? busInfo(k.depB, now) : estBus(k.departB, now); L1.rideSec = k.rideB; L1.rideSource = k.rideSrcB;
+  Object.assign(it.transfer, { waitSec: k.waitSec, estimated: k.estimated, arriveAt: k.arriveX, missed: k.missedB ? busInfo(k.missedB, now) : null });
+  Object.assign(it, {
+    bus: L0.bus, rideSec: k.rideA, rideSource: k.rideSrcA, leaveAt: c.dep.departAt - (it.walkTo.seconds + bufferSec) * 1000, leaveInSec: c.leaveInSec,
+    arriveAt: k.arriveAt, status: c.leaveInSec < 0 ? 'run' : 'ok',
+    rankPenaltySec: XFER_PENALTY_SEC + (k.estimated ? XFER_EST_PENALTY_SEC : 0) + Math.round((1 - it.minConf) * 300),
+  });
+  return it;
+}
+
+export const transferId = (c) => `${c.a.route.code}:${c.a.board.code}:${c.x1.code}~${c.b.route.code}:${c.x2.code}:${c.b.alight.code}`;
+
+// c: transferCandidates() entry. xferWalk: walk x1 → x2 ({seconds, meters, geometry}) or null when it is the same stop.
+export function buildTransferItinerary(c, { lineA = null, lineB = null, boardRes, xRes, alightRes = null, walkTo, walkFrom, xferWalk = null, bufferSec = DEFAULTS.bufferSec, now = Date.now(), prefer = null }) {
+  const depsA = departuresAt(c.a.route, boardRes);
+  const depsB = departuresAt(c.b.route, xRes);
+  const sameStop = c.x1.code === c.x2.code;
+  const aAtX = sameStop ? departuresAt(c.a.route, xRes) : null; // same stop: bus A is listed there too → exact ride time
+  for (const d of depsA || []) Object.assign(d, rideFor(d, aAtX, c.a.rideEst));
+  const bAtAlight = departuresAt(c.b.route, alightRes);
+  for (const d of depsB || []) Object.assign(d, rideFor(d, bAtAlight, c.b.rideEst));
+  const leg = (s, line, deps) => ({
+    route: s.route, line, board: s.board, alight: s.alight, bi: s.bi, ai: s.ai, nStops: s.nStops, rideEstSec: s.rideEst,
+    departures: deps || [], bus: null, rideSec: s.rideEst, rideSource: 'estimate',
+  });
+  const it = {
+    kind: 'transfer', id: transferId(c),
+    line: lineA, route: c.a.route, board: c.a.board, alight: c.b.alight,
+    legs: [leg(c.a, lineA, depsA), leg(c.b, lineB, depsB)],
+    transfer: { stop: c.x1, to: c.x2, walk: sameStop ? null : xferWalk, waitSec: null, estimated: true, arriveAt: null, missed: null },
+    walkTo, walkFrom, nStops: c.a.nStops + c.b.nStops, rideEstSec: c.rideEst, bufferSec, minConf: c.minConf,
+    departures: depsA || [], liveError: depsA === null, xLiveError: depsB === null,
+    estTotalSec: walkTo.seconds + c.rideEst + (sameStop ? 0 : xferWalk?.seconds || 0) + XFER_EST_WAIT_SEC + walkFrom.seconds,
+    bus: null, rideSec: c.a.rideEst, rideSource: 'estimate', leaveInSec: null, leaveAt: null, arriveAt: null, status: 'none',
+    missed: null, hurry: null, next: null, rankPenaltySec: XFER_PENALTY_SEC,
+  };
+  return retimeTransfer(it, now, bufferSec, prefer);
+}
+
+// What the push server needs to re-check the FIRST bus (direct or transfer) before notifying:
+// leave time = bus eta − offsetSec, offsetSec = walk to the stop + waiting buffer.
+export const reminderTrip = (it) => ({
+  stopCode: it.board.code, routeCode: it.route.code, lineCode: String(it.line?.code ?? it.route.lineCode),
+  vehicleCode: it.bus?.vehicleCode || null, offsetSec: Math.round(it.walkTo.seconds + (it.bufferSec || 0)),
+});
+
 export function walkItinerary(walk, now = Date.now()) {
   return {
     kind: 'walk', id: 'walk', line: null, route: null, board: null, alight: null, walkTo: walk, walkFrom: null, nStops: 0,
@@ -210,14 +412,17 @@ export function walkItinerary(walk, now = Date.now()) {
   };
 }
 
-// Arrival time, then less walking, then live over scheduled. Itineraries without a departure go last.
+// Arrival time (+ handicap for transfers, see rankPenaltySec), then less walking, then live over scheduled.
+// Itineraries without a departure go last.
 export function rankItineraries(its) {
-  const walkMin = (it) => Math.round(((it.walkTo?.seconds || 0) + (it.walkFrom?.seconds || 0)) / 60);
+  const walkMin = (it) => Math.round(((it.walkTo?.seconds || 0) + (it.walkFrom?.seconds || 0) + (it.transfer?.walk?.seconds || 0)) / 60);
+  const at = (it) => (it.arriveAt == null ? null : it.arriveAt + (it.rankPenaltySec || 0) * 1000);
   return [...its].sort((a, b) => {
-    const A = a.arriveAt, B = b.arriveAt;
+    const A = at(a), B = at(b);
     if (A == null || B == null) return A == null && B == null ? a.estTotalSec - b.estTotalSec : A == null ? 1 : -1;
     const ma = Math.floor(A / 60000), mb = Math.floor(B / 60000);
     if (ma !== mb) return ma - mb;
+    if ((a.kind === 'transfer') !== (b.kind === 'transfer')) return a.kind === 'transfer' ? 1 : -1; // a direct bus wins ties
     if (walkMin(a) !== walkMin(b)) return walkMin(a) - walkMin(b);
     const la = a.bus?.live ? 1 : 0, lb = b.bus?.live ? 1 : 0;
     if (la !== lb) return lb - la;
@@ -277,6 +482,7 @@ async function resolveDeps(d = {}) {
 
 const wKey = (a, b) => `${a.lat.toFixed(5)},${a.lng.toFixed(5)}>${b.lat.toFixed(5)},${b.lng.toFixed(5)}`;
 const RETRY_ESTIMATE_MS = 60000;
+const MAX_OSRM_LEGS = 6; // walk.js spaces OSRM requests 1 s apart: only the best itineraries get exact walking legs
 // Walking legs live in a caller-owned Map so the 20 s refresh never re-asks OSRM: key → { v: walk|null, p, at }.
 // A leg that fell back to the estimate is retried after a minute.
 function walkLeg(deps, cache, a, b) {
@@ -313,14 +519,23 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
   const cache = opts.walkCache || new Map();
   const stale = () => { if (opts.signal?.aborted) throw abortError(); };
 
+  let radii = {};
   let cands = candidateTrips(data, from, to, { walkEst });
-  if (!cands.length) cands = candidateTrips(data, from, to, { walkEst, boardRadius: DEFAULTS.farRadius, alightRadius: DEFAULTS.farRadius });
-  const picks = shortlist(cands);
+  if (!cands.length) {
+    radii = { boardRadius: DEFAULTS.farRadius, alightRadius: DEFAULTS.farRadius };
+    cands = candidateTrips(data, from, to, { walkEst, ...radii });
+  }
+  const tcands = transferCandidates(data, from, to, { walkEst, ...radii });
+  // Live budget (≤ liveBudget stops in total): direct trips take ≤3 board + ≤2 alight (≤1 alight when transfers compete), transfers add their x2 stops.
+  const picks = shortlist(cands, tcands.length ? { maxAlightStops: 1 } : {});
   const direct = walkEst(from, to);
-  const wantWalk = direct <= DEFAULTS.walkOnlyMaxSec * 1.15 || (!picks.length && direct <= DEFAULTS.walkOnlyFallbackSec);
+  const wantWalk = direct <= DEFAULTS.walkOnlyMaxSec * 1.15;
+  const directCodes = new Set([...picks.map((c) => c.board.code), ...picks.map((c) => c.alight.code)]);
+  const tpicks = shortlistTransfers(tcands, directCodes);
+  const wantWalkFallback = !picks.length && !tpicks.length && direct <= DEFAULTS.walkOnlyFallbackSec;
 
-  // ≤3 board + ≤2 alight live fetches, in parallel (api.js adds the 15 s per-stop floor).
-  const liveCodes = [...new Set([...picks.map((c) => c.board.code), ...picks.map((c) => c.alight.code)])];
+  // Parallel live fetches (api.js adds the 15 s per-stop floor).
+  const liveCodes = [...new Set([...directCodes, ...tpicks.flatMap((c) => [c.a.board.code, c.b.board.code])])];
   const live = new Map();
   res.liveTotal = liveCodes.length;
   await Promise.all(liveCodes.map((code) => Promise.resolve().then(() => deps.fetchLive(code)).then((r) => live.set(code, r), () => { res.liveFailed++; })));
@@ -334,7 +549,20 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
       walkTo: walkFor(from, c.board), walkFrom: walkFor(c.alight, to),
       bufferSec, now, prefer: opts.prefer?.get(`${c.route.code}:${c.board.code}:${c.alight.code}`) ?? null,
     }));
-    let walkIt = wantWalk ? walkItinerary(walkFor(from, to), now) : null;
+    const tits = tpicks.map((c) => {
+      const sameStop = c.x1.code === c.x2.code;
+      const id = transferId(c);
+      return buildTransferItinerary(c, {
+        lineA: data.lineByCode?.get(c.a.route.lineCode) || null, lineB: data.lineByCode?.get(c.b.route.lineCode) || null,
+        boardRes: live.get(c.a.board.code) ?? null, xRes: live.get(c.b.board.code) ?? null, alightRes: live.get(c.b.alight.code) ?? null,
+        walkTo: walkFor(from, c.a.board), walkFrom: walkFor(c.b.alight, to), xferWalk: sameStop ? null : deps.walkEstimate(c.x1, c.x2),
+        bufferSec, now, prefer: opts.prefer?.get(id) ?? null,
+      });
+    }).filter((t) => t.status !== 'none');
+    // A transfer that two direct buses already beat is noise; show the best few of the rest.
+    const directOk = its.filter((i) => i.arriveAt != null);
+    its.push(...rankItineraries(tits.filter((t) => directOk.filter((d) => d.arriveAt <= t.arriveAt).length < 2)).slice(0, DEFAULTS.maxTransferShown));
+    let walkIt = wantWalk || wantWalkFallback ? walkItinerary(walkFor(from, to), now) : null;
     if (!walkIt && its.length && direct <= DEFAULTS.walkOnlyFallbackSec) { // long walk: only when it beats every bus
       const best = Math.min(...its.map((i) => i.arriveAt ?? Infinity));
       if (now + direct * 1000 < best) walkIt = walkItinerary(walkFor(from, to), now);
@@ -350,8 +578,8 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
   const first = assemble();
   const entries = new Map();
   for (const it of first) {
-    const legs = it.kind === 'bus' ? [[from, it.board], [it.alight, to]] : [[from, to]];
-    for (const [a, b] of legs) entries.set(wKey(a, b), walkLeg(deps, cache, a, b));
+    const legs = it.kind === 'walk' ? [[from, to]] : [[from, it.board], [it.alight, to]];
+    for (const [a, b] of legs) if (entries.size < MAX_OSRM_LEGS || entries.has(wKey(a, b))) entries.set(wKey(a, b), walkLeg(deps, cache, a, b));
   }
   const open = () => [...entries.values()].filter((e) => !e.v).length;
   let finished = false, queued = false;
@@ -367,7 +595,7 @@ export async function planTripsDetailed(ctx, from, to, opts = {}) {
   stale();
 
   res.itineraries = assemble();
-  if (!res.itineraries.length) res.reason = !picks.length ? whyNoCandidates(data, from, to) : 'no-route';
+  if (!res.itineraries.length) res.reason = !picks.length && !tpicks.length ? whyNoCandidates(data, from, to) : 'no-route';
   return res;
 }
 

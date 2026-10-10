@@ -8,7 +8,7 @@ const near = (a, b, eps) => assert.ok(Math.abs(a - b) <= eps, `${a} vs ${b} (±$
 const flush = () => new Promise((r) => setImmediate(r));
 
 // Fake browser: geolocation, Permissions API, document visibility, window events, virtual clock.
-function rig({ perm = null, secure = true, geo = true, storage = null, compassWaitMs = 60, DOE } = {}) {
+function rig({ perm = null, secure = true, geo = true, storage = null, compassWaitMs = 60, DOE, angle } = {}) {
   const r = { t: 1_700_000_000_000, calls: [], watchers: new Map(), nextId: 1, once: null, permState: perm, permObj: null, wl: new Map(), dl: new Map() };
   const geolocation = geo ? {
     getCurrentPosition(ok, err, opts) { r.calls.push(['get', opts]); r.once = { ok, err, opts }; },
@@ -22,6 +22,11 @@ function rig({ perm = null, secure = true, geo = true, storage = null, compassWa
   });
   r.doc = { visibilityState: 'visible', ...bus(r.dl), fire(n) { r.dl.get(n)?.forEach((f) => f({})); } };
   r.win = { ...bus(r.wl), DeviceOrientationEvent: DOE === undefined ? class {} : DOE, emit(n, ev) { r.wl.get(n)?.forEach((f) => f(ev)); } };
+  if (angle !== undefined) { // screen.orientation: angle + 'change' events
+    const so = { angle, ...bus(r.sl = new Map()) };
+    r.win.screen = { orientation: so };
+    r.turn = (a) => { so.angle = a; r.sl.get('change')?.forEach((f) => f({})); };
+  }
   r.store = storage || new Map();
   const ls = { getItem: (k) => (r.store.has(k) ? r.store.get(k) : null), setItem: (k, v) => r.store.set(k, String(v)) };
   r.svc = createLocationService({ nav: { geolocation, permissions }, doc: r.doc, win: r.win, now: () => r.t, secure, storage: ls, compassWaitMs });
@@ -214,6 +219,57 @@ test('compass (Android): only absolute events count; flat and upright phone', as
   u.win.emit('deviceorientationabsolute', { absolute: true, alpha: 90, beta: 90, gamma: 0 });
   assert.equal(await q, true);
   near(u.svc.current.heading, 270, 0.5);
+});
+
+test('compass in landscape: heading follows screen.orientation.angle and updates when the phone is turned', async () => {
+  const r = await started({ angle: 0 });
+  r.fire(A, 8, { speed: 0 });
+  const p = r.svc.enableCompass(); await flush();
+  r.win.emit('deviceorientation', { webkitCompassHeading: 270 }); // top edge points west
+  assert.equal(await p, true);
+  near(r.svc.current.heading, 270, 0.01);
+  // turned to landscape (rotated left): the screen's top edge now faces north
+  r.t += 200; r.turn(90);
+  near(r.svc.current.heading, 0, 0.01);
+  assert.equal(r.svc.current.headingSource, 'compass');
+  r.t += 200; r.win.emit('deviceorientation', { webkitCompassHeading: 300 });
+  r.t += 200; r.win.emit('deviceorientation', { webkitCompassHeading: 300 });
+  assert.ok(Math.abs(((r.svc.current.heading + 540) % 360) - 180) < 20, `~30° after smoothing (${r.svc.current.heading})`);
+  r.t += 200; r.turn(270); // rotated right: 270 − 90
+  assert.ok(r.svc.current.heading > 190 && r.svc.current.heading < 230, `${r.svc.current.heading}`);
+  r.t += 200; r.turn(180);
+  assert.ok(r.svc.current.heading > 100 && r.svc.current.heading < 140, `${r.svc.current.heading}`);
+  // listeners are removed with the compass
+  r.svc.disableCompass();
+  assert.equal(r.sl.get('change').size, 0);
+  assert.equal(r.wl.get('orientationchange').size, 0);
+});
+
+test('compass in landscape: Android flat vs upright, window.orientation fallback and orientationchange', async () => {
+  // flat phone, landscape: alpha 270 means the top edge faces east, the screen's top edge (user's view) faces south (90 + 90)
+  const r = await started({ angle: 90 });
+  r.fire(A, 8, { speed: 0 });
+  const p = r.svc.enableCompass(); await flush();
+  r.win.emit('deviceorientationabsolute', { absolute: true, alpha: 270, beta: 0, gamma: 0 });
+  assert.equal(await p, true);
+  near(r.svc.current.heading, 180, 0.01);
+  // upright phone: the rear camera axis does not care about the screen rotation
+  const u = await started({ angle: 90 }); u.fire(A, 8, { speed: 0 });
+  const q = u.svc.enableCompass(); await flush();
+  u.win.emit('deviceorientationabsolute', { absolute: true, alpha: 90, beta: 90, gamma: 0 });
+  assert.equal(await q, true);
+  near(u.svc.current.heading, 270, 0.5);
+  // no screen.orientation: window.orientation (-90 = rotated right = 270) and the orientationchange event
+  const w = await started(); w.fire(A, 8, { speed: 0 });
+  w.win.orientation = 0;
+  const z = w.svc.enableCompass(); await flush();
+  w.win.emit('deviceorientation', { webkitCompassHeading: 100 });
+  assert.equal(await z, true);
+  near(w.svc.current.heading, 100, 0.01);
+  w.win.orientation = -90; w.t += 200; w.win.emit('orientationchange', {});
+  near(w.svc.current.heading, 10, 0.01);
+  w.win.orientation = 90; w.t += 200; w.win.emit('orientationchange', {});
+  near(w.svc.current.heading, 190, 0.01);
 });
 
 test('compass: smoothing goes the short way across 0/360; disable and no-sensor cases', async () => {

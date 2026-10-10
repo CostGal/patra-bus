@@ -28,7 +28,7 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/map.js`, `js/sheet.js` (bottom sheet / side panel ≥ 900 px), `js/ui.js`.
 - Live: `js/api.js` (`fetchLive` με **global memo 15 s ανά στάση**, και για errors, `createLivePoller` 20 s μόνο visible), `js/demo.js` (ντετερμινιστική προσομοίωση πάνω στο routes.json), `js/arrivals-view.js` (tiles LIVE/ΠΡΟΓΡ.).
 - Τοποθεσία: `js/location.js` (singleton, φίλτρα άλματος/ακρίβειας, πυξίδα), `js/geo.js`, `js/walk.js` (OSRM foot FOSSGIS, ≤ 1 req/s, fallback εκτίμηση), `js/nearby.js` (κάρτα «Επόμενο λεωφορείο κοντά σου»).
-- Διαδρομή: `js/geocode.js` (στάσεις + Photon), `js/planner.js` (μόνο απευθείας λεωφορείο, «Φύγε σε N′» = αναμονή λεωφορείου − περπάτημα − περιθώριο· ίδιο `vehicleCode` σε επιβίβαση/αποβίβαση → ακριβής χρόνος), `js/planner-view.js`.
+- Διαδρομή: `js/geocode.js` (στάσεις + Photon), `js/planner.js` (απευθείας ή με **μία αλλαγή** (ίδια στάση ή ≤ 300 μ), ≤ 5 live στάσεις ανά σχέδιο, «Φύγε σε N′» = αναμονή λεωφορείου − περπάτημα − περιθώριο· ίδιο `vehicleCode` σε επιβίβαση/αποβίβαση → ακριβής χρόνος), `js/planner-view.js`.
 - Extras: `js/store.js` (blob `patra-bus:v2` στο localStorage), `js/notify.js` (υπενθυμίσεις μόνο όσο η εφαρμογή είναι ανοιχτή), `js/share.js`, `js/lines-view.js`, `js/settings-view.js`.
 - `js/data.js`: φορτώνει stops/lines/routes (+ `loadShapes` lazy). `web/data/routes.json`: σειρά στάσεων ανά διαδρομή + `legSec` + `confidence`. **Η σειρά συμπεραίνεται** (OSRM trip + έλεγχος πλευράς δρόμου), δεν είναι επίσημη· 10/80 διαδρομές έχουν confidence < 0.5 (φουρκέτες/κύκλοι, π.χ. 502x, 2015).
 - `tests/`: node:test, χωρίς deps.
@@ -56,10 +56,15 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Ποτέ polling στο live πιο συχνά από 15 s. Το frontend κάνει poll κάθε 20 s, μόνο όταν η σελίδα είναι ορατή.
 - Κανένα probing σε endpoints εκτός από τα παραπάνω.
 - Συντεταγμένες `0/0` δεν εμφανίζονται και δεν χρησιμοποιούνται πουθενά. Το `normalizeLive` τις αφαιρεί.
-- Ονόματα: Title Case μόνο στην εμφάνιση, με τελικό ς. Οι τόνοι δεν μαντεύονται.
-- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins (tiles, OSRM, Photon, unpkg). Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
+- Ονόματα: Title Case μόνο στην εμφάνιση, με τελικό ς. Τόνοι **μόνο** από το επιμελημένο λεξικό `web/js/accents.js` (λέξεις με μοναδικό σωστό τονισμό, 402 λέξεις, ~70% των ονομάτων πλήρως τονισμένα). Αμφίσημες/άγνωστες λέξεις μένουν άτονες· ποτέ αυτόματη μαντεψιά. Το `searchKey` αγνοεί τόνους.
+- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins, **εκτός από το OpenFreeMap** (style, TileJSON, tiles, glyphs, sprites) σε ξεχωριστά caches: `patra-bus-map-v1` (runtime, ≤ 4000) και `patra-bus-map-offline-v1` (λήψη Πάτρας z8–14, ~7,6 MB, από τις Ρυθμίσεις). Ποτέ OSRM ή Photon. Το MapLibre είναι vendored στο `web/vendor/maplibre-gl/` (4.7.1). Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
 - Τρίτες υπηρεσίες (χωρίς κλειδί, με attribution στις Ρυθμίσεις): OpenFreeMap, OSRM/FOSSGIS (≤ 1 req/s), Photon/komoot (debounce). Η θέση του χρήστη δεν μπαίνει ποτέ σε URL της εφαρμογής.
 - Minimum viable complexity: vanilla JS, χωρίς build step και χωρίς framework.
+
+## Push υπενθυμίσεις
+- Worker: `GET /api/push/key`, `POST /api/push/reminders` (όριο 12 / 10′ ανά IP, ανά isolate), `DELETE /api/push/reminders/{id}`. Ένα SQLite Durable Object (`Reminder`) ανά υπενθύμιση, alarm στην ώρα, ξαναδιαβάζει το live μέσα από την ίδια cache 15 s και ξαναοπλίζει (≤ 3) αν το λεωφορείο άργησε > 60 s. Διαγράφονται όλα μετά την αποστολή.
+- VAPID: public key στο `wrangler.toml`, private **μόνο** ως Cloudflare secret (`npx wrangler secret put VAPID_PRIVATE_KEY --config worker/wrangler.toml`) και τοπικά στο `worker/.dev.vars` (gitignored, μαζί με `DEV_ALLOW_LOCAL_PUSH=1`). Αλλαγή κλειδιού = αλλαγή και των δύο.
+- Client: `js/push.js` + `js/notify.js` (ίδιο `tag` τοπικά και στον server), `web/sw-push.js` (importScripts από το `sw.js`). Στο iPhone μόνο ως εγκατεστημένη εφαρμογή.
 
 ## Dev σημειώσεις
 - Το `npm i` μπλοκάρει το postinstall του `workerd` (npm allow-scripts). Δεν πειράζει: το binary έρχεται από το `@cloudflare/workerd-windows-64` και το `wrangler dev` τρέχει κανονικά.

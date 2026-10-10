@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStops, computeDepartures, pickHero, actionFor } from '../web/js/nearby.js';
+import { pickStops, computeDepartures, pickHero, actionFor, wantsLive, findNextBuses, LIVE_STOPS } from '../web/js/nearby.js';
+import { _setTransport } from '../web/js/api.js';
 
 const stops = JSON.parse(readFileSync(new URL('../web/data/stops.json', import.meta.url), 'utf8'))
   .map((s) => ({ code: String(s.code), name: s.name, lat: s.latitude, lng: s.longitude, routeCodes: s.routeCodes.map(String) }));
@@ -50,4 +51,37 @@ test('pickHero / actionFor: catch, missed, none', () => {
   assert.equal(h.kind, 'missed');
   assert.match(actionFor(h.dep, h.next).text, /^Δεν το προλαβαίνεις — επόμενο σε /);
   assert.equal(pickHero([mk([])]).kind, 'none');
+});
+
+test('wantsLive: the nearest LIVE_STOPS load, the others only on demand', () => {
+  assert.ok(wantsLive(0, '1') && wantsLive(LIVE_STOPS - 1, '2'));
+  assert.ok(!wantsLive(LIVE_STOPS, '3'));
+  assert.ok(!wantsLive(LIVE_STOPS, '3', new Set()));
+  assert.ok(wantsLive(LIVE_STOPS, '3', new Set(['3'])));
+  assert.ok(wantsLive(LIVE_STOPS, 3, new Set(['3'])), 'codes compare as strings');
+});
+
+test('findNextBuses: 4th stop makes no request until asked, then goes through fetchLive', async (t) => {
+  // a spot with four candidate stops: take the densest one in the data set
+  let spot = null, picked = null;
+  for (const s of stops.slice(0, 300)) { const r = pickStops(stops, s); if (r.stops.length === 4) { spot = s; picked = r.stops; break; } }
+  assert.ok(spot, 'data set has a place with four nearby stops');
+  const asked = [];
+  const now = Date.now();
+  _setTransport({
+    now: () => now,
+    fetch: async (url) => { asked.push(String(url).split('/').pop()); return { ok: true, status: 200, json: async () => ({ fetchedAt: now, vehicles: [] }) }; },
+  });
+  t.after(() => _setTransport());
+  const ctx = { data: { stops } };
+  const a = await findNextBuses(ctx, spot, { walk: 'estimate', now });
+  assert.equal(a.length, 4);
+  assert.equal(asked.length, LIVE_STOPS, 'only the nearest stops are fetched');
+  const fourth = picked[LIVE_STOPS].stop.code;
+  assert.ok(!asked.includes(fourth));
+  assert.equal(a.find((x) => x.stop.code === fourth).live, false);
+  const b = await findNextBuses(ctx, spot, { walk: 'estimate', now, demand: new Set([fourth]) });
+  assert.ok(b.find((x) => x.stop.code === fourth).live);
+  assert.equal(asked.filter((c) => c === fourth).length, 1, 'fetched once');
+  assert.equal(asked.length, LIVE_STOPS + 1, 'the 15 s memo answers the repeated stops');
 });

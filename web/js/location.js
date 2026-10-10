@@ -47,7 +47,7 @@ export function createLocationService(env = {}) {
   let permStatus = null, permPromise = null;
   let jump = null; // candidate for a far-away relocation: { fix, n }
   let course = null; // last GPS course { v, ts }
-  const compass = { on: false, heading: null, ts: 0, lastEmit: 0, lastEmitted: null };
+  const compass = { on: false, raw: null, flat: true, heading: null, ts: 0, lastEmit: 0, lastEmitted: null }; // raw: device frame, heading: screen frame
   const subs = new Set();
   let lastEmit = { fix: undefined, status: undefined };
 
@@ -209,32 +209,57 @@ export function createLocationService(env = {}) {
 
   // ---- compass ----
   const compassFresh = () => compass.on && compass.heading != null && now() - compass.ts < COMPASS_FRESH_MS;
+  // Rotation of the screen against the device (0/90/180/270). Sensors report the device's top edge; the user faces the
+  // screen's top edge, so a landscape phone needs heading + angle (rotated left = 90: its right edge points ahead).
+  function screenAngle() {
+    const w = win();
+    const a = w && w.screen && w.screen.orientation && w.screen.orientation.angle;
+    const v = Number.isFinite(a) ? a : (w && Number.isFinite(w.orientation) ? w.orientation : 0); // window.orientation: -90 = 270
+    return normDeg(v);
+  }
+  // Upright phones report the rear camera axis, which does not depend on how the screen is turned.
+  const refreshHeading = () => { compass.heading = compass.raw == null ? null : (compass.flat ? normDeg(compass.raw + screenAngle()) : compass.raw); };
+  function emitCompass(t, force) {
+    // The compass only wins when we are not driving the heading from GPS; throttle to ~10 Hz and 2°.
+    if (!gps || (gps.headingSource === 'gps' && course && t - course.ts < 1500 && (gps.speed ?? 0) >= COMPASS_UNTIL_SPEED)) return;
+    if (!force && (t - compass.lastEmit < 100 || (compass.lastEmitted != null && Math.abs(angleDiff(compass.lastEmitted, compass.heading)) < 2))) return;
+    compass.lastEmit = t; compass.lastEmitted = compass.heading;
+    gps = { ...gps, heading: compass.heading, headingSource: 'compass' };
+    emit();
+  }
   let orientationEvents = [];
+  let screenOrientation = null;
   function onOrientation(e) {
     let hd = null;
     if (Number.isFinite(e.webkitCompassHeading) && e.webkitCompassHeading >= 0) hd = e.webkitCompassHeading;
     else if (e.absolute === true) hd = headingFromEuler(e.alpha, e.beta, e.gamma);
     if (hd == null) return; // relative orientation says nothing about north
     const t = now();
-    compass.heading = compass.heading != null && t - compass.ts < 5000 ? lerpAngle(compass.heading, hd, 0.25) : hd;
+    compass.raw = compass.raw != null && t - compass.ts < 5000 ? lerpAngle(compass.raw, hd, 0.25) : hd;
+    compass.flat = !(Number.isFinite(e.beta) && Number.isFinite(e.gamma)) || (Math.abs(e.beta) < 45 && Math.abs(e.gamma) < 45);
+    refreshHeading();
     compass.ts = t;
-    // The compass only wins when we are not driving the heading from GPS; throttle to ~10 Hz and 2°.
-    if (!gps || (gps.headingSource === 'gps' && course && t - course.ts < 1500 && (gps.speed ?? 0) >= COMPASS_UNTIL_SPEED)) return;
-    if (t - compass.lastEmit < 100 || (compass.lastEmitted != null && Math.abs(angleDiff(compass.lastEmitted, compass.heading)) < 2)) return;
-    compass.lastEmit = t; compass.lastEmitted = compass.heading;
-    gps = { ...gps, heading: compass.heading, headingSource: 'compass' };
-    emit();
+    emitCompass(t, false);
+  }
+  // The phone was turned: same sensor reading, new screen frame. Push it out at once.
+  function onScreenTurn() {
+    if (compass.raw == null) return;
+    refreshHeading();
+    emitCompass(now(), true);
   }
   function attachCompass() {
     const w = win();
     if (!w || !w.addEventListener || orientationEvents.length) return;
-    orientationEvents = ['deviceorientationabsolute', 'deviceorientation'];
-    for (const n of orientationEvents) w.addEventListener(n, onOrientation);
+    orientationEvents = ['deviceorientationabsolute', 'deviceorientation', 'orientationchange'];
+    for (const n of orientationEvents) w.addEventListener(n, n === 'orientationchange' ? onScreenTurn : onOrientation);
+    screenOrientation = w.screen && w.screen.orientation && w.screen.orientation.addEventListener ? w.screen.orientation : null;
+    if (screenOrientation) screenOrientation.addEventListener('change', onScreenTurn);
   }
   function detachCompass() {
     const w = win();
-    for (const n of orientationEvents) w && w.removeEventListener && w.removeEventListener(n, onOrientation);
+    for (const n of orientationEvents) w && w.removeEventListener && w.removeEventListener(n, n === 'orientationchange' ? onScreenTurn : onOrientation);
     orientationEvents = [];
+    if (screenOrientation) { screenOrientation.removeEventListener('change', onScreenTurn); screenOrientation = null; }
   }
 
   // ---- public API ----
@@ -326,7 +351,7 @@ export function createLocationService(env = {}) {
       });
     },
     disableCompass() {
-      compass.on = false; compass.heading = null; compass.lastEmitted = null;
+      compass.on = false; compass.raw = compass.heading = null; compass.lastEmitted = null;
       detachCompass();
       if (!wanted) bindVisibility(false);
       if (gps && gps.headingSource === 'compass') { gps = { ...gps, heading: null, headingSource: null }; emit(); }
