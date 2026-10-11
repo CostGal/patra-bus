@@ -9,7 +9,7 @@ binding = "KV"
 id = "f69d669e1cac4ac68b732266017c4453"
 
 [vars]
-ALLOWED_ORIGIN = "https://costgal.github.io,http://localhost:8080,https://*.patra-bus.pages.dev"
+ALLOWED_ORIGIN = "https://costgal.github.io,http://localhost:8080,https://patra-bus-dev.patra-bus.workers.dev,https://*-patra-bus-dev.patra-bus.workers.dev"
 VAPID_PUBLIC_KEY = "BI5a9-dh0HzqMWI4zt1knxm5qyTNmJtGE9LDCbKLPzAJLY4d1L1nmg-zQJH5AgzUBJBA-jWct4icLLwZaNM9pqU"
 VAPID_SUBJECT = "https://github.com/CostGal/patra-bus"
 

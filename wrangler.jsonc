@@ -1,0 +1,8 @@
+{
+  // Cloudflare Workers Builds: static hosting of web/ with per-branch previews (project "patra-bus-dev").
+  // This is NOT the API worker: that one is worker/wrangler.toml ("patra-bus"), deployed by hand with --config.
+  // Every npm script passes --config explicitly, so this root file only affects the Cloudflare build.
+  "name": "patra-bus-dev",
+  "compatibility_date": "2025-01-01",
+  "assets": { "directory": "./web" }
+}
