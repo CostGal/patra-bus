@@ -70,7 +70,7 @@
 .ex-chip {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
   padding: 1px 10px; border: 1px solid transparent; border-radius: var(--radius-full);
-  font-size: var(--text-xs); font-weight: var(--weight-bold); letter-spacing: .04em; white-space: nowrap;
+  font-size: var(--text-sm); font-weight: var(--weight-bold); letter-spacing: .04em; white-space: nowrap;
 }
 /* same recipe as .atile-flag: LIVE = solid fill, SCHEDULED = outline */
 .ex-chip-live { border-color: var(--live); background: var(--live); color: var(--live-foreground); }

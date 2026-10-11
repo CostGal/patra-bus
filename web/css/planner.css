@@ -30,7 +30,7 @@
 
 /* ---- suggestions ---- */
 .pl-sug-list { display: flex; flex-direction: column; }
-.pl-sug-head { padding: 12px 4px 4px; color: var(--text-2); font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pl-sug-head { padding: 12px 4px 4px; color: var(--text-2); font-size: var(--text-sm); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .pl-sug { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 6px 4px; border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .pl-sug:hover { background: var(--surface-2); }
 .pl-sug-ic { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--surface-2); color: var(--text-2); }
@@ -39,7 +39,7 @@
 .pl-sug-t { display: flex; flex-direction: column; min-width: 0; }
 .pl-sug-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl-sug-sub { color: var(--text-2); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pl-sug-d { color: var(--text-2); font-size: .8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pl-sug-d { color: var(--text-2); font-size: var(--text-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .pl-hint { margin: 8px 0 0; color: var(--text-2); font-size: .9rem; line-height: 1.4; }
 .pl-hint-warn { color: var(--warn); }
@@ -87,10 +87,10 @@
 .pl-card-meta .icon { width: 14px; height: 14px; }
 .pl-card-end { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
 .pl-card-end strong { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-.pl-card-end small { color: var(--text-2); font-size: .72rem; }
+.pl-card-end small { color: var(--text-2); font-size: var(--text-sm); }
 
 /* LIVE / ΠΡΟΓΡ. */
-.pl-flag { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px 0 7px; border: 1px solid var(--scheduled-border); border-radius: var(--radius-full); background: transparent; color: var(--scheduled); font-size: .7rem; font-weight: var(--weight-bold); letter-spacing: .05em; line-height: 1.5; }
+.pl-flag { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px 0 7px; border: 1px solid var(--scheduled-border); border-radius: var(--radius-full); background: transparent; color: var(--scheduled); font-size: var(--text-sm); font-weight: var(--weight-bold); letter-spacing: .05em; line-height: 1.5; }
 .pl-flag.is-live { border-color: var(--live); background: var(--live); color: var(--live-foreground); }
 .pl-flag.is-est { border-color: transparent; background: var(--muted); color: var(--muted-foreground); letter-spacing: 0; font-weight: var(--weight-semibold); }
 .pl-flag .icon { width: 12px; height: 12px; stroke-width: 2.4; }
@@ -110,7 +110,7 @@
 .pl-hero.is-none { background: var(--surface-2); color: var(--text-2); }
 .pl-hero.is-none .pl-hero-big { font-size: 1.35rem; letter-spacing: 0; }
 .pl-hero-sub { margin-top: 6px; color: var(--text); font-size: .88rem; line-height: 1.4; opacity: .85; }
-.pl-hero-delay { margin-top: 2px; font-size: .78rem; color: var(--text-2); opacity: .8; }
+.pl-hero-delay { margin-top: 2px; font-size: var(--text-sm); color: var(--text-2); }
 .pl-note { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: .88rem; line-height: 1.4; }
 .pl-note.is-warn { background: var(--warn-bg); color: var(--warn); }
 
@@ -136,7 +136,7 @@
 .pl-step .atile { margin-top: 4px; }
 
 .pl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
-.pl-foot { margin: 14px 0 0; color: var(--text-2); font-size: .78rem; line-height: 1.5; }
+.pl-foot { margin: 14px 0 0; color: var(--text-2); font-size: var(--text-sm); line-height: 1.5; }
 
 /* ---- skeleton ---- */
 .pl-skel { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px 12px; padding: 14px 12px; }

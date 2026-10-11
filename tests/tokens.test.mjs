@@ -106,3 +106,29 @@ test('stylesheets only use tokens that exist', () => {
     }
   }
 });
+
+// TEL-47: arrival, flag and meta text is at least 13 px (--text-sm). Only these are allowed to be smaller.
+test('no font-size under 13px except the known exceptions', () => {
+  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
+    'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css'];
+  const allowed = [/\.maplibregl-ctrl-attrib\b/, /\.mk-label\b/, /\.demo-tag\b/, /\.bv-tag\b/];
+  const small = (v) => {
+    const px = v.match(/^([\d.]+)px$/), rem = v.match(/^([\d.]+)rem$/);
+    return px ? +px[1] < 13 : rem ? +rem[1] * 16 < 13 : v === 'var(--text-xs)' || v === 'var(--text-2xs)';
+  };
+  const bad = [];
+  for (const f of files) {
+    const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of src.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const fs = m[2].match(/font-size:\s*([^;}\s]+)/);
+      if (fs && small(fs[1]) && !allowed.some((re) => re.test(m[1]))) bad.push(`${f}: ${m[1].trim().slice(0, 50)} → ${fs[1]}`);
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('secondary text keeps >= 5.5:1 on the page and the card (sunlight margin)', () => {
+  for (const tokens of [light, dark]) {
+    for (const bg of ['--background', '--card']) assert.ok(contrast(tokens['--muted-foreground'], tokens[bg]) >= 5.5, bg);
+  }
+});

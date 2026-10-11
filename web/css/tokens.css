@@ -18,7 +18,7 @@
   --primary: #1967d2;               --primary-foreground: #ffffff;
   --primary-soft: #e8f0fe;          /* tinted primary: selected states, ghost-button hover */
   --secondary: #f1f3f4;             --secondary-foreground: #1f1f1f;
-  --muted: #f1f3f4;                 --muted-foreground: #5f6368;
+  --muted: #f1f3f4;                 --muted-foreground: #55595e;
   --destructive: #c5221f;           --destructive-foreground: #ffffff;
   --border: #e6e8eb;                /* hairlines between surfaces (decorative) */
   --input: #80868b;                 /* edge of a form control: 3:1 against --card (WCAG 1.4.11), unlike --border */
@@ -108,7 +108,7 @@
     --primary: #8ab4f8;             --primary-foreground: #0f1216;
     --primary-soft: #28334a;
     --secondary: #2a2f35;           --secondary-foreground: #e8eaed;
-    --muted: #2a2f35;               --muted-foreground: #9aa0a6;
+    --muted: #2a2f35;               --muted-foreground: #a8aeb4;
     --destructive: #f28b82;         --destructive-foreground: #0f1216;
     --border: #33373b;              --input: #80868b;               --ring: #8ab4f8;
     --overlay: rgba(0, 0, 0, .6);
@@ -131,7 +131,7 @@
   --primary: #8ab4f8;             --primary-foreground: #0f1216;
   --primary-soft: #28334a;
   --secondary: #2a2f35;           --secondary-foreground: #e8eaed;
-  --muted: #2a2f35;               --muted-foreground: #9aa0a6;
+  --muted: #2a2f35;               --muted-foreground: #a8aeb4;
   --destructive: #f28b82;         --destructive-foreground: #0f1216;
   --border: #33373b;              --input: #80868b;               --ring: #8ab4f8;
   --overlay: rgba(0, 0, 0, .6);

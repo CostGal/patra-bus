@@ -268,11 +268,9 @@ html.sheet-dragging .toast-host { transition: none; }
 .toast {
   display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px var(--space-2) 6px var(--space-4); border-radius: var(--radius); pointer-events: auto;
   color: var(--toast-text); box-shadow: var(--shadow-1); font-size: 14px;
-  /* material (§4), but keeps its own inverted colour pair (--toast-bg/-text swap per theme) instead of
-     --material-bg: a toast is meant to read as a fixed dark pill in both themes, not a theme-coloured surface. */
-  background: color-mix(in srgb, var(--toast-bg) 85%, transparent);
-  backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
-  -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
+  /* keeps its own inverted colour pair (--toast-bg/-text swap per theme): a toast reads as a fixed pill in both themes.
+     Opaque on purpose (TEL-47): at 85% the action link fell below 4.5:1 over a bright map. */
+  background: var(--toast-bg);
   border-top: 1px solid var(--material-edge);
   opacity: 0; transform: scale(.92); transition: opacity .18s var(--spring-ease), transform .18s var(--spring-ease);
 }
@@ -334,7 +332,7 @@ html.sheet-dragging .toast-host { transition: none; }
 .stop-main { flex: 1; min-width: 0; }
 .stop-name { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stop-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 2px; font-size: var(--fs-sm); color: var(--text-2); }
-.stop-meta .badge { font-size: 11px; min-width: 2.2em; padding: 0 .4em; line-height: 1.55; }
+.stop-meta .badge { font-size: var(--text-sm); min-width: 2.2em; padding: 0 .4em; line-height: 1.55; }
 .stop-dist { flex: none; font-size: var(--fs-sm); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .stop-row .chev { flex: none; color: var(--text-2); --icon: 18px; }
 
