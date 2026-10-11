@@ -1,11 +1,13 @@
 // Web Push client (owner: push client). Lets reminders reach the phone with the app closed.
 // Contract in docs/ARCHITECTURE.md (Round 2 → PC / PW). The server only ever receives the push address
-// (the PushSubscription) plus each reminder's time/text; nothing is stored beyond the reminder itself.
+// (the PushSubscription) plus each reminder's time/text; nothing is stored beyond the reminder itself. A plan link
+// (destination coordinates/name) is never sent: it stays here and the server gets an opaque one (notif-link.js).
 // Everything is best-effort: no function here throws to its caller.
 import { h } from './ui.js';
 import { t, N_ } from './i18n.js';
 import { API_BASE } from './api.js';
 import { cityId, isCity } from './cities.js';
+import { createLinks, isPrivateUrl, notifHash, LINK_TTL_MS } from './notif-link.js';
 
 export const FLAG_KEY = 'patra-bus:push'; // '1' once the user enabled push on this device
 export const CANCEL_KEY = 'patra-bus:push-cancel'; // server ids whose DELETE failed (retried later)
@@ -35,7 +37,7 @@ const sameBytes = (a, b) => {
 // Body of POST /api/push/reminders (pure; exported for tests).
 export function buildReminderBody(subscription, p) {
   // `city` tells the server which city's live feed to re-read (stop codes collide across cities).
-  const body = { subscription, at: Math.round(Number(p.at)), title: clip(p.title, CAP.title), body: clip(p.body, CAP.body), tag: clip(p.tag, CAP.tag), url: clip(p.url, CAP.url), city: isCity(p.city) ? p.city : cityId() };
+  const body = { subscription, at: Math.round(Number(p.at)), title: clip(p.title, CAP.title), body: clip(p.body, CAP.body), tag: clip(p.tag, CAP.tag), url: isPrivateUrl(p.url) ? '' : clip(p.url, CAP.url), city: isCity(p.city) ? p.city : cityId() };
   const t = p.trip;
   if (t && typeof t === 'object') {
     body.trip = {
@@ -66,6 +68,7 @@ export function createPush(o = {}) {
     set(k, v) { try { env().storage?.setItem(k, v); } catch { /* memory only */ } },
     del(k) { try { env().storage?.removeItem(k); } catch { /* ignore */ } },
   };
+  const links = createLinks({ storage: () => env().storage, now: () => env().now() });
   let memFlag = false; // when storage is unavailable the flag still holds for this page's lifetime
   let lastError = null;
   const subs = new Set();
@@ -177,6 +180,15 @@ export function createPush(o = {}) {
   // Absolute URL on this origin for the notification click (sw.js resolves relative ones against its scope too).
   const absUrl = (u) => { try { return u ? new URL(u, env().baseURI).href : undefined; } catch { return undefined; } };
 
+  // A plan link carries the destination (and maybe the start): keep it on the device under a random ref and give the
+  // server `#/{city}/notif?ref=…&stop=…`, which only this device resolves (app.js → notif-link.js).
+  function serverUrl(p) {
+    const u = p.url == null ? '' : String(p.url);
+    if (!isPrivateUrl(u)) return u || undefined;
+    const ref = links.save(u.slice(Math.max(0, u.indexOf('#'))), Number(p.at) + LINK_TTL_MS);
+    return notifHash({ ref, stop: p.trip?.stopCode }, isCity(p.city) ? p.city : cityId());
+  }
+
   // POST a server reminder for the current subscription. Resolves the server id, or null on ANY failure.
   async function schedulePushReminder(p = {}) {
     try {
@@ -187,7 +199,7 @@ export function createPush(o = {}) {
       if (!sub) { setFlag(false); emit(); return null; }
       const res = await http('/api/push/reminders', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildReminderBody(sub.toJSON(), { ...p, url: absUrl(p.url) })),
+        body: JSON.stringify(buildReminderBody(sub.toJSON(), { ...p, url: absUrl(serverUrl(p)) })),
       });
       if (!res.ok) return null;
       const id = (await res.json())?.id;

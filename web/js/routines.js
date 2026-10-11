@@ -1,5 +1,6 @@
 // Weekly "when to leave" routines (owner: places). Booked on the push server (POST /api/push/routines), mirrored locally.
-// Contract: docs/ARCHITECTURE.md Round 3 (P + W). The server only gets the push address, days/time and the boarding trip.
+// Contract: docs/ARCHITECTURE.md Round 3 (P + W). The server only gets the push address, days/time and the boarding trip;
+// the notification link is an opaque `#/notif?routine=<ref>` (notif-link.js), never the place's coordinates or name.
 import { h, icon } from './ui.js';
 import { t, N_ } from './i18n.js';
 import { API_BASE } from './api.js';
@@ -8,7 +9,7 @@ import { planTrips, reminderTrip } from './planner.js';
 import { pushState, onPushChange, enablePush, syncPushState } from './push.js';
 import { titleCase } from './text.js';
 import { DEFAULT_CITY, cityId, isCity } from './cities.js';
-import { shareHash } from './route.js';
+import { isPrivateUrl, newRef, notifHash } from './notif-link.js';
 
 export const KEY = 'patra-bus:routines';
 export const CANCEL_KEY = 'patra-bus:routines-cancel'; // server ids whose DELETE failed (retried later)
@@ -57,7 +58,7 @@ export function buildRoutinePayload({ subscription, days, time, title = '', url 
   const ds = normDays(days);
   if (!subscription?.endpoint || !ds.length || !validTime(time) || !trip?.stopCode || !trip?.routeCode) return null;
   const body = {
-    subscription, days: ds, time, tz: TZ, title: String(title).slice(0, 100), url: String(url).slice(0, 500), city: isCity(city) ? city : DEFAULT_CITY,
+    subscription, days: ds, time, tz: TZ, title: String(title).slice(0, 100), url: isPrivateUrl(url) ? '' : String(url).slice(0, 500), city: isCity(city) ? city : DEFAULT_CITY,
     trip: { stopCode: String(trip.stopCode), routeCode: String(trip.routeCode), lineCode: String(trip.lineCode ?? ''), offsetSec: Math.max(0, Math.round(Number(trip.offsetSec) || 0)) },
     leadMin: Math.min(30, Math.max(0, Math.round(Number(leadMin)) || 0)),
   };
@@ -65,7 +66,7 @@ export function buildRoutinePayload({ subscription, days, time, title = '', url 
   return body;
 }
 
-// Local mirror of a booked routine (`id` is the server id).
+// Local mirror of a booked routine (`id` is the server id, `ref` the one in its notification link).
 export function cleanRoutine(r) {
   if (!r || typeof r !== 'object' || !r.id || !r.trip?.stopCode || !validTime(r.time)) return null;
   const days = normDays(r.days);
@@ -74,6 +75,7 @@ export function cleanRoutine(r) {
     id: String(r.id), days, time: r.time, placeId: String(r.placeId ?? ''), placeName: String(r.placeName ?? '').slice(0, 40),
     trip: { ...r.trip }, leadMin: Math.min(30, Math.max(0, Math.round(Number(r.leadMin)) || 0)),
     city: isCity(r.city) ? r.city : DEFAULT_CITY, // older routines: Patras
+    ...(r.ref ? { ref: String(r.ref).slice(0, 40) } : {}), // older routines: none (their link is the old plan URL)
   };
 }
 
@@ -199,10 +201,12 @@ export function mountRoutinesSettings(container, ctx = {}) {
       const it = its.find((x) => x.board && x.route);
       const trip = it && tripFromItinerary(it, stopName(it.board.code));
       if (!trip) return fail('no-route');
-      const url = new URL(shareHash(`#/plan?to=${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}&name=${encodeURIComponent(dest.name)}`), document.baseURI).href;
+      // The place stays on the device: the tap resolves `ref` to this routine's place (app.js → notif-link.js).
+      const ref = newRef();
+      const url = new URL(notifHash({ routine: ref, stop: trip.stopCode }, cityId()), document.baseURI).href;
       const payload = buildRoutinePayload({ subscription, days: form.days, time: form.time, title: t('Ώρα να φύγεις'), url, trip, leadMin: form.lead });
       if (!payload) return fail('no-route');
-      const res = await bookRoutine(payload, { placeId: dest.id, placeName: dest.name });
+      const res = await bookRoutine(payload, { placeId: dest.id, placeName: dest.name, ref });
       if (!res.ok) return fail(res.error);
       ctx.toast?.(t('Η υπενθύμιση αποθηκεύτηκε'));
     } catch { return fail('network'); } finally { busy = false; }

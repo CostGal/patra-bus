@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { createPush, buildReminderBody, urlBase64ToBytes, FLAG_KEY, CANCEL_KEY } from '../web/js/push.js';
 import { createReminders } from '../web/js/notify.js';
+import { createLinks, LINKS_KEY, LINK_TTL_MS } from '../web/js/notif-link.js';
 
 // ---- fakes ----
 function fakeStorage(init = {}) {
@@ -184,6 +185,7 @@ test('buildReminderBody: caps, defaults and trip shape', () => {
   assert.deepEqual(b.trip, { stopCode: '1011', routeCode: '55', lineCode: '201', vehicleCode: null, offsetSec: 300 });
   assert.equal('trip' in buildReminderBody({}, { at: 1 }), false);
   assert.equal(buildReminderBody({}, { at: 1 }).body, '');
+  assert.equal(buildReminderBody({}, { at: 1, url: 'http://x/#/plan?to=1,2&name=a' }).url, ''); // never a place
 });
 
 test('schedulePushReminder: posts subscription + payload, returns id', async () => {
@@ -196,8 +198,29 @@ test('schedulePushReminder: posts subscription + payload, returns id', async () 
   assert.equal(c.url, 'http://api.test/api/push/reminders');
   assert.deepEqual(c.body.subscription, { endpoint: 'https://push.example/abc', keys: { p256dh: 'P', auth: 'A' } });
   assert.equal(c.body.tag, 'plan:x');
-  assert.equal(c.body.url, 'http://localhost:8080/#/plan?to=1,2');
   assert.equal(c.body.trip.vehicleCode, 'V1');
+  // the plan link (destination coordinates) stays on the device; the server gets an opaque reference + the stop
+  const ref = c.body.url.match(/^http:\/\/localhost:8080\/#\/patra\/notif\?ref=([0-9a-f]{16})&stop=1011$/)?.[1];
+  assert.ok(ref, c.body.url);
+  assert.ok(!JSON.stringify(c.body).includes('to='));
+  const links = createLinks({ storage: () => m.storage, now: () => NOW });
+  assert.equal(links.get(ref), '#/plan?to=1,2');
+  assert.equal(JSON.parse(m.storage.getItem(LINKS_KEY))[0].exp, NOW + 60_000 + LINK_TTL_MS);
+});
+
+test('schedulePushReminder: links without a place go as they are; the city prefix follows the reminder', async () => {
+  const mk = () => make(browser({ perm: 'granted', existing: sub() }), { storage: fakeStorage({ [FLAG_KEY]: '1' }) });
+  const base = { at: NOW + 60_000, title: 't', tag: 'a', trip: { stopCode: '0015', routeCode: '9', lineCode: '04', offsetSec: 0 } };
+  const a = mk();
+  await a.p.schedulePushReminder({ ...base, url: '#/patra/' });
+  assert.equal(a.fetch.calls.at(-1).body.url, 'http://localhost:8080/#/patra/');
+  assert.equal(a.storage.getItem(LINKS_KEY), null);
+  const b = mk();
+  await b.p.schedulePushReminder({ ...base, url: '#/corfu/plan?to=39.6,19.9&name=Home&from=39.62,19.91', city: 'corfu' });
+  assert.match(b.fetch.calls.at(-1).body.url, /^http:\/\/localhost:8080\/#\/corfu\/notif\?ref=[0-9a-f]{16}&stop=0015$/);
+  const c = mk();
+  await c.p.schedulePushReminder({ ...base, url: undefined });
+  assert.equal(c.fetch.calls.at(-1).body.url, '');
 });
 
 test('schedulePushReminder returns null (never throws) when off, out of range, offline or rejected', async () => {
