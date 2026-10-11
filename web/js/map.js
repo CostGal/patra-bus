@@ -3,7 +3,7 @@
 //   available, setFollow(mode), resetNorth(), opts.onUserMove / opts.onBearing / opts.theme.
 // Everything custom (sources, layers) is re-added on every `style.load` so theme swaps keep state.
 import { icon } from './ui.js';
-import { t } from './i18n.js';
+import { t, onLangChange } from './i18n.js';
 import { city } from './cities.js';
 
 const STYLES = {
@@ -103,7 +103,9 @@ export function createMap(container, opts = {}) {
     guard.observe(attribEl, { attributes: true, attributeFilter: ['class', 'open'] });
     attribEl.addEventListener('click', () => guard.disconnect(), { once: true, capture: true });
   }
-  map.getCanvas().setAttribute('aria-label', t('Χάρτης'));
+  const labelCanvas = () => map.getCanvas().setAttribute('aria-label', t('Χάρτης'));
+  labelCanvas();
+  onLangChange(labelCanvas); // the map outlives a language switch (only the views re-render)
   map.getCanvas().setAttribute('role', 'application');
 
   let styleReady = false;
