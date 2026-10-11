@@ -2,6 +2,7 @@
 // Stop and line names are data and are never translated. Keep UI English short.
 import { PAIRS as GUIDE_PAIRS } from './i18n-en-guide.js';
 import { PAIRS as INSTALL_PAIRS } from './i18n-en-install.js';
+import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 
 const PAIRS = [
   // ---- shared: arrivals, status, common controls ----
@@ -562,4 +563,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS]);
+export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS, ...REPORT_PAIRS]);

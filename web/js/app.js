@@ -178,6 +178,7 @@ function buildMenu() {
       }, icon(ico)))),
     h('div', { class: 'pop-sep' }),
     item('#/guide', 'info', t('Οδηγός')),
+    item('#/report', 'bug', t('Αναφορά προβλήματος')),
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
   paintThemeRow();
 }
@@ -639,8 +640,10 @@ let view = null;
 let routeToken = 0;
 let nextSnap = null;
 let currentHead = '';
+// Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
+let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full' };
+const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -680,6 +683,7 @@ async function route() {
   const head = parts[0] || '';
   const arg = parts[1];
   currentHead = SNAP[head] != null ? head : '';
+  if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' || currentHead === 'line' ? String(arg) : '' };
   if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
   content.replaceChildren();
@@ -739,6 +743,10 @@ async function route() {
     case 'settings':
       document.title = `${t('Ρυθμίσεις')} · ${title()}`;
       await mount(() => import('./settings-view.js'), (m) => m.mountSettings(content, ctx));
+      break;
+    case 'report':
+      document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
+      await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx }));
       break;
     case 'guide': {
       document.title = `${t('Οδηγός')} · ${title()}`;
