@@ -2,11 +2,9 @@
 import { h, icon, fmtClock } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
 import { ensurePermission, permissionState, listReminders, cancelReminder, cancelAll as cancelAllReminders, scheduleReminder, onRemindersChange } from './notify.js';
-import { t, tn, N_, setLang, onLangChange, locale, lang, APP_NAME } from './i18n.js';
+import { t, tn, N_, setLang, onLangChange, locale, lang, APP_NAME, APP_VERSION } from './i18n.js';
 import { CITIES, city, cityId, cityName, dataDir } from './cities.js';
 import { cityHash } from './route.js';
-
-export const VERSION = '2.0.0';
 
 let uid = 0;
 
@@ -244,7 +242,7 @@ function build(container, ctx, keep) {
 
   // ---------- about (full LIVE / ΠΡΟΓΡ. legend lives here) ----------
   const about = sec('about', t('Σχετικά'),
-    h('p', { class: 'set-p' }, h('strong', {}, APP_NAME), ` · ${cityName(city(), lang())} · ${t('έκδοση {v}', { v: VERSION })}`),
+    h('p', { class: 'set-p' }, h('strong', {}, APP_NAME), ` · ${cityName(city(), lang())} · ${t('έκδοση {v}', { v: APP_VERSION })}`),
     h('div', { class: 'set-def' },
       h('span', { class: 'ex-chip ex-chip-live' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), t('LIVE')),
       h('p', { class: 'set-p' }, t('Το λεωφορείο στέλνει τη θέση του και τη βλέπεις στον χάρτη. Ο χρόνος άφιξης είναι εκτίμηση με βάση τη θέση του.'))),

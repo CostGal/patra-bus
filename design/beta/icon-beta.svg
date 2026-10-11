@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Telematica app icon, BETA variant. Full-bleed navy, so it also works as a maskable icon:
+       the bus and the badge sit inside the central safe circle (radius 204.8). -->
+  <rect width="512" height="512" fill="#0b5394"/>
+  <g transform="translate(256 234) scale(0.85) translate(-256 -264)">
+    <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff"/>
+    <rect x="146" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
+    <rect x="262" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
+    <circle cx="164" cy="300" r="18" fill="#0b5394"/>
+    <circle cx="348" cy="300" r="18" fill="#0b5394"/>
+    <circle cx="178" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
+    <circle cx="334" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
+  </g>
+  <rect x="168" y="382" width="176" height="56" rx="28" fill="#F9AB00"/>
+  <text x="256" y="421" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="800" letter-spacing="4" fill="#0b5394">BETA</text>
+</svg>

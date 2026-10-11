@@ -6,6 +6,7 @@ import { etaText } from './arrivals.js';
 
 // The app's name is the same in every language.
 export const APP_NAME = 'Telematica';
+export const APP_VERSION = '0.9.0-beta.1';
 export const LANGS = ['el', 'en'];
 export const PREFS = ['auto', 'el', 'en'];
 
