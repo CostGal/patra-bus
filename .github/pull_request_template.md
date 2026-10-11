@@ -18,6 +18,6 @@ TEL-
 <!-- Τσέκαρε ό,τι έκανες. Demo: http://localhost:8080/?demo#/stop/1011 (ή το preview του PR με ?demo). -->
 - [ ] `npm test`
 - [ ] `npm run check:i18n`
-- [ ] Σε πραγματικό κινητό / on a real mobile device
+- [ ] Σε πραγματικό κινητό / on a real mobile device, ή issues `device-test` για ό,τι μένει (CLAUDE.md κανόνας 9): #
 - [ ] Demo URL (`?demo`)
 - [ ] Ελληνικά και αγγλικά / EL and EN both checked
