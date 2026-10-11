@@ -49,4 +49,5 @@ export const PAIRS = [
   ['Πώς το χρησιμοποιώ', 'How to use it'],
   ['Τι κάνει κάθε κουμπί', 'What each button does'],
   ['Οδηγός', 'Guide'],
+  ['Στέλνεις ένα λάθος ή μια πρόταση. Πριν την αποστολή βλέπεις τι θα σταλεί, και δεν περιλαμβάνεται η τοποθεσία σου.', 'Send a mistake or a suggestion. Before sending you see what will be sent, and your location is not included.'],
 ];

@@ -3,6 +3,8 @@ import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
 import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
+import { MAX_REPORT_BYTES, ForwardError, forwardReport, takeDailySlot } from './report.js';
+import { validateReport, isHoneypot } from '../../web/js/report.js';
 import { CITIES, DEFAULT_CITY, apiBase, isCity } from '../../web/js/cities.js';
 
 const TOKEN_MARGIN_MS = 5 * 60 * 1000;
@@ -184,10 +186,11 @@ const PUSH_ID = /^[0-9a-f]{32}$/;
 // Best-effort abuse brake: per isolate, so not global, but it stops a single client hammering one edge.
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX = 12;
-const recent = new Map(); // ip -> timestamps
-function rateLimited(ip, now) {
+const REPORT_RATE_MAX = 3; // problem reports are rare and each one lands in a human's inbox
+const recent = new Map(); // bucket:ip -> timestamps (memory only, never forwarded anywhere)
+function rateLimited(ip, now, max = RATE_MAX) {
   const list = (recent.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
-  if (list.length >= RATE_MAX) { recent.set(ip, list); return true; }
+  if (list.length >= max) { recent.set(ip, list); return true; }
   list.push(now);
   recent.set(ip, list);
   if (recent.size > 5000) recent.delete(recent.keys().next().value);
@@ -252,6 +255,47 @@ async function pushRoute(request, env, cors, pathname) {
   return null;
 }
 
+// A browser on another site can fire a POST at us (CORS only stops it reading the answer): refuse its Origin outright.
+// Requests without an Origin (curl, the app's own native webview) pass; the rate limit and daily cap cover those.
+function originAllowed(env, request) {
+  const origin = request.headers.get('Origin');
+  const allowed = (env.ALLOWED_ORIGIN || '*').split(',').map((o) => o.trim());
+  return !origin || allowed.includes('*') || allowed.includes(origin);
+}
+
+// POST /api/report: problem report -> Notion. Order matters: cheap refusals first, the honeypot answers like a success.
+async function reportRoute(request, env, cors) {
+  if (request.method !== 'POST') return json(cors, { error: 'not_found' }, 404);
+  if (!originAllowed(env, request)) return json(cors, { error: 'forbidden' }, 403);
+  // Only application/json: a cross-site form or text/plain POST cannot carry it without a CORS preflight, which we refuse.
+  if (!/^application\/json\b/i.test(request.headers.get('Content-Type') || '')) return json(cors, { error: 'bad_request', field: 'content-type' }, 415);
+  if (!env.NOTION_TOKEN || !env.NOTION_DB_ID) return json(cors, { error: 'report_unavailable' }, 503);
+  if (Number(request.headers.get('Content-Length')) > MAX_REPORT_BYTES) return json(cors, { error: 'too_large' }, 413);
+  const now = Date.now();
+  if (rateLimited(`report:${request.headers.get('CF-Connecting-IP') || 'local'}`, now, REPORT_RATE_MAX)) {
+    return json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '600' });
+  }
+  const body = await request.text();
+  if (new TextEncoder().encode(body).length > MAX_REPORT_BYTES) return json(cors, { error: 'too_large' }, 413);
+  let raw;
+  try {
+    raw = JSON.parse(body);
+  } catch {
+    return json(cors, { error: 'bad_request', field: 'json' }, 400);
+  }
+  if (isHoneypot(raw)) return json(cors, { ok: true }, 200, { 'Cache-Control': 'no-store' }); // looks sent, goes nowhere
+  const v = validateReport(raw);
+  if (!v.ok) return json(cors, { error: 'bad_request', field: v.error }, 400);
+  if (!(await takeDailySlot(env, now))) return json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '3600' });
+  try {
+    await forwardReport(env, v.value, now);
+  } catch (err) {
+    console.error(`/api/report: ${err instanceof ForwardError ? err.message : 'forward failed'}`); // status only, never the content
+    return json(cors, { error: 'forward_failed' }, 502, { 'Cache-Control': 'no-store' });
+  }
+  return json(cors, { ok: true }, 200, { 'Cache-Control': 'no-store' });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const cors = corsOrigin(env, request);
@@ -270,6 +314,7 @@ export default {
 
     const { pathname } = new URL(request.url);
     try {
+      if (pathname === '/api/report') return await reportRoute(request, env, cors);
       if (pathname.startsWith('/api/push/')) {
         const res = await pushRoute(request, env, cors, pathname);
         return res || json(cors, { error: 'not_found' }, 404);

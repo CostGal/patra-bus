@@ -36,6 +36,17 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 | `#/lines` / `#/line/{lineCode}?dir=1` | line browser / one line on the map (`lines-view.js`) |
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
 | `#/guide` / `#/guide?section=install` | in-app guide + install-as-app tutorial (`guide-view.js`, `install-guide.js`; contract in `docs/GUIDE.md`) |
+| `#/report` | report a problem (`report-view.js`; menu item with the `bug` icon, SNAP `full`) |
+
+**Problem reports** (`js/report.js` shared, `js/report-view.js`, `worker/src/report.js`, `POST /api/report`): the view sends `{ category: data|app|idea|other, message (10–2000), email?, hp, diag }`.
+`report.js` holds the one validation (`validateReport`, `cleanDiag` whitelist) used by both the form and the Worker. `diag` is a fixed whitelist of coarse facts
+(app version, city, language, screen name + public stop/line code, os/browser/install mode, viewport size, online, theme, SW on, demo): never the URL query,
+coordinates, user agent or IP, and the view shows it verbatim before sending. `app.js` keeps `reportCtx` (the screen the user came from) and passes it in.
+Worker: Origin must be allowed (403) and Content-Type `application/json` (415) → 503 without `NOTION_TOKEN`/`NOTION_DB_ID` → per-IP 3 / 10 min in memory (429)
+→ ≤ 8 KB (413) → honeypot field `hp` non-empty = `200 {ok:true}` and nothing forwarded → validation (400 `field`) → global cap 100/UTC day in KV `report-day/{date}` (429)
+→ one page in the Notion database (502 `forward_failed` on any Notion error). Nothing is stored in the Worker; the IP lives only in the limiter's memory.
+Notion database properties (exact names): `Name` (title), `Category` (select), `Status` (select, "New"), `City` (select), `Email` (email), `Received` (date); the page body is the
+message plus a JSON code block with the diagnostics.
 
 **Guide integration** (`app.js`, part C of `docs/GUIDE.md`): `guide` has SNAP `full` and mounts `mountGuide(content, ctx, { section })`
 like settings. Just before mounting, `ctx.renderInstall` is set to `() => install-guide.renderInstallSection()` (left `undefined` when
