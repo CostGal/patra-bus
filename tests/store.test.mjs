@@ -339,7 +339,7 @@ test('settings: changing lang emits a settings event once', () => {
 });
 
 // ---- first-run flags (guide seen, install hint dismissed): booleans, absent = false ----
-const FLAGS = ['guideSeen', 'installHintDismissed'];
+const FLAGS = ['guideSeen', 'installHintDismissed', 'welcomeSeen'];
 
 test('first-run flags: absent by default, booleans only, persisted', () => {
   const { s, ls } = make();

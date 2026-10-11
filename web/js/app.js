@@ -869,6 +869,8 @@ async function boot() {
   onLangChange(() => { localizeChrome(); route(); });
   await route();
   booted = true;
+  // One-time thank-you for the testers, only when opened as an installed app (or with ?welcome to preview). Never blocks boot.
+  import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {});
 
   if ('serviceWorker' in navigator) {
     const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});
