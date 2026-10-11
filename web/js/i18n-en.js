@@ -561,6 +561,13 @@ const PAIRS = [
   ['Εγκατάσταση ως εφαρμογή', 'Install as an app'],
   ['Πρώτη φορά εδώ; Δες τον οδηγό', 'First time here? See the guide'],
   ['Βάλε την εφαρμογή στην αρχική οθόνη', 'Add the app to your home screen'],
+  // screen-reader only (TEL-19): search result count, stop view state changes, stale tiles
+  ['{n} αποτέλεσμα', '{n} result'],
+  ['{n} αποτελέσματα', '{n} results'],
+  ['{n} άφιξη, {live} με ζωντανή θέση', '{n} arrival, {live} with live position'],
+  ['{n} αφίξεις, {live} με ζωντανή θέση', '{n} arrivals, {live} with live position'],
+  ['Παλιά δεδομένα: οι χρόνοι μπορεί να μην ισχύουν.', 'Old data: the times may be wrong.'],
+  [' Τα δεδομένα δεν έχουν ενημερωθεί πρόσφατα.', ' The data has not been updated recently.'],
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.

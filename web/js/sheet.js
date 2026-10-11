@@ -175,9 +175,13 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   };
   handle.addEventListener('pointerup', handleUp);
   handle.addEventListener('pointercancel', handleUp);
+  // A tap walks the detents up to full and back down to peek, so every detent is reachable without dragging (WCAG 2.5.7).
+  let tapDir = 1;
   handle.addEventListener('click', () => {
     if (suppressClick || inert()) return;
-    snap(state === 'half' ? 'full' : state === 'full' ? 'half' : 'half');
+    if (state === 'full') tapDir = -1;
+    else if (state === 'peek') tapDir = 1;
+    snap(STATES[STATES.indexOf(state) + tapDir]);
   });
   handle.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
@@ -216,9 +220,18 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   body.addEventListener('touchend', touchDone);
   body.addEventListener('touchcancel', touchDone);
 
-  // Keyboard focus landing inside a collapsed sheet: open it so the focused element is visible.
+  // Keyboard focus landing inside a collapsed sheet: open it so the focused element is visible. In half the body
+  // runs on below the screen edge (the sheet is translated, so the browser never scrolls it): a keyboard-focused
+  // element down there opens the sheet further (WCAG 2.4.11). Pointer focus never moves the sheet.
   root.addEventListener('focusin', (e) => {
-    if (state === 'peek' && !inert() && !handle.contains(e.target)) snap('half');
+    if (inert() || handle.contains(e.target)) return;
+    const kb = e.target.matches?.(':focus-visible');
+    if (state === 'peek' && !kb) { snap('half'); return; }
+    if (!kb || state === 'full') return;
+    const bottom = e.target.getBoundingClientRect().bottom - y; // at translateY 0
+    const fits = (s) => bottom + yFor(s) <= innerHeight - 8;
+    const to = fits('half') ? 'half' : 'full';
+    if (to !== state) snap(to);
   });
 
   // Re-measure on size changes (rotation, keyboard, breakpoint).

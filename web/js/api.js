@@ -6,6 +6,7 @@ import { isLive, noServiceResult, normalizeLive } from './arrivals.js';
 import { demoLive, demoReady } from './demo.js';
 import { t } from './i18n.js';
 import { cityId } from './cities.js';
+import { readableLine } from './color.js';
 
 export const MIN_GAP_MS = 15000; // floor between upstream attempts for one stop
 export const POLL_MS = 20000; // poller period
@@ -70,8 +71,7 @@ function cleanVehicle(v) {
     lineName: v.lineName ?? '',
     routeCode: String(v.routeCode ?? ''),
     routeName: v.routeName ?? '',
-    color: v.color || null,
-    textColor: v.textColor || null,
+    ...readableLine(v.color || null, v.textColor || null),
     live: false,
     departureMins: mins,
     etaSec: Number.isFinite(eta) ? eta : mins * 60,
