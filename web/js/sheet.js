@@ -5,7 +5,7 @@
 // Desktop: static panel, snap() is remembered but has no visual effect.
 // onSnap({state, visible, desktop}) fires when a target is chosen (padding for the map);
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
-import { t, N_ } from './i18n.js';
+import { t, N_, onLangChange } from './i18n.js';
 import { createSpringLoop, rubberband, project } from './motion.js';
 const STATES = ['peek', 'half', 'full'];
 const PEEK_PX = 152; // handle + a header row
@@ -94,12 +94,16 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     onSnap?.({ state, visible: SZ[to], desktop: false });
   }
 
+  // The handle's only accessible name (index.html has none): set by the first snap() below, and again per language.
+  const paintLabel = () => handle.setAttribute('aria-label', t('Αλλαγή μεγέθους πίνακα (τώρα: {state})', { state: t(LABEL[state]) }));
+  onLangChange(paintLabel);
+
   function snap(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
     if (!STATES.includes(to)) return;
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;
-    handle.setAttribute('aria-label', t('Αλλαγή μεγέθους πίνακα (τώρα: {state})', { state: t(LABEL[to]) }));
+    paintLabel();
     moveTo(to, { animate, velocity, spring: cfg });
   }
 
