@@ -395,6 +395,18 @@ html.sheet-dragging .toast-host { transition: none; }
 }
 .mk-dest .mk-label, .mk-pin .mk-label { top: 40%; }
 
+/* ---------- forced colors (Windows / Android high contrast), TEL-49 ----------
+   The system replaces our colours, so LIVE vs SCHEDULED must differ by something else: the LIVE badge is filled (Highlight) with a
+   visible dot, SCHEDULED stays an outline (dashed); the live stripe is thick, the scheduled one thin; the chosen filter chip is filled. */
+@media (forced-colors: active) {
+  :root .atile-flag, :root .nb-flag, :root .pl-flag, :root .ex-chip { border: 1px dashed CanvasText; background: Canvas; color: CanvasText; }
+  :root .atile-live .atile-flag, :root .nb-flag-live, :root .pl-flag.is-live, :root .ex-chip-live { forced-color-adjust: none; border: 1px solid Highlight; background: Highlight; color: HighlightText; }
+  :root .atile-dot, :root .nb-dot, :root .pl-dot, :root .ex-chip-dot { forced-color-adjust: none; background: HighlightText; }
+  :root .atile { border-left-width: 2px; border-left-style: dashed; }
+  :root .atile-live, :root .nb-hero-live, :root .nb-mini-live { border-left-width: 8px; border-left-style: solid; }
+  :root .stopv-chip.on, :root .theme-opt[aria-checked="true"], :root .ex-seg-btn[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .veh-ring, .user-dot::after { display: none; }

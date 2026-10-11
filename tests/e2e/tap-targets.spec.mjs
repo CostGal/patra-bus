@@ -6,7 +6,7 @@ const CONTROLS = ['.stopv-refresh', '.stopv-chip'];
 
 for (const sel of CONTROLS) {
   test(`stop view: ${sel} can be tapped anywhere in a 44 px high area`, async ({ page }) => {
-    await page.setViewportSize({ width: 360, height: 2400 }); // tall, so the whole sheet (list, chips, footer) is on screen
+    await page.setViewportSize({ width: 360, height: 5000 }); // very tall, so the whole sheet (list, chips, footer) is on screen whatever the demo list length
     await page.goto('/?demo#/stop/1011');
     const el = page.locator(`.stopv ${sel}`).first();
     await expect(el).toBeVisible();
