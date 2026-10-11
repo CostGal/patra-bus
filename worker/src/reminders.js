@@ -2,6 +2,7 @@
 // One DO per reminder (name = random 128-bit id). index.js subclasses ReminderBase to supply getLive().
 import { etaText } from '../../web/js/arrivals.js';
 import { DEFAULT_CITY, isCity } from '../../web/js/cities.js';
+import { isPrivateUrl } from '../../web/js/notif-link.js';
 import { b64uDecode, isAllowedEndpoint, sendPush } from './push.js';
 
 export const MAX_BODY_BYTES = 4096;
@@ -28,6 +29,14 @@ export function cleanSubscription(s, { allowLocal = false } = {}) {
   return { value: { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } } };
 }
 
+// Optional notification link (shared with routines). A link with coordinates or a place name (`#/plan?to=…&name=…`,
+// sent by clients older than notif-link.js) is accepted but dropped, whatever its length: never stored.
+// -> { value } (undefined = no link) or { error: 'url' }.
+export function cleanUrl(url) {
+  if (url === undefined || isPrivateUrl(url)) return { value: undefined };
+  return str(url, 300) ? { value: url } : { error: 'url' };
+}
+
 // Optional `city` of a push request (shared with routines): absent -> Patras, otherwise it must be in the table.
 // -> { value } or { error: 'city' }.
 export function cleanCity(c) {
@@ -51,7 +60,8 @@ export function validateReminder(raw, now, { allowLocal = false } = {}) {
   if (!str(title, 120, { min: 1 })) return bad('title');
   if (body !== undefined && !str(body, 300)) return bad('body');
   if (!str(tag, 64, { min: 1 })) return bad('tag');
-  if (url !== undefined && !str(url, 300)) return bad('url');
+  const link = cleanUrl(url);
+  if (link.error) return bad(link.error);
 
   let trip;
   if (t !== undefined && t !== null) {
@@ -79,7 +89,7 @@ export function validateReminder(raw, now, { allowLocal = false } = {}) {
       title,
       body: body ?? '',
       tag,
-      ...(url !== undefined ? { url } : {}),
+      ...(link.value !== undefined ? { url: link.value } : {}),
       ...(trip ? { trip } : {}),
     },
   };

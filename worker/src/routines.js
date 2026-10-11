@@ -3,7 +3,7 @@
 // Per matching day: at time - 20' read live, pick the first bus of the route we can still catch,
 // alarm at leave - leadMin, push, then arm the next matching day. Expires after 120 days.
 import { DEFAULT_CITY } from '../../web/js/cities.js';
-import { cleanSubscription, cleanCity, isObj, str, LATE_TOLERANCE_MS, MAX_AHEAD_MS, MAX_REARMS } from './reminders.js';
+import { cleanSubscription, cleanCity, cleanUrl, isObj, str, LATE_TOLERANCE_MS, MAX_AHEAD_MS, MAX_REARMS } from './reminders.js';
 import { sendPush } from './push.js';
 
 export const TZ = 'Europe/Athens';
@@ -30,7 +30,8 @@ export function validateRoutine(raw, { allowLocal = false } = {}) {
   if (typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return bad('time');
   if (tz !== TZ) return bad('tz');
   if (!str(title, 120, { min: 1 })) return bad('title');
-  if (url !== undefined && !str(url, 300)) return bad('url');
+  const link = cleanUrl(url);
+  if (link.error) return bad(link.error);
   if (typeof leadMin !== 'number' || !Number.isInteger(leadMin) || leadMin < 0 || leadMin > 15) return bad('leadMin');
 
   if (!isObj(t)) return bad('trip');
@@ -50,7 +51,7 @@ export function validateRoutine(raw, { allowLocal = false } = {}) {
       time,
       tz: TZ,
       title,
-      ...(url !== undefined ? { url } : {}),
+      ...(link.value !== undefined ? { url: link.value } : {}),
       trip: { stopCode: t.stopCode, routeCode: t.routeCode, lineCode: t.lineCode, offsetSec: t.offsetSec },
       leadMin,
     },

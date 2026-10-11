@@ -669,11 +669,30 @@ function paintChips() {
   appEl.classList.toggle('has-chips', !chipsEl.hidden);
 }
 
+// A notification link (`#/notif?routine=…|ref=…&stop=…`, js/notif-link.js) → the hash it stands for on this device.
+async function resolveNotifLink(params) {
+  const stop = params.stop && data.stopByCode.has(String(params.stop)) ? `#/stop/${encodeURIComponent(params.stop)}` : '#/';
+  try {
+    const [nl, rt, pl] = await Promise.all([import('./notif-link.js'), import('./routines.js'), import('./places.js')]);
+    return nl.resolveNotif(params, { routines: rt.getRoutines(), places: pl.getPlaces(), links: nl.createLinks(), hasStop: (c) => data.stopByCode.has(c) });
+  } catch (err) {
+    console.error('[notif]', err);
+    return stop;
+  }
+}
+
 async function route() {
   const token = ++routeToken;
   const { city: hashCity, rel, parts, params } = parseHash(location.hash);
   // A link into the other city (pasted, shared, history): the page is per city, so remember it and reload on that hash.
   if (hashCity && hashCity !== cityId()) { setSetting('city', hashCity); location.reload(); return; }
+  if (parts[0] === 'notif') {
+    const to = await resolveNotifLink(params);
+    if (token !== routeToken) return;
+    try { history.replaceState(history.state, '', cityHash(to)); } catch { /* ignore */ }
+    route();
+    return;
+  }
   // Canonical form: prefix for every city but the default (an unprefixed hash means "this city" while running).
   const canon = formatHash(rel);
   if ((location.hash || '#/') !== canon) { try { history.replaceState(history.state, '', canon); } catch { /* ignore */ } }

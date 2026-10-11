@@ -37,6 +37,7 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
 | `#/guide` / `#/guide?section=install` | in-app guide + install-as-app tutorial (`guide-view.js`, `install-guide.js`; contract in `docs/GUIDE.md`) |
 | `#/report` | report a problem (`report-view.js`; menu item with the `bug` icon, SNAP `full`) |
+| `#/notif?routine=…\|ref=…&stop=…` | notification link, never a view: `app.js` resolves it on the device (`notif-link.js`) and replaces the hash (see PC below) |
 
 **Problem reports** (`js/report.js` shared, `js/report-view.js`, `worker/src/report.js`, `POST /api/report`): the view sends `{ category: data|app|idea|other, message (10–2000), email?, hp, diag }`.
 `report.js` holds the one validation (`validateReport`, `cleanDiag` whitelist) used by both the form and the Worker. `diag` is a fixed whitelist of coarse facts
@@ -208,7 +209,8 @@ The reminder button passes `trip` to `scheduleReminder` (below) for the FIRST bu
 ### PW — push server: `worker/src/index.js`, `worker/src/push.js`, `worker/src/reminders.js`, `worker/wrangler.toml`, `tests/push-worker.test.mjs`, `.dev.vars` (gitignored, local keys only)
 - `GET /api/push/key` → `{ publicKey }` (VAPID, base64url, uncompressed P-256 point).
 - `POST /api/push/reminders` JSON `{ subscription: PushSubscriptionJSON, at: epochMs, title, body, tag, url, trip?: { stopCode, routeCode, lineCode, vehicleCode|null, offsetSec } }` → `201 { id }`.
-  `at` must be within the next 3 h; bodies ≤ 4 KB; text fields length-capped.
+  `at` must be within the next 3 h; bodies ≤ 4 KB; text fields length-capped. A `url` with coordinates or a place name
+  (`to=`, `from=`, `name=`, `lat=`, `lng=`, from clients older than TEL-13) is accepted but dropped (`cleanUrl`): it is never stored.
 - `DELETE /api/push/reminders/{id}` → `204`.
 - At `at` (Durable Object alarm, one object per reminder): if `trip` is set, re-read live for `stopCode` through the same 15 s cache,
   find the bus (`vehicleCode`, else first of `routeCode`), recompute leave time = bus eta − `offsetSec`; if it moved later by > 60 s re-arm (max 3 times),
@@ -221,6 +223,11 @@ The reminder button passes `trip` to `scheduleReminder` (below) for the FIRST bu
   `schedulePushReminder(payload) → id|null`, `cancelPushReminder(id)`, `mountPushCard(container, ctx) → {destroy}` (settings card; explains iPhone needs the installed app).
 - `notify.js`: `scheduleReminder({ at, title, body, tag, trip? })` keeps working locally and, when push is on, also books a server reminder (same `tag`), cancels it on cancel.
 - `sw-push.js` (imported by `sw.js` via `importScripts`): `push` → `showNotification(title, { body, tag, data: { url } })`. `notificationclick` stays in `sw.js`.
+- Notification links (`notif-link.js`, shared with the worker): the `url` sent to the server never carries a place. Routines send
+  `#/{city}/notif?routine=<ref>&stop=<code>` (`ref` random, kept in the local routine); one-off reminders whose link is a plan
+  (`isPrivateUrl`) send `#/{city}/notif?ref=<ref>&stop=<code>` and keep `ref → hash` in localStorage `patra-bus:push-links` (≤ 20, at + 24 h).
+  On the tap, `app.js` resolves it on the device: routine → `#/plan?to=` its saved place as it is now; reminder → the kept hash;
+  otherwise the stop (`stop`, which the server already has in `trip`), else home.
 
 ### OM — offline map: `web/sw.js`, `web/vendor/**`, `web/index.html`, `js/offline.js`, `tests/offline.test.mjs`
 - MapLibre GL 4.7.1 self-hosted under `web/vendor/maplibre-gl/` (precached).
@@ -249,10 +256,11 @@ Applies the principles above; home composition; links `css/places.css`; SW shell
 - `getPlaces() → [{ id: 'home'|'work'|string, name, lat, lng }]`, `setPlace(p)`, `removePlace(id)` (own localStorage key `patra-bus:places`, try/catch).
 - `mountPlacesCard(container, ctx) → {destroy}`: compact "Για το σπίτι · 601 · Φύγε σε 6′" using `planTrips` (best itinerary), refreshed ≤ every 60 s while visible; renders nothing if no places or no location.
 - `mountPlacesSettings`, `mountRoutinesSettings(container, ctx) → {destroy}` (settings sections).
-- Routines: `{ id, days: number[] /*0=Κυρ*/, time: 'HH:MM' /*Europe/Athens, planned leave time*/, placeId, trip: { stopCode, routeCode, lineCode, offsetSec }, leadMin }` booked on the server (below) when push is on.
+- Routines: `{ id, days: number[] /*0=Κυρ*/, time: 'HH:MM' /*Europe/Athens, planned leave time*/, placeId, ref, trip: { stopCode, routeCode, lineCode, offsetSec }, leadMin }` booked on the server (below) when push is on.
+  The server gets the push address, days/time, the boarding `trip` (incl. `offsetSec`, the walk to the stop) and the opaque link `#/{city}/notif?routine=<ref>`: never the place, its coordinates or its name.
 
 ### W — worker: routines + stats: `worker/src/index.js`, `worker/src/reminders.js`, `worker/src/routines.js`, `worker/src/stats.js`, `worker/wrangler.toml`, `tests/routines-worker.test.mjs`, `tests/stats.test.mjs`
-- `POST /api/push/routines` `{ subscription, days, time, tz: 'Europe/Athens', title, url, trip, leadMin }` → `201 { id }`; `DELETE /api/push/routines/{id}`. One Durable Object per routine: on each matching day at time − 20′ read live (same 15 s cache path) for `trip.stopCode`, pick the first bus of `routeCode` with leave = eta − offsetSec ≥ now, alarm at leave − leadMin, send "Φύγε σε N′ για το 601", re-arm for the next matching day. Drop on 404/410; expire after 120 days.
+- `POST /api/push/routines` `{ subscription, days, time, tz: 'Europe/Athens', title, url, trip, leadMin }` → `201 { id }` (`url` as for reminders: a place link is dropped); `DELETE /api/push/routines/{id}`. One Durable Object per routine: on each matching day at time − 20′ read live (same 15 s cache path) for `trip.stopCode`, pick the first bus of `routeCode` with leave = eta − offsetSec ≥ now, alarm at leave − leadMin, send "Φύγε σε N′ για το 601", re-arm for the next matching day. Drop on 404/410; expire after 120 days.
 - Reminders gain `kind: 'leave'|'alight'` (default 'leave'); 'alight' text: "Ετοιμάσου: η στάση «{name}» σε ~1′" (`trip.stopName` optional field).
 - Stats: only from upstream live responses the worker already fetches (never extra calls). When a `vehicleCode` seen as scheduled at stop S (scheduled time T) later appears live at S with eta ≤ 5′, record delay = liveArrival − T once per (vehicle, stop) into a Stats Durable Object (rolling last 200 per routeCode+stopCode). `GET /api/stats/{routeCode}/{stopCode}` → `{ samples, medianDelaySec, p80DelaySec, updatedAt }` (cache 10 min).
 

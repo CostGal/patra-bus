@@ -69,6 +69,7 @@ const SHELL = [
   'js/location.js',
   'js/cities.js',
   'js/route.js',
+  'js/notif-link.js',
   'js/boot-city.js',
   'js/geo.js',
   'js/walk.js',

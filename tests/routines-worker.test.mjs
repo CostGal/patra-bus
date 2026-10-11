@@ -410,3 +410,58 @@ test('alight text', () => {
   // alight with the bus gone falls back to the client's original text
   assert.equal(decideReminder({ reminder: rem, live: liveAt([]), now: NOW2 }).action, 'send-original');
 });
+
+// --- notification links: no saved place reaches the DO (TEL-13) ---
+const OPAQUE = 'https://costgal.github.io/patra-bus/#/patra/notif?routine=0123456789abcdef&stop=1011';
+const PRIVATE_URLS = [
+  'https://costgal.github.io/patra-bus/#/patra/plan?to=38.24612,21.73501&name=%CE%A3%CF%80%CE%AF%CF%84%CE%B9',
+  '#/plan?name=Σπίτι',
+  '#/plan?to=1,2&from=3,4',
+  '#/pin?lat=38.2&lng=21.7',
+  `#/plan?to=38.24612,21.73501&name=${'x'.repeat(400)}`, // too long, still accepted and dropped (older clients)
+];
+
+test('validateRoutine / validateReminder: plan links with a place are dropped, opaque links kept', () => {
+  assert.equal(validateRoutine(goodRoutine({ url: OPAQUE })).value.url, OPAQUE);
+  assert.equal(validateReminder(remReq({ url: OPAQUE.replace('routine=', 'ref=') }), NOW2).value.url, OPAQUE.replace('routine=', 'ref='));
+  for (const url of PRIVATE_URLS) {
+    const r = validateRoutine(goodRoutine({ url }));
+    assert.ok(r.ok && !('url' in r.value), url);
+    const m = validateReminder(remReq({ url }), NOW2);
+    assert.ok(m.ok && !('url' in m.value), url);
+  }
+  assert.equal(fieldOf(goodRoutine({ url: 5 })), 'url');
+  assert.equal(validateReminder(remReq({ url: 5 }), NOW2).error, 'url');
+  assert.equal(validateReminder(remReq({ url: 'x'.repeat(301) }), NOW2).error, 'url');
+});
+
+test('Routine DO: sends the opaque link; one stored with the old plan URL still sends it', async () => {
+  const realNow = Date.now;
+  let clock = utc(2026, 9, 12, 4, 0); // Mon 07:00 Athens
+  Date.now = () => clock;
+  const ARRIVAL = clock + 55 * MIN; // 07:55; offset 5', lead 2' -> push at 07:48
+  const sent = [];
+  class Spy extends RoutineBase {
+    async getLive() { return liveAt([veh({ etaSec: Math.round((ARRIVAL - Date.now()) / 1000) })], Date.now()); }
+    async deliver(r, now, payload) { sent.push(payload); }
+  }
+  const run = async (url, legacy) => {
+    const storage = fakeStorage();
+    clock = utc(2026, 9, 12, 4, 0);
+    const v = validateRoutine(goodRoutine({ days: [1], time: '08:00', url: legacy ? undefined : url })).value;
+    await new Spy({ storage }, {}).fetch(new Request('https://routine/', { method: 'POST', body: JSON.stringify({ id: 'abc', ...v }) }));
+    if (legacy) await storage.put('r', { ...(await storage.get('r')), url }); // booked before TEL-13
+    clock = storage.alarm;
+    await new Spy({ storage }, {}).alarm(); // check -> send phase
+    clock = storage.alarm;
+    await new Spy({ storage }, {}).alarm(); // send
+    return sent.at(-1);
+  };
+  try {
+    assert.equal((await run(OPAQUE, false)).url, OPAQUE);
+    assert.equal((await run(PRIVATE_URLS[0], true)).url, PRIVATE_URLS[0]);
+    assert.ok(!('url' in (await run(PRIVATE_URLS[0], false)))); // new booking from an old client: no link at all
+  } finally {
+    Date.now = realNow;
+  }
+});
