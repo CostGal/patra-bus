@@ -22,7 +22,15 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Site: https://costgal.github.io/patra-bus/. Το `.github/workflows/pages.yml` ανεβάζει **μόνο** το `web/` σε κάθε push στο `main`.
 - Το site είναι σε subpath (`/patra-bus/`), οπότε όλα τα paths στο `web/` μένουν **σχετικά** (`./data/…`, `sw.js`, `start_url: "./"`).
 - Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`, μόνο για το token. Το deploy είναι **χειροκίνητο**: το push στο `main` ανεβάζει μόνο το Pages.
-- `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080`). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
+- `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080,https://*.patra-bus.pages.dev`, το τελευταίο = previews). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
+
+## Branches & previews
+- `main` = η beta που βλέπουν οι δοκιμαστές. Protected: μόνο PR, απαιτείται το check `test` (`.github/workflows/test.yml`, τρέχει `npm test` με ελληνικό locale), **μόνο ο Kostas κάνει merge**.
+- Κάθε εργασία σε δικό της branch `όνομα/TEL-nn-slug` (μέσα στο repo, όχι fork), ανοίγει PR. Πριν ανοίξεις PR κάνε merge το `main` στο branch σου.
+- Κάθε PR παίρνει preview στο Cloudflare Pages (`<branch>.patra-bus.pages.dev`). Ο worker δέχεται αυτά τα origins μέσω του `https://*.patra-bus.pages.dev` στο `ALLOWED_ORIGIN` (`worker/src/origin.js`: ακριβώς ένα label). Οι αναφορές από previews μπαίνουν στο Notion με πρόθεμα `[preview]`.
+- **Μην ανεβάζεις χειροκίνητα το `CACHE` στο `web/sw.js`**: το `scripts/stamp-cache.mjs` το βάζει από το commit κατά το deploy (Pages workflow και build command του Cloudflare). Το committed αρχείο μένει όπως είναι. Νέα αρχεία του `web/` μπαίνουν ακόμα στη λίστα SHELL.
+- Ο worker ανεβαίνει χειροκίνητα και είναι κοινός σε όλους (previews και παραγωγή): αλλαγές σε αυτόν ελέγχονται τοπικά με `npm run dev:worker` και τις ανεβάζει μόνο ο Kostas μετά το merge.
+- Σύγκρουση ownership: δες `docs/ARCHITECTURE.md`. Ένα αρχείο CSS και i18n ανά feature (`css/report.css`, `i18n-en-report.js`) ώστε να μη συγκρούονται οι designers.
 
 ## Δομή (v2)
 Συμβόλαια modules και ownership: **`docs/ARCHITECTURE.md`**. Κανόνες κίνησης/υλικών (springs, materials,
@@ -66,7 +74,7 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Κανένα probing σε endpoints εκτός από τα παραπάνω.
 - Συντεταγμένες `0/0` δεν εμφανίζονται και δεν χρησιμοποιούνται πουθενά. Το `normalizeLive` τις αφαιρεί.
 - Ονόματα: Title Case μόνο στην εμφάνιση, με τελικό ς. Τόνοι **μόνο** από το επιμελημένο λεξικό `web/js/accents.js` (λέξεις με μοναδικό σωστό τονισμό, 402 λέξεις, ~70% των ονομάτων πλήρως τονισμένα). Αμφίσημες/άγνωστες λέξεις μένουν άτονες· ποτέ αυτόματη μαντεψιά. Το `searchKey` αγνοεί τόνους.
-- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins, **εκτός από το OpenFreeMap** (style, TileJSON, tiles, glyphs, sprites) σε ξεχωριστά caches: `patra-bus-map-v1` (runtime, ≤ 4000) και `patra-bus-map-offline-v1` (λήψη της ενεργής πόλης z8–14, μία πόλη τη φορά, ~7,6 MB για την Πάτρα, από τις Ρυθμίσεις). Ποτέ OSRM ή Photon. Το MapLibre είναι vendored στο `web/vendor/maplibre-gl/` (4.7.1). Σε αλλαγή shell αρχείων ανεβάζεις το `CACHE` στο `web/sw.js`· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
+- Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins, **εκτός από το OpenFreeMap** (style, TileJSON, tiles, glyphs, sprites) σε ξεχωριστά caches: `patra-bus-map-v1` (runtime, ≤ 4000) και `patra-bus-map-offline-v1` (λήψη της ενεργής πόλης z8–14, μία πόλη τη φορά, ~7,6 MB για την Πάτρα, από τις Ρυθμίσεις). Ποτέ OSRM ή Photon. Το MapLibre είναι vendored στο `web/vendor/maplibre-gl/` (4.7.1). Το `CACHE` στο `web/sw.js` σφραγίζεται αυτόματα στο deploy (βλ. Branches & previews)· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
 - Τρίτες υπηρεσίες (χωρίς κλειδί, με attribution στις Ρυθμίσεις): OpenFreeMap, OSRM/FOSSGIS (≤ 1 req/s), Photon/komoot (debounce). Η θέση του χρήστη δεν μπαίνει ποτέ σε URL της εφαρμογής.
 - Minimum viable complexity: vanilla JS, χωρίς build step και χωρίς framework.
 

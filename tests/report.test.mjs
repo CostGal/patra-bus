@@ -89,6 +89,8 @@ test('notionPage: schema, title, diagnostics block, email only when given', () =
   assert.equal(page.properties.Received.date.start, '2026-10-11T12:00:00.000Z');
   assert.equal(page.children[0].paragraph.rich_text[0].text.content, v.message);
   assert.deepEqual(JSON.parse(page.children[2].code.rich_text[0].text.content), v.diag);
+  const pv = notionPage(v, { dbId: 'DB1', now: 0, preview: true });
+  assert.equal(pv.properties.Name.title[0].text.content, `[preview] Data: ${MSG}`);
   const bare = notionPage({ category: 'idea', message: 'x'.repeat(200), diag: {} }, { dbId: 'DB1', now: 0 });
   assert.equal('Email' in bare.properties, false);
   assert.equal('City' in bare.properties, false);
@@ -136,6 +138,21 @@ function setup(over = {}) {
   return { env, forwarded, kv, post, restore: () => { globalThis.fetch = realFetch; } };
 }
 const good = { category: 'data', message: MSG, hp: '', diag: { city: 'patra', view: 'stop', ref: '1011' } };
+
+test('POST /api/report: a report from a preview origin is tagged [preview] in Notion', async () => {
+  const PREVIEW = 'https://alice-ux.patra-bus.pages.dev';
+  const s = setup({ env: { ALLOWED_ORIGIN: `${ORIGIN},https://*.patra-bus.pages.dev` } });
+  try {
+    const res = await s.post(good, { Origin: PREVIEW });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('Access-Control-Allow-Origin'), PREVIEW);
+    assert.ok(JSON.parse(s.forwarded[0][1].body).properties.Name.title[0].text.content.startsWith('[preview] '));
+    const prod = await s.post(good);
+    assert.equal(prod.status, 200);
+    assert.ok(!JSON.parse(s.forwarded[1][1].body).properties.Name.title[0].text.content.startsWith('[preview]'));
+    assert.equal((await s.post(good, { Origin: 'https://evil.pages.dev' })).status, 403);
+  } finally { s.restore(); }
+});
 
 test('POST /api/report: valid report is forwarded to Notion, nothing identifying goes along', async () => {
   const s = setup();
