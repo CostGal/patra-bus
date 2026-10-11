@@ -9,7 +9,7 @@ import { createSpringLoop } from './motion.js';
 import locationService from './location.js';
 import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
-import { t, N_, onLangChange, lang, APP_NAME } from './i18n.js';
+import { t, tn, N_, onLangChange, lang, APP_NAME } from './i18n.js';
 import { city, cityId, cityName, isCity } from './cities.js';
 import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces } from './geocode.js';
@@ -309,6 +309,15 @@ const searchInput = $('search-input');
 const searchPanel = $('search-panel');
 const searchList = $('search-list');
 const searchClear = $('search-clear');
+// Search messages and the result count are spoken from here, outside the listbox (WCAG 4.1.3). The visible message
+// stays where it is, aria-hidden, so nothing moves on screen.
+const searchStatus = h('p', { class: 'visually-hidden', role: 'status' });
+searchPanel.append(searchStatus);
+let statusTimer = 0;
+function sayStatus(text) {
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { if (searchStatus.textContent !== text) searchStatus.textContent = text; }, text ? 500 : 0);
+}
 let searchOpen = false;
 let activeIdx = -1;
 let rows = [];
@@ -343,6 +352,7 @@ function closeSearch(focusMenu = false) {
   menuBtn.setAttribute('aria-label', t('Μενού'));
   menuBtn.setAttribute('aria-haspopup', 'true');
   menuBtn.setAttribute('aria-expanded', 'false');
+  sayStatus('');
   if (focusMenu) menuBtn.focus(); else searchInput.blur();
 }
 
@@ -375,6 +385,8 @@ function renderSearch(keepActive = false) {
   rows = [];
   const out = [];
   let n = 0;
+  let say = '';
+  const msg = (text) => { say = text; return h('p', { class: 'sr-msg', 'aria-hidden': 'true' }, text); };
   const stopRows = (list) => list.map((s) => srRow(`sr-${n++}`, 'bus', s.displayName, stopSub(s), () => chooseStop(s)));
   if (!q) {
     const rs = recentStops(4);
@@ -383,7 +395,7 @@ function renderSearch(keepActive = false) {
       out.push(srHead(t('Πρόσφατα')), ...stopRows(rs),
         ...rp.map((p) => srRow(`sr-${n++}`, 'history', p.name, p.subtitle, () => choosePlace(p))));
     } else {
-      out.push(h('p', { class: 'sr-msg' }, t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
+      out.push(msg(t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
     }
     // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
     out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
@@ -396,12 +408,15 @@ function renderSearch(keepActive = false) {
     if (found.length) {
       out.push(srHead(t('Τόποι')), ...found.map((p) => srRow(`sr-${n++}`, p.kind === 'stop' ? 'bus' : 'pin', p.name, p.subtitle, () => choosePlace(p))));
     }
-    if (places.q === q && places.loading) out.push(h('p', { class: 'sr-msg', role: 'status' }, t('Αναζήτηση τόπων…')));
-    else if (places.q === q && places.failed && !found.length) out.push(h('p', { class: 'sr-msg' }, t('Δεν ήταν δυνατή η αναζήτηση τόπων.')));
-    else if (!stops.length && !found.length && q.length >= 3 && places.q === q) out.push(h('p', { class: 'sr-msg' }, t('Κανένα αποτέλεσμα')));
-    else if (!stops.length && q.length < 3) out.push(h('p', { class: 'sr-msg' }, t('Κανένα αποτέλεσμα')));
+    if (places.q === q && places.loading) out.push(msg(t('Αναζήτηση τόπων…')));
+    else if (places.q === q && places.failed && !found.length) out.push(msg(t('Δεν ήταν δυνατή η αναζήτηση τόπων.')));
+    else if (!stops.length && !found.length && q.length >= 3 && places.q === q) out.push(msg(t('Κανένα αποτέλεσμα')));
+    else if (!stops.length && q.length < 3) out.push(msg(t('Κανένα αποτέλεσμα')));
+    const count = stops.length + found.length;
+    if (count) say = [tn(count, '{n} αποτέλεσμα', '{n} αποτελέσματα'), say].filter(Boolean).join('. ');
   }
   searchList.replaceChildren(...out);
+  sayStatus(say);
   setActive(Math.min(prev, rows.length - 1));
 }
 function setActive(i) {
@@ -473,6 +488,14 @@ menuBtn.addEventListener('click', () => {
   else if (menuPop.hidden) menuPopover.open();
   else menuPopover.close(true);
 });
+// Keyboard focus leaving the search for another control closes it: the full-screen panel would hide that control
+// (WCAG 2.4.11). A blur with nowhere to go (touch scroll of the results) keeps it open.
+for (const el of [$('searchbar'), searchPanel]) {
+  el.addEventListener('focusout', (e) => {
+    const to = e.relatedTarget;
+    if (searchOpen && to && !to.closest('#searchbar, #search-panel')) closeSearch();
+  });
+}
 searchPanel.addEventListener('scroll', () => { if (document.activeElement === searchInput && matchMedia('(pointer: coarse)').matches) searchInput.blur(); }, { passive: true });
 document.addEventListener('pointerdown', (e) => {
   if (searchOpen && !e.target.closest('#searchbar, #search-panel')) closeSearch();

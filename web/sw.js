@@ -61,6 +61,7 @@ const SHELL = [
   'js/sheet.js',
   'js/motion.js',
   'js/text.js',
+  'js/color.js',
   'js/data.js',
   'js/api.js',
   'js/arrivals.js',

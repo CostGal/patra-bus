@@ -237,6 +237,9 @@ The reminder button passes `trip` to `scheduleReminder` (below) for the FIRST bu
 ### AC — accented names: `js/text.js`, `js/accents.js`, `tests/text.test.mjs`
 `titleCase()` applies a curated word dictionary (`ACCENTS`) of unambiguous Greek words; unknown or ambiguous words stay unaccented. `searchKey()` unchanged.
 
+### LC — readable line colours: `js/color.js`, `tests/color.test.mjs` (TEL-19)
+`readableLine(color, textColor) → { color, textColor }` (pure) makes upstream badge pairs reach WCAG 4.5:1: a ≤ 6% darkening first, then dark text (`#1f1f1f`) on bright lines, a darker background only as a last resort. Applied once at the sources, `data.js` `buildIndex` (static lines) and `api.js` `cleanVehicle` (live), so badges, chips, map markers and the line/bus views all get the readable pair. `arrivals.js` (shared with the worker) keeps the raw upstream colours. Full audit: `docs/ui-audit.md`.
+
 ### PO — polish + integration: `js/app.js`, `js/nearby.js`, `js/location.js`, `js/map.js`, `js/settings-view.js`, `app.css`, `css/extras.css`, `tests/location.test.mjs`, `tests/nearby.test.mjs`
 Settings mounts `mountPushCard` and `mountOfflineCard`; offline indicator; 4th nearby stop; compass in landscape; map pins clear of the floating buttons.
 

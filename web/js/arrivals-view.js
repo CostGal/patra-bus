@@ -19,7 +19,7 @@ const NOW_SEC = 15; // under this a tile reads "τώρα"
 const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaSay(rem) }));
 
 // ---- one arrival tile ----
-// v: normalised Vehicle. opts: { compact, now, line, stop, lineLinks, stat }. The element has .tick(now) to refresh the countdown in
+// v: normalised Vehicle. opts: { compact, now, line, stop, lineLinks, stat, stale }. The element has .tick(now) to refresh the countdown in
 // place (the stop view calls it every second; other modules may do the same or just re-render) and .setStat(stat) to show the
 // quiet "συνήθως +3′" under a scheduled tile (reliability stats from api.fetchStats; ignored for live ones).
 // With opts.stop (the stop code the tile belongs to) the tile is a link: a live bus opens its route (#/bus/…), a scheduled
@@ -27,7 +27,7 @@ const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { 
 export const busHash = (v, stop) => cityHash(`#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`);
 const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`);
 
-export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null } = {}) {
+export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null, stale = false } = {}) {
   const live = !!v.live;
   const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
     : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
@@ -48,7 +48,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
     h('div', { class: 'atile-body' }, h('div', { class: 'atile-dest' }, dest), status),
     h('div', { class: 'atile-eta' }, num),
     href ? icon('chevron') : null);
-  const hint = href ? (live ? t(' Πάτα για τη διαδρομή του οχήματος.') : t(' Πάτα για τη γραμμή.')) : '';
+  const hint = (stale ? t(' Τα δεδομένα δεν έχουν ενημερωθεί πρόσφατα.') : '') + (href ? (live ? t(' Πάτα για τη διαδρομή του οχήματος.') : t(' Πάτα για τη γραμμή.')) : '');
 
   let lastText = null, usualTxt = '';
   const label = (rem) => {
@@ -167,12 +167,23 @@ export function mountStop(container, ctx, { code }) {
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
   const bannerBtn = h('button', { type: 'button', class: 'stopv-btn stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
-  const banner = h('div', { class: 'stopv-banner', role: 'status', hidden: true }, icon('alert'), bannerText, bannerBtn);
-  const chips = h('div', { class: 'stopv-chips fade-edge-bottom', role: 'group', 'aria-label': t('Φίλτρο γραμμής'), hidden: true });
+  // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
+  const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
+  const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
+  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'stopv-btn stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
-  root.append(head, banner, chips, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn));
+  // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
+  const status = h('p', { class: 'visually-hidden', role: 'status' });
+  root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  let saidKind = '', sayTimer = 0;
+  function say(kind, text) {
+    if (kind === saidKind) return;
+    saidKind = kind;
+    clearTimeout(sayTimer);
+    sayTimer = setTimeout(() => { if (!dead) status.textContent = text; }, 150); // after the region is in the tree
+  }
 
   const poller = createLivePoller(code, (s) => {
     if (dead) return;
@@ -182,7 +193,10 @@ export function mountStop(container, ctx, { code }) {
     pushMap();
   });
 
+  // Retry buttons use aria-disabled instead of disabled, so they keep keyboard focus while they wait.
+  const waiting = () => st.loading || (retryPending && st.nextAt && secsUntil(st.nextAt, Date.now()) > 0);
   function doRefresh() {
+    if (waiting()) return;
     retryPending = true;
     poller.refresh();
     paintDynamic(Date.now());
@@ -215,28 +229,42 @@ export function mountStop(container, ctx, { code }) {
     const lines = [];
     for (const v of all) if (!lines.some((l) => l.code === v.lineCode)) lines.push({ code: v.lineCode, color: v.color, textColor: v.textColor });
     if (filter && !lines.some((l) => l.code === filter)) lines.push({ code: filter, color: ctx.data.lineByCode.get(filter)?.color, textColor: ctx.data.lineByCode.get(filter)?.textColor });
-    chips.hidden = lines.length < 2;
-    if (!chips.hidden) {
-      const chip = (label, on, onclick, kids) => h('button', { type: 'button', class: `stopv-chip${on ? ' on' : ''}`, 'aria-pressed': String(on), onclick }, kids || label);
+    chipBar.hidden = lines.length < 2;
+    // Rebuilt only when the lines or the filter change (not on every poll), and focus stays on the same chip.
+    const chipSig = `${filter}|${lines.map((l) => l.code).join(',')}`;
+    if (!chipBar.hidden && chipSig !== chips.dataset.sig) {
+      chips.dataset.sig = chipSig;
+      const focusedChip = chips.contains(document.activeElement) ? document.activeElement.dataset.key : null;
+      const chip = (label, on, onclick, kids, key) => h('button', { type: 'button', class: `stopv-chip${on ? ' on' : ''}`, 'aria-pressed': String(on), 'data-key': key, onclick }, kids || label);
       chips.replaceChildren(
-        chip(t('Όλες'), !filter, () => { filter = null; showAll = false; render(); pushMap(); }),
+        chip(t('Όλες'), !filter, () => { filter = null; showAll = false; render(); pushMap(); }, null, '*'),
         ...lines.map((l) => chip(null, filter === l.code, () => { filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
-          [lineBadge(ctx.data.lineByCode.get(l.code) || l)])));
+          [lineBadge(ctx.data.lineByCode.get(l.code) || l)], l.code)));
+      if (focusedChip) [...chips.children].find((c) => c.dataset.key === focusedChip)?.focus({ preventScroll: true });
     }
 
-    // body
+    // body. Whatever had keyboard focus in it (a tile, "show all", "try again") gets it back after the rebuild.
     body.setAttribute('aria-busy', String(!data && !st.error));
+    const hadFocus = body.contains(document.activeElement);
+    const focusKey = hadFocus ? document.activeElement.dataset?.key : null;
     tiles = [];
     if (!data && !st.error) {
       body.replaceChildren(h('ul', { class: 'stopv-list' }, skeleton(), skeleton(), skeleton()));
+      say('loading', t('Φόρτωση αφίξεων…'));
     } else if (!data) {
-      body.replaceChildren(h('div', { class: 'stopv-state' },
-        icon('alert'), h('p', { class: 'stopv-state-title' }, t('Δεν φορτώθηκαν οι αφίξεις')),
-        h('p', { class: 'stopv-state-sub' }, errText(st.error)), retryButton()));
+      const title = t('Δεν φορτώθηκαν οι αφίξεις'), sub = errText(st.error);
+      // The same error again (a retry that failed): keep the block, and the focused retry button, in place.
+      if (body.dataset.err !== sub || !body.querySelector('.stopv-retry')) {
+        body.replaceChildren(h('div', { class: 'stopv-state' },
+          icon('alert'), h('p', { class: 'stopv-state-title' }, title),
+          h('p', { class: 'stopv-state-sub' }, sub), retryButton()));
+      }
+      say(`error:${sub}`, `${title}. ${sub}`);
     } else if (!all.length) {
       body.replaceChildren(h('div', { class: 'stopv-state' },
         icon('clock'), h('p', { class: 'stopv-state-title' }, t('Καμία προγραμματισμένη άφιξη αυτή τη στιγμή')),
         h('p', { class: 'stopv-state-sub' }, t('Η λίστα ανανεώνεται αυτόματα.'))));
+      say('empty', t('Καμία προγραμματισμένη άφιξη αυτή τη στιγμή'));
     } else {
       const shown = filter ? all.filter((v) => v.lineCode === filter) : all;
       if (!shown.length) {
@@ -246,26 +274,36 @@ export function mountStop(container, ctx, { code }) {
       } else {
         const cut = showAll ? shown : shown.slice(0, MAX_TILES);
         const items = cut.map((v) => {
-          const tl = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code, stat: v.live ? null : stats.get(v.routeCode) });
+          const tl = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code, stat: v.live ? null : stats.get(v.routeCode), stale });
           tl.dataset.key = v.vehicleCode || `${v.routeCode}:${v.etaSec}`;
           tiles.push({ v, el: tl });
           return h('li', {}, tl);
         });
-        // Tiles are links: a refresh must not drop keyboard focus.
-        const focused = document.activeElement && body.contains(document.activeElement) ? document.activeElement.dataset?.key : null;
         // replaceChildren would stringify a null child as "null", so only pass real nodes.
         body.replaceChildren(h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items));
-        if (focused) tiles.find((x) => x.el.dataset.key === focused)?.el.focus({ preventScroll: true });
         if (cut.length < shown.length) {
-          body.append(h('button', { type: 'button', class: 'stopv-btn stopv-more', onclick: () => { showAll = true; render(); } }, t('Εμφάνιση όλων ({n})', { n: shown.length })));
+          body.append(h('button', { type: 'button', class: 'stopv-btn stopv-more', 'data-key': 'more', onclick: () => {
+            showAll = true;
+            render();
+            tiles[MAX_TILES]?.el.focus({ preventScroll: true }); // the first tile that just appeared
+          } }, t('Εμφάνιση όλων ({n})', { n: shown.length })));
         }
         wantStats();
       }
+      const nLive = all.filter((v) => v.live).length;
+      say(stale ? 'stale' : 'ok', stale ? t('Παλιά δεδομένα: οι χρόνοι μπορεί να μην ισχύουν.')
+        : all.length === 1 ? t('{n} άφιξη, {live} με ζωντανή θέση', { n: 1, live: nLive })
+        : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
+    }
+    body.dataset.err = !data && st.error ? errText(st.error) : '';
+    if (hadFocus && !body.contains(document.activeElement)) {
+      const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
+      back?.focus({ preventScroll: true });
     }
     paintDynamic(now);
   }
 
-  const retryButton = () => h('button', { type: 'button', class: 'stopv-btn stopv-primary stopv-retry', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
+  const retryButton = () => h('button', { type: 'button', class: 'stopv-btn stopv-primary stopv-retry', 'data-key': 'retry', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
 
   // Banner, retry labels and footer: cheap, repainted every second.
   function paintDynamic(now) {
@@ -277,7 +315,7 @@ export function mountStop(container, ctx, { code }) {
     const label = st.loading ? t('Ανανέωση…') : retryPending && wait > 0 ? t('Νέα προσπάθεια σε {n}″', { n: wait }) : t('Δοκίμασε ξανά');
     for (const b of [bannerBtn, ...body.querySelectorAll('.stopv-retry')]) {
       b.textContent = label;
-      b.disabled = st.loading || (retryPending && wait > 0);
+      b.setAttribute('aria-disabled', String(st.loading || (retryPending && wait > 0)));
     }
     refreshBtn.disabled = st.loading;
     // one quiet line: age · next refresh (· demo)
@@ -342,6 +380,7 @@ export function mountStop(container, ctx, { code }) {
     destroy() {
       dead = true;
       clearInterval(timer);
+      clearTimeout(sayTimer);
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('click', onDocClick);
       document.removeEventListener('keydown', onKey);

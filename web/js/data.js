@@ -2,6 +2,7 @@
 // buildIndex() is pure (tests); loadData() / loadShapes() fetch once and memoize.
 import { titleCase, searchKey } from './text.js';
 import { dataDir } from './cities.js';
+import { readableLine } from './color.js';
 
 const getJSON = async (u) => {
   const r = await fetch(u);
@@ -35,7 +36,7 @@ export function buildIndex(rawStops, rawLines, rawRoutes) {
     lineCodes: (s.lineCodes || []).map(String), routeCodes: (s.routeCodes || []).map(String), key: searchKey(s.name),
   }));
   const lines = rawLines.map((l) => ({
-    code: String(l.code), name: l.name, displayName: titleCase(l.name), color: l.color, textColor: l.textColor,
+    code: String(l.code), name: l.name, displayName: titleCase(l.name), ...readableLine(l.color, l.textColor),
     routes: (l.routes || []).map((r) => ({ code: String(r.code), name: r.name, direction: r.direction })),
   }));
   const stopByCode = new Map(stops.map((s) => [s.code, s]));

@@ -72,6 +72,7 @@ a { color: var(--accent); }
 .map { position: absolute; inset: 0; background: var(--surface-2); }
 .map .maplibregl-canvas { outline: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .maplibregl-ctrl-attrib { font-size: 11px; }
+.map .maplibregl-canvas:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; } /* it takes keyboard focus (arrow keys pan) */
 .has-chips { --chips-h: 48px; }
 .is-offline { --offline-h: 44px; }
 .maplibregl-ctrl-bottom-right { transition: transform .3s var(--ease); }

@@ -2,8 +2,8 @@
    Dark mode: follows the OS unless <html data-theme="light|dark"> forces it (set by app.js from the theme setting). */
 :root {
   --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f4; --text: #1f1f1f; --text-2: #5f6368;
-  --border: #e6e8eb; --accent: #1a73e8; --accent-text: #ffffff; --live: #188038; --live-bg: #e6f4ea;
-  --sched: #5f6368; --sched-bg: #f1f3f4; --warn: #b06000; --warn-bg: #fef7e0; --danger: #c5221f;
+  --border: #e6e8eb; --accent: #1967d2; --accent-text: #ffffff; --live: #137333; --live-bg: #e6f4ea;
+  --sched: #5f6368; --sched-bg: #f1f3f4; --warn: #9a5200; --warn-bg: #fef7e0; --danger: #c5221f;
   --radius: 12px; --radius-lg: 20px;
   --shadow-1: 0 1px 2px rgba(60,64,67,.2);
   --shadow-2: 0 2px 8px rgba(60,64,67,.16);
