@@ -1,0 +1,95 @@
+name: Lighthouse
+
+# Report only: posts Performance / Accessibility / PWA scores on the PR. Low scores never fail it;
+# a Lighthouse crash (or a server that won't start) does.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: lighthouse-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # ?demo = deterministic simulation on routes.json: no worker in CI and no live upstream calls.
+      URL_STOP: http://localhost:8080/?demo#/stop/1011
+      URL_HOME: http://localhost:8080/?demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+
+      - name: Start static server (web/)
+        run: |
+          nohup ./node_modules/.bin/http-server web -p 8080 -c-1 --silent > http-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://localhost:8080/ && echo "up after ${i}s" && exit 0
+            sleep 1
+          done
+          echo "::error::static server did not respond on :8080"; cat http-server.log; exit 1
+
+      - name: Run Lighthouse
+        run: |
+          mkdir -p lighthouse
+          # Pinned to 11.x: Lighthouse 12 removed the PWA category.
+          for target in "stop|$URL_STOP" "home|$URL_HOME"; do
+            name="${target%%|*}"; url="${target#*|}"
+            echo "::group::Lighthouse $name ($url)"
+            npx --yes lighthouse@11.7.1 "$url" \
+              --only-categories=performance,accessibility,pwa \
+              --output=json --output=html --output-path="lighthouse/$name" \
+              --chrome-flags="--headless=new --no-sandbox" --quiet
+            echo "::endgroup::"
+          done
+
+      - name: Build scores comment
+        env:
+          LH_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          LH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+        run: |
+          node scripts/lighthouse-comment.mjs \
+            "Stop 1011=lighthouse/stop.report.json" \
+            "Home=lighthouse/home.report.json" > lighthouse/comment.md
+          cat lighthouse/comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: |
+            lighthouse/
+            http-server.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Post / update PR comment
+        # Fork PRs get a read-only token: skip the comment there (scores are still in the job summary).
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('lighthouse/comment.md', 'utf8');
+            const marker = '<!-- lighthouse-scores -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const mine = comments.find((c) => c.user?.type === 'Bot' && c.body?.includes(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+              core.info(`updated comment ${mine.id}`);
+            } else {
+              const { data } = await github.rest.issues.createComment({ owner, repo, issue_number, body });
+              core.info(`created comment ${data.id}`);
+            }
