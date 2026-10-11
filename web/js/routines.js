@@ -222,7 +222,7 @@ export function mountRoutinesSettings(container, ctx = {}) {
     }[state] || N_('Οι υπενθυμίσεις χρειάζονται ειδοποιήσεις.');
     return h('div', { class: 'plc-push' },
       h('p', { class: 'set-p' }, t(msg)),
-      state === 'off' ? h('button', { type: 'button', class: 'ex-btn', onclick: async () => { await enablePush(); render(); } }, icon('bell'), t('Ενεργοποίηση ειδοποιήσεων')) : null);
+      state === 'off' ? h('button', { type: 'button', class: 'btn rect', onclick: async () => { await enablePush(); render(); } }, icon('bell'), t('Ενεργοποίηση ειδοποιήσεων')) : null);
   }
 
   function formBlock() {
@@ -250,7 +250,7 @@ export function mountRoutinesSettings(container, ctx = {}) {
         h('label', { class: 'plc-field' }, h('span', { class: 'ex-sub' }, t('Ώρα που θέλεις να φύγεις')), time),
         h('label', { class: 'plc-field' }, h('span', { class: 'ex-sub' }, t('Ειδοποίησέ με')), select(form.lead, LEADS.map((n) => [n, t('{n}′ πριν', { n })]), (v) => { form.lead = Number(v); }, t('Ειδοποίησέ με')))),
       error ? h('p', { class: 'ex-sub plc-error', role: 'alert' }, t(ERR[error] || ERR.server)) : null,
-      h('div', { class: 'set-actions' }, h('button', { type: 'button', class: 'ex-btn', disabled: busy, onclick: save }, busy ? t('Μισό λεπτό…') : t('Αποθήκευση υπενθύμισης'))));
+      h('div', { class: 'set-actions' }, h('button', { type: 'button', class: 'btn rect', disabled: busy, onclick: save }, busy ? t('Μισό λεπτό…') : t('Αποθήκευση υπενθύμισης'))));
   }
 
   function list() {
@@ -263,7 +263,7 @@ export function mountRoutinesSettings(container, ctx = {}) {
       const meta = [r.trip.lineCode ? t('Λεωφορείο {line}', { line: r.trip.lineCode }) : '', r.trip.stopName || '', t('{n}′ πριν', { n: r.leadMin })].filter(Boolean).join(' · ');
       return h('div', { class: 'set-item plc-row' },
         h('div', { class: 'set-item-main' }, h('div', { class: 'set-label' }, routineLabel(r, name)), h('span', { class: 'ex-sub' }, meta)),
-        h('button', { type: 'button', class: 'ex-btn ex-btn-sm ex-btn-danger', 'aria-label': t('Διαγραφή υπενθύμισης'), onclick: async () => { await removeRoutine(r.id); } }, icon('trash')));
+        h('button', { type: 'button', class: 'btn rect sm destructive', 'aria-label': t('Διαγραφή υπενθύμισης'), onclick: async () => { await removeRoutine(r.id); } }, icon('trash')));
     }));
   }
 

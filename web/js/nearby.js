@@ -176,7 +176,7 @@ export function mountNearby(container, ctx) {
   const tile = (v, fetchedAt, now) => (tileFn ? tileFn(v, fetchedAt, { compact: true, now, line: lineOf(v.lineCode) }) : miniTile(v, fetchedAt, { now, line: lineOf(v.lineCode) }));
   const go = (e, hash) => { if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); ctx.navigate(hash); };
   const link = (cls, code, ...kids) => h('a', { class: `${cls} press`, href: hashFor(code), onclick: (e) => go(e, hashFor(code)) }, ...kids);
-  const btn = (cls, label, fn, ...kids) => h('button', { type: 'button', class: `nb-btn press ${cls}`, onclick: fn }, ...(kids.length ? kids : [label]));
+  const btn = (cls, label, fn, ...kids) => h('button', { type: 'button', class: `btn press ${cls}`, onclick: fn }, ...(kids.length ? kids : [label]));
 
   // ----- location → stops -----
   const useGpsNow = () => { try { loc.start(); } catch { /* ignore */ } };
@@ -294,12 +294,12 @@ export function mountNearby(container, ctx) {
 
   // Every non-result state is one short line and at most one primary button (+ the quiet manual-location one).
   const title = () => h('h2', { class: 'nb-sr-title', id: titleId }, t('Επόμενο λεωφορείο κοντά σου'));
-  const manualBtn = (label = t('Όρισε θέση στον χάρτη'), cls = 'nb-btn-ghost') => btn(cls, label, pinMapCentre, icon('pin'), label);
+  const manualBtn = (label = t('Όρισε θέση στον χάρτη'), cls = 'ghost') => btn(cls, label, pinMapCentre, icon('pin'), label);
   // one text line + one primary button side by side (fits the peek sheet); anything else sits behind "More"
   const panel = (cls, text, primary, ...more) => h('div', { class: `nb-panel material nb-compact ${cls || ''}` },
     h('div', { class: 'nb-line' }, h('p', { class: 'nb-text', role: 'status' }, text), primary || null),
     more.length ? h('details', { class: 'nb-how' }, h('summary', {}, t('Περισσότερα')), ...more) : null);
-  const retryBtn = () => btn('nb-btn-primary', t('Δοκίμασε ξανά'), useGpsNow, t('Δοκίμασε ξανά'));
+  const retryBtn = () => btn('primary', t('Δοκίμασε ξανά'), useGpsNow, t('Δοκίμασε ξανά'));
 
   function buildMode(mode) {
     switch (mode) {
@@ -307,11 +307,11 @@ export function mountNearby(container, ctx) {
         return [title(), panel('', t('Φόρτωση στάσεων…'))];
       case 'cta':
         return [title(), panel('nb-cta', t('Δες πότε περνά το επόμενο λεωφορείο.'),
-          btn('nb-btn-primary', t('Βρες τη στάση μου'), useGpsNow, icon('locate'), t('Βρες τη στάση μου')), manualBtn())];
+          btn('primary', t('Βρες τη στάση μου'), useGpsNow, icon('locate'), t('Βρες τη στάση μου')), manualBtn())];
       case 'locating':
-        return [title(), panel('nb-cta', t('Εντοπισμός θέσης…'), manualBtn(t('Όρισε θέση στον χάρτη'), 'nb-btn-ghost nb-btn-sm'))];
+        return [title(), panel('nb-cta', t('Εντοπισμός θέσης…'), manualBtn(t('Όρισε θέση στον χάρτη'), 'ghost'))];
       case 'coarse':
-        return [title(), panel('nb-cta', t('Αναμονή για πιο ακριβή θέση (±{d})…', { d: fmtDist(st.fix.accuracy) }), manualBtn(t('Όρισε θέση στον χάρτη'), 'nb-btn-ghost nb-btn-sm'))];
+        return [title(), panel('nb-cta', t('Αναμονή για πιο ακριβή θέση (±{d})…', { d: fmtDist(st.fix.accuracy) }), manualBtn(t('Όρισε θέση στον χάρτη'), 'ghost'))];
       case 'denied':
         return [title(), panel('nb-warn', t('Η πρόσβαση στην τοποθεσία είναι απενεργοποιημένη'), retryBtn(),
           h('p', { class: 'nb-text' }, isIOS()
@@ -344,7 +344,7 @@ export function mountNearby(container, ctx) {
     refs.groups = h('div', { class: 'nb-groups' });
     refs.foot = h('p', { class: 'nb-foot' });
     refs.details = h('div', { class: 'nb-details', hidden: true }, refs.notice, refs.groups, refs.foot);
-    refs.toggle = btn('nb-btn-ghost nb-toggle', '', () => { st.expanded = !st.expanded; paint(); }, '');
+    refs.toggle = btn('ghost nb-toggle', '', () => { st.expanded = !st.expanded; paint(); }, '');
     refs.toggle.setAttribute('aria-expanded', 'false');
     st.toggleSig = null;
     return [title(), refs.hero, refs.rows, refs.toggle, refs.details];
@@ -359,7 +359,7 @@ export function mountNearby(container, ctx) {
       const failed = st.states.filter((s) => s.live).every((s) => s.error && !s.vehicles);
       r.el = h('div', { class: 'nb-hero nb-hero-none material card-in' },
         h('p', { class: 'nb-hero-msg' }, loading ? t('Φόρτωση αφίξεων…') : failed ? t('Δεν φορτώθηκαν οι αφίξεις') : noSvc ? t('Δεν υπάρχει εξυπηρέτηση αυτή την ώρα') : t('Δεν υπάρχουν προσεχή δρομολόγια στις κοντινές στάσεις')),
-        failed && !loading ? btn('nb-btn-ghost', t('Δοκίμασε ξανά'), manualRefresh, t('Δοκίμασε ξανά')) : null);
+        failed && !loading ? btn('ghost', t('Δοκίμασε ξανά'), manualRefresh, t('Δοκίμασε ξανά')) : null);
       if (loading) r.el.setAttribute('aria-busy', 'true');
       return r;
     }
@@ -442,7 +442,7 @@ export function mountNearby(container, ctx) {
     g.meta = h('span', { class: 'nb-stop-meta' });
     g.list = h('ul', { class: 'nb-rows' });
     g.msg = h('p', { class: 'nb-stop-msg' });
-    g.more = btn('nb-btn-ghost nb-more', '', () => loadMore(s.stop.code), icon('clock'), t('Δες αφίξεις'));
+    g.more = btn('ghost nb-more', '', () => loadMore(s.stop.code), icon('clock'), t('Δες αφίξεις'));
     g.more.setAttribute('aria-label', t('Δες αφίξεις: {name}', { name: s.stop.displayName || titleCase(s.stop.name) }));
     g.el = h('section', { class: 'nb-stop', 'aria-label': t('Στάση {name}', { name: s.stop.displayName || s.stop.name }) },
       h('div', { class: 'nb-stop-head' },
@@ -526,7 +526,7 @@ export function mountNearby(container, ctx) {
   function paintNotices(now) {
     const f = st.fix, items = [];
     if (f && f.source === 'manual') {
-      items.push(h('div', { class: 'nb-notice' }, icon('pin'), h('span', {}, t('Χειροκίνητη θέση')), btn('nb-btn-link', t('Χρήση GPS'), useGpsNow, t('Χρήση GPS'))));
+      items.push(h('div', { class: 'nb-notice' }, icon('pin'), h('span', {}, t('Χειροκίνητη θέση')), btn('link', t('Χρήση GPS'), useGpsNow, t('Χρήση GPS'))));
     } else if (f) {
       if (f.accuracy > LOW_ACC_M) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Χαμηλή ακρίβεια θέσης (±{d}). Οι στάσεις ίσως δεν είναι οι κοντινότερες.', { d: fmtDist(f.accuracy) }))));
       else if (now - f.ts > 120000) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Η θέση σου είναι από πριν {age}.', { age: ageText((now - f.ts) / 1000) }))));

@@ -117,7 +117,7 @@ function build(container, ctx, keep) {
     row(idLang, t('Γλώσσα'), null, langSeg));
 
   // ---------- guide (+ install tutorial when it applies: phone, browser tab) ----------
-  const openLink = (to, labelId) => h('a', { class: 'ex-btn ex-btn-sm press', href: cityHash(to), 'aria-labelledby': labelId }, t('Άνοιγμα'), icon('chevron'));
+  const openLink = (to, labelId) => h('a', { class: 'btn rect sm press', href: cityHash(to), 'aria-labelledby': labelId }, t('Άνοιγμα'), icon('chevron'));
   const [idGuide, idInstall] = [id('guide'), id('install-guide')];
   const guide = h('section', { class: 'set-lang' }, row(idGuide, t('Οδηγός χρήσης'), null, openLink('#/guide', idGuide)));
   import('./install-guide.js').then((m) => {
@@ -148,13 +148,13 @@ function build(container, ctx, keep) {
 
   // ---------- notifications ----------
   const permText = h('p', { class: 'ex-sub' });
-  const permBtn = h('button', { type: 'button', class: 'ex-btn', onclick: async () => {
+  const permBtn = h('button', { type: 'button', class: 'btn rect', onclick: async () => {
     const ok = await ensurePermission();
     if (dead) return;
     paintPerm();
     say(ok ? t('Οι ειδοποιήσεις ενεργοποιήθηκαν') : t('Οι ειδοποιήσεις δεν ενεργοποιήθηκαν'));
   } }, icon('bell'), t('Ενεργοποίηση ειδοποιήσεων'));
-  const testBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => {
+  const testBtn = h('button', { type: 'button', class: 'btn rect sm', onclick: () => {
     scheduleReminder({ at: Date.now() + 5000, title: t('Δοκιμαστική υπενθύμιση'), body: t('Έτσι θα σε ειδοποιώ πριν χρειαστεί να φύγεις.'), tag: 'settings-test' });
     say(t('Η δοκιμή θα εμφανιστεί σε 5 δευτερόλεπτα'));
   } }, t('Δοκιμή υπενθύμισης'));
@@ -175,7 +175,7 @@ function build(container, ctx, keep) {
     remList.hidden = !items.length;
     remList.replaceChildren(...items.map((r) => h('li', { class: 'set-item' },
       h('div', { class: 'set-item-main' }, h('div', { class: 'set-label' }, r.title || t('Υπενθύμιση')), h('div', { class: 'ex-sub' }, `${t('στις {time}', { time: fmtClock(r.at) })}${r.body ? ` · ${r.body}` : ''}`)),
-      h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Ακύρωση υπενθύμισης: {name}', { name: r.title || r.tag }), onclick: () => cancelReminder(r.tag) }, icon('close')))));
+      h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Ακύρωση υπενθύμισης: {name}', { name: r.title || r.tag }), onclick: () => cancelReminder(r.tag) }, icon('close')))));
   }
   const push = extSlot(() => import('./push.js'), 'mountPushCard');
   const notifications = sec('notifications', t('Ειδοποιήσεις'),
@@ -188,7 +188,7 @@ function build(container, ctx, keep) {
   function paintFavs(focus) {
     const favs = getFavorites();
     favorites.hidden = !favs.length;
-    const btn = (code, act, label, ic, disabled) => h('button', { type: 'button', class: 'ex-icon-btn', 'data-code': code, 'data-act': act, 'aria-label': label, disabled,
+    const btn = (code, act, label, ic, disabled) => h('button', { type: 'button', class: 'btn round strong', 'data-code': code, 'data-act': act, 'aria-label': label, disabled,
       onclick: () => {
         if (act === 'remove') { removeFavorite(code); paintFavs({ code, act: 'next' }); }
         else { moveFavorite(code, act === 'up' ? -1 : 1); paintFavs({ code, act }); }
@@ -221,9 +221,9 @@ function build(container, ctx, keep) {
   if (!known && d.routes.length) { // routes.json carries its own build date; read it once, only here
     fetch(dataDir() + 'routes.json').then((r) => (r.ok ? r.json() : null)).then((j) => { if (!dead && j?.generatedAt) fillFreshness(j.generatedAt); }).catch(() => {});
   }
-  const clearRecentsBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => { clearRecents(); say(t('Τα πρόσφατα καθαρίστηκαν')); } }, t('Καθαρισμός πρόσφατων αναζητήσεων'));
+  const clearRecentsBtn = h('button', { type: 'button', class: 'btn rect sm', onclick: () => { clearRecents(); say(t('Τα πρόσφατα καθαρίστηκαν')); } }, t('Καθαρισμός πρόσφατων αναζητήσεων'));
   let armed = null;
-  const wipeBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm ex-btn-danger', onclick: () => {
+  const wipeBtn = h('button', { type: 'button', class: 'btn rect sm destructive', onclick: () => {
     if (!armed) {
       wipeBtn.textContent = t('Σίγουρα; Πάτα ξανά για διαγραφή');
       armed = after(() => { armed = null; wipeBtn.textContent = t('Διαγραφή όλων των δεδομένων'); }, 5000);
@@ -257,7 +257,7 @@ function build(container, ctx, keep) {
 
   container.replaceChildren(h('div', { class: 'ex-view' },
     h('header', { class: 'ex-head' },
-      h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
+      h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
       h('h1', {}, t('Ρυθμίσεις'))),
     language, guide, display, homeSec, notifications, favorites, data, offline, about));
 

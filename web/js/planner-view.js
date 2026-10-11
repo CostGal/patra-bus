@@ -86,8 +86,8 @@ export function mountPlanner(container, ctx, params = {}) {
 
   const fromInput = h('input', { class: 'pl-input', type: 'search', id: 'pl-from', enterkeyhint: 'search', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': t('Αφετηρία') });
   const toInput = h('input', { class: 'pl-input', type: 'search', id: 'pl-to', enterkeyhint: 'search', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: t('Πού πάμε;'), 'aria-label': t('Προορισμός') });
-  const swapBtn = h('button', { type: 'button', class: 'pl-icon-btn pl-swap press', 'aria-label': t('Αντιστροφή αφετηρίας και προορισμού'), onclick: () => swap() }, icon('swap'));
-  const backBtn = h('button', { type: 'button', class: 'pl-icon-btn press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back'));
+  const swapBtn = h('button', { type: 'button', class: 'btn round pl-swap press', 'aria-label': t('Αντιστροφή αφετηρίας και προορισμού'), onclick: () => swap() }, icon('swap'));
+  const backBtn = h('button', { type: 'button', class: 'btn round press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back'));
   const head = h('header', { class: 'pl-head' },
     h('div', { class: 'pl-head-top' }, backBtn, h('h2', { class: 'pl-title' }, t('Διαδρομή'))),
     h('div', { class: 'pl-route' },
@@ -348,7 +348,7 @@ export function mountPlanner(container, ctx, params = {}) {
   function stateBox(iconName, title, sub, ...extra) {
     return h('div', { class: 'pl-state' }, icon(iconName), h('p', { class: 'pl-state-title' }, title), sub ? h('p', { class: 'pl-state-sub' }, sub) : null, ...extra);
   }
-  const btn = (label, onclick, cls = '', ic = null) => h('button', { type: 'button', class: `pl-btn press ${cls}`.trim(), onclick }, ic ? icon(ic) : null, label);
+  const btn = (label, onclick, cls = '', ic = null) => h('button', { type: 'button', class: `btn press ${cls}`.trim(), onclick }, ic ? icon(ic) : null, label);
   // secondary text / actions live behind "⋯"
   const moreBox = (...kids) => h('details', { class: 'pl-more' }, h('summary', { 'aria-label': t('Περισσότερα'), title: t('Περισσότερα') }, '⋯'), h('div', { class: 'pl-more-body' }, ...kids));
 
@@ -356,7 +356,7 @@ export function mountPlanner(container, ctx, params = {}) {
     const recents = getRecents('place').filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lng)).slice(0, 5);
     body.replaceChildren(
       stateBox('route', t('Πού θέλεις να πας;'), t('Διάλεξε προορισμό και θα σου πω πότε να ξεκινήσεις ώστε να μην περιμένεις στη στάση.'),
-        btn(t('Αναζήτηση προορισμού'), () => toInput.focus(), 'is-primary', 'search')),
+        btn(t('Αναζήτηση προορισμού'), () => toInput.focus(), 'primary', 'search')),
       recents.length ? h('div', { class: 'pl-sug-list' }, h('div', { class: 'pl-sug-head' }, t('Πρόσφατα')),
         recents.map((p) => sugRow(p, { iconName: 'history', onPick: () => pick('to', p, 'place') }))) : null);
   }
@@ -369,7 +369,7 @@ export function mountPlanner(container, ctx, params = {}) {
           : st === 'locating' ? t('Εντοπισμός τοποθεσίας…') : t('Χρειάζομαι την αφετηρία σου.');
     body.replaceChildren(stateBox('locate', t('Από πού ξεκινάς;'), why,
       h('div', { class: 'pl-btnrow' },
-        st === 'denied' || st === 'insecure' ? null : btn(t('Εντόπισέ με'), useMyLocation, 'is-primary', 'locate'),
+        st === 'denied' || st === 'insecure' ? null : btn(t('Εντόπισέ με'), useMyLocation, 'primary', 'locate'),
         M('getCenter') ? btn(t('Κέντρο του χάρτη'), () => pick('from', { ...M('getCenter'), name: CENTER_NAME(), kind: 'place' }, 'map'), '', 'pin') : null,
         btn(t('Γράψε αφετηρία'), () => fromInput.focus(), '', 'search'))));
   }
@@ -380,7 +380,7 @@ export function mountPlanner(container, ctx, params = {}) {
   }
 
   function renderError() {
-    body.replaceChildren(stateBox('alert', t('Δεν ήταν δυνατός ο υπολογισμός'), t('Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'), btn(t('Δοκίμασε ξανά'), () => runPlan(), 'is-primary', 'refresh')));
+    body.replaceChildren(stateBox('alert', t('Δεν ήταν δυνατός ο υπολογισμός'), t('Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'), btn(t('Δοκίμασε ξανά'), () => runPlan(), 'primary', 'refresh')));
   }
 
   function nearestToDest() {
@@ -435,7 +435,7 @@ export function mountPlanner(container, ctx, params = {}) {
     const notes = [];
     const r = S.result;
     if (r && r.liveTotal && r.liveFailed >= r.liveTotal && S.its.some((i) => i.kind !== 'walk')) {
-      notes.push(h('div', { class: 'pl-banner' }, h('span', {}, t('Δεν φορτώθηκαν δεδομένα live για τις στάσεις — οι ώρες αναχώρησης λείπουν.')), btn(t('Δοκίμασε ξανά'), () => runPlan({ silent: true }), 'is-small')));
+      notes.push(h('div', { class: 'pl-banner' }, h('span', {}, t('Δεν φορτώθηκαν δεδομένα live για τις στάσεις — οι ώρες αναχώρησης λείπουν.')), btn(t('Δοκίμασε ξανά'), () => runPlan({ silent: true }), 'sm current')));
     } else if (S.its.length && S.its.every((i) => i.kind !== 'walk' && i.status === 'none')) {
       notes.push(h('div', { class: 'pl-banner' }, h('span', {}, t('Δεν υπάρχουν αναχωρήσεις αυτή τη στιγμή για αυτές τις γραμμές (ίσως έχουν τελειώσει τα δρομολόγια).'))));
     }
@@ -617,7 +617,7 @@ export function mountPlanner(container, ctx, params = {}) {
   }
   function onboardBtn(ob) {
     const mine = () => activeTrip()?.vehicleCode === ob.vehicleCode;
-    const b = h('button', { type: 'button', class: 'pl-btn', onclick: async () => {
+    const b = h('button', { type: 'button', class: 'btn', onclick: async () => {
       if (mine()) stopOnboard();
       else if (await startOnboard({ vehicleCode: ob.vehicleCode, routeCode: ob.route.code, lineCode: ob.route.lineCode, alightStop: ob.alight.code, stopName: ob.alight.displayName })) {
         toast(t('Θα σε ειδοποιήσω πριν τη «{name}»', { name: ob.alight.displayName }));
@@ -633,11 +633,11 @@ export function mountPlanner(container, ctx, params = {}) {
     if (it.kind === 'walk') return null;
     const ob = boardedLeg(it);
     const tag = tagOf(it);
-    const bell = h('button', { type: 'button', class: 'pl-btn is-primary', onclick: () => toggleReminder(it, bell) });
+    const bell = h('button', { type: 'button', class: 'btn primary', onclick: () => toggleReminder(it, bell) });
     const paintBell = () => {
       const on = hasReminder(tag);
       bell.replaceChildren(icon('bell'), on ? t('Ακύρωση υπενθύμισης') : t('Υπενθύμισέ μου'));
-      bell.classList.toggle('is-on', on);
+      bell.classList.toggle('on', on);
       bell.disabled = !it.bus && !on;
     };
     paintBell();

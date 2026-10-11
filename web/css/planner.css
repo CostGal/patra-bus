@@ -2,6 +2,7 @@
 
 .pl { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) 28px; font-family: var(--font); color: var(--foreground); }
 .pl .icon { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pl .btn.round .icon { width: var(--icon); height: var(--icon); } /* buttons follow --icon, not the em-sized .pl icons */
 .pl .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: 700; font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 .pl-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -9,10 +10,7 @@
 .pl-head { position: sticky; top: 0; z-index: 3; display: flex; flex-direction: column; gap: 6px; margin: 0 -16px; padding: 2px var(--space-4) 10px; background: var(--card); border-bottom: 1px solid var(--border); }
 .pl-head-top { display: flex; align-items: center; gap: var(--space-1); margin-left: -8px; }
 .pl-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
-.pl-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; }
-.pl-icon-btn:hover { background: var(--muted); }
-.pl-icon-btn .icon { width: 22px; height: 22px; }
-.pl-icon-btn:focus-visible, .pl-btn:focus-visible, .pl-card-head:focus-visible, .pl-sug:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.pl-card-head:focus-visible, .pl-sug:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 .pl-route { display: grid; grid-template-columns: 22px minmax(0, 1fr) 44px; align-items: stretch; gap: var(--space-1) var(--space-2); }
 .pl-rail { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px 0; color: var(--muted-foreground); }
@@ -56,13 +54,6 @@
 .pl-banner > span { flex: 1; min-width: 0; }
 
 /* ---- buttons ---- */
-.pl-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-h); padding: 0 var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--card-foreground); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
-.pl-btn:hover:not(:disabled) { background: var(--muted); }
-.pl-btn:disabled { opacity: var(--disabled-opacity); cursor: default; }
-.pl-btn.is-primary { border-color: transparent; background: var(--primary); color: var(--primary-foreground); }
-.pl-btn.is-primary:hover:not(:disabled) { background: var(--primary); filter: brightness(1.08); }
-.pl-btn.is-primary.is-on { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
-.pl-btn.is-small { min-height: var(--control-h-sm); padding: 0 var(--space-3); font-size: .85rem; border-color: currentColor; background: transparent; color: inherit; }
 
 /* ---- result cards ---- */
 .pl-cards { display: flex; flex-direction: column; gap: 10px; margin-top: var(--space-3); }

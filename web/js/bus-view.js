@@ -145,18 +145,18 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const sub = h('p', { class: 'ex-sub', hidden: true });
   const flagBox = h('span', { class: 'bv-flag' });
   const closeBtn = h('button', {
-    type: 'button', class: 'ex-icon-btn', 'aria-label': t('Κλείσιμο'), title: t('Κλείσιμο'),
+    type: 'button', class: 'btn round strong', 'aria-label': t('Κλείσιμο'), title: t('Κλείσιμο'),
     onclick: () => ctx.navigate(origin ? `#/stop/${encodeURIComponent(origin)}` : '#/'),
   }, icon('close'));
   const moreBtn = h('button', {
-    type: 'button', class: 'ex-icon-btn', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), 'aria-expanded': 'false',
+    type: 'button', class: 'btn round strong', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), 'aria-expanded': 'false',
     onclick: () => { moreOpen = !moreOpen; moreBtn.setAttribute('aria-expanded', String(moreOpen)); more.hidden = !moreOpen; },
   }, '⋯');
   const head = h('header', { class: 'ex-head bv-head' }, badgeBox, h('div', { class: 'ex-grow' }, title, sub), flagBox, moreBtn, closeBtn);
   const banner = h('div', { class: 'bv-banner', role: 'status', hidden: true });
   const summary = h('div', { class: 'bv-summary', 'aria-live': 'polite', hidden: true });
   const caveat = h('p', { class: 'ex-note', role: 'note', hidden: true });
-  const toggle = h('button', { type: 'button', class: 'ex-btn ex-btn-sm bv-toggle', 'aria-expanded': 'false', hidden: true, onclick: () => { passedOpen = !passedOpen; paint(Date.now()); } });
+  const toggle = h('button', { type: 'button', class: 'btn rect sm bv-toggle', 'aria-expanded': 'false', hidden: true, onclick: () => { passedOpen = !passedOpen; paint(Date.now()); } });
   const list = h('ol', { class: 'bv-list' });
   const foot = h('p', { class: 'ex-sub bv-foot' });
   const legend = h('p', { class: 'ex-sub bv-legend' });
@@ -320,10 +320,10 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       pickerOpen = false;
       alightBox.replaceChildren(h('div', { class: 'ob-row' },
         h('span', { class: 'ob-on' }, icon('bell'), t('Κατεβαίνεις: «{name}»', { name: tr.stopName || nameOf(tr.alightStop) })),
-        h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => stopOnboard() }, t('Τέλος'))));
+        h('button', { type: 'button', class: 'btn rect sm', onclick: () => stopOnboard() }, t('Τέλος'))));
       return;
     }
-    const btn = h('button', { type: 'button', class: 'ex-btn ob-open', 'aria-expanded': String(pickerOpen), onclick: () => { pickerOpen = !pickerOpen; paint(Date.now()); } }, icon('bell'), t('Θα κατέβω σε…'));
+    const btn = h('button', { type: 'button', class: 'btn rect ob-open', 'aria-expanded': String(pickerOpen), onclick: () => { pickerOpen = !pickerOpen; paint(Date.now()); } }, icon('bell'), t('Θα κατέβω σε…'));
     const kids = [btn];
     if (pickerOpen && tl) {
       const items = [];

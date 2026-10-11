@@ -166,7 +166,7 @@ export function mountGuide(el, ctx = {}, params) {
     const parts = build();
     el.replaceChildren(h('div', { class: 'gd' },
       h('div', { class: 'view-head' },
-        h('button', { type: 'button', class: 'icon-btn press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate?.('#/') }, icon('back')),
+        h('button', { type: 'button', class: 'btn round press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate?.('#/') }, icon('back')),
         h('h1', {}, t('Οδηγός'))),
       ...parts.nodes));
     fillInstall(parts);

@@ -51,8 +51,8 @@ a { color: var(--primary); }
    a transparent ::after extends by --hit (inset shorthand: -4px = 4 px on every side, "-3px 0" = top/bottom only).
    inset is measured from the padding box, so a 1 px border costs 2 px: a 40 px bordered button needs -3px, a 36 px borderless one -4px.
    Set --hit next to the rule that sets the size. tests/tokens.test.mjs lists the selectors. */
-.stopv-refresh, .stopv-small, .stopv-chip, .nb-line .nb-btn, .nb-toggle, .nb-how summary, .nb-hero-stoplink, .nb-stop-name { position: relative; }
-.stopv-refresh::after, .stopv-small::after, .stopv-chip::after, .nb-line .nb-btn::after, .nb-toggle::after, .nb-how summary::after,
+.stopv-refresh, .stopv-small, .stopv-chip, .nb-line .btn, .nb-toggle, .nb-how summary, .nb-hero-stoplink, .nb-stop-name { position: relative; }
+.stopv-refresh::after, .stopv-small::after, .stopv-chip::after, .nb-line .btn::after, .nb-toggle::after, .nb-how summary::after,
 .nb-hero-stoplink::after, .nb-stop-name::after { content: ''; position: absolute; inset: var(--hit, 0); }
 
 /* ---------- misc utilities ---------- */
@@ -299,27 +299,37 @@ html.sheet-dragging .toast-host { transition: none; }
   display: inline-block; min-width: 2.6em; padding: .1em .5em; border-radius: var(--radius-md); text-align: center; font-weight: var(--weight-bold); line-height: 1.4;
   white-space: nowrap; font-size: .9em;
 }
-/* Button (shadcn variants): default = outline, .primary, .destructive, .ghost; .sm for dense rows. */
+/* ---------- Button (TEL-51): the one button. shadcn-style variants, composed as classes on one element:
+   base (outline, pill) · .primary · .destructive (outline in red) · .ghost (no border, primary text) · .link (small ghost) · .current (outline in the
+   surrounding text colour) · .on (toggled primary) · .round (icon-only 44 px circle, no border; .strong = body-colour glyph) · .sm (36 px) · .rect (12 px corners
+   instead of a pill, used in Settings rows). Module classes (.nb-line, .stopv-small …) may only add layout, never colours or sizes of their own. */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-h); padding: 0 18px; border-radius: var(--radius-full);
-  border: 1px solid var(--border); background: var(--card); color: var(--card-foreground); font-weight: var(--weight-medium); text-decoration: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-h); padding: 0 var(--space-4);
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--card-foreground);
+  font: inherit; font-weight: var(--weight-semibold); line-height: 1.2; text-decoration: none; cursor: pointer;
 }
-.btn:hover { background: var(--muted); }
-.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
-.btn.primary:hover { background: var(--primary); filter: brightness(.95); }
-.btn.destructive { background: var(--destructive); border-color: var(--destructive); color: var(--destructive-foreground); }
-.btn.destructive:hover { background: var(--destructive); filter: brightness(.95); }
-.btn.ghost { border-color: transparent; background: transparent; color: var(--primary); }
-.btn.ghost:hover { background: var(--primary-soft); }
-.btn.sm { min-height: var(--control-h-sm); padding: 0 var(--space-3); font-size: var(--text-sm); }
-.btn:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.btn:hover:not(:disabled, [aria-disabled="true"]) { background: var(--muted); }
+.btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: var(--disabled-opacity); cursor: default; }
 .btn .icon { --icon: 20px; }
-.icon-btn {
-  flex: none; width: var(--control-h); height: var(--control-h); padding: 0; border: 0; border-radius: 50%; display: inline-grid; place-items: center;
-  background: none; color: var(--muted-foreground); cursor: pointer; text-decoration: none;
+.btn.rect { border-radius: var(--radius); }
+.btn.sm { min-height: var(--control-h-sm); padding: 0 var(--space-3); font-size: var(--text-sm); }
+.btn.primary { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.btn.primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--primary); filter: brightness(1.08); }
+.btn.primary.on { background: var(--primary-soft); color: var(--primary); }
+.btn.destructive { border-color: var(--destructive); color: var(--destructive); }
+.btn.ghost, .btn.link { border-color: transparent; background: transparent; color: var(--primary); }
+.btn.ghost:hover:not(:disabled, [aria-disabled="true"]), .btn.link:hover:not(:disabled, [aria-disabled="true"]) { background: var(--primary-soft); }
+.btn.link { min-height: var(--control-h-sm); padding: 0 10px; font-size: var(--text-sm); }
+.btn.current { border-color: currentColor; background: transparent; color: inherit; }
+.btn.round {
+  flex: none; width: var(--control-h); height: var(--control-h); padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted-foreground);
 }
-.icon-btn:hover { background: var(--muted); }
-.icon-btn.on { color: var(--primary); }
+.btn.round .icon { --icon: 22px; }
+.btn.round.strong { color: var(--foreground); }
+.btn.round.on { color: var(--primary); }
+.btn.round:disabled { opacity: .35; }
 .banner {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); margin: var(--space-2) 0; padding: var(--space-2) var(--space-3);
   background: var(--warning-muted); color: var(--warning); border-radius: var(--radius); font-size: 14px;

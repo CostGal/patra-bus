@@ -99,7 +99,7 @@ export function mountStop(container, ctx, { code }) {
   if (!stop) {
     root.append(
       h('p', { class: 'stopv-msg' }, t('Η στάση δεν βρέθηκε.')),
-      h('button', { type: 'button', class: 'stopv-btn stopv-primary', onclick: () => ctx.navigate('#/') }, t('Πίσω στην αρχική')));
+      h('button', { type: 'button', class: 'btn primary', onclick: () => ctx.navigate('#/') }, t('Πίσω στην αρχική')));
     return { destroy() { root.remove(); } };
   }
 
@@ -121,8 +121,8 @@ export function mountStop(container, ctx, { code }) {
   addRecent('stop', { code, name: stop.displayName });
 
   // ---- header: name · ★ · ⋯ (share, directions) · close ----
-  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'stopv-btn', 'aria-label': label, title: label, onclick }, icon(name));
-  const star = h('button', { type: 'button', class: 'stopv-btn stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
+  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
+  const star = h('button', { type: 'button', class: 'btn round stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
   function paintStar() {
     const on = isFavorite(code);
     const label = on ? t('Αφαίρεση από τα αγαπημένα') : t('Προσθήκη στα αγαπημένα');
@@ -146,7 +146,7 @@ export function mountStop(container, ctx, { code }) {
   const menu = h('div', { class: 'stopv-menu', role: 'menu', hidden: true },
     h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); directions(); } }, icon('walk'), t('Οδηγίες ως εδώ')),
     h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); share(); } }, icon('share'), t('Κοινοποίηση')));
-  const moreBtn = h('button', { type: 'button', class: 'stopv-btn stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
+  const moreBtn = h('button', { type: 'button', class: 'btn round stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
   function setMenu(open) {
     menu.hidden = !open;
     moreBtn.setAttribute('aria-expanded', String(open));
@@ -166,7 +166,7 @@ export function mountStop(container, ctx, { code }) {
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
-  const bannerBtn = h('button', { type: 'button', class: 'stopv-btn stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
+  const bannerBtn = h('button', { type: 'button', class: 'btn ghost sm stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
@@ -176,8 +176,8 @@ export function mountStop(container, ctx, { code }) {
   // One quiet line that says what LIVE / ΠΡΟΓΡ. and ′ ″ mean, until the user closes it (flag legendSeen, kept across "reset settings").
   const legend = h('div', { class: 'stopv-legend', hidden: true },
     h('p', { class: 'stopv-legend-text' }, t('LIVE = το λεωφορείο στέλνει θέση · ΠΡΟΓΡ. = ώρα προγράμματος, χωρίς θέση · ′ = λεπτά, ″ = δευτερόλεπτα')),
-    h('button', { type: 'button', class: 'stopv-btn stopv-legend-x', 'aria-label': t('Κλείσιμο'), onclick: () => { setSetting('legendSeen', true); legend.hidden = true; refreshBtn.focus({ preventScroll: true }); } }, icon('close')));
-  const refreshBtn = h('button', { type: 'button', class: 'stopv-btn stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
+    h('button', { type: 'button', class: 'btn round stopv-legend-x', 'aria-label': t('Κλείσιμο'), onclick: () => { setSetting('legendSeen', true); legend.hidden = true; refreshBtn.focus({ preventScroll: true }); } }, icon('close')));
+  const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
   root.append(head, banner, chipBar, body, legend, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
@@ -274,7 +274,7 @@ export function mountStop(container, ctx, { code }) {
       if (!shown.length) {
         body.replaceChildren(h('div', { class: 'stopv-state' },
           icon('clock'), h('p', { class: 'stopv-state-title' }, t('Καμία άφιξη για τη γραμμή {line}', { line: filter })),
-          h('button', { type: 'button', class: 'stopv-btn stopv-small', onclick: () => { filter = null; render(); pushMap(); } }, t('Εμφάνιση όλων των γραμμών'))));
+          h('button', { type: 'button', class: 'btn ghost sm stopv-small', onclick: () => { filter = null; render(); pushMap(); } }, t('Εμφάνιση όλων των γραμμών'))));
       } else {
         const cut = showAll ? shown : shown.slice(0, MAX_TILES);
         const items = cut.map((v) => {
@@ -286,7 +286,7 @@ export function mountStop(container, ctx, { code }) {
         // replaceChildren would stringify a null child as "null", so only pass real nodes.
         body.replaceChildren(h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items));
         if (cut.length < shown.length) {
-          body.append(h('button', { type: 'button', class: 'stopv-btn stopv-more', 'data-key': 'more', onclick: () => {
+          body.append(h('button', { type: 'button', class: 'btn ghost stopv-more', 'data-key': 'more', onclick: () => {
             showAll = true;
             render();
             tiles[MAX_TILES]?.el.focus({ preventScroll: true }); // the first tile that just appeared
@@ -308,7 +308,7 @@ export function mountStop(container, ctx, { code }) {
     paintDynamic(now);
   }
 
-  const retryButton = () => h('button', { type: 'button', class: 'stopv-btn stopv-primary stopv-retry', 'data-key': 'retry', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
+  const retryButton = () => h('button', { type: 'button', class: 'btn primary stopv-retry', 'data-key': 'retry', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
 
   // Banner, retry labels and footer: cheap, repainted every second.
   function paintDynamic(now) {

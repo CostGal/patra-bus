@@ -124,7 +124,7 @@ export function mountReport(container, ctx, params = {}) {
 
   container.replaceChildren(h('div', { class: 'ex-view rp' },
     h('header', { class: 'ex-head' },
-      h('button', { type: 'button', class: 'ex-icon-btn press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
+      h('button', { type: 'button', class: 'btn round strong press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
       h('h1', {}, t('Αναφορά προβλήματος'))),
     panel));
 

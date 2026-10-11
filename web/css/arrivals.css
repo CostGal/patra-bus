@@ -12,7 +12,6 @@
 .stopv-name { margin: 0; font-size: var(--text-xl); line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
 .stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) 10px; margin: 6px 0 0; color: var(--muted-foreground); font-size: .85rem; }
 .stopv-actions { position: relative; display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
-.stopv-more-btn { font-size: 1.5rem; line-height: 1; font-weight: 700; padding-bottom: 6px; }
 
 /* "⋯" menu: share, directions */
 .stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }
@@ -23,18 +22,11 @@
 .stopv-item .icon { width: 20px; height: 20px; fill: none; }
 .stopv-item .icon-walk { fill: currentColor; stroke: none; }
 
-.stopv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--control-h); min-height: var(--control-h); padding: 0 10px; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--muted-foreground); font: inherit; cursor: pointer; }
-.stopv-btn:hover:not(:disabled, [aria-disabled="true"]) { background: var(--muted); }
-.stopv-btn:focus-visible, .stopv-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.stopv-btn:disabled, .stopv-btn[aria-disabled="true"] { opacity: var(--disabled-opacity); cursor: default; }
-.stopv-btn .icon { width: 22px; height: 22px; }
-.stopv-star.on { color: var(--warning); }
+.stopv-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.btn.stopv-star.on { color: var(--warning); }
 .stopv-star.on .icon { fill: currentColor; }
-.stopv-small { --hit: -5px 0; min-height: var(--control-h-sm); min-width: 0; padding: 0 var(--space-3); font-size: .85rem; font-weight: var(--weight-semibold); color: var(--primary); }
-.stopv-small .icon { width: 16px; height: 16px; }
-.stopv-primary { background: var(--primary); color: var(--primary-foreground); font-weight: var(--weight-semibold); padding: 0 var(--space-5); }
-.stopv-primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--primary); filter: brightness(1.08); }
-.stopv-more { align-self: center; color: var(--primary); font-weight: var(--weight-semibold); margin-top: var(--space-1); }
+.stopv-small { --hit: -5px 0; }
+.stopv-more { align-self: center; margin-top: var(--space-1); padding: 0 10px; min-width: var(--control-h); }
 
 /* ---- filter chips ---- */
 /* sticky under the header while the list scrolls past; a fade under the bar (::after) replaces a hard divider line.
@@ -57,7 +49,7 @@
 .stopv-state > .icon { width: 32px; height: 32px; margin-bottom: var(--space-1); }
 .stopv-state-title { margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--foreground); }
 .stopv-state-sub { margin: 0; font-size: .9rem; }
-.stopv-state .stopv-btn { margin-top: var(--space-2); }
+.stopv-state .btn { margin-top: var(--space-2); }
 .stopv-msg { margin: var(--space-4) 0 var(--space-2); color: var(--muted-foreground); }
 
 /* ---- list ---- */
@@ -112,12 +104,13 @@
 .stopv-legend { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--radius-md); background: var(--muted); color: var(--muted-foreground); font-size: var(--text-sm); line-height: var(--lead-label); }
 .stopv-legend[hidden] { display: none; }
 .stopv-legend-text { flex: 1; min-width: 0; }
-.stopv-legend-x .icon { width: 18px; height: 18px; }
+.btn.stopv-legend-x .icon { --icon: 18px; }
 
 .stopv-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: 2px; color: var(--muted-foreground); font-size: var(--text-sm); }
 .stopv-foot-text { margin: 0; font-variant-numeric: tabular-nums; }
-.stopv-refresh { --hit: -4px; min-width: 36px; min-height: 36px; padding: 0; color: var(--muted-foreground); }
-.stopv-refresh .icon { width: 18px; height: 18px; }
+.btn.stopv-refresh { --hit: -4px; width: 36px; height: 36px; min-height: 0; }
+.stopv .btn.round .icon { width: var(--icon); height: var(--icon); } /* the tile icons above are em-sized; buttons follow --icon */
+.btn.stopv-refresh .icon { --icon: 18px; }
 
 @media (prefers-reduced-motion: reduce) {
   .atile-live .atile-dot::after { animation: none; }

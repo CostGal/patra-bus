@@ -267,7 +267,7 @@ export function mountPushCard(container, ctx = {}, api = real) {
   let busy = false;
   const state = h('p', { class: 'set-p push-state', 'aria-live': 'polite' });
   const err = h('p', { class: 'ex-sub push-error', role: 'alert', hidden: true });
-  const btn = h('button', { type: 'button', class: 'ex-btn push-btn' });
+  const btn = h('button', { type: 'button', class: 'btn rect push-btn' });
   // No border of its own: settings wraps every module in its own titled card.
   const card = h('section', { class: 'push-card' },
     h('h3', { class: 'set-sub push-title' }, t('Ειδοποιήσεις με κλειστή εφαρμογή')),
@@ -288,7 +288,7 @@ export function mountPushCard(container, ctx = {}, api = real) {
     btn.hidden = s !== 'off' && s !== 'on';
     btn.textContent = busy ? t('Μισό λεπτό…') : s === 'on' ? t('Απενεργοποίηση') : t('Ενεργοποίηση');
     btn.disabled = busy;
-    btn.classList.toggle('ex-btn-danger', s === 'on');
+    btn.classList.toggle('destructive', s === 'on');
   }
 
   btn.addEventListener('click', async () => {

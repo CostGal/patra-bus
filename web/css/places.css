@@ -17,7 +17,7 @@
 /* ---- settings: places + routines ---- */
 .plc-set { margin: 0 0 var(--space-2); }
 .plc-title { margin-top: var(--space-1); }
-.plc-row .ex-btn { flex: none; }
+.plc-row .btn { flex: none; }
 .plc-slot + .plc-slot { border-top: 1px solid var(--border); }
 .plc-editor { display: grid; gap: var(--space-2); padding: var(--space-1) 0 var(--space-3); }
 .plc-input { width: 100%; min-height: var(--control-h); padding: 0 var(--space-3); box-sizing: border-box; border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); font: inherit; }

@@ -272,9 +272,9 @@ export function mountOfflineCard(container, ctx = {}) {
   const barP = h('p', { class: 'ex-sub', 'aria-live': 'off', hidden: true });
   const storageP = h('p', { class: 'ex-sub' });
   const errP = h('p', { class: 'ex-note', role: 'alert', hidden: true });
-  const dlBtn = h('button', { type: 'button', class: 'ex-btn', onclick: () => start() });
-  const cancelBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => myJob?.ctl.abort() }, icon('close'), t('Ακύρωση'));
-  const delBtn = h('button', { type: 'button', class: 'ex-btn ex-btn-sm ex-btn-danger', onclick: () => remove() }, icon('trash'), t('Διαγραφή'));
+  const dlBtn = h('button', { type: 'button', class: 'btn rect', onclick: () => start() });
+  const cancelBtn = h('button', { type: 'button', class: 'btn rect sm', onclick: () => myJob?.ctl.abort() }, icon('close'), t('Ακύρωση'));
+  const delBtn = h('button', { type: 'button', class: 'btn rect sm destructive', onclick: () => remove() }, icon('trash'), t('Διαγραφή'));
   const actions = h('div', { class: 'set-actions' }, dlBtn, cancelBtn, delBtn);
   const note = h('p', { class: 'ex-note' },
     t('Οι ζωντανές αφίξεις λεωφορείων χρειάζονται πάντα ίντερνετ. Χωρίς σύνδεση θα βλέπεις μόνο τον χάρτη, τις στάσεις και τα αγαπημένα σου.'));

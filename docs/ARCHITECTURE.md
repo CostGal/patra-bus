@@ -323,8 +323,10 @@ Raw values: use the scale tokens where one fits (radius, 4 px-grid spacing, the 
 Themes: light in `:root`; dark in `@media (prefers-color-scheme: dark)` (unless `data-theme="light"`) and `:root[data-theme="dark"]`. The two dark
 blocks must stay identical. Only roles are re-declared per theme; scales and components never are.
 **LIVE vs SCHEDULED** status badges (`.atile-flag`, `.nb-flag`, `.pl-flag`, `.ex-chip-*`) share one recipe: LIVE = solid `--live` fill + `--live-foreground` text +
-pulsing dot (`currentColor`); SCHEDULED = transparent fill, `--scheduled-border` outline, `--scheduled` text + clock icon. Components: button variants in
-`.btn` (`.primary/.destructive/.ghost/.sm`), inputs use `--input` + `--ring`, cards `--card`, popovers/sheets `--popover`/material.
+pulsing dot (`currentColor`); SCHEDULED = transparent fill, `--scheduled-border` outline, `--scheduled` text + clock icon. Components: inputs use `--input` + `--ring`, cards `--card`, popovers/sheets `--popover`/material.
+**Buttons (TEL-51): one `.btn`** (`app.css`), variants composed as classes: `.primary`, `.destructive` (red outline), `.ghost`, `.link`, `.current`, `.on`, `.sm`,
+`.rect` (12 px corners, Settings rows), `.round` (icon-only 44 px; `.strong` = body-colour glyph; not `.icon`, which is the SVG class). The old `.ex-btn`, `.ex-icon-btn`,
+`.nb-btn*`, `.pl-btn`, `.pl-icon-btn`, `.stopv-btn`, `.stopv-primary`, `.icon-btn` are gone. A module class next to `.btn` (`.stopv-small`, `.nb-line .btn`) may add layout only.
 `tests/tokens.test.mjs` checks contrast for every role pair in both themes (LIVE/SCHEDULED ≥ 7:1), dark-block parity, that no stylesheet uses a removed name and that
 no stylesheet uses an undefined `var(--…)`.
 
