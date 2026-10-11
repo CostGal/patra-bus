@@ -264,7 +264,7 @@ function build(container, ctx, keep) {
   paintPerm(); paintReminders(); paintFavs();
   offs.push(onChange(() => { if (dead) return; for (const s of syncs) s(); paintFavs(); }));
   offs.push(onRemindersChange(paintReminders));
-  const onVis = () => { if (!document.hidden) { paintPerm(); paintInstall(); } }; // permission may change in browser settings
+  const onVis = () => { if (!document.hidden) paintPerm(); }; // permission may change in browser settings
   document.addEventListener('visibilitychange', onVis);
 
   return {
