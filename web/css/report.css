@@ -9,13 +9,13 @@
 
 .rp-input {
   display: block; width: 100%; min-height: 48px; padding: 12px 14px;
-  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text);
-  font: inherit; font-size: 1rem; line-height: var(--lead-body);
+  border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--card-foreground);
+  font: inherit; font-size: var(--text-base); line-height: var(--lead-body);
 }
-.rp-input::placeholder { color: var(--text-2); }
+.rp-input::placeholder { color: var(--muted-foreground); }
 .rp-text { min-height: 9rem; resize: vertical; }
-.rp-input[aria-invalid="true"] { border-color: var(--danger); }
-.rp-err { color: var(--danger); font-size: .875rem; line-height: var(--lead-label); letter-spacing: var(--track-label); }
+.rp-input[aria-invalid="true"] { border-color: var(--destructive); }
+.rp-err { color: var(--destructive); font-size: .875rem; line-height: var(--lead-label); letter-spacing: var(--track-label); }
 
 /* category: native radios (arrow keys, screen readers) drawn as the same pills as the menu's theme buttons */
 .rp-cats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
@@ -23,12 +23,12 @@
 .rp-cat input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .rp-cat-pill {
   display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; text-align: center;
-  border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-2); font-size: .9375rem;
+  border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--muted-foreground); font-size: var(--text-md);
   transform: scale(1); transition: transform .1s ease-out;
 }
-.rp-cat:hover .rp-cat-pill { background: var(--surface-2); }
+.rp-cat:hover .rp-cat-pill { background: var(--muted); }
 .rp-cat:active .rp-cat-pill { transform: scale(.97); transition: transform 0s; }
-.rp-cat input:checked + .rp-cat-pill { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.rp-cat input:checked + .rp-cat-pill { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); font-weight: var(--weight-semibold); }
 .rp-cat input:focus-visible + .rp-cat-pill { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* the diagnostics, exactly as sent */

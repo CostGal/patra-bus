@@ -1,65 +1,148 @@
-/* Design tokens shared by every stylesheet. Names are a contract (docs/ARCHITECTURE.md); values may change.
-   Dark mode: follows the OS unless <html data-theme="light|dark"> forces it (set by app.js from the theme setting). */
+/* Design tokens shared by every stylesheet, modelled on shadcn/ui theming (docs/DESIGN.md §6).
+   Three layers, top to bottom:
+     1. semantic colour roles (background/foreground, card, popover, primary, secondary, muted, destructive, border,
+        input, ring) + the app's own LIVE / SCHEDULED / warning status colours;
+     2. scales: one radius scale, one spacing scale, one type scale, elevation, motion;
+     3. legacy aliases (--bg, --surface, --text, --accent, …). Names are a contract (docs/ARCHITECTURE.md), so older rules
+        keep working; new code uses layers 1–2.
+   Themes: light by default; dark via prefers-color-scheme, unless <html data-theme="light|dark"> forces it (set by app.js
+   from the theme setting). The dark values are written twice (media query + [data-theme="dark"]) because CSS has no way
+   to share a block between the two without a build step; tests/tokens.test.mjs fails if they drift apart.
+   shadcn's "accent" role (hover tint) is covered by --muted/--secondary here: --accent stays the brand blue (= --primary). */
+
 :root {
-  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f4; --text: #1f1f1f; --text-2: #5f6368;
-  --border: #e6e8eb; --accent: #1967d2; --accent-text: #ffffff; --live: #137333; --live-bg: #e6f4ea;
-  --sched: #5f6368; --sched-bg: #f1f3f4; --warn: #9a5200; --warn-bg: #fef7e0; --danger: #c5221f;
-  --radius: 12px; --radius-lg: 20px;
-  --shadow-1: 0 1px 2px rgba(60,64,67,.2);
-  --shadow-2: 0 2px 8px rgba(60,64,67,.16);
+  /* ---- 1. colour roles (light) ---- */
+  --background: #f6f7f9;            --foreground: #1f1f1f;
+  --card: #ffffff;                  --card-foreground: #1f1f1f;
+  --popover: #ffffff;               --popover-foreground: #1f1f1f;
+  --primary: #1967d2;               --primary-foreground: #ffffff;
+  --primary-soft: #e8f0fe;          /* tinted primary: selected states, ghost-button hover */
+  --secondary: #f1f3f4;             --secondary-foreground: #1f1f1f;
+  --muted: #f1f3f4;                 --muted-foreground: #5f6368;
+  --destructive: #c5221f;           --destructive-foreground: #ffffff;
+  --border: #e6e8eb;                /* hairlines between surfaces (decorative) */
+  --input: #80868b;                 /* edge of a form control: 3:1 against --card (WCAG 1.4.11), unlike --border */
+  --ring: #1a73e8;                  /* focus ring */
+  --overlay: rgba(32, 33, 36, .45);
+
+  /* status. LIVE = solid green fill, white text. SCHEDULED = outline, neutral text. They differ in fill, border style,
+     colour AND icon (pulsing dot vs clock), and every pair below is >= 7:1 (tests/tokens.test.mjs). */
+  --live: #0d652d;                  --live-foreground: #ffffff;       --live-muted: #e6f4ea;
+  --scheduled: #3c4043;             --scheduled-border: #80868b;      --scheduled-muted: #f1f3f4;
+  --warning: #9a5200;               --warning-muted: #fef7e0;
+
+  /* inverse surface (toast) */
+  --inverse: #323232;               --inverse-foreground: #ffffff;    --inverse-action: #8ab4f8;
+  /* map overlays */
+  --map-walk: #4a78b8;              --map-casing: #ffffff;
+
+  /* ---- 2. scales ---- */
+  /* radius: one knob (--radius, shadcn's base) and everything derives from it. Pills use --radius-full. */
+  --radius: 12px;
+  --radius-sm: calc(var(--radius) - 6px);   /* 6  — tags, tiny controls */
+  --radius-md: calc(var(--radius) - 4px);   /* 8  — buttons-in-rows, inputs in rows, badges, menu items */
+  --radius-lg: calc(var(--radius) + 8px);   /* 20 — sheets, hero cards */
+  --radius-full: 999px;
+
+  /* spacing: 4 px grid */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+
+  /* type */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  color-scheme: light;
+  --text-2xs: .6875rem; --text-xs: .75rem;  --text-sm: .8125rem; --text-md: .9375rem; --text-base: 1rem;
+  --text-lg: 1.125rem;  --text-xl: 1.35rem; --text-2xl: 1.9rem;  --text-3xl: 2.6rem;
+  --weight-normal: 400; --weight-medium: 500; --weight-semibold: 600; --weight-bold: 700;
+  /* tracking/leading pairs per step (DESIGN.md §5): display = big numbers/headlines, title = sheet h1s,
+     body = default text, label = tiny meta/caption text. */
+  --track-display: -.02em; --lead-display: 1.08;
+  --track-title: -.01em;   --lead-title: 1.2;
+  --track-body: 0em;       --lead-body: 1.45;
+  --track-label: .01em;    --lead-label: 1.3;
 
-  /* shell extras (safe to use from any stylesheet) */
-  --accent-soft: #e8f0fe; --scrim: rgba(32,33,36,.45); --focus: #1a73e8;
-  --map-walk: #4a78b8; --map-casing: #ffffff;
-  --toast-bg: #323232; --toast-text: #ffffff; --toast-action: #8ab4f8;
-  --safe-top: env(safe-area-inset-top, 0px); --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px);
-  --ease: cubic-bezier(.2, .8, .2, 1);
-  --icon: 24px;
-  /* calm scale: 8 px spacing, two text sizes per card (body + meta) */
-  --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px;
-  --fs: 1rem; --fs-sm: .8125rem;
+  /* controls: shared sizes so buttons and inputs line up everywhere */
+  --control-h: 44px;       /* minimum touch target */
+  --control-h-sm: 36px;
+  --disabled-opacity: .6;
 
-  /* materials (DESIGN.md §4): translucent surface, computed from --surface so it adapts per theme.
-     Small chip (search bar, FAB, toast) vs big surface (sheet) use the same bg but different blur/shadow weight. */
-  --material-bg: color-mix(in srgb, var(--surface) 72%, transparent);
-  --material-edge: rgba(255, 255, 255, .65); /* faint bright top edge, light mode */
+  /* elevation */
+  --shadow-1: 0 1px 2px rgba(60, 64, 67, .2);
+  --shadow-2: 0 2px 8px rgba(60, 64, 67, .16);
+  --shadow-sheet: 0 -1px 8px rgba(0, 0, 0, .12);
+
+  /* materials (DESIGN.md §4): translucent surface computed from --card so it adapts per theme. */
+  --material-bg: color-mix(in srgb, var(--card) 72%, transparent);
+  --material-edge: rgba(255, 255, 255, .65);   /* faint bright top edge */
   --blur-chip: 12px; --blur-surface: 20px; --blur-saturate: 180%;
 
-  /* typography (DESIGN.md §5): tracking/leading pairs per size step.
-     display = big numbers/headlines (tight, slightly negative tracking); title = sheet h1s;
-     body = default text (near-0 tracking, open leading); label = tiny meta/caption text (slightly positive tracking). */
-  --track-display: -.02em; --lead-display: 1.08;
-  --track-title: -.01em; --lead-title: 1.2;
-  --track-body: 0em; --lead-body: 1.45;
-  --track-label: .01em; --lead-label: 1.3;
-
-  /* critically-damped-spring approximation for CSS transitions (reduced-motion fallback / simple non-gesture
-     fades that can't use the JS spring helper). Close to damping 1.0 / response .35 s: fast initial move,
-     settles with no overshoot. Real gesture-driven motion (sheet, popovers) still uses the JS spring, not this. */
+  /* motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  /* critically-damped-spring approximation for CSS transitions that only fade (gesture-driven motion uses the JS spring) */
   --spring-ease: cubic-bezier(.32, .72, 0, 1);
+
+  /* layout */
+  --icon: 24px;
+  --safe-top: env(safe-area-inset-top, 0px);    --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px);
+
+  color-scheme: light;
+
+  /* ---- 3. legacy aliases (do not redefine per theme: they follow the roles above) ---- */
+  --bg: var(--background);        --surface: var(--card);          --surface-2: var(--muted);
+  --text: var(--foreground);      --text-2: var(--muted-foreground);
+  --accent: var(--primary);       --accent-text: var(--primary-foreground);  --accent-soft: var(--primary-soft);
+  --danger: var(--destructive);   --focus: var(--ring);            --scrim: var(--overlay);
+  --live-bg: var(--live-muted);   --sched: var(--scheduled);       --sched-bg: var(--scheduled-muted);
+  --warn: var(--warning);         --warn-bg: var(--warning-muted);
+  --toast-bg: var(--inverse);     --toast-text: var(--inverse-foreground);   --toast-action: var(--inverse-action);
+  --s1: var(--space-1); --s2: var(--space-2); --s3: var(--space-4); --s4: var(--space-6);
+  --fs: var(--text-base); --fs-sm: var(--text-sm);
 }
+
+/* ---- dark ---- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1216; --surface: #1e2227; --surface-2: #2a2f35; --text: #e8eaed; --text-2: #9aa0a6;
-    --border: #33373b; --accent: #8ab4f8; --accent-text: #0f1216; --live: #81c995; --live-bg: #1e3a2a;
-    --sched: #9aa0a6; --sched-bg: #2a2f35; --warn: #fdd663; --warn-bg: #3a3320; --danger: #f28b82;
-    --shadow-1: 0 1px 2px rgba(0,0,0,.5); --shadow-2: 0 2px 8px rgba(0,0,0,.45); color-scheme: dark;
-    --accent-soft: #28334a; --scrim: rgba(0,0,0,.6); --focus: #8ab4f8;
-    --map-walk: #8ab4f8; --map-casing: #1e2227;
-    --toast-bg: #e8eaed; --toast-text: #1f1f1f; --toast-action: #1a73e8;
+    --background: #0f1216;          --foreground: #e8eaed;
+    --card: #1e2227;                --card-foreground: #e8eaed;
+    --popover: #1e2227;             --popover-foreground: #e8eaed;
+    --primary: #8ab4f8;             --primary-foreground: #0f1216;
+    --primary-soft: #28334a;
+    --secondary: #2a2f35;           --secondary-foreground: #e8eaed;
+    --muted: #2a2f35;               --muted-foreground: #9aa0a6;
+    --destructive: #f28b82;         --destructive-foreground: #0f1216;
+    --border: #33373b;              --input: #80868b;               --ring: #8ab4f8;
+    --overlay: rgba(0, 0, 0, .6);
+    --live: #81c995;                --live-foreground: #0b2a16;     --live-muted: #1e3a2a;
+    --scheduled: #c4c7ca;           --scheduled-border: #80868b;    --scheduled-muted: #2a2f35;
+    --warning: #fdd663;             --warning-muted: #3a3320;
+    --inverse: #e8eaed;             --inverse-foreground: #1f1f1f;  --inverse-action: #185abc;
+    --map-walk: #8ab4f8;            --map-casing: #1e2227;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, .45);
+    --shadow-sheet: 0 -1px 8px rgba(0, 0, 0, .5);
     --material-edge: rgba(255, 255, 255, .08);
+    color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0f1216; --surface: #1e2227; --surface-2: #2a2f35; --text: #e8eaed; --text-2: #9aa0a6;
-  --border: #33373b; --accent: #8ab4f8; --accent-text: #0f1216; --live: #81c995; --live-bg: #1e3a2a;
-  --sched: #9aa0a6; --sched-bg: #2a2f35; --warn: #fdd663; --warn-bg: #3a3320; --danger: #f28b82;
-  --shadow-1: 0 1px 2px rgba(0,0,0,.5); --shadow-2: 0 2px 8px rgba(0,0,0,.45); color-scheme: dark;
-  --accent-soft: #28334a; --scrim: rgba(0,0,0,.6); --focus: #8ab4f8;
-  --map-walk: #8ab4f8; --map-casing: #1e2227;
-  --toast-bg: #e8eaed; --toast-text: #1f1f1f; --toast-action: #1a73e8;
+  --background: #0f1216;          --foreground: #e8eaed;
+  --card: #1e2227;                --card-foreground: #e8eaed;
+  --popover: #1e2227;             --popover-foreground: #e8eaed;
+  --primary: #8ab4f8;             --primary-foreground: #0f1216;
+  --primary-soft: #28334a;
+  --secondary: #2a2f35;           --secondary-foreground: #e8eaed;
+  --muted: #2a2f35;               --muted-foreground: #9aa0a6;
+  --destructive: #f28b82;         --destructive-foreground: #0f1216;
+  --border: #33373b;              --input: #80868b;               --ring: #8ab4f8;
+  --overlay: rgba(0, 0, 0, .6);
+  --live: #81c995;                --live-foreground: #0b2a16;     --live-muted: #1e3a2a;
+  --scheduled: #c4c7ca;           --scheduled-border: #80868b;    --scheduled-muted: #2a2f35;
+  --warning: #fdd663;             --warning-muted: #3a3320;
+  --inverse: #e8eaed;             --inverse-foreground: #1f1f1f;  --inverse-action: #185abc;
+  --map-walk: #8ab4f8;            --map-casing: #1e2227;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-2: 0 2px 8px rgba(0, 0, 0, .45);
+  --shadow-sheet: 0 -1px 8px rgba(0, 0, 0, .5);
   --material-edge: rgba(255, 255, 255, .08);
+  color-scheme: dark;
 }

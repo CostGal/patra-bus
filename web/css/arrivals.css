@@ -1,38 +1,39 @@
-/* Stop view (.stopv-*) and arrival tiles (.atile-*). Colours come from tokens.css only. */
+/* Stop view (.stopv-*) and arrival tiles (.atile-*). Colours come from tokens.css only.
+   LIVE vs SCHEDULED: LIVE = solid green badge + pulsing dot + green stripe/countdown; SCHEDULED = outlined neutral badge + clock icon + timetable time. */
 
-.stopv { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 24px; font-family: var(--font); color: var(--text); }
+.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) var(--space-4) var(--space-6); font-family: var(--font); color: var(--foreground); }
 .stopv .icon, .atile .icon { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: 8px; font-weight: 700; font-size: 1rem; line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
+.stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* ---- header ---- */
 .stopv-head { display: flex; flex-direction: column; gap: 10px; }
 .stopv-top { display: flex; align-items: flex-start; gap: 8px; }
 .stopv-titles { flex: 1; min-width: 0; }
 .stopv-name { margin: 0; font-size: 1.35rem; line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
-.stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0 0; color: var(--text-2); font-size: .85rem; }
+.stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0 0; color: var(--muted-foreground); font-size: .85rem; }
 .stopv-actions { position: relative; display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
 .stopv-more-btn { font-size: 1.5rem; line-height: 1; font-weight: 700; padding-bottom: 6px; }
 
 /* "⋯" menu: share, directions */
-.stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-1); }
+.stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }
 .stopv-menu[hidden] { display: none; }
-.stopv-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.stopv-item:hover, .stopv-item:focus-visible { background: var(--surface-2); outline: none; }
+.stopv-item { display: flex; align-items: center; gap: 10px; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.stopv-item:hover, .stopv-item:focus-visible { background: var(--muted); outline: none; }
 .stopv-item .icon { width: 20px; height: 20px; fill: none; }
 .stopv-item .icon-walk { fill: currentColor; stroke: none; }
 
-.stopv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: inherit; cursor: pointer; }
-.stopv-btn:hover:not(:disabled, [aria-disabled="true"]) { background: var(--surface-2); }
-.stopv-btn:focus-visible, .stopv-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.stopv-btn:disabled, .stopv-btn[aria-disabled="true"] { opacity: .6; cursor: default; }
+.stopv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--control-h); min-height: var(--control-h); padding: 0 10px; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--muted-foreground); font: inherit; cursor: pointer; }
+.stopv-btn:hover:not(:disabled, [aria-disabled="true"]) { background: var(--muted); }
+.stopv-btn:focus-visible, .stopv-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.stopv-btn:disabled, .stopv-btn[aria-disabled="true"] { opacity: var(--disabled-opacity); cursor: default; }
 .stopv-btn .icon { width: 22px; height: 22px; }
-.stopv-star.on { color: var(--warn); }
+.stopv-star.on { color: var(--warning); }
 .stopv-star.on .icon { fill: currentColor; }
-.stopv-small { min-height: 36px; min-width: 0; padding: 0 12px; font-size: .85rem; font-weight: 600; color: var(--accent); }
+.stopv-small { min-height: var(--control-h-sm); min-width: 0; padding: 0 var(--space-3); font-size: .85rem; font-weight: var(--weight-semibold); color: var(--primary); }
 .stopv-small .icon { width: 16px; height: 16px; }
-.stopv-primary { background: var(--accent); color: var(--accent-text); font-weight: 600; padding: 0 20px; }
-.stopv-primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--accent); filter: brightness(1.08); }
-.stopv-more { align-self: center; color: var(--accent); font-weight: 600; margin-top: 4px; }
+.stopv-primary { background: var(--primary); color: var(--primary-foreground); font-weight: var(--weight-semibold); padding: 0 var(--space-5); }
+.stopv-primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--primary); filter: brightness(1.08); }
+.stopv-more { align-self: center; color: var(--primary); font-weight: var(--weight-semibold); margin-top: var(--space-1); }
 
 /* ---- filter chips ---- */
 /* sticky under the header while the list scrolls past; a fade under the bar (::after) replaces a hard divider line.
@@ -64,28 +65,28 @@
 .stopv-list.is-stale { filter: grayscale(1); }
 
 /* ---- arrival tile ---- */
-.atile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); }
+.atile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) 14px var(--space-3) var(--space-3); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); }
 .atile-live { border-left-color: var(--live); }
-.atile-live.atile-now { background: var(--live-bg); }
+.atile-live.atile-now { background: var(--live-muted); }
 .atile-badge { display: flex; }
 .atile-body { min-width: 0; }
 .atile-dest { font-weight: 600; font-size: 1rem; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .atile-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 5px; font-size: .8rem; }
-.atile-flag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; letter-spacing: .05em; line-height: 1.5; background: var(--sched-bg); color: var(--sched); }
-.atile-live .atile-flag { background: var(--live-bg); color: var(--live); }
-.atile-now.atile-live .atile-flag { background: var(--surface); }
+/* status badge: SCHEDULED = outline, LIVE = solid fill. The border is always there so both are the same size. */
+.atile-flag { display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px 1px 8px; border: 1px solid var(--scheduled-border); border-radius: var(--radius-full); font-size: .72rem; font-weight: var(--weight-bold); letter-spacing: .05em; line-height: 1.5; background: transparent; color: var(--scheduled); }
+.atile-live .atile-flag { border-color: var(--live); background: var(--live); color: var(--live-foreground); }
 .atile-flag .icon { width: 13px; height: 13px; stroke-width: 2.4; }
 .atile-clock { margin-left: 2px; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
-.atile-usual { color: var(--text-2); font-size: .78rem; font-weight: 400; }
+.atile-usual { color: var(--muted-foreground); font-size: .78rem; font-weight: 400; }
 .atile-usual[hidden] { display: none; }
 .atile-eta { text-align: right; }
-.atile-num { display: block; min-width: 3.4ch; font-size: 1.9rem; font-weight: 700; line-height: 1; letter-spacing: var(--track-display, -0.02em); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--sched); }
+.atile-num { display: block; min-width: 3.4ch; font-size: var(--text-2xl); font-weight: var(--weight-bold); line-height: 1; letter-spacing: var(--track-display); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--scheduled); }
 .atile-live .atile-num { color: var(--live); }
 .atile-now .atile-num { font-size: 1.5rem; }
 
-/* pulsing live dot */
-.atile-dot { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--live); }
-.atile-live .atile-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--live); animation: atile-pulse 1.6s ease-out infinite; }
+/* pulsing live dot: drawn in the badge's text colour, because it sits on the solid LIVE fill */
+.atile-dot { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.atile-live .atile-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; animation: atile-pulse 1.6s ease-out infinite; }
 @keyframes atile-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(3.2); opacity: 0; } }
 
 /* compact variant (nearby card, planner) */
@@ -98,8 +99,8 @@
 
 /* ---- skeleton ---- */
 .atile-skel { border-left-color: var(--border); }
-.skel { display: block; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: skel-shimmer 1.4s linear infinite; }
-.skel-badge { width: 44px; height: 30px; border-radius: 8px; }
+.skel { display: block; border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--muted) 0%, var(--border) 50%, var(--muted) 100%); background-size: 200% 100%; animation: skel-shimmer 1.4s linear infinite; }
+.skel-badge { width: 44px; height: 30px; border-radius: var(--radius-md); }
 .skel-line { width: 70%; height: 14px; margin: 4px 0; }
 .skel-line.short { width: 45%; }
 .skel-num { width: 52px; height: 30px; margin-left: auto; }

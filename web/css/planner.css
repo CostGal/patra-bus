@@ -21,11 +21,11 @@
 .pl-rail-pin { color: var(--danger); display: flex; }
 .pl-rail-pin .icon { width: 20px; height: 20px; }
 .pl-fields { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.pl-field { display: block; border-radius: 10px; background: var(--surface-2); }
-.pl-field:focus-within { box-shadow: 0 0 0 2px var(--focus); }
-.pl-input { display: block; width: 100%; height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 1rem; text-overflow: ellipsis; outline: none; }
-.pl-input::placeholder { color: var(--text-2); }
-.pl-input-gps { color: var(--accent); font-weight: 600; }
+.pl-field { display: block; border-radius: var(--radius-md); background: var(--muted); box-shadow: inset 0 0 0 1px var(--input); }
+.pl-field:focus-within { box-shadow: inset 0 0 0 1px var(--ring), 0 0 0 1px var(--ring); }
+.pl-input { display: block; width: 100%; height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: var(--text-base); text-overflow: ellipsis; outline: none; }
+.pl-input::placeholder { color: var(--muted-foreground); }
+.pl-input-gps { color: var(--primary); font-weight: var(--weight-semibold); }
 .pl-swap { align-self: center; }
 
 /* ---- suggestions ---- */
@@ -56,18 +56,18 @@
 .pl-banner > span { flex: 1; min-width: 0; }
 
 /* ---- buttons ---- */
-.pl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
-.pl-btn:hover:not(:disabled) { background: var(--surface-2); }
-.pl-btn:disabled { opacity: .55; cursor: default; }
-.pl-btn.is-primary { border-color: transparent; background: var(--accent); color: var(--accent-text); }
-.pl-btn.is-primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
-.pl-btn.is-primary.is-on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-.pl-btn.is-small { min-height: 36px; padding: 0 12px; font-size: .85rem; border-color: currentColor; background: transparent; color: inherit; }
+.pl-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--control-h); padding: 0 var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--card-foreground); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
+.pl-btn:hover:not(:disabled) { background: var(--muted); }
+.pl-btn:disabled { opacity: var(--disabled-opacity); cursor: default; }
+.pl-btn.is-primary { border-color: transparent; background: var(--primary); color: var(--primary-foreground); }
+.pl-btn.is-primary:hover:not(:disabled) { background: var(--primary); filter: brightness(1.08); }
+.pl-btn.is-primary.is-on { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
+.pl-btn.is-small { min-height: var(--control-h-sm); padding: 0 12px; font-size: .85rem; border-color: currentColor; background: transparent; color: inherit; }
 
 /* ---- result cards ---- */
 .pl-cards { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.pl-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
-.pl-card.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.pl-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); overflow: hidden; }
+.pl-card.is-selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .pl-card.is-none:not(.is-selected) { opacity: .8; }
 .pl-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .pl-card-lead { display: flex; }
@@ -90,12 +90,12 @@
 .pl-card-end small { color: var(--text-2); font-size: .72rem; }
 
 /* LIVE / ΠΡΟΓΡ. */
-.pl-flag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 7px; border-radius: 999px; background: var(--sched-bg); color: var(--sched); font-size: .7rem; font-weight: 700; letter-spacing: .05em; line-height: 1.5; }
-.pl-flag.is-live { background: var(--live-bg); color: var(--live); }
-.pl-flag.is-est { background: var(--surface-2); color: var(--text-2); letter-spacing: 0; font-weight: 600; }
+.pl-flag { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px 0 7px; border: 1px solid var(--scheduled-border); border-radius: var(--radius-full); background: transparent; color: var(--scheduled); font-size: .7rem; font-weight: var(--weight-bold); letter-spacing: .05em; line-height: 1.5; }
+.pl-flag.is-live { border-color: var(--live); background: var(--live); color: var(--live-foreground); }
+.pl-flag.is-est { border-color: transparent; background: var(--muted); color: var(--muted-foreground); letter-spacing: 0; font-weight: var(--weight-semibold); }
 .pl-flag .icon { width: 12px; height: 12px; stroke-width: 2.4; }
-.pl-dot { position: relative; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); }
-.pl-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--live); animation: pl-pulse 1.6s ease-out infinite; }
+.pl-dot { position: relative; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pl-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; animation: pl-pulse 1.6s ease-out infinite; }
 
 /* ---- selected card: hero ---- */
 .pl-detail { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 14px; }

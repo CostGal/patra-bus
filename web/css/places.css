@@ -8,7 +8,7 @@
 .plc-head { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-size: 1rem; }
 .plc-to { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .plc-sep { flex: none; color: var(--text-2); }
-.plc-head .badge { flex: none; display: inline-block; min-width: 2.4em; padding: .1em .45em; border-radius: 8px; font-size: .85rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.plc-head .badge { flex: none; display: inline-block; min-width: 2.4em; padding: .1em .45em; border-radius: var(--radius-md); font-size: .85rem; font-weight: var(--weight-bold); text-align: center; font-variant-numeric: tabular-nums; }
 .plc-leave { flex: none; font-variant-numeric: tabular-nums; }
 .plc-flag { flex: none; margin-left: auto; font-size: .7rem; }
 .plc-flag .icon { width: 12px; height: 12px; }
@@ -20,8 +20,8 @@
 .plc-row .ex-btn { flex: none; }
 .plc-slot + .plc-slot { border-top: 1px solid var(--border); }
 .plc-editor { display: grid; gap: 8px; padding: 4px 0 12px; }
-.plc-input { width: 100%; min-height: 44px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; }
-.plc-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.plc-input { width: 100%; min-height: var(--control-h); padding: 0 var(--space-3); box-sizing: border-box; border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); font: inherit; }
+.plc-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .plc-results { display: grid; gap: 2px; }
 .plc-result { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .plc-result:hover { background: var(--surface); }

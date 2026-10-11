@@ -303,6 +303,27 @@ get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-e
 instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
 `(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
 
+### CSS design tokens (shadcn-style): `web/css/tokens.css`
+Three layers, all in `tokens.css`:
+1. **Roles** (names as in shadcn/ui): `--background/--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted/--muted-foreground`,
+   `--destructive`, `--border` (decorative hairlines), `--input` (control edge, ≥ 3:1), `--ring` (focus), plus the app's own status
+   colours `--live/--live-foreground/--live-muted`, `--scheduled/--scheduled-border/--scheduled-muted`, `--warning/--warning-muted`.
+   Each has a `*-foreground` partner where text sits on the fill.
+2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills), spacing
+   (`--space-1…8`, 4 px grid), type (`--text-2xs…3xl`, `--weight-*`, `--track-*/--lead-*`), controls (`--control-h` 44 px,
+   `--control-h-sm`, `--disabled-opacity`), elevation (`--shadow-1/-2/-sheet`), motion (`--ease`, `--spring-ease`).
+3. **Legacy aliases** (`--bg`, `--surface`, `--surface-2`, `--text`, `--text-2`, `--accent*`, `--danger`, `--focus`, `--live-bg`, `--sched*`,
+   `--warn*`, `--s1…4`, `--fs*`, `--toast-*`) point at the roles; they stay as a contract for in-flight branches. New CSS uses layers 1–2.
+   `--accent` is the brand blue (= `--primary`), not shadcn's hover tint (use `--muted`).
+
+Themes: light in `:root`; dark in `@media (prefers-color-scheme: dark)` (unless `data-theme="light"`) and `:root[data-theme="dark"]`. The two dark
+blocks must stay identical. Only roles are re-declared per theme; aliases, scales and components never are.
+**LIVE vs SCHEDULED** status badges (`.atile-flag`, `.nb-flag`, `.pl-flag`, `.ex-chip-*`) share one recipe: LIVE = solid `--live` fill + `--live-foreground` text +
+pulsing dot (`currentColor`); SCHEDULED = transparent fill, `--scheduled-border` outline, `--scheduled` text + clock icon. Components: button variants in
+`.btn` (`.primary/.destructive/.ghost/.sm`), inputs use `--input` + `--ring`, cards `--card`, popovers/sheets `--popover`/material.
+`tests/tokens.test.mjs` checks contrast for every role pair in both themes (LIVE/SCHEDULED ≥ 7:1), dark-block parity, alias resolution and that
+no stylesheet uses an undefined `var(--…)`.
+
 ### Shell & map (M5): `js/map.js`, `js/app.js` (menu/popover/FAB only)
 - `map.js`: touch long-press now shows an immediate dot at `pointerdown` (DESIGN.md §1 — feedback on press-down,
   not only at completion), growing over the same 500 ms as the long-press timer, themed via the existing palette.
