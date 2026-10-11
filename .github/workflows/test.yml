@@ -10,6 +10,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       # Several tests assert the Greek UI strings (the app picks its language from the system locale).
       LANG: el_GR.UTF-8
@@ -20,5 +21,15 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      # Chromium for the Playwright smoke tests (tests/e2e/). They mock every request off the static server.
+      - run: npx playwright install --with-deps chromium
+      # Unit tests (node --test) + Playwright smoke tests (360×780, both cities, recorded fixtures).
       - run: npm test
       - run: npm run check:i18n
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,38 @@
+{
+  "city": "corfu",
+  "stop": "801",
+  "recordedAt": "2026-10-11T18:23:44.701Z",
+  "status": 200,
+  "body": {
+    "vehicles": [
+      {
+        "lineCode": "11",
+        "lineName": "ΠΕΛΕΚΑΣ",
+        "routeCode": "45",
+        "routeName": "ΣΑΡΟΚΟ (ΠΟΛΗ) - ΑΦΡΑ - ΑΓ. ΙΩΑΝΝΗΣ - ΜΟΥΧΑ",
+        "latitude": "0",
+        "longitude": "0",
+        "departureMins": 6,
+        "departureSeconds": 15,
+        "vehicleCode": "20261011_45_0000001_21_30",
+        "lineColor": "#ff9800",
+        "lineTextColor": "#ffffff",
+        "borderColor": "#D68000"
+      },
+      {
+        "lineCode": "15",
+        "lineName": "ΑΕΡΟΔΡΟΜΙΟ - ΛΙΜΑΝΙ - ΣΤΑΘΜΟΣ ΚΤΕΛ",
+        "routeCode": "55",
+        "routeName": "ΣΑΡΟΚΟ (ΠΟΛΗ) - ΛΙΜΑΝΙ",
+        "latitude": "0",
+        "longitude": "0",
+        "departureMins": 16,
+        "departureSeconds": 15,
+        "vehicleCode": "20261011_55_0000001_21_40",
+        "lineColor": "#d50000",
+        "lineTextColor": "#ffffff",
+        "borderColor": "#AC0000"
+      }
+    ]
+  }
+}

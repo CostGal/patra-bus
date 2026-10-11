@@ -3,3 +3,5 @@ node_modules/
 .dev.vars
 *.log
 scripts/.cache/
+test-results/
+playwright-report/

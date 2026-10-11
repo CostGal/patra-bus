@@ -20,7 +20,7 @@
 5. Τα attributions (OpenFreeMap / © OpenStreetMap, OSRM / FOSSGIS, Photon / komoot, citybus.gr) μένουν ορατά στις Ρυθμίσεις (`settings-view.js`) και στον χάρτη (`AttributionControl` στο `map.js`). Ποτέ αφαίρεση.
 6. **Η θέση του χρήστη μένει στη συσκευή**: δεν στέλνεται ποτέ στον worker μας, δεν αποθηκεύεται (στο localStorage μπαίνει μόνο το flag `patra-bus:loc-granted`), δεν μπαίνει σε URL της εφαρμογής, share link, υπενθύμιση/ρουτίνα ή αναφορά. Μόνες εξαιρέσεις, αιτήματα κατευθείαν από τον browser σε τρίτους: το **OSRM** (`walk.js`, κάρτα «κοντά σου» και planner) παίρνει αφετηρία/προορισμό περπατήματος με 5 δεκαδικά (~1 μ), και το **Photon** (`geocode.js`) παίρνει bias `lat`/`lon` στρογγυλεμένο σε 2 δεκαδικά (~1 χλμ). Νέα ροή θέσης προς οποιονδήποτε δεν μπαίνει χωρίς να ενημερωθεί αυτός ο κανόνας.
 7. **Ποτέ secrets σε commit**: citybus token, `NOTION_TOKEN`, `NOTION_DB_ID`, `VAPID_PRIVATE_KEY`. Ζουν μόνο ως Cloudflare secrets και τοπικά στο `worker/.dev.vars` (στο `.gitignore`).
-8. Κάθε PR ακολουθεί το `.github/pull_request_template.md` (task ID, τι άλλαξε, screenshots από κινητό, πώς ελέγχθηκε). Το CI τρέχει `npm test` + `npm run check:i18n` (required check `test`) και Lighthouse (performance, accessibility, PWA), που σχολιάζει τα scores στο PR.
+8. Κάθε PR ακολουθεί το `.github/pull_request_template.md` (task ID, τι άλλαξε, screenshots από κινητό, πώς ελέγχθηκε). Το CI τρέχει `npm test` (unit + Playwright smoke) + `npm run check:i18n` (required check `test`) και Lighthouse (performance, accessibility, PWA), που σχολιάζει τα scores στο PR.
 9. **Κάθε έλεγχος σε πραγματικό κινητό γίνεται issue**, ώστε ο Kostas να τους κάνει όλους μαζί: ό,τι δεν ελέγχεται τοπικά/στο `?demo` (push και tap ειδοποίησης, εγκατάσταση, GPS/πυξίδα, εμφάνιση και κίνηση στη συσκευή, iPhone/Android) δεν μένει μόνο ως checkbox ή σημείωση στο PR. Ανοίγει GitHub issue με label `device-test` (και/ή task στο Notion), ένα ανά ομάδα ελέγχων, με: προαπαιτούμενα (merge, deploy worker, ρυθμίσεις), βήματα με URL, αναμενόμενο αποτέλεσμα ως checklist, συσκευές, cleanup και link στο PR. Το PR τα γράφει στο «Πώς ελέγχθηκε». Λίστα: `gh issue list --label device-test`.
 
 ## Εντολές
@@ -28,7 +28,10 @@
 npm install
 npm run fetch-static     # ανανεώνει web/data/stops.json + lines.json και μετά τρέχει build-routes (committed)
 npm run build-routes     # routes.json + shapes.json από stops/lines + OSRM (cache στο scripts/.cache/)
-npm test                 # node --test tests/*.test.mjs
+npm test                 # test:unit + test:e2e (αυτό τρέχει το CI)
+npm run test:unit        # node --test tests/*.test.mjs
+npm run test:e2e         # Playwright smoke tests (tests/e2e/)· πρώτη φορά: npx playwright install chromium
+npm run record-fixtures  # ξαναγράφει τα fixtures των smoke tests από το citybus.gr (βλ. Smoke tests)
 npm run dev:worker       # wrangler dev --local στο :8787 (local KV)
 npx wrangler deploy --config worker/wrangler.toml   # deploy του worker στο Cloudflare
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
@@ -44,7 +47,7 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080,https://patra-bus-dev.patra-bus.workers.dev,https://*-patra-bus-dev.patra-bus.workers.dev`, τα δύο τελευταία = Cloudflare site και previews). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
 
 ## Branches & previews
-- `main` = η beta που βλέπουν οι δοκιμαστές. Protected: μόνο PR, απαιτείται το check `test` (`.github/workflows/test.yml`, τρέχει `npm test` με ελληνικό locale και `npm run check:i18n`), **μόνο ο Kostas κάνει merge**.
+- `main` = η beta που βλέπουν οι δοκιμαστές. Protected: μόνο PR, απαιτείται το check `test` (`.github/workflows/test.yml`, τρέχει `npm test` (unit + Playwright) με ελληνικό locale και `npm run check:i18n`), **μόνο ο Kostas κάνει merge**.
 - Κάθε εργασία σε δικό της branch `<όνομα>/TEL-<id>-<slug>` (π.χ. `kostas/TEL-12-repo-workflow`, μέσα στο repo, όχι fork), ανοίγει PR. Πριν ανοίξεις PR κάνε merge το `main` στο branch σου.
 - Κάθε PR παίρνει preview από το Cloudflare Workers Builds (project `patra-bus-dev`, `wrangler.jsonc` στη ρίζα, στατικά αρχεία από το `web/`· **δεν** είναι ο API worker `patra-bus`). Ο worker δέχεται αυτά τα origins μέσω του `https://*-patra-bus-dev.patra-bus.workers.dev` στο `ALLOWED_ORIGIN` (`worker/src/origin.js`: το `*` μέσα στο πρώτο label, μόνο για αυτό το project). Οι αναφορές από previews μπαίνουν στο Notion με πρόθεμα `[preview]`.
 - **Μην ανεβάζεις χειροκίνητα το `CACHE` στο `web/sw.js`**: το `scripts/stamp-cache.mjs` το βάζει από το commit κατά το deploy (Pages workflow και build command του Cloudflare). Το committed αρχείο μένει όπως είναι. Νέα αρχεία του `web/` μπαίνουν ακόμα στη λίστα SHELL.
@@ -63,7 +66,7 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Οδηγός (`docs/GUIDE.md`): `js/guide-view.js` (τι είναι, εγκατάσταση, πώς το χρησιμοποιώ, τι κάνει κάθε κουμπί), `js/platform.js` (καθαρή ανίχνευση: iOS/Android/άλλο × εφαρμογή/browser × Safari/Chrome/Samsung/Firefox/Edge/in-app), `js/install-guide.js` (σωστό tutorial ανά περίπτωση, κουμπί «Εγκατάσταση» με `beforeinstallprompt`). Κάρτα «Πρώτη φορά εδώ;» και μία φορά υπόδειξη εγκατάστασης στο home (flags `guideSeen`, `installHintDismissed`). Αγγλικά ανά feature σε `i18n-en-guide.js`/`i18n-en-install.js`.
 - Extras: `js/store.js` (blob `patra-bus:v2` στο localStorage, schema 3: αγαπημένα/πρόσφατα/μέρη/ρουτίνες/υπενθυμίσεις έχουν `city`, ό,τι δεν έχει είναι Πάτρα, οι λίστες δείχνουν μόνο την ενεργή πόλη), `js/notify.js` (υπενθυμίσεις μόνο όσο η εφαρμογή είναι ανοιχτή), `js/share.js`, `js/lines-view.js`, `js/settings-view.js`.
 - `js/data.js`: φορτώνει stops/lines/routes (+ `loadShapes` lazy). `web/data/routes.json`: σειρά στάσεων ανά διαδρομή + `legSec` + `confidence`. **Η σειρά συμπεραίνεται** (OSRM trip + έλεγχος πλευράς δρόμου), δεν είναι επίσημη· 10/80 διαδρομές έχουν confidence < 0.5 (φουρκέτες/κύκλοι, π.χ. 502x, 2015).
-- `tests/`: node:test, χωρίς deps.
+- `tests/`: node:test, χωρίς deps. `tests/e2e/`: Playwright smoke tests (βλ. Smoke tests).
 - `scripts/fetch-static.mjs`: scrape token → /stops, /lines (250 ms παύση) → `web/data/`. Τα αρχεία γράφονται απευθείας εκεί, ώστε να τα σερβίρει ο static server χωρίς αντίγραφα.
 - `worker/`: Cloudflare Worker, τοπικά (`wrangler dev`) και deployed. Routes (`worker/src/routes.js`): `/api/{city}/live/:code` (cache 15 s), `/api/{city}/stops` και `/api/{city}/lines` (cache 24 h), `/api/{city}/stats/:route/:stop`, `/health` (tokenExp ανά πόλη). Τα παλιά χωρίς πρόθεμα (`/api/live/:code` κ.λπ.) μένουν ως aliases της Πάτρας. Keys με την πόλη: cache `live/{city}/{code}`, KV `token/{city}`, Stats DO `{route}/{stop}` για Πάτρα (κρατά το ιστορικό) και `{city}/{route}/{stop}` για τις άλλες.
 - `web/js/arrivals.js`: **κοινό** module worker + frontend. Η λογική live/προγρ. ζει μόνο εδώ.
@@ -96,6 +99,14 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Service worker: δεν κάνει **ποτέ** cache το `/api/` ή άλλα origins, **εκτός από το OpenFreeMap** (style, TileJSON, tiles, glyphs, sprites) σε ξεχωριστά caches: `patra-bus-map-v1` (runtime, ≤ 4000) και `patra-bus-map-offline-v1` (λήψη της ενεργής πόλης z8–14, μία πόλη τη φορά, ~7,6 MB για την Πάτρα, από τις Ρυθμίσεις). Ποτέ OSRM ή Photon. Το MapLibre είναι vendored στο `web/vendor/maplibre-gl/` (4.7.1). Το `CACHE` στο `web/sw.js` σφραγίζεται αυτόματα στο deploy (βλ. Branches & previews)· κάθε νέο αρχείο στο `web/` μπαίνει στη λίστα SHELL.
 - Τρίτες υπηρεσίες (χωρίς κλειδί, με attribution στις Ρυθμίσεις): OpenFreeMap, OSRM/FOSSGIS (≤ 1 req/s), Photon/komoot (debounce). Η θέση του χρήστη δεν μπαίνει ποτέ σε URL της εφαρμογής.
 - Minimum viable complexity: vanilla JS, χωρίς build step και χωρίς framework.
+
+## Smoke tests (Playwright)
+- `tests/e2e/*.spec.mjs`, config στο `playwright.config.mjs`: Chromium σε **360×780** (κινητό, `el-GR`), static server του `web/` στο :4173. Καλύπτουν: φόρτωση και των δύο πόλεων, αναζήτηση στάσης, αφίξεις, LIVE vs ΠΡΟΓΡ. (κείμενο, εικονίδιο **και** χρώματα), εναλλαγή EL/EN (κανένα ελληνικό στο ορατό κείμενο/labels εκτός από ονόματα στάσεων/διαδρομών), app shell offline μετά την πρώτη επίσκεψη (service worker). Όλο το suite < 2 λεπτά (`globalTimeout`· τοπικά ~10 s).
+- **Ποτέ δίκτυο**: το `tests/e2e/mock.mjs` απαντά στο `http://localhost:8787/api/{city}/live/{code}` από τα fixtures (περνούν από το ίδιο `normalizeLive` με τον worker, `fetchedAt` = τώρα), δίνει 404 σε κάθε άλλο route του worker και κόβει κάθε άλλο origin (citybus.gr, deployed worker, OpenFreeMap, OSRM, Photon). Αν η σελίδα δοκιμάσει citybus.gr ή `workers.dev`, το τεστ αποτυγχάνει.
+- Fixtures: `tests/e2e/fixtures/{city}-live-{code}.json` = `{ city, stop, recordedAt, status, body }`, όπου `body` η **ακατέργαστη** απάντηση του upstream `/stops/live/{code}` (`status` 404 → `body: null` = noService). Στάσεις στο `tests/e2e/stops.mjs`: Πάτρα **1011**, Κέρκυρα **801** (Πλ. Σαρόκου). Το τεστ LIVE/ΠΡΟΓΡ. τρέχει στην Πάτρα και θέλει **τουλάχιστον ένα live και ένα προγραμματισμένο**.
+- Τρέχοντα fixtures: Πάτρα = η πραγματική απάντηση της 2026-10-09 ~22:10 (1 live, 1 προγρ., ίδια με το `web/fixtures/live-1011.json`)· Κέρκυρα = 2026-10-11 21:23, Κυριακή βράδυ, μόνο προγραμματισμένα (κανένα live εκείνη την ώρα)· αξίζει να ξαναγραφτεί μέρα, με live.
+- **Ξαναγράψιμο**: `npm run record-fixtures` (ή `-- --only=corfu`). Κάνει scrape το token όπως το `fetch-static` (δεν γράφεται πουθενά) και **ένα** GET `/stops/live/{code}` ανά πόλη, τίποτα άλλο. Κάνε το καθημερινή, μέρα, σε ώρες λειτουργίας: αν η απάντηση δεν έχει και live και προγραμματισμένο **δεν γράφεται** (exit 1), ώστε ένα βραδινό τρέξιμο να μη χαλάσει καλό fixture· `--force` τη γράφει όπως είναι. Μετά: `npm run test:e2e` και commit τα JSON. Αλλαγή στάσης = `tests/e2e/stops.mjs` + τα ονόματα/queries του `CITY` στο `smoke.spec.mjs`.
+- Αποτυχία στο CI: artifact `playwright-results` (trace ανά τεστ, `npx playwright show-trace …`).
 
 ## Αναφορά προβλήματος
 - Client: `js/report-view.js` (+ `js/report.js`, κοινό με τον worker: validation, whitelist διαγνωστικών, transport), `css/report.css`, αγγλικά στο `js/i18n-en-report.js`. Στέλνει μόνο ό,τι έγραψε ο χρήστης (κατηγορία, κείμενο, προαιρετικό email) + τα διαγνωστικά που εμφανίζονται πριν την αποστολή (χωρίς query/συντεταγμένες/UA/IP).

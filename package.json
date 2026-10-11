@@ -6,12 +6,16 @@
   "scripts": {
     "fetch-static": "node scripts/fetch-static.mjs",
     "build-routes": "node scripts/build-routes.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "record-fixtures": "node scripts/record-fixtures.mjs",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
     "check:i18n": "node scripts/check-i18n.mjs",
     "dev:worker": "wrangler dev --local --config worker/wrangler.toml --port 8787",
     "dev:web": "http-server web -p 8080 -c-1"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "http-server": "^14.1.1",
     "wrangler": "^4.149.0"
   }
