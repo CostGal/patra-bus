@@ -18,7 +18,8 @@
 .stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }
 .stopv-menu[hidden] { display: none; }
 .stopv-item { display: flex; align-items: center; gap: 10px; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.stopv-item:hover, .stopv-item:focus-visible { background: var(--muted); outline: none; }
+.stopv-item:hover, .stopv-item:focus-visible { background: var(--muted); }
+.stopv-item:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; } /* TEL-48: the tint alone was 1.1:1 */
 .stopv-item .icon { width: 20px; height: 20px; fill: none; }
 .stopv-item .icon-walk { fill: currentColor; stroke: none; }
 
@@ -29,7 +30,7 @@
 .stopv-btn .icon { width: 22px; height: 22px; }
 .stopv-star.on { color: var(--warning); }
 .stopv-star.on .icon { fill: currentColor; }
-.stopv-small { min-height: var(--control-h-sm); min-width: 0; padding: 0 var(--space-3); font-size: .85rem; font-weight: var(--weight-semibold); color: var(--primary); }
+.stopv-small { --hit: -5px 0; min-height: var(--control-h-sm); min-width: 0; padding: 0 var(--space-3); font-size: .85rem; font-weight: var(--weight-semibold); color: var(--primary); }
 .stopv-small .icon { width: 16px; height: 16px; }
 .stopv-primary { background: var(--primary); color: var(--primary-foreground); font-weight: var(--weight-semibold); padding: 0 var(--space-5); }
 .stopv-primary:hover:not(:disabled, [aria-disabled="true"]) { background: var(--primary); filter: brightness(1.08); }
@@ -43,7 +44,7 @@
 .stopv-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px; scrollbar-width: none; }
 .stopv-chips::-webkit-scrollbar { display: none; }
 .stopv-chipbar[hidden], .stopv-banner[hidden] { display: none; }
-.stopv-chip { display: inline-flex; flex: none; align-items: center; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.stopv-chip { --hit: -3px 0; display: inline-flex; flex: none; align-items: center; min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 .stopv-chip .badge { font-size: .85rem; min-width: 2.4em; padding: .15em .45em; }
 .stopv-chip.on { background: var(--accent-soft); border-color: var(--accent); }
 
@@ -109,7 +110,7 @@
 /* ---- footer: one quiet line ---- */
 .stopv-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; color: var(--text-2); font-size: var(--text-sm); }
 .stopv-foot-text { margin: 0; font-variant-numeric: tabular-nums; }
-.stopv-refresh { min-width: 36px; min-height: 36px; padding: 0; color: var(--text-2); }
+.stopv-refresh { --hit: -4px; min-width: 36px; min-height: 36px; padding: 0; color: var(--text-2); }
 .stopv-refresh .icon { width: 18px; height: 18px; }
 
 @media (prefers-reduced-motion: reduce) {

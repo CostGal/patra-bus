@@ -46,6 +46,15 @@ a { color: var(--primary); }
 .press { transform: scale(1); transition: transform .1s ease-out; }
 .press:active, .press.is-pressed { transform: scale(.97); transition: transform 0s; }
 
+/* ---------- hit area (TEL-48, WCAG 2.5.5 / HIG 44 px) ----------
+   Controls that are visually smaller than 44 px grow their *tap area*, not their box, so the layout does not move:
+   a transparent ::after extends by --hit (inset shorthand: -4px = 4 px on every side, "-3px 0" = top/bottom only).
+   inset is measured from the padding box, so a 1 px border costs 2 px: a 40 px bordered button needs -3px, a 36 px borderless one -4px.
+   Set --hit next to the rule that sets the size. tests/tokens.test.mjs lists the selectors. */
+.stopv-refresh, .stopv-small, .stopv-chip, .nb-line .nb-btn, .nb-toggle, .nb-how summary, .nb-hero-stoplink, .nb-stop-name { position: relative; }
+.stopv-refresh::after, .stopv-small::after, .stopv-chip::after, .nb-line .nb-btn::after, .nb-toggle::after, .nb-how summary::after,
+.nb-hero-stoplink::after, .nb-stop-name::after { content: ''; position: absolute; inset: var(--hit, 0); }
+
 /* ---------- misc utilities ---------- */
 .tabular { font-variant-numeric: tabular-nums; }
 /* scroll-edge fade under sticky chrome, instead of a hard 1px divider (§4) */

@@ -27,14 +27,14 @@
 .nb-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .nb-actions .nb-btn { flex: 1 1 auto; min-width: 0; }
 .nb-how { padding: 0 4px; color: var(--text-2); font-size: .82rem; }
-.nb-how summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.nb-how summary { --hit: -6px 0; cursor: pointer; min-height: 32px; display: flex; align-items: center; }
 .nb-how .nb-text { color: var(--text-2); font-size: .82rem; }
 .nb-compact { gap: 4px; padding: 8px 12px; }
 .nb-line { display: flex; align-items: center; gap: 10px; }
 .nb-line .nb-text { flex: 1 1 0; min-width: 0; font-size: .9rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.nb-line .nb-btn { flex: 0 1 auto; min-height: 40px; max-width: 50%; padding: 0 12px; font-size: .88rem; text-align: center; }
+.nb-line .nb-btn { --hit: -3px 0; flex: 0 1 auto; min-height: 40px; max-width: 50%; padding: 0 12px; font-size: .88rem; text-align: center; }
 .nb-compact .nb-how { padding: 0; }
-.nb-compact .nb-how summary { min-height: 28px; }
+.nb-compact .nb-how summary { --hit: -8px 0; min-height: 28px; }
 .nb-compact .nb-how > * + * { margin-top: 8px; }
 .nb-compact .nb-how .nb-btn { width: 100%; }
 
@@ -74,7 +74,7 @@
 
 .nb-hero-stop { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; color: var(--text-2); font-size: .88rem; line-height: 1.35; }
 .nb-hero-stop .icon-walk { width: 1.2em; height: 1.2em; }
-.nb-hero-stoplink { display: inline-flex; align-items: center; gap: 2px; color: var(--text); font-weight: 600; text-decoration: none; }
+.nb-hero-stoplink { --hit: -12px -6px; display: inline-flex; align-items: center; gap: 2px; color: var(--text); font-weight: 600; text-decoration: none; }
 .nb-hero-stoplink .icon, .nb-stop-name .icon { width: 1em; height: 1em; color: var(--text-2); }
 
 .nb-action { padding: 10px 14px; border-radius: var(--radius); font-size: 1.15rem; font-weight: 700; line-height: 1.25; text-align: center; background: var(--surface-2); color: var(--text); }
@@ -86,7 +86,7 @@
 
 /* ---- summary rows + expand ---- */
 .nb-summary:empty, .nb-summary[hidden] { display: none; }
-.nb-toggle { align-self: center; min-height: 40px; font-size: .88rem; }
+.nb-toggle { --hit: -3px 0; align-self: center; min-height: 40px; font-size: .88rem; }
 .nb-toggle .icon { transition: transform .15s; transform: rotate(90deg); }
 .nb-toggle.open .icon { transform: rotate(-90deg); }
 .nb-details { display: flex; flex-direction: column; gap: 12px; }
@@ -95,7 +95,7 @@
 .nb-groups { display: flex; flex-direction: column; gap: 14px; }
 .nb-stop { display: flex; flex-direction: column; gap: 6px; }
 .nb-stop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.nb-stop-name { display: inline-flex; align-items: center; gap: 2px; min-width: 0; color: var(--text); font-weight: 700; font-size: .95rem; text-decoration: none; overflow-wrap: anywhere; }
+.nb-stop-name { --hit: -12px -6px; display: inline-flex; align-items: center; gap: 2px; min-width: 0; color: var(--text); font-weight: 700; font-size: .95rem; text-decoration: none; overflow-wrap: anywhere; }
 .nb-stop-meta { flex: none; color: var(--text-2); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .nb-stop-msg { margin: 0; padding: 6px 2px; color: var(--text-2); font-size: .85rem; }
 .nb-rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }

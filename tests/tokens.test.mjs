@@ -97,7 +97,7 @@ test('legacy aliases still resolve to a role', () => {
 test('stylesheets only use tokens that exist', () => {
   const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
     'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css'];
-  const local = new Set(['--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--panel-w',
+  const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--panel-w',
     '--top-inset', '--chips-h', '--offline-h']);
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
@@ -130,5 +130,19 @@ test('no font-size under 13px except the known exceptions', () => {
 test('secondary text keeps >= 5.5:1 on the page and the card (sunlight margin)', () => {
   for (const tokens of [light, dark]) {
     for (const bg of ['--background', '--card']) assert.ok(contrast(tokens['--muted-foreground'], tokens[bg]) >= 5.5, bg);
+  }
+});
+
+// TEL-48: every control that is drawn under 44 px and listed for a bigger tap area sets --hit next to its size
+test('hit-area controls each set --hit', () => {
+  const read = (f) => readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
+  const app = read('app.css');
+  const listed = app.match(/\.stopv-refresh, [^{]+\{ position: relative; \}/)[0].replace(/\{.*$/, '').split(',').map((s) => s.trim());
+  assert.ok(listed.length >= 8);
+  const css = read('css/arrivals.css') + read('css/nearby.css');
+  for (const sel of listed) {
+    const esc = sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(css, new RegExp(`${esc}[^{]*\\{[^}]*--hit:`), `${sel} sets --hit`);
+    assert.ok(app.includes(`${sel}::after`), `${sel}::after is declared`);
   }
 });
