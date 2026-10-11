@@ -140,8 +140,8 @@ function setup(over = {}) {
 const good = { category: 'data', message: MSG, hp: '', diag: { city: 'patra', view: 'stop', ref: '1011' } };
 
 test('POST /api/report: a report from a preview origin is tagged [preview] in Notion', async () => {
-  const PREVIEW = 'https://alice-ux.patra-bus.pages.dev';
-  const s = setup({ env: { ALLOWED_ORIGIN: `${ORIGIN},https://*.patra-bus.pages.dev` } });
+  const PREVIEW = 'https://alice-ux-patra-bus-dev.patra-bus.workers.dev';
+  const s = setup({ env: { ALLOWED_ORIGIN: `${ORIGIN},https://*-patra-bus-dev.patra-bus.workers.dev` } });
   try {
     const res = await s.post(good, { Origin: PREVIEW });
     assert.equal(res.status, 200);
