@@ -32,8 +32,8 @@ test('t() in Greek returns the source and fills {placeholders}', () => {
   assert.equal(t('τώρα'), 'τώρα');
   assert.equal(t('Φύγε σε {n}′', { n: 6 }), 'Φύγε σε 6′');
   assert.equal(t('Γραμμή {code} · {name}', { code: '601', name: 'Άγιος' }), 'Γραμμή 601 · Άγιος');
-  assert.equal(t('σε {n}′', { n: 0 }), 'σε 0′'); // 0 is a value, not "missing"
-  assert.equal(t('σε {n}′', {}), 'σε ′'); // missing var -> empty, never "undefined"
+  assert.equal(t('Περπάτησε {n}′', { n: 0 }), 'Περπάτησε 0′'); // 0 is a value, not "missing"
+  assert.equal(t('Περπάτησε {n}′', {}), 'Περπάτησε ′'); // missing var -> empty, never "undefined"
   assert.equal(t('κείμενο χωρίς vars', { n: 1 }), 'κείμενο χωρίς vars');
   assert.equal(tn(1, '{n} γραμμή', '{n} γραμμές'), '1 γραμμή');
   assert.equal(tn(5, '{n} γραμμή', '{n} γραμμές'), '5 γραμμές');

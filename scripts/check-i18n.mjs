@@ -12,23 +12,8 @@ const SAME_OK = new Set(['LIVE']); // English == Greek key on purpose
 const ph = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 
 // Reviewed gaps that do not fail the check: [category, key, why]. Categories: missing, orphan, html.
-// The 'missing' ones slipped past the old scan in tests/i18n.test.mjs (it skipped literals containing a Latin "n").
-export const ALLOW = [
-  // index.html fallback; sheet.js replaces it with 'Αλλαγή μεγέθους πίνακα (τώρα: {state})' on the first snap.
-  ['html', 'Αλλαγή μεγέθους πίνακα', 'replaced at runtime by a keyed label'],
-  // planner-view.js screen-reader count after a search: no English yet (shows Greek in English UI).
-  ['missing', 'Βρέθηκε {n} επιλογή διαδρομής', 'TODO: add English'],
-  ['missing', 'Βρέθηκαν {n} επιλογές διαδρομής', 'TODO: add English'],
-  // push.js / routines.js iOS "install first" hints: no English yet.
-  ['missing', 'Στο iPhone και στο iPad οι ειδοποιήσεις λειτουργούν μόνο από την εγκατεστημένη εφαρμογή. Πάτα «Κοινοποίηση» και μετά «Προσθήκη στην οικ. οθόνη», άνοιξε την εφαρμογή από την οθόνη σου και γύρνα εδώ για να τις ενεργοποιήσεις.', 'TODO: add English'],
-  ['missing', 'Στο iPhone και στο iPad χρειάζεται η εγκατεστημένη εφαρμογή (Κοινοποίηση → Προσθήκη στην οικ. οθόνη).', 'TODO: add English'],
-  // Only tests/i18n.test.mjs calls t() with it (placeholder fill in Greek); the UI uses 'σε {when}'.
-  ['orphan', 'σε {n}′', 'test-only key'],
-  // Dead since the v2/round-3 UI rework: nothing in web/ uses them any more.
-  ['orphan', 'Θέση σε πραγματικό χρόνο', 'TODO: delete from i18n-en.js'],
-  ['orphan', 'Ώρα προγράμματος, μπορεί να μην τηρηθεί', 'TODO: delete from i18n-en.js'],
-  ['orphan', 'Γραμμές που περνούν', 'TODO: delete from i18n-en.js'],
-];
+// Empty on purpose: fix a gap rather than list it; add an entry only with a reason a reviewer would accept.
+export const ALLOW = [];
 
 // Pure. pairs: { file: [[el, en], ...] }; calls: [{ file, key }]; used: Set of string literals in code;
 // html: [Greek label in index.html]. Returns the grouped problems (empty arrays = pass).
