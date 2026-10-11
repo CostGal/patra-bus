@@ -120,7 +120,7 @@ function buildLine(container, ctx, params) {
   let open = null; // { code, poller, state, ticker, panel, btn } — one expanded stop at a time (one poller)
 
   const root = h('div', { class: 'ex-view lines-line' });
-  root.style.setProperty('--lc', line.color || 'var(--accent)');
+  root.style.setProperty('--lc', line.color || 'var(--primary)');
   root.style.setProperty('--lc-text', line.textColor || '#fff');
   const chips = h('div', { class: 'lines-routes', role: 'group', 'aria-label': t('Διαδρομές της γραμμής') });
   const sub = h('p', { class: 'ex-sub' });

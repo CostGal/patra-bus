@@ -1,14 +1,14 @@
 /* Report a problem (owner: extras). Prefix rp-. Builds on the settings view (.ex-view, .ex-head, .set-sec) and the shell's .btn / .press;
    tokens only. Inputs are 16 px so iOS does not zoom on focus. */
 
-.rp-form { display: grid; gap: var(--s3); }
-.rp-intro { font-size: 1rem; }
-.rp-field { display: grid; gap: var(--s2); min-width: 0; margin: 0; padding: 0; border: 0; }
-.rp-label { padding: 0; color: var(--text); font-weight: 600; letter-spacing: var(--track-body); }
-.rp-opt { color: var(--text-2); font-weight: 400; }
+.rp-form { display: grid; gap: var(--space-4); }
+.rp-intro { font-size: var(--text-base); }
+.rp-field { display: grid; gap: var(--space-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+.rp-label { padding: 0; color: var(--foreground); font-weight: 600; letter-spacing: var(--track-body); }
+.rp-opt { color: var(--muted-foreground); font-weight: 400; }
 
 .rp-input {
-  display: block; width: 100%; min-height: 48px; padding: 12px 14px;
+  display: block; width: 100%; min-height: 48px; padding: var(--space-3) 14px;
   border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--card-foreground);
   font: inherit; font-size: var(--text-base); line-height: var(--lead-body);
 }
@@ -18,38 +18,38 @@
 .rp-err { color: var(--destructive); font-size: .875rem; line-height: var(--lead-label); letter-spacing: var(--track-label); }
 
 /* category: native radios (arrow keys, screen readers) drawn as the same pills as the menu's theme buttons */
-.rp-cats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.rp-cats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
 .rp-cat { position: relative; display: block; cursor: pointer; }
 .rp-cat input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .rp-cat-pill {
-  display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 12px; text-align: center;
+  display: flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--space-2) var(--space-3); text-align: center;
   border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--muted-foreground); font-size: var(--text-md);
   transform: scale(1); transition: transform .1s ease-out;
 }
 .rp-cat:hover .rp-cat-pill { background: var(--muted); }
 .rp-cat:active .rp-cat-pill { transform: scale(.97); transition: transform 0s; }
 .rp-cat input:checked + .rp-cat-pill { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); font-weight: var(--weight-semibold); }
-.rp-cat input:focus-visible + .rp-cat-pill { outline: 3px solid var(--focus); outline-offset: 2px; }
+.rp-cat input:focus-visible + .rp-cat-pill { outline: 3px solid var(--ring); outline-offset: 2px; }
 
 /* the diagnostics, exactly as sent */
 .rp .set-sec { margin: 0; }
 .rp-diag {
-  margin: var(--s2) 0 0; padding: 10px 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border);
-  color: var(--text); font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
+  margin: var(--space-2) 0 0; padding: 10px var(--space-3); border-radius: var(--radius); background: var(--card); border: 1px solid var(--border);
+  color: var(--foreground); font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
 }
 
 .rp-submit { width: 100%; min-height: 48px; }
-.rp-note { margin-top: calc(var(--s2) * -1); }
+.rp-note { margin-top: calc(var(--space-2) * -1); }
 
 /* honeypot: out of sight and out of reach, but still a real field for scripts */
 .rp-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
 /* sent */
-.rp-done { display: grid; justify-items: start; gap: var(--s2); padding-top: var(--s3); animation: rp-in .25s var(--spring-ease); }
-.rp-done-ico { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--live-bg); color: var(--live); }
+.rp-done { display: grid; justify-items: start; gap: var(--space-2); padding-top: var(--space-4); animation: rp-in .25s var(--spring-ease); }
+.rp-done-ico { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--live-muted); color: var(--live); }
 .rp-done-ico .icon { width: 24px; height: 24px; }
-.sheet-content .rp-done-title { margin: 0; color: var(--text); font-size: 1.25rem; font-weight: 700; line-height: var(--lead-title); letter-spacing: var(--track-title); } /* beats .sheet-content h2 */
+.sheet-content .rp-done-title { margin: 0; color: var(--foreground); font-size: 1.25rem; font-weight: 700; line-height: var(--lead-title); letter-spacing: var(--track-title); } /* beats .sheet-content h2 */
 .rp-done-title:focus { outline: none; }
-.rp-done .btn { margin-top: var(--s2); }
+.rp-done .btn { margin-top: var(--space-2); }
 @keyframes rp-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .rp-done { animation-duration: .15s; } .rp-cat-pill { transition: none; } }

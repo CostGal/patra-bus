@@ -1,14 +1,13 @@
 /* Design tokens shared by every stylesheet, modelled on shadcn/ui theming (docs/DESIGN.md §6).
-   Three layers, top to bottom:
+   Two layers, top to bottom:
      1. semantic colour roles (background/foreground, card, popover, primary, secondary, muted, destructive, border,
         input, ring) + the app's own LIVE / SCHEDULED / warning status colours;
-     2. scales: one radius scale, one spacing scale, one type scale, elevation, motion;
-     3. legacy aliases (--bg, --surface, --text, --accent, …). Names are a contract (docs/ARCHITECTURE.md), so older rules
-        keep working; new code uses layers 1–2.
+     2. scales: one radius scale, one spacing scale, one type scale, elevation, motion.
+   The pre-TEL-46 names (--bg, --surface, --text, --accent, --s1…4, --fs …) are gone (TEL-50); docs/ARCHITECTURE.md maps old to new.
    Themes: light by default; dark via prefers-color-scheme, unless <html data-theme="light|dark"> forces it (set by app.js
    from the theme setting). The dark values are written twice (media query + [data-theme="dark"]) because CSS has no way
    to share a block between the two without a build step; tests/tokens.test.mjs fails if they drift apart.
-   shadcn's "accent" role (hover tint) is covered by --muted/--secondary here: --accent stays the brand blue (= --primary). */
+   shadcn's "accent" role (hover tint) is covered by --muted/--secondary here; there is no --accent. */
 
 :root {
   /* ---- 1. colour roles (light) ---- */
@@ -86,17 +85,6 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px); --safe-left: env(safe-area-inset-left, 0px);
 
   color-scheme: light;
-
-  /* ---- 3. legacy aliases (do not redefine per theme: they follow the roles above) ---- */
-  --bg: var(--background);        --surface: var(--card);          --surface-2: var(--muted);
-  --text: var(--foreground);      --text-2: var(--muted-foreground);
-  --accent: var(--primary);       --accent-text: var(--primary-foreground);  --accent-soft: var(--primary-soft);
-  --danger: var(--destructive);   --focus: var(--ring);            --scrim: var(--overlay);
-  --live-bg: var(--live-muted);   --sched: var(--scheduled);       --sched-bg: var(--scheduled-muted);
-  --warn: var(--warning);         --warn-bg: var(--warning-muted);
-  --toast-bg: var(--inverse);     --toast-text: var(--inverse-foreground);   --toast-action: var(--inverse-action);
-  --s1: var(--space-1); --s2: var(--space-2); --s3: var(--space-4); --s4: var(--space-6);
-  --fs: var(--text-base); --fs-sm: var(--text-sm);
 }
 
 /* ---- dark ---- */

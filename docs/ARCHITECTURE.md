@@ -304,7 +304,7 @@ instead of a divider line under sticky chrome). `@media (prefers-reduced-transpa
 `(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
 
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`
-Three layers, all in `tokens.css`:
+Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; see the map below):
 1. **Roles** (names as in shadcn/ui): `--background/--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted/--muted-foreground`,
    `--destructive`, `--border` (decorative hairlines), `--input` (control edge, ≥ 3:1), `--ring` (focus), plus the app's own status
    colours `--live/--live-foreground/--live-muted`, `--scheduled/--scheduled-border/--scheduled-muted`, `--warning/--warning-muted`.
@@ -312,16 +312,20 @@ Three layers, all in `tokens.css`:
 2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills), spacing
    (`--space-1…8`, 4 px grid), type (`--text-2xs…3xl`, `--weight-*`, `--track-*/--lead-*`), controls (`--control-h` 44 px,
    `--control-h-sm`, `--disabled-opacity`), elevation (`--shadow-1/-2/-sheet`), motion (`--ease`, `--spring-ease`).
-3. **Legacy aliases** (`--bg`, `--surface`, `--surface-2`, `--text`, `--text-2`, `--accent*`, `--danger`, `--focus`, `--live-bg`, `--sched*`,
-   `--warn*`, `--s1…4`, `--fs*`, `--toast-*`) point at the roles; they stay as a contract for in-flight branches. New CSS uses layers 1–2.
-   `--accent` is the brand blue (= `--primary`), not shadcn's hover tint (use `--muted`).
+
+Old → new, for branches that predate TEL-50: `--bg`→`--background`, `--surface`→`--card`, `--surface-2`→`--muted`, `--text`→`--foreground`,
+`--text-2`→`--muted-foreground`, `--accent`→`--primary`, `--accent-text`→`--primary-foreground`, `--accent-soft`→`--primary-soft`, `--danger`→`--destructive`,
+`--focus`→`--ring`, `--scrim`→`--overlay`, `--live-bg`→`--live-muted`, `--sched`→`--scheduled`, `--sched-bg`→`--scheduled-muted`, `--warn`→`--warning`,
+`--warn-bg`→`--warning-muted`, `--toast-bg/-text/-action`→`--inverse/-foreground/-action`, `--s1…4`→`--space-1/2/4/6`, `--fs`→`--text-base`, `--fs-sm`→`--text-sm`.
+There is no `--accent` any more (shadcn's hover-tint role is `--muted`). `tests/tokens.test.mjs` fails if a stylesheet uses an old name.
+Raw values: use the scale tokens where one fits (radius, 4 px-grid spacing, the type steps). Off-scale literals (10/14 px padding, .85/.9 rem text) are left as they were.
 
 Themes: light in `:root`; dark in `@media (prefers-color-scheme: dark)` (unless `data-theme="light"`) and `:root[data-theme="dark"]`. The two dark
-blocks must stay identical. Only roles are re-declared per theme; aliases, scales and components never are.
+blocks must stay identical. Only roles are re-declared per theme; scales and components never are.
 **LIVE vs SCHEDULED** status badges (`.atile-flag`, `.nb-flag`, `.pl-flag`, `.ex-chip-*`) share one recipe: LIVE = solid `--live` fill + `--live-foreground` text +
 pulsing dot (`currentColor`); SCHEDULED = transparent fill, `--scheduled-border` outline, `--scheduled` text + clock icon. Components: button variants in
 `.btn` (`.primary/.destructive/.ghost/.sm`), inputs use `--input` + `--ring`, cards `--card`, popovers/sheets `--popover`/material.
-`tests/tokens.test.mjs` checks contrast for every role pair in both themes (LIVE/SCHEDULED ≥ 7:1), dark-block parity, alias resolution and that
+`tests/tokens.test.mjs` checks contrast for every role pair in both themes (LIVE/SCHEDULED ≥ 7:1), dark-block parity, that no stylesheet uses a removed name and that
 no stylesheet uses an undefined `var(--…)`.
 
 ### Shell & map (M5): `js/map.js`, `js/app.js` (menu/popover/FAB only)

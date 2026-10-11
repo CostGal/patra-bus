@@ -198,7 +198,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   // ---- header + header-ish bits ----
   function paintHead() {
     const l = line();
-    root.style.setProperty('--lc', (l && l.color) || (found && found.v.color) || 'var(--accent)');
+    root.style.setProperty('--lc', (l && l.color) || (found && found.v.color) || 'var(--primary)');
     root.style.setProperty('--lc-text', (l && l.textColor) || '#fff');
     badgeBox.replaceChildren(lineBadge(l || { code: found ? found.v.lineCode : route ? route.lineCode : '' }));
     title.textContent = route ? route.displayName : found ? found.v.routeName : t('Διαδρομή οχήματος');

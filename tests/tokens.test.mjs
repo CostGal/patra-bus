@@ -83,13 +83,17 @@ test('radius scale derives from the single --radius knob', () => {
   assert.equal(light['--radius-full'], '999px');
 });
 
-test('legacy aliases still resolve to a role', () => {
-  for (const k of ['--bg', '--surface', '--surface-2', '--text', '--text-2', '--accent', '--accent-text', '--accent-soft', '--danger',
-    '--focus', '--scrim', '--live-bg', '--sched', '--sched-bg', '--warn', '--warn-bg', '--toast-bg', '--toast-text', '--toast-action',
-    '--s1', '--s2', '--s3', '--s4', '--fs', '--fs-sm']) {
-    const m = light[k]?.match(/^var\((--[\w-]+)\)$/);
-    assert.ok(m, `${k} should alias a role`);
-    assert.ok(m[1] in light, `${k} → ${m[1]} is not defined`);
+// TEL-50: the pre-TEL-46 names are gone: not declared in tokens.css, not used in any stylesheet or inline var() in the JS views.
+const REMOVED = ['bg', 'surface', 'surface-2', 'text', 'text-2', 'accent', 'accent-text', 'accent-soft', 'danger', 'focus', 'scrim', 'live-bg',
+  'sched', 'sched-bg', 'warn', 'warn-bg', 'toast-bg', 'toast-text', 'toast-action', 's1', 's2', 's3', 's4', 'fs', 'fs-sm'];
+test('removed legacy token names are not declared or used', () => {
+  const re = new RegExp(`--(${REMOVED.join('|')})(?![\\w-])`);
+  assert.equal(Object.keys(light).filter((k) => re.test(k)).length, 0, 'declared in tokens.css');
+  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
+    'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css', 'js/lines-view.js', 'js/bus-view.js', 'index.html'];
+  for (const f of files) {
+    const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(src, new RegExp(`var\\(${re.source}`), `${f} uses a removed token`);
   }
 });
 
