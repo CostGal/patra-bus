@@ -3,6 +3,7 @@ import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
 import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
+import { corsOriginFor, isAllowedOrigin, isPatternOrigin } from './origin.js';
 import { MAX_REPORT_BYTES, ForwardError, forwardReport, takeDailySlot } from './report.js';
 import { validateReport, isHoneypot } from '../../web/js/report.js';
 import { CITIES, DEFAULT_CITY, apiBase, isCity } from '../../web/js/cities.js';
@@ -86,12 +87,9 @@ async function upstream(env, city, path, opts = {}) {
   }
 }
 
-// ALLOWED_ORIGIN: "*" or a comma-separated list; a listed Origin is echoed back.
+// ALLOWED_ORIGIN (see origin.js): an allowed Origin is echoed back, anything else gets the first exact entry.
 function corsOrigin(env, request) {
-  const allowed = (env.ALLOWED_ORIGIN || '*').split(',').map((o) => o.trim());
-  if (allowed.includes('*')) return '*';
-  const origin = request.headers.get('Origin');
-  return origin && allowed.includes(origin) ? origin : allowed[0];
+  return corsOriginFor(env, request.headers.get('Origin'));
 }
 
 function headers(cors, extra = {}) {
@@ -259,8 +257,7 @@ async function pushRoute(request, env, cors, pathname) {
 // Requests without an Origin (curl, the app's own native webview) pass; the rate limit and daily cap cover those.
 function originAllowed(env, request) {
   const origin = request.headers.get('Origin');
-  const allowed = (env.ALLOWED_ORIGIN || '*').split(',').map((o) => o.trim());
-  return !origin || allowed.includes('*') || allowed.includes(origin);
+  return !origin || isAllowedOrigin(env, origin);
 }
 
 // POST /api/report: problem report -> Notion. Order matters: cheap refusals first, the honeypot answers like a success.
@@ -288,7 +285,7 @@ async function reportRoute(request, env, cors) {
   if (!v.ok) return json(cors, { error: 'bad_request', field: v.error }, 400);
   if (!(await takeDailySlot(env, now))) return json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '3600' });
   try {
-    await forwardReport(env, v.value, now);
+    await forwardReport(env, v.value, now, undefined, { preview: isPatternOrigin(env, request.headers.get('Origin')) });
   } catch (err) {
     console.error(`/api/report: ${err instanceof ForwardError ? err.message : 'forward failed'}`); // status only, never the content
     return json(cors, { error: 'forward_failed' }, 502, { 'Cache-Control': 'no-store' });

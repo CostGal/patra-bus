@@ -25,9 +25,9 @@ function headline(message, max = 70) {
 const text = (content) => [{ type: 'text', text: { content } }];
 
 // Body of POST /v1/pages for a validated report (see validateReport).
-export function notionPage(v, { dbId, now }) {
+export function notionPage(v, { dbId, now, preview = false }) {
   const properties = {
-    Name: { title: text(`${CATEGORY[v.category]}: ${headline(v.message)}`) },
+    Name: { title: text(`${preview ? '[preview] ' : ''}${CATEGORY[v.category]}: ${headline(v.message)}`) },
     Category: { select: { name: CATEGORY[v.category] } },
     Status: { select: { name: 'New' } },
     Received: { date: { start: new Date(now).toISOString() } },
@@ -52,14 +52,15 @@ export class ForwardError extends Error {
   }
 }
 
+// `preview`: the report came from a preview deployment, so the title says so.
 // Throws ForwardError (never with the report's content in the message). `fetchFn` is injectable for tests.
-export async function forwardReport(env, v, now, fetchFn = (...a) => fetch(...a)) {
+export async function forwardReport(env, v, now, fetchFn = (...a) => fetch(...a), { preview = false } = {}) {
   let res;
   try {
     res = await fetchFn(NOTION_PAGES, {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.NOTION_TOKEN}`, 'Notion-Version': NOTION_VERSION, 'Content-Type': 'application/json' },
-      body: JSON.stringify(notionPage(v, { dbId: env.NOTION_DB_ID, now })),
+      body: JSON.stringify(notionPage(v, { dbId: env.NOTION_DB_ID, now, preview })),
       signal: typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(FORWARD_MS) : undefined,
     });
   } catch {
