@@ -4,5 +4,7 @@
   // Every npm script passes --config explicitly, so this root file only affects the Cloudflare build.
   "name": "patra-bus-dev",
   "compatibility_date": "2025-01-01",
-  "assets": { "directory": "./web" }
+  "assets": { "directory": "./web" },
+  // Required by `npx wrangler preview` (the non-production branch command); empty = same settings as production.
+  "previews": {}
 }
