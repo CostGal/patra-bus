@@ -3,7 +3,7 @@
 // Push handlers live in sw-push.js (owned separately).
 importScripts('sw-push.js');
 
-const CACHE = 'patra-bus-v17';
+const CACHE = 'patra-bus-v18';
 const MAP_CACHE = 'patra-bus-map-v1'; // runtime OpenFreeMap cache, bounded (oldest tiles trimmed first)
 const MAP_OFFLINE = 'patra-bus-map-offline-v1'; // filled by js/offline.js (opt-in download), never trimmed
 const MAP_MAX = 4000;
@@ -118,6 +118,7 @@ const OPTIONAL = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',
+  'og-image.png', // link previews only
 ];
 
 self.addEventListener('install', (event) => {

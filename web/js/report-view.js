@@ -1,12 +1,11 @@
 // Report a problem (owner: extras). A full-height sheet like the settings: category, text, optional email, and the
 // diagnostics that go with it, shown before sending. Pure logic (validation, payload, transport) is in report.js.
 import { h, icon } from './ui.js';
-import { t, N_, lang } from './i18n.js';
+import { t, N_, lang, APP_VERSION } from './i18n.js';
 import { cityId } from './cities.js';
 import { getSettings } from './store.js';
 import { currentPlatform } from './platform.js';
 import { API_BASE, DEMO } from './api.js';
-import { VERSION } from './settings-view.js';
 import { LIMITS, collectDiagnostics, buildPayload, validateReport, sendReport } from './report.js';
 
 const CATS = [
@@ -35,7 +34,7 @@ export function mountReport(container, ctx, params = {}) {
 
   // What is sent besides the text. Collected once when the sheet opens, shown as is, cleaned again by the server.
   const diag = collectDiagnostics({
-    version: VERSION, city: cityId(), lang: lang(), context: params.context, platform: currentPlatform(),
+    version: APP_VERSION, city: cityId(), lang: lang(), context: params.context, platform: currentPlatform(),
     viewport: { w: innerWidth, h: innerHeight }, online: navigator.onLine !== false, theme: getSettings().theme || 'auto',
     sw: !!navigator.serviceWorker?.controller, demo: DEMO,
   });
