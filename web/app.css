@@ -414,6 +414,9 @@ html.sheet-dragging .toast-host { transition: none; }
   :root .atile-dot, :root .nb-dot, :root .pl-dot, :root .ex-chip-dot { forced-color-adjust: none; background: HighlightText; }
   :root .atile { border-left-width: 2px; border-left-style: dashed; }
   :root .atile-live, :root .nb-hero-live, :root .nb-mini-live { border-left-width: 8px; border-left-style: solid; }
+  :root .atile-live.atile-aged { border-left-width: 2px; border-left-style: dashed; }
+  :root .atile-live.atile-aged .atile-flag { forced-color-adjust: auto; border: 1px dashed CanvasText; background: Canvas; color: CanvasText; }
+  :root .atile-aged .atile-dot { forced-color-adjust: auto; background: Canvas; box-shadow: inset 0 0 0 2px CanvasText; }
   :root .stopv-chip.on, :root .theme-opt[aria-checked="true"], :root .ex-seg-btn[aria-pressed="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; border-color: Highlight; }
 }
 

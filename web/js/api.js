@@ -11,12 +11,13 @@ import { readableLine } from './color.js';
 export const MIN_GAP_MS = 15000; // floor between upstream attempts for one stop
 export const POLL_MS = 20000; // poller period
 export const STALE_MS = 60000; // data older than this is "stale"
+export const isStale = (fetchedAt, now) => now - fetchedAt > STALE_MS; // exactly STALE_MS old is still fresh
 export const TIMEOUT_MS = 10000;
 
 const here = typeof location !== 'undefined' ? location : null;
 const params = new URLSearchParams(here ? here.search : '');
 export const DEMO = params.has('demo');
-const DEMO_MODE = params.get('demo') || ''; // ?demo=nosvc | ?demo=error exercise those states
+const DEMO_MODE = params.get('demo') || ''; // ?demo=nosvc | ?demo=error | ?demo=stale (answers 90 s old, every poll) exercise those states
 export const API_BASE = here && ['localhost', '127.0.0.1'].includes(here.hostname)
   ? 'http://localhost:8787'
   : 'https://patra-bus.patra-bus.workers.dev';
@@ -122,7 +123,11 @@ async function demoAttempt(code) {
   await wait(env.demoDelayMs * (env.demoMode ? 2 : 1));
   if (env.demoMode === 'error') throw new ApiError('upstream', 'demo error', 502);
   if (env.demoMode === 'nosvc') return noServiceResult(env.now());
-  if (await demoReady()) return parseResult(demoLive(code, env.now()));
+  if (await demoReady()) {
+    const r = parseResult(demoLive(code, env.now()));
+    if (env.demoMode === 'stale') r.fetchedAt -= 90000; // parseResult resets old timestamps (clock-skew guard), so backdate afterwards
+    return r;
+  }
   // No static data (shouldn't happen): fall back to the one real captured response.
   const raw = await (await env.fetch('./fixtures/live-1011.json')).json();
   return parseResult(normalizeLive(raw, env.now()));

@@ -3,7 +3,7 @@
 // Minimal UI: a tile is badge + destination + big countdown + a small LIVE / ΠΡΟΓΡ. flag; explanations live in Settings → Σχετικά.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
-import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, STALE_MS } from './api.js';
+import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, isStale } from './api.js';
 import { ageText } from './arrivals.js';
 import { isFavorite, toggleFavorite, addRecent, onChange, getSettings, setSetting } from './store.js';
 import { shareLink } from './share.js';
@@ -29,6 +29,7 @@ const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route
 
 export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null, stale = false } = {}) {
   const live = !!v.live;
+  const aged = live && stale; // TEL-52: its position is older than STALE_MS, so it must not read as LIVE any more
   const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
     : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
   const at = fetchedAt + v.etaSec * 1000; // ETA as a wall-clock instant; constant between fetches
@@ -37,13 +38,14 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
   const badge = lineBadge({ code: v.lineCode, color: line?.color || v.color, textColor: line?.textColor || v.textColor });
 
   const num = h('span', { class: 'atile-num tabular' });
+  const age = aged ? h('span', { class: 'atile-age' }) : null;
   const flag = live
-    ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'))
+    ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'), age)
     : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock));
   const usual = h('span', { class: 'atile-usual', hidden: true });
   const status = h('div', { class: 'atile-status' }, flag, live ? null : usual);
 
-  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
+  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${aged ? ' atile-aged' : ''}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
     h('div', { class: 'atile-badge' }, badge),
     h('div', { class: 'atile-body' }, h('div', { class: 'atile-dest' }, dest), status),
     h('div', { class: 'atile-eta' }, num),
@@ -57,6 +59,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
       : t('Γραμμή {line}, {dest}. Προγραμματισμένη άφιξη στις {clock}, {when}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.', a) + (usualTxt ? ` ${usualTxt}.` : '') + hint;
   };
   el.tick = (t0 = Date.now()) => {
+    if (age) age.textContent = t('πριν {age}', { age: ageText((t0 - fetchedAt) / 1000) });
     const rem = remainingSec(v, fetchedAt, t0);
     const text = etaTxt(rem);
     el.classList.toggle('atile-now', rem < NOW_SEC);
@@ -226,7 +229,7 @@ export function mountStop(container, ctx, { code }) {
     if (dead) return;
     const now = Date.now();
     const data = st.data;
-    stale = !!data && now - data.fetchedAt > STALE_MS;
+    stale = !!data && isStale(data.fetchedAt, now);
     const all = data ? data.vehicles.filter((v) => leftSec(v, data.fetchedAt, now) > -GONE_SEC) : [];
 
     // chips (only worth showing when 2+ lines have arrivals)
@@ -284,7 +287,7 @@ export function mountStop(container, ctx, { code }) {
           return h('li', {}, tl);
         });
         // replaceChildren would stringify a null child as "null", so only pass real nodes.
-        body.replaceChildren(h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items));
+        body.replaceChildren(h('ul', { class: 'stopv-list' }, items));
         if (cut.length < shown.length) {
           body.append(h('button', { type: 'button', class: 'btn ghost stopv-more', 'data-key': 'more', onclick: () => {
             showAll = true;
@@ -362,7 +365,7 @@ export function mountStop(container, ctx, { code }) {
     const now = Date.now();
     const data = st.data;
     // Rebuild when the data went stale or a shown vehicle has left; otherwise just move the numbers.
-    if (data && ((now - data.fetchedAt > STALE_MS) !== stale || tiles.some((x) => leftSec(x.v, data.fetchedAt, now) <= -GONE_SEC))) {
+    if (data && (isStale(data.fetchedAt, now) !== stale || tiles.some((x) => leftSec(x.v, data.fetchedAt, now) <= -GONE_SEC))) {
       render();
       pushMap();
       return;

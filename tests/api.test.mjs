@@ -514,3 +514,12 @@ test('usualDelayText: only with at least 10 samples', () => {
   assert.equal(usualDelayText({ samples: 40, medianDelaySec: 20 }), 'συνήθως στην ώρα του');
   assert.equal(usualDelayText({ samples: 40, medianDelaySec: -130 }), 'συνήθως −2′');
 });
+
+test('isStale: only data older than STALE_MS is stale (TEL-52)', async () => {
+  const { isStale, STALE_MS } = await import('../web/js/api.js');
+  const t0 = 1_000_000;
+  assert.equal(isStale(t0, t0), false);
+  assert.equal(isStale(t0, t0 + STALE_MS), false, 'exactly STALE_MS old is still fresh');
+  assert.equal(isStale(t0, t0 + STALE_MS + 1), true);
+  assert.equal(isStale(t0 + 5, t0), false, 'a fetch "from the future" (clock skew) is fresh');
+});
