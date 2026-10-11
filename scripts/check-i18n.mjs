@@ -12,7 +12,7 @@ const SAME_OK = new Set(['LIVE']); // English == Greek key on purpose
 const ph = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 
 // Reviewed gaps that do not fail the check: [category, key, why]. Categories: missing, orphan, html.
-// The 'missing' ones were never caught by tests/i18n.test.mjs: its literal regex skips strings containing a Latin "n".
+// The 'missing' ones slipped past the old scan in tests/i18n.test.mjs (it skipped literals containing a Latin "n").
 export const ALLOW = [
   // index.html fallback; sheet.js replaces it with 'Αλλαγή μεγέθους πίνακα (τώρα: {state})' on the first snap.
   ['html', 'Αλλαγή μεγέθους πίνακα', 'replaced at runtime by a keyed label'],
