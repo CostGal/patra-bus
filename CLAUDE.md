@@ -75,6 +75,9 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Worker: `POST /api/report` (`worker/src/report.js`): έλεγχος Origin + `application/json`, 3 / 10′ ανά IP (μνήμη isolate), honeypot (`hp`), ημερήσιο όριο 100 στο KV `report-day/{date}`, μετά μία σελίδα στη βάση Notion. Δεν αποθηκεύει τίποτα στον worker. Λεπτομέρειες και schema της βάσης στο `docs/ARCHITECTURE.md`.
 - Secrets (όχι στο repo): `npx wrangler secret put NOTION_TOKEN --config worker/wrangler.toml` (internal integration, κοινοποιημένη στη βάση) και `NOTION_DB_ID`· τοπικά στο `worker/.dev.vars`. Χωρίς αυτά ο worker απαντά 503 και η φόρμα δείχνει «δεν είναι διαθέσιμη».
 
+## Καλωσόρισμα δοκιμαστών
+- `js/welcome.js` + `css/welcome.css` + `js/i18n-en-welcome.js`: μία φορά, την πρώτη φορά που η εφαρμογή ανοίγει ως εγκατεστημένη (standalone, `currentPlatform().mode === 'app'`), modal με animation ευχαριστίας («Πρώτοι δοκιμαστές» / "Founding testers") και σύνδεσμο προς `#/report`. Flag `welcomeSeen` (store.js, επιβιώνει του reset ρυθμίσεων, σβήνει με «Διαγραφή όλων»)· μπαίνει όταν εμφανιστεί, όχι όταν κλείσει. `?welcome` το δείχνει οποτεδήποτε χωρίς να πειράξει το flag (για προεπισκόπηση σε browser). Κίνηση: spring για την κάρτα, keyframes για τα διακοσμητικά, reduced motion = fade ≤ 180 ms.
+
 ## Push υπενθυμίσεις
 - Worker: `GET /api/push/key`, `POST /api/push/reminders` (προαιρετικό `city`, default `patra`· όριο 12 / 10′ ανά IP, ανά isolate), `DELETE /api/push/reminders/{id}`. Ένα SQLite Durable Object (`Reminder`) ανά υπενθύμιση, alarm στην ώρα, ξαναδιαβάζει το live μέσα από την ίδια cache 15 s και ξαναοπλίζει (≤ 3) αν το λεωφορείο άργησε > 60 s. Διαγράφονται όλα μετά την αποστολή.
 - VAPID: public key στο `wrangler.toml`, private **μόνο** ως Cloudflare secret (`npx wrangler secret put VAPID_PRIVATE_KEY --config worker/wrangler.toml`) και τοπικά στο `worker/.dev.vars` (gitignored, μαζί με `DEV_ALLOW_LOCAL_PUSH=1`). Αλλαγή κλειδιού = αλλαγή και των δύο.

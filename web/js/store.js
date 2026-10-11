@@ -22,9 +22,10 @@ const VALID = {
   city: isCity, // absent until the user picks one: the default city applies
   guideSeen: (v) => typeof v === 'boolean', // absent = not seen yet
   installHintDismissed: (v) => typeof v === 'boolean', // absent = not dismissed
+  welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
-const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed'];
+const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen'];
 const NUMERIC = new Set(['bufferMin', 'reminderMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };
