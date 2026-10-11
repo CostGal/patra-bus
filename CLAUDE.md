@@ -4,6 +4,24 @@
 (patra.citybus.gr, corfu.citybus.gr). Repo, worker, localStorage key και ονόματα cache μένουν `patra-bus`.
 Βασική αξία: ξεχωρίζει **live** οχήματα από **προγραμματισμένες** αναχωρήσεις (η επίσημη σελίδα τα δείχνει ίδια).
 
+## Αρχιτεκτονική με μια ματιά
+- **Frontend**: vanilla JS PWA (ES modules, χωρίς build step και framework) στο `web/`. Το GitHub Pages σερβίρει μόνο το `web/`. Preview ανά PR από Cloudflare Workers Builds (`patra-bus-dev`).
+- **API worker** (`worker/`, Cloudflare Worker `patra-bus`): proxy + cache μπροστά στο citybus.gr, ώστε το token να μη φτάνει ποτέ στον browser. KV: `token/{city}` και `report-day/{date}`. Durable Objects (SQLite): `Stats` (ιστορικό καθυστερήσεων ανά διαδρομή/στάση), `Reminder` (push υπενθύμιση), `Routine` (εβδομαδιαία ρουτίνα).
+- **Upstream**: REST API του citybus.gr (`rest.citybus.gr`), agency `112` = Πάτρα, `101` = Κέρκυρα (`web/js/cities.js`). Στάσεις/γραμμές/διαδρομές είναι committed στατικά στο `web/data/`.
+- **Κοινός κώδικας** worker + frontend: `web/js/arrivals.js` (live/προγρ.), `web/js/report.js`, `web/js/cities.js`.
+- **Τρίτοι, χωρίς κλειδί**: χάρτης MapLibre GL (vendored) + OpenFreeMap, περπάτημα OSRM (FOSSGIS), αναζήτηση τόπων Photon (komoot).
+- Συμβόλαια modules και ownership: `docs/ARCHITECTURE.md`· κίνηση: `docs/DESIGN.md`· πόλεις: `docs/MULTI-CITY.md`.
+
+## Αυστηροί κανόνες
+1. **Ποτέ push στο `main`.** Μόνο μέσω PR· το `main` είναι protected και μόνο ο Kostas κάνει merge.
+2. Branch ανά εργασία: `<όνομα>/TEL-<id>-<slug>` (π.χ. `kostas/TEL-12-repo-workflow`), μέσα στο repo, όχι fork.
+3. Κάθε κείμενο που βλέπει ο χρήστης υπάρχει σε **ελληνικά και αγγλικά**: το ελληνικό είναι το key στα `t()`/`tn()`/`N_()` (`web/js/i18n.js`), το αγγλικό στο `web/js/i18n-en.js` ή στο `i18n-en-<feature>.js`. Το `npm run check:i18n` (`scripts/check-i18n.mjs`, τρέχει στο CI) πρέπει να περνά.
+4. **Κανένα analytics, telemetry ή tracking**: ούτε scripts τρίτων, ούτε fingerprinting, ούτε beacons. Διαγνωστικά στέλνει μόνο η φόρμα «Αναφορά προβλήματος», όταν τη στείλει ο χρήστης, και μόνο όσα του εμφανίζονται πριν την αποστολή.
+5. Τα attributions (OpenFreeMap / © OpenStreetMap, OSRM / FOSSGIS, Photon / komoot, citybus.gr) μένουν ορατά στις Ρυθμίσεις (`settings-view.js`) και στον χάρτη (`AttributionControl` στο `map.js`). Ποτέ αφαίρεση.
+6. **Η θέση του χρήστη μένει στη συσκευή**: δεν στέλνεται ποτέ στον worker μας, δεν αποθηκεύεται (στο localStorage μπαίνει μόνο το flag `patra-bus:loc-granted`), δεν μπαίνει σε URL της εφαρμογής, share link, υπενθύμιση/ρουτίνα ή αναφορά. Μόνες εξαιρέσεις, αιτήματα κατευθείαν από τον browser σε τρίτους: το **OSRM** (`walk.js`, κάρτα «κοντά σου» και planner) παίρνει αφετηρία/προορισμό περπατήματος με 5 δεκαδικά (~1 μ), και το **Photon** (`geocode.js`) παίρνει bias `lat`/`lon` στρογγυλεμένο σε 2 δεκαδικά (~1 χλμ). Νέα ροή θέσης προς οποιονδήποτε δεν μπαίνει χωρίς να ενημερωθεί αυτός ο κανόνας.
+7. **Ποτέ secrets σε commit**: citybus token, `NOTION_TOKEN`, `NOTION_DB_ID`, `VAPID_PRIVATE_KEY`. Ζουν μόνο ως Cloudflare secrets και τοπικά στο `worker/.dev.vars` (στο `.gitignore`).
+8. Κάθε PR ακολουθεί το `.github/pull_request_template.md` (task ID, τι άλλαξε, screenshots από κινητό, πώς ελέγχθηκε). Το CI τρέχει `npm test` + `npm run check:i18n` (required check `test`) και Lighthouse (performance, accessibility, PWA), που σχολιάζει τα scores στο PR.
+
 ## Εντολές
 ```
 npm install
@@ -21,12 +39,12 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 - Repo (public): https://github.com/CostGal/patra-bus
 - Site: https://costgal.github.io/patra-bus/. Το `.github/workflows/pages.yml` ανεβάζει **μόνο** το `web/` σε κάθε push στο `main`.
 - Το site είναι σε subpath (`/patra-bus/`), οπότε όλα τα paths στο `web/` μένουν **σχετικά** (`./data/…`, `sw.js`, `start_url: "./"`).
-- Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`, μόνο για το token. Το deploy είναι **χειροκίνητο**: το push στο `main` ανεβάζει μόνο το Pages.
+- Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`: tokens (`token/{city}`) και ο ημερήσιος μετρητής αναφορών (`report-day/{date}`). Το deploy είναι **χειροκίνητο**: το push στο `main` ανεβάζει μόνο το Pages.
 - `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080,https://patra-bus-dev.patra-bus.workers.dev,https://*-patra-bus-dev.patra-bus.workers.dev`, τα δύο τελευταία = Cloudflare site και previews). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
 
 ## Branches & previews
-- `main` = η beta που βλέπουν οι δοκιμαστές. Protected: μόνο PR, απαιτείται το check `test` (`.github/workflows/test.yml`, τρέχει `npm test` με ελληνικό locale), **μόνο ο Kostas κάνει merge**.
-- Κάθε εργασία σε δικό της branch `όνομα/TEL-nn-slug` (μέσα στο repo, όχι fork), ανοίγει PR. Πριν ανοίξεις PR κάνε merge το `main` στο branch σου.
+- `main` = η beta που βλέπουν οι δοκιμαστές. Protected: μόνο PR, απαιτείται το check `test` (`.github/workflows/test.yml`, τρέχει `npm test` με ελληνικό locale και `npm run check:i18n`), **μόνο ο Kostas κάνει merge**.
+- Κάθε εργασία σε δικό της branch `<όνομα>/TEL-<id>-<slug>` (π.χ. `kostas/TEL-12-repo-workflow`, μέσα στο repo, όχι fork), ανοίγει PR. Πριν ανοίξεις PR κάνε merge το `main` στο branch σου.
 - Κάθε PR παίρνει preview από το Cloudflare Workers Builds (project `patra-bus-dev`, `wrangler.jsonc` στη ρίζα, στατικά αρχεία από το `web/`· **δεν** είναι ο API worker `patra-bus`). Ο worker δέχεται αυτά τα origins μέσω του `https://*-patra-bus-dev.patra-bus.workers.dev` στο `ALLOWED_ORIGIN` (`worker/src/origin.js`: το `*` μέσα στο πρώτο label, μόνο για αυτό το project). Οι αναφορές από previews μπαίνουν στο Notion με πρόθεμα `[preview]`.
 - **Μην ανεβάζεις χειροκίνητα το `CACHE` στο `web/sw.js`**: το `scripts/stamp-cache.mjs` το βάζει από το commit κατά το deploy (Pages workflow και build command του Cloudflare). Το committed αρχείο μένει όπως είναι. Νέα αρχεία του `web/` μπαίνουν ακόμα στη λίστα SHELL.
 - Ο worker ανεβαίνει χειροκίνητα και είναι κοινός σε όλους (previews και παραγωγή): αλλαγές σε αυτόν ελέγχονται τοπικά με `npm run dev:worker` και τις ανεβάζει μόνο ο Kostas μετά το merge.
@@ -36,7 +54,7 @@ npm run dev:web          # static server του web/ στο :8080, χωρίς HT
 Συμβόλαια modules και ownership: **`docs/ARCHITECTURE.md`**. Κανόνες κίνησης/υλικών (springs, materials,
 transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτικό για ό,τι αγγίζει ο χρήστης.
 Χτίστηκε/ελέγχθηκε διαβάζοντας μόνο κώδικα· **χρειάζεται έλεγχος από άνθρωπο σε πραγματικό browser/συσκευή**
-πριν θεωρηθεί τελειωμένο οπτικά. Χάρτης MapLibre GL 4.7.1 (unpkg) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js` (+ `js/route.js`): προαιρετικό πρόθεμα πόλης (`#/corfu/stop/801`· **χωρίς πρόθεμα = Πάτρα** για stop/line/συντεταγμένες, ενώ γυμνά views όπως `#/lines` παίρνουν το `settings.city`). Τα share links έχουν πάντα πρόθεμα. Η ενεργή πόλη ορίζεται στο `js/boot-city.js` (πρώτο import του app.js)· αλλαγή πόλης = reload. Views: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`, `#/guide` (`?section=install`), `#/report` (αναφορά προβλήματος· εικονίδιο bug στο μενού).
+πριν θεωρηθεί τελειωμένο οπτικά. Χάρτης MapLibre GL 4.7.1 (vendored στο `web/vendor/maplibre-gl/`) + OpenFreeMap (liberty / fiord για dark). Hash router στο `app.js` (+ `js/route.js`): προαιρετικό πρόθεμα πόλης (`#/corfu/stop/801`· **χωρίς πρόθεμα = Πάτρα** για stop/line/συντεταγμένες, ενώ γυμνά views όπως `#/lines` παίρνουν το `settings.city`). Τα share links έχουν πάντα πρόθεμα. Η ενεργή πόλη ορίζεται στο `js/boot-city.js` (πρώτο import του app.js)· αλλαγή πόλης = reload. Views: `#/`, `#/stop/{code}`, `#/plan?to=lat,lng&name=…&from=…`, `#/lines`, `#/line/{code}?dir=&route=`, `#/favorites`, `#/pin?lat=&lng=`, `#/settings`, `#/guide` (`?section=install`), `#/report` (αναφορά προβλήματος· εικονίδιο bug στο μενού).
 - Shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/map.js`, `js/sheet.js` (bottom sheet / side panel ≥ 900 px), `js/ui.js`.
 - Live: `js/api.js` (`fetchLive` με **global memo 15 s ανά στάση**, και για errors, `createLivePoller` 20 s μόνο visible), `js/demo.js` (ντετερμινιστική προσομοίωση πάνω στο routes.json), `js/arrivals-view.js` (tiles LIVE/ΠΡΟΓΡ.).
 - Τοποθεσία: `js/location.js` (singleton, φίλτρα άλματος/ακρίβειας, πυξίδα), `js/geo.js`, `js/walk.js` (OSRM foot FOSSGIS, ≤ 1 req/s, fallback εκτίμηση), `js/nearby.js` (κάρτα «Επόμενο λεωφορείο κοντά σου»).
