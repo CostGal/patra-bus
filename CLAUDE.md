@@ -128,3 +128,12 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - `?debug` εκθέτει `window.__app` (και `map._map`).
 - Ο worker στέλνει `X-Cache: HIT|MISS`. Στο HIT το `fetchedAt` είναι αυτό του αρχικού upstream fetch.
 - Το browser pane του Claude desktop **μερικές φορές** κάνει register τον SW και σερβίρει παλιά αρχεία: στο τεστ κάνε unregister + `caches.delete` πρώτα. Screenshots αποτυγχάνουν όταν το pane δεν είναι ορατό· χρησιμοποίησε DOM checks.
+
+## Team rules
+- Plan before code: for anything bigger than a typo, present a plain-language plan and get
+  approval first.
+- One task per branch/PR. If a task needs more than ~3 files or mixes concerns, split it.
+- Explain-back gate: nothing is committed or merged unless the author can state in their own
+  words what changed, why, and how it could break. Write those 3 lines in the commit/PR.
+- Update docs/ARCHITECTURE.md whenever how the parts connect changes.
+- New technical terms go in docs/GLOSSARY.md.
