@@ -1,4 +1,83 @@
-# patra-bus v2 architecture (module contracts)
+# Telematica architecture
+
+*Plain-language page first (read this one). The detailed module contracts for people who code are further down, under "Technical reference".*
+*Words in **bold** with a ⓖ are explained in [GLOSSARY.md](GLOSSARY.md).*
+
+## The big picture
+Telematica is a web app that works like a phone app (a **PWA** ⓖ). Its files sit on **GitHub Pages** ⓖ and run entirely on your phone.
+The phone never talks to the bus company directly. It asks our own small program, the **Cloudflare Worker** ⓖ, which holds the secret
+**API token** ⓖ for citybus.gr, asks citybus.gr "which buses are coming to stop 1011?", tidies the answer and remembers it for 15 seconds
+so many phones asking the same question cost only one call. The tidy-up step marks each bus as **live** (it has GPS coordinates) or
+**scheduled** (coordinates are `0/0`, so it is only the timetable). The phone repeats the question every 20 seconds while the app is visible.
+The list of stops, lines and routes is not fetched live: it is saved as files in the repo (`web/data/`). The Worker also keeps a few things
+for features that must work when the app is closed (push reminders, routines, delay statistics) in **Durable Objects** ⓖ and **KV** ⓖ.
+
+## Data flow
+```
+ citybus.gr (upstream)  <--token, bus questions--  Cloudflare Worker "patra-bus"  <--/api/{city}/live/1011--  Phone (PWA)
+   (patra / corfu)                                  - token kept in KV                 ^  asks every 20 s,        - favourites, settings,
+                                                    - 15 s cache per stop              |  only while visible        places, routines
+                                                    - live vs scheduled                |                           - your location (never sent to us)
+                                                    - Durable Objects: reminders,      |  files from GitHub Pages
+                                                      routines, delay stats            +-- (web/ folder, offline copy via service worker)
+                                                          |
+                                                          +--> push message --> phone vendor's push service --> notification
+
+ Phone also talks DIRECTLY to: OpenFreeMap (map tiles) | OSRM/FOSSGIS (walking route) | Photon (place search)
+ Worker also talks to: Notion (only when a user sends "Report a problem")
+```
+
+## Where data lives
+| Where | What | Notes |
+|---|---|---|
+| **On the phone only** | Favourites, recents, settings, saved places (home/work), routines, language, one big blob in `localStorage` ⓖ (`patra-bus:v2`, places in `patra-bus:places`) | Cleared by "Delete all" in Settings. |
+| **On the phone, never stored** | Your live GPS location | Only a flag "permission granted" is saved. Never sent to our Worker, never put in a link. |
+| **Cloudflare KV** ⓖ | Citybus token per city (`token/{city}`), daily report counter (`report-day/{date}`), short fallback cache (`memo/…`, 60 s) | Token expires every 48 h and is re-fetched. |
+| **Cloudflare Durable Objects** ⓖ | **Push reminders** (one-off: push subscription ⓖ, time, bus line/stop codes), **routines** (weekly: same, kept up to 120 days), **delay statistics** (last 200 samples per route + stop) | A reminder is deleted after it is sent. No place names or coordinates are stored. |
+| **GitHub repo** | Stops, lines, routes (`web/data/`), all code | Public. Secrets are never committed. |
+| **Notion** | Problem reports a user chose to send | Via the Worker. |
+
+Third-party services (free, no key, credit shown in Settings and on the map):
+- **OpenFreeMap**: map pictures. The phone fetches them directly.
+- **OSRM / FOSSGIS**: walking time and route. Receives the start and end point of a walk from the phone (about 1 m precision).
+- **Photon (komoot)**: searching for places by name. Receives your typed text and a rounded location (about 1 km).
+- **citybus.gr**: the real bus data. Only the Worker (and the maintenance scripts) talk to it.
+
+## Where to find things
+| Feature | Main files |
+|---|---|
+| Live arrivals on a stop | `web/js/arrivals.js` (live vs scheduled, shared with Worker), `api.js`, `arrivals-view.js` |
+| Token, proxy, 15 s cache | `worker/src/index.js`, `worker/src/routes.js` |
+| Stops, lines, routes data | `scripts/fetch-static.mjs`, `scripts/build-routes.mjs`, `web/data/`, `web/js/data.js` |
+| Map | `web/js/map.js` |
+| "Next bus near me" | `web/js/nearby.js`, `location.js`, `walk.js` |
+| Trip planner and place search | `web/js/planner.js`, `planner-view.js`, `geocode.js` |
+| Push reminders | `web/js/push.js`, `notify.js`, `web/sw-push.js`, `worker/src/reminders.js`, `worker/src/push.js` |
+| Weekly routines | `web/js/routines.js`, `worker/src/routines.js` |
+| Delay statistics | `worker/src/stats.js` |
+| Offline app and offline map | `web/sw.js`, `web/js/offline.js` |
+| Problem report | `web/js/report-view.js`, `worker/src/report.js` |
+| Storage on the phone, settings | `web/js/store.js`, `settings-view.js` |
+| Cities (Patras, Corfu) | `web/js/cities.js`, `docs/MULTI-CITY.md` |
+| Greek / English text | `web/js/i18n.js`, `i18n-en*.js` |
+| Deploys and checks | `.github/workflows/` (Pages, tests, Lighthouse), `worker/wrangler.toml` (Worker settings) |
+
+## Fragile points
+- **Token scraping.** The Worker finds the token by looking for the text `const token = '…'` in the citybus.gr web page. If they change that page, every live request fails ("token not found") until we fix the code.
+- **Unofficial API.** We use only three citybus endpoints and must never poll faster than every 15 s per stop. They can change or block us without notice.
+- **Stop order is guessed.** The order of stops on a route is inferred, not official; about 10 of 80 routes have low confidence.
+- **Stale static data.** Stops/lines/routes are committed files. If the city changes a stop, the app shows old data until someone runs `npm run fetch-static` and merges.
+- **One shared Worker.** Previews and production use the same Worker, and only Kostas deploys it by hand. A bad deploy hits everyone; a forgotten deploy leaves the Worker behind the web files.
+- **Rate limits are per server instance** (in memory), not global: a brake, not a wall.
+- **Free-tier limits: UNVERIFIED.** I did not check current Cloudflare free-plan limits (Worker requests per day, KV writes, Durable Object usage). Check the Cloudflare dashboard before growing the user base.
+- **Public servers.** OSRM, Photon and OpenFreeMap are free community services with fair-use rules; they can slow down or block heavy use. UNVERIFIED whether our usage is inside their limits at larger scale.
+- **VAPID key change.** Changing the push key needs the public key (in `wrangler.toml`) and the private key (a Cloudflare secret) to change together. UNVERIFIED what happens to already-subscribed phones.
+- **Cache inside Durable Objects** is believed unreliable, so a short KV copy is used as backup (`cachedBody` in `worker/src/index.js`). UNVERIFIED in production.
+- **Docs drift.** The technical reference below was written in earlier rounds. Where it disagrees with `CLAUDE.md` (for example it says to bump `CACHE` by hand and to load MapLibre from a CDN; today the cache name is stamped automatically and MapLibre is stored in `web/vendor/`), trust `CLAUDE.md` and the code.
+
+---
+
+# Technical reference (for people who code): patra-bus v2 architecture (module contracts)
 
 Vanilla JS ES modules, no build step, no framework. Libraries only from pinned CDN URLs.
 Map: **MapLibre GL JS 4.7.1** (global `maplibregl`, loaded by a classic `<script>` in index.html from

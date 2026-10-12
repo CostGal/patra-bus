@@ -1,0 +1,10 @@
+
+
+# Explain-back gate: fill these in your own words. Lines starting with # are ignored by git.
+# Suggested layout: a short summary line on top, then a blank line, then:
+#
+# What changed:  (what did you change, in one or two sentences?)
+# Why:           (what problem does it solve?)
+# How it could break / how to undo:  (what might go wrong? how do we undo it?)
+#
+# Branch: <name>/TEL-<id>-<slug>. Never push to main, open a PR.

@@ -1,3 +1,5 @@
+If you can't fill these in your own words, the PR isn't ready.
+
 ## Task / Εργασία
 <!-- TEL-<id> και σύνδεσμος στην εργασία (Notion). Branch: <όνομα>/TEL-<id>-<slug>. -->
 TEL-
@@ -5,6 +7,12 @@ TEL-
 ## Τι άλλαξε / What changed
 <!-- 2–5 κουκκίδες: τι και γιατί. Ανέφερε αν αγγίζει worker (deploy μόνο από τον Kostas μετά το merge). -->
 -
+
+## Γιατί / Why
+<!-- Required. In your own words: what problem does this solve? -->
+
+## Πώς μπορεί να σπάσει / How it could break / how to undo
+<!-- Required. In your own words: what could go wrong, and how do we undo it (revert the PR? something else)? -->
 
 ## Screenshots (κινητό / mobile)
 <!-- Αν αλλάζει UI: light + dark, πριν / μετά. Αλλιώς γράψε N/A. -->
