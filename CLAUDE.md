@@ -140,3 +140,5 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - New technical terms go in docs/GLOSSARY.md.
 - Sessions follow **docs/WORKFLOW.md**: one list (Notion Tasks), `/plan-week` for the weekly planning, `/task TEL-<id>`
   for one task per session; every step the user does is given one at a time and Claude waits for confirmation.
+- The mod `.claude/skills/tel-sprint/` opens a pane «Sprint» in Claude Code with the connected Notion user's open cards
+  of the current sprint (read-only, through the Notion connector, every 5′ and on `/sprint`).

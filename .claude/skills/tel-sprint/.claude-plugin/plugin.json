@@ -1,0 +1,6 @@
+{
+  "name": "tel-sprint",
+  "version": "0.1.0",
+  "description": "Pane «Sprint»: οι κάρτες TEL του τρέχοντος sprint σου από το Notion (μόνο ανάγνωση)",
+  "types": "./types/index.d.ts"
+}
