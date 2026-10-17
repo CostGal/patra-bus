@@ -1,7 +1,7 @@
 If you can't fill these in your own words, the PR isn't ready.
 
 ## Task / Εργασία
-<!-- TEL-<id> και σύνδεσμος στην εργασία (Notion). Branch: <όνομα>/TEL-<id>-<slug>. -->
+<!-- TEL-<id> από την κάρτα του Notion (ποτέ με το χέρι) και σύνδεσμος στην κάρτα. Branch: <ποιος γράφει τον κώδικα>/TEL-<id>-<slug>. Αν υπάρχει issue: Closes #N. Δες docs/WORKFLOW.md. -->
 TEL-
 
 ## Τι άλλαξε / What changed
