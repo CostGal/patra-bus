@@ -1,7 +1,7 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
 // Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
 // Uses the ?demo mode and the same network mocks as the smoke tests (nothing reaches citybus.gr or any third party), so
-// it checks LAYOUT only: the map tiles are blocked (the map area stays empty), and touch feel, push, install, GPS,
+// it checks LAYOUT only: the map tiles are blocked (the map area stays empty), fonts are the computer's (not SF/Roboto), and touch feel, push, install, GPS,
 // speed and sunlight still need a real phone (CLAUDE.md rule 9).
 import { spawn } from 'node:child_process';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
@@ -128,7 +128,7 @@ try {
 }
 
 const rel = (p) => p.replace(OUT, '');
-const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', 'Layout only (demo data, map tiles blocked). Real-phone checks stay as `device-test` issues.', ''];
+const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', 'Layout only (demo data, map tiles blocked). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as `device-test` issues.', ''];
 for (const n of notes) lines.push(`> **Note:** ${n}`, '');
 const flagged = summary.filter((s) => s.problems.length);
 lines.push(`## Problems found by the script (${flagged.length})`, '');
