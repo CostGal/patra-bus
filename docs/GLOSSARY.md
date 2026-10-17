@@ -35,6 +35,10 @@ My words:
 Where it shows up in Telematica: `ALLOWED_ORIGIN` in `worker/wrangler.toml` and `worker/src/origin.js` list the sites allowed to call our Worker.
 My words:
 
+**Device emulation**: a desktop browser pretending to be a phone by copying its screen size, pixel density and touch behaviour, like trying on a costume. It matches the layout, not the real hardware.
+Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device list (iPhone SE, iPhone 15, Pixel 7, iPad Mini); touch feel, push, GPS and speed still need a real phone.
+My words:
+
 **Durable Object**: a small box of memory on Cloudflare that has an ID and can wake itself up later, like a labelled locker with its own alarm clock.
 Where it shows up in Telematica: one per push reminder and routine, plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
 My words:
@@ -57,6 +61,10 @@ My words:
 
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
 Where it shows up in Telematica: `#/stop/1011`, `#/plan`, `#/settings` (`web/js/app.js`, `route.js`).
+My words:
+
+**Headless browser**: a real browser that runs without a visible window, so a script can open pages and take screenshots, like a robot using the browser for you.
+Where it shows up in Telematica: Playwright runs Chromium this way for the smoke tests and for `npm run shots`.
 My words:
 
 **Honeypot**: a hidden form field that humans never fill but spam robots do, like a bowl of candy that only thieves reach for.
@@ -145,6 +153,10 @@ My words:
 
 **Web Push**: the standard way a server sends a notification to a phone even when the app is closed, like a postal delivery to your door.
 Where it shows up in Telematica: `web/js/push.js`, `web/sw-push.js`, `worker/src/push.js`.
+My words:
+
+**WebKit**: the browser engine inside Safari and every iPhone browser, like the engine block that all iPhone browsers share.
+Where it shows up in Telematica: `npm run shots` can render the app with WebKit to get closer to how it looks on an iPhone.
 My words:
 
 **Wrangler**: Cloudflare's command-line tool for running and deploying Workers, like the remote control for our Worker.
