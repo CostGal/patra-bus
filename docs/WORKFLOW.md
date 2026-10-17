@@ -27,9 +27,9 @@ issues και PRs με **έναν κοινό** μετρητή (#74 issue, #75 PR
 - Με το TEL-id στο branch ή στον τίτλο, το Notion βάζει μόνο του το link της κάρτας στο PR και δείχνει το PR στην κάρτα.
 
 **Τι αλλάζει ο Claude στο Notion χωρίς να ρωτήσει** (μόνιμη άδεια του Kostas, 2026-10-17):
-- νέες κάρτες στη βάση Tasks (Project = Telematica)·
+- νέες κάρτες στη βάση Tasks (Project = Telematica, `Owner` = Kostas, ώστε να φαίνονται στο view «Current sprint»)·
 - σε υπάρχουσες κάρτες: `Task status`, `Sprint` (μόνο μετά από απόφαση στο planning), `PR`, `Completed on`,
-  `Who does this`, σύντομο κείμενο στο σώμα της κάρτας.
+  `Who does this`, `Owner`, σύντομο κείμενο στο σώμα της κάρτας.
 
 Όχι: views, πεδία ή σχήμα της βάσης, άλλες σελίδες, διαγραφή καρτών.
 
