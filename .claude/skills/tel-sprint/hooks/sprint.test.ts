@@ -59,10 +59,30 @@ test('reads the current sprint and draws the cards grouped by status', async ($,
   }
 })
 
+test('finds a Notion server named by an id, as on the desktop', async ($, on) => {
+  mock.clock(on)
+  on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('tool.list', async () => ({
+    value: [{ name: 'mcp__3eab-id__notion-query-data-sources', description: '', mcp: true }],
+  }))
+  on('mcp.call', async (_$, e) => {
+    if (e.server !== '3eab-id') {
+      return { value: { content: [{ type: 'text', text: 'no such server' }], isError: true } }
+    }
+    if (e.tool === 'notion-get-self') return text({ user: { id: ME } })
+    const data = (e.args as { data: { query: string } }).data
+    if (data.query.includes('Sprint status')) return text({ results: [{ url: SPRINT }] })
+    return text({ results: ROWS })
+  })
+
+  const ran = await $.command.run(RUN)
+  expect(ran.text?.split('\n')[0]).toBe('Sprint: 2 κάρτες')
+})
+
 test('says so when Notion is not connected', async ($, on) => {
   mock.clock(on)
   on('ui.open', async () => ({ value: { isPlaced: true } }))
   on('mcp.call', async () => ({ value: { content: [{ type: 'text', text: 'not connected' }], isError: true } }))
   const ran = await $.command.run(RUN)
-  expect(ran.text).toBe('Sprint: δεν διαβάστηκε το Notion (not connected).')
+  expect(ran.text).toBe('Sprint: δεν διαβάστηκε το Notion (not connected · servers: Notion, claude.ai Notion).')
 })

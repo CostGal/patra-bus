@@ -6,8 +6,9 @@ import type { Card, Sprint } from '../types'
 // Βάσεις του Notion (Telematica): Sprints και Tasks. Μόνο ανάγνωση.
 const SPRINTS = 'collection://3f82429c-7223-8005-bc25-000bf5983bd0'
 const TASKS = 'collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2'
-// Ο connector λέγεται «Notion» στο cloud και «claude.ai Notion» στο desktop.
+// Ο server του Notion: «Notion» στο cloud, ένα id ανά χρήστη τοπικά. Τον βρίσκουμε από τα εργαλεία του session.
 const SERVERS = ['Notion', 'claude.ai Notion']
+const NOTION_TOOL = /^mcp__(.+)__notion-query-data-sources$/
 const STATUSES = ['In progress', 'In review', 'Not started']
 const EVERY_MS = 5 * 60_000
 
@@ -19,9 +20,9 @@ type Call = (server: string, tool: string, args?: Record<string, unknown>) => Pr
   isError: boolean
 }>
 
-async function notion(call: Call, tool: string, args: Record<string, unknown>): Promise<any> {
+async function notion(call: Call, servers: string[], tool: string, args: Record<string, unknown>): Promise<any> {
   let lastError = 'Δεν βρέθηκε ο Notion connector'
-  for (const server of SERVERS) {
+  for (const server of servers) {
     try {
       const res = await call(server, tool, args)
       const text = res.content.find(b => b.type === 'text')?.text ?? ''
@@ -31,7 +32,7 @@ async function notion(call: Call, tool: string, args: Record<string, unknown>): 
       lastError = err instanceof Error ? err.message : String(err)
     }
   }
-  throw new Error(lastError)
+  throw new Error(`${lastError} · servers: ${servers.join(', ')}`)
 }
 
 function sql(urls: string[], query: string, params: string[] = []) {
@@ -39,15 +40,15 @@ function sql(urls: string[], query: string, params: string[] = []) {
 }
 
 /** Οι κάρτες του συνδεδεμένου χρήστη στο τρέχον sprint που δεν είναι Done. */
-export async function loadCards(call: Call): Promise<Card[]> {
-  const self = await notion(call, 'notion-get-self', {})
+export async function loadCards(call: Call, servers: string[]): Promise<Card[]> {
+  const self = await notion(call, servers, 'notion-get-self', {})
   const userId: string = self.user.id
-  const sprints = await notion(call, 'notion-query-data-sources',
+  const sprints = await notion(call, servers, 'notion-query-data-sources',
     sql([SPRINTS], `SELECT url FROM "${SPRINTS}" WHERE "Sprint status" = 'Current'`))
   const sprintUrl: string | undefined = sprints.results[0]?.url
   if (!sprintUrl) return []
   const sprintId = sprintUrl.split('/').pop()!.replace(/-/g, '')
-  const tasks = await notion(call, 'notion-query-data-sources', sql([TASKS],
+  const tasks = await notion(call, servers, 'notion-query-data-sources', sql([TASKS],
     `SELECT "userDefined:ID" AS id, "Task" AS title, "Task status" AS status, url FROM "${TASKS}"
      WHERE "Sprint" LIKE ? AND "Owner" LIKE ? AND "Task status" != 'Done'`,
     [`%${sprintId}%`, `%${userId}%`]))
@@ -57,10 +58,22 @@ export async function loadCards(call: Call): Promise<Card[]> {
 
 let timer: { cancel: () => void } | undefined
 
+/** Οι servers που έχουν τα εργαλεία του Notion σε αυτό το session, και μετά τα γνωστά ονόματα. */
+async function notionServers($: EngineInterface): Promise<string[]> {
+  let found: string[] = []
+  try {
+    found = (await $.tool.list()).flatMap(t => NOTION_TOOL.exec(t.name)?.[1] ?? [])
+  } catch {
+    // χωρίς λίστα εργαλείων μένουν τα γνωστά ονόματα
+  }
+  return [...new Set([...found, ...SERVERS])]
+}
+
 async function refresh($: EngineInterface): Promise<Sprint> {
   let next: Sprint
   try {
-    next = { cards: await loadCards((server, tool, args) => $.mcp.call(server, tool, args)), updatedAt: await $.clock.now() }
+    const servers = await notionServers($)
+    next = { cards: await loadCards((server, tool, args) => $.mcp.call(server, tool, args), servers), updatedAt: await $.clock.now() }
   } catch (err) {
     const prev = await read($, sprint)
     next = { ...prev, error: err instanceof Error ? err.message : String(err) }
