@@ -10,10 +10,28 @@ const RUN = {
   presentation: { isFullscreen: false, columns: 80 },
 } as const
 
+const CURRENT = { url: SPRINT, name: 'Sprint 5', start: '2026-10-13', end: '2026-10-19' }
+
 const ROWS = [
-  { id: 62, title: 'Words instead of symbols', status: 'Not started', url: 'https://app.notion.com/a' },
-  { id: 90, title: 'Sprint pane', status: 'In progress', url: 'https://app.notion.com/b' },
+  {
+    id: 62, title: 'Words instead of symbols', status: 'Not started', url: 'https://app.notion.com/aaaa-0062',
+    area: 'Design', who: 'Dev', due: '2026-10-20', pr: null,
+  },
+  {
+    id: 90, title: 'Sprint pane', status: 'In progress', url: 'https://app.notion.com/p/bbbb-0090?pvs=4',
+    area: 'App', who: 'Claude', due: null, pr: 'https://github.com/CostGal/patra-bus/pull/77',
+  },
+  { id: 89, title: 'TEL ids', status: 'Done', url: 'https://app.notion.com/cccc', area: null, who: null, due: null, pr: null },
 ]
+
+const PANE = {
+  component: 'Pane',
+  requestId: 'tel-sprint',
+  props: {
+    title: 'Sprint', isFocused: false, bodyColumns: 80, placement: 'dock',
+    scroll: { offset: 0, bodyRows: 30 }, view: {},
+  },
+} as const
 
 function text(value: unknown) {
   return { value: { content: [{ type: 'text', text: JSON.stringify(value) }], isError: false } }
@@ -27,7 +45,7 @@ test('reads the current sprint and draws the cards grouped by status', async ($,
     if (e.tool === 'notion-get-self') return text({ user: { id: ME } })
     const data = (e.args as { data: { query: string; params: string[] } }).data
     queries.push(data.params)
-    if (data.query.includes('Sprint status')) return text({ results: [{ url: SPRINT }] })
+    if (data.query.includes('Sprint status')) return text({ results: [CURRENT] })
     return text({ results: ROWS })
   })
 
@@ -42,19 +60,32 @@ test('reads the current sprint and draws the cards grouped by status', async ($,
   expect(queries).toContainEqual(['%0000000000000000000000000000aaaa%', `%${ME}%`])
 
   for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({
-      plugin: 'tel-sprint',
-      surface,
-      component: 'Pane',
-      requestId: 'tel-sprint',
-      props: {
-        title: 'Sprint', isFocused: false, bodyColumns: 80, placement: 'dock',
-        scroll: { offset: 0, bodyRows: 30 }, view: {},
-      },
-    })
-    expect(await ui.find({ text: /In progress \(1\)/ })).toBeDefined()
-    expect(await ui.find({ text: /Not started \(1\)/ })).toBeDefined()
-    expect(await ui.find({ text: /TEL-90/ })).toBeDefined()
+    const ui = await $.ui.mount({ plugin: 'tel-sprint', surface, ...PANE })
+    // Κεφαλίδα: όνομα, ημερομηνίες, πρόοδος με τις Done κάρτες στο σύνολο.
+    expect(await ui.find({ type: 'Text', text: 'Sprint 5' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '13/10 – 19/10' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '1/3 done' })).toBeDefined()
+    if (surface === 'desktop') expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('1/3 done')
+    else expect((await ui.find({ type: 'Text', text: /█/ }))?.text).toBe('███░░░░░░░')
+    expect(await ui.find({ text: 'Φόρτωση…' })).toBeUndefined()
+    // Ομάδες με πλήθος· η Done κάρτα δεν φαίνεται.
+    expect(await ui.find({ type: 'Text', text: 'In progress' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'Not started' })).toBeDefined()
+    expect((await ui.findAll({ type: 'Text', text: '●' })).map(t => t.props.color)).toEqual(['#337EA9', '#9B9A97'])
+    expect(await ui.find({ text: /TEL-89/ })).toBeUndefined()
+    // Κάρτα σε πλαίσιο, τίτλος ως link στο www.notion.so.
+    const card = await ui.find({ type: 'Box', key: 'TEL-90' })
+    expect(card?.props.borderStyle).toBe('round')
+    expect((await ui.find({ type: 'Link', text: 'Sprint pane' }))?.props.href).toBe('https://www.notion.so/bbbb0090')
+    expect((await ui.find({ type: 'Link', text: 'Words instead of symbols' }))?.props.href)
+      .toBe('https://www.notion.so/aaaa0062')
+    // Ετικέτες με τα χρώματα του Notion, Due και PR.
+    expect((await ui.find({ type: 'Text', text: ' App ' }))?.props.backgroundColor).toBe('#D3E5EF')
+    expect((await ui.find({ type: 'Text', text: ' Claude ' }))?.props.backgroundColor).toBe('#FADEC9')
+    expect((await ui.find({ type: 'Text', text: ' Design ' }))?.props.backgroundColor).toBe('#F5E0E9')
+    expect(await ui.find({ type: 'Text', text: ' Due 20/10 ' })).toBeDefined()
+    expect((await ui.find({ type: 'Link', text: 'PR #77' }))?.props.href)
+      .toBe('https://github.com/CostGal/patra-bus/pull/77')
     await ui.unmount()
   }
 })
@@ -71,7 +102,7 @@ test('finds a Notion server named by an id, as on the desktop', async ($, on) =>
     }
     if (e.tool === 'notion-get-self') return text({ user: { id: ME } })
     const data = (e.args as { data: { query: string } }).data
-    if (data.query.includes('Sprint status')) return text({ results: [{ url: SPRINT }] })
+    if (data.query.includes('Sprint status')) return text({ results: [CURRENT] })
     return text({ results: ROWS })
   })
 
@@ -92,7 +123,7 @@ test('falls back to calling the tool as the model does when $.mcp.call cannot re
     const answer = (value: unknown) => ({ result: [], text: JSON.stringify(value) })
     if (e.tool.endsWith('notion-get-self')) return answer({ user: { id: ME } })
     const data = (e as unknown as { data: { query: string } }).data
-    if (data.query.includes('Sprint status')) return answer({ results: [{ url: SPRINT }] })
+    if (data.query.includes('Sprint status')) return answer({ results: [CURRENT] })
     return answer({ results: ROWS })
   })
 

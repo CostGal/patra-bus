@@ -12,6 +12,20 @@ const NOTION_TOOL = /^mcp__(.+)__notion-query-data-sources$/
 const STATUSES = ['In progress', 'In review', 'Not started']
 const EVERY_MS = 5 * 60_000
 
+// Τα χρώματα των ετικετών του Notion (light): φόντο και κείμενο, και η τελεία κάθε ομάδας του board.
+const TAG = {
+  blue: { bg: '#D3E5EF', fg: '#183347' },
+  orange: { bg: '#FADEC9', fg: '#49290E' },
+  pink: { bg: '#F5E0E9', fg: '#4C2337' },
+  green: { bg: '#DBEDDB', fg: '#1C3829' },
+  gray: { bg: '#E3E2E0', fg: '#32302C' },
+}
+type Tone = keyof typeof TAG
+const DOT: Record<string, string> = { 'In progress': '#337EA9', 'In review': '#D9730D', 'Not started': '#9B9A97' }
+const AREA: Record<string, Tone> = { App: 'blue', Worker: 'orange', Design: 'pink', Business: 'green' }
+const WHO: Record<string, Tone> = { Dev: 'blue', Claude: 'orange' }
+const DONE_COLOR = '#448361'
+
 const PANE = 'tel-sprint'
 const sprint = atom({ plugin: 'tel-sprint', key: 'sprint' } as const, { cards: [] })
 
@@ -41,21 +55,43 @@ function sql(urls: string[], query: string, params: string[] = []) {
   return { data: { data_source_urls: urls, query, params } }
 }
 
-/** Οι κάρτες του συνδεδεμένου χρήστη στο τρέχον sprint που δεν είναι Done. */
-export async function loadCards(ways: Way[]): Promise<Card[]> {
+/** Το Notion δίνει `https://app.notion.com/<id>`, που δεν ανοίγει στον browser· το `www.notion.so/<id>` ανοίγει. */
+export function notionLink(url: string): string {
+  const id = url.split('?')[0].split('/').pop() ?? ''
+  return `https://www.notion.so/${id.replace(/-/g, '')}`
+}
+
+type Row = Omit<Card, 'area' | 'who' | 'due' | 'pr'> & {
+  area: string | null; who: string | null; due: string | null; pr: string | null
+}
+
+/** Το τρέχον sprint και οι κάρτες του συνδεδεμένου χρήστη: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος. */
+export async function loadSprint(ways: Way[]): Promise<Omit<Sprint, 'error' | 'updatedAt'>> {
   const self = await notion(ways, 'notion-get-self', {})
   const userId: string = self.user.id
-  const sprints = await notion(ways, 'notion-query-data-sources',
-    sql([SPRINTS], `SELECT url FROM "${SPRINTS}" WHERE "Sprint status" = 'Current'`))
-  const sprintUrl: string | undefined = sprints.results[0]?.url
-  if (!sprintUrl) return []
-  const sprintId = sprintUrl.split('/').pop()!.replace(/-/g, '')
+  const sprints = await notion(ways, 'notion-query-data-sources', sql([SPRINTS],
+    `SELECT url, "Sprint name" AS name, "date:Dates:start" AS start, "date:Dates:end" AS end
+     FROM "${SPRINTS}" WHERE "Sprint status" = 'Current'`))
+  const current = sprints.results[0] as { url: string; name?: string; start?: string; end?: string } | undefined
+  if (!current) return { cards: [], done: 0 }
+  const sprintId = current.url.split('/').pop()!.replace(/-/g, '')
   const tasks = await notion(ways, 'notion-query-data-sources', sql([TASKS],
-    `SELECT "userDefined:ID" AS id, "Task" AS title, "Task status" AS status, url FROM "${TASKS}"
-     WHERE "Sprint" LIKE ? AND "Owner" LIKE ? AND "Task status" != 'Done'`,
+    `SELECT "userDefined:ID" AS id, "Task" AS title, "Task status" AS status, url,
+       "Area" AS area, "Who does this" AS who, "date:Due:start" AS due, "PR" AS pr
+     FROM "${TASKS}" WHERE "Sprint" LIKE ? AND "Owner" LIKE ?`,
     [`%${sprintId}%`, `%${userId}%`]))
-  return (tasks.results as Card[]).sort((a, b) =>
-    STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || a.id - b.id)
+  const rows = tasks.results as Row[]
+  const cards = rows.filter(r => r.status !== 'Done').map((r): Card => ({
+    id: r.id, title: r.title, status: r.status, url: notionLink(r.url),
+    area: r.area || undefined, who: r.who || undefined, due: r.due || undefined, pr: r.pr || undefined,
+  })).sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || a.id - b.id)
+  return {
+    cards,
+    done: rows.length - cards.length,
+    name: current.name || undefined,
+    start: current.start || undefined,
+    end: current.end || undefined,
+  }
 }
 
 let timer: { cancel: () => void } | undefined
@@ -99,7 +135,7 @@ async function refresh($: EngineInterface): Promise<Sprint> {
   let next: Sprint
   try {
     const ways = notionWays($, await notionServers($))
-    next = { cards: await loadCards(ways), updatedAt: await $.clock.now() }
+    next = { ...(await loadSprint(ways)), updatedAt: await $.clock.now() }
   } catch (err) {
     const prev = await read($, sprint)
     next = { ...prev, error: err instanceof Error ? err.message : String(err) }
@@ -118,6 +154,27 @@ export function listText(cards: Card[]): string {
     for (const c of group) lines.push(`  TEL-${c.id} · ${c.title}`)
   }
   return lines.join('\n')
+}
+
+/** `2026-10-13` → `13/10`. */
+function shortDate(iso: string): string {
+  const [, m, d] = iso.slice(0, 10).split('-')
+  return `${Number(d)}/${Number(m)}`
+}
+
+/** Μπάρα προόδου για το desktop: γκρι βάση, πράσινο το μέρος που είναι Done. */
+export function progressSvg(done: number, total: number): string {
+  const w = total > 0 ? Math.round((done / total) * 100) : 0
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 8" preserveAspectRatio="none">`
+    + `<rect width="100" height="8" rx="4" fill="${TAG.gray.bg}"/>`
+    + (w > 0 ? `<rect width="${w}" height="8" rx="4" fill="${DONE_COLOR}"/>` : '')
+    + `</svg>`
+}
+
+/** Η ίδια μπάρα με χαρακτήρες, για το terminal (δεν έχει Svg). */
+export function progressText(done: number, total: number, width = 10): string {
+  const full = total > 0 ? Math.round((done / total) * width) : 0
+  return '█'.repeat(full) + '░'.repeat(width - full)
 }
 
 export const register: Register = on => {
@@ -139,28 +196,67 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Link, Button } = $.ui.resolve(e)
+    const els = $.ui.resolve(e)
+    const { Box, Text, Link, Button } = els
+    // Το terminal δεν έχει Svg (θα το έδειχνε κενό)· εκεί η μπάρα γίνεται με χαρακτήρες.
+    const Svg = e.surface !== 'terminal' && 'Svg' in els ? els.Svg : undefined
     const s = await read($, sprint)
-    const time = s.updatedAt
-      ? new Date(s.updatedAt).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })
+    const loaded = s.updatedAt !== undefined
+    const time = loaded
+      ? new Date(s.updatedAt!).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })
       : '…'
+    const done = s.done ?? 0
+    const total = done + s.cards.length
+    const dates = [s.start, s.end].filter(Boolean).map(d => shortDate(d!)).join(' – ')
+
+    const tag = (key: string, label: string, tone: Tone) => (
+      <Text key={key} backgroundColor={TAG[tone].bg} color={TAG[tone].fg}> {label} </Text>
+    )
 
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" gap={1}>
+        {s.name && (
+          <Box flexDirection="column">
+            <Text bold>{s.name}</Text>
+            {dates && <Text dimColor>{dates}</Text>}
+            <Box flexDirection="row" gap={1} alignItems="center">
+              {Svg
+                ? <Svg source={progressSvg(done, total)} alt={`${done}/${total} done`} width={160} height={8} />
+                : <Text color={DONE_COLOR}>{progressText(done, total)}</Text>}
+              <Text dimColor>{done}/{total} done</Text>
+            </Box>
+          </Box>
+        )}
         {s.error && <Text color="red">Notion: {s.error}</Text>}
-        {!s.error && !s.updatedAt && <Text dimColor>Φόρτωση…</Text>}
-        {s.updatedAt && s.cards.length === 0 && <Text dimColor>Καμία ανοιχτή κάρτα στο τρέχον sprint.</Text>}
+        {!s.error && !loaded && <Text dimColor>Φόρτωση…</Text>}
+        {loaded && s.cards.length === 0 && <Text dimColor>Καμία ανοιχτή κάρτα στο τρέχον sprint.</Text>}
         {STATUSES.map(status => {
           const group = s.cards.filter(c => c.status === status)
           if (group.length === 0) return null
           return (
-            <Box flexDirection="column" key={status}>
-              <Text weight="bold">{status} ({group.length})</Text>
-              {group.map(c => (
-                <Text key={String(c.id)}>
-                  <Link href={c.url} label={`TEL-${c.id}`} /> {c.title}
-                </Text>
-              ))}
+            <Box flexDirection="column" gap={1} key={status}>
+              <Box flexDirection="row" gap={1}>
+                <Text color={DOT[status]}>●</Text>
+                <Text bold>{status}</Text>
+                <Text dimColor>{group.length}</Text>
+              </Box>
+              {group.map(c => {
+                const pr = c.pr ? /\/pull\/(\d+)/.exec(c.pr)?.[1] : undefined
+                const tags = [
+                  c.area && tag('area', c.area, AREA[c.area] ?? 'gray'),
+                  c.who && tag('who', c.who, WHO[c.who] ?? 'gray'),
+                  c.due && tag('due', `Due ${shortDate(c.due)}`, 'gray'),
+                  c.pr && <Link key="pr" href={c.pr} label={pr ? `PR #${pr}` : 'PR'} />,
+                ].filter(Boolean)
+                return (
+                  <Box key={`TEL-${c.id}`} flexDirection="column" borderStyle="round" borderColor="#D9D9D6" paddingX={1}>
+                    <Text>
+                      <Text dimColor>TEL-{c.id}</Text> <Link href={c.url} label={c.title} />
+                    </Text>
+                    {tags.length > 0 && <Box flexDirection="row" flexWrap="wrap" gap={1}>{tags}</Box>}
+                  </Box>
+                )
+              })}
             </Box>
           )
         })}
