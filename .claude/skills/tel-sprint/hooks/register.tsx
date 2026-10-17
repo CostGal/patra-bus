@@ -15,24 +15,26 @@ const EVERY_MS = 5 * 60_000
 const PANE = 'tel-sprint'
 const sprint = atom({ plugin: 'tel-sprint', key: 'sprint' } as const, { cards: [] })
 
-type Call = (server: string, tool: string, args?: Record<string, unknown>) => Promise<{
-  content: { type: string; text?: string }[]
-  isError: boolean
-}>
+/** Ένας τρόπος να καλέσουμε ένα εργαλείο του Notion· `run` δίνει το κείμενο της απάντησης. */
+export type Way = { name: string; run: (tool: string, args: Record<string, unknown>) => Promise<string> }
 
-async function notion(call: Call, servers: string[], tool: string, args: Record<string, unknown>): Promise<any> {
-  let lastError = 'Δεν βρέθηκε ο Notion connector'
-  for (const server of servers) {
+// Ο τρόπος που δούλεψε τελευταία δοκιμάζεται πρώτος.
+let working: string | undefined
+
+async function notion(ways: Way[], tool: string, args: Record<string, unknown>): Promise<any> {
+  const errors: string[] = []
+  const ordered = [...ways].sort((a, b) => Number(b.name === working) - Number(a.name === working))
+  for (const way of ordered) {
     try {
-      const res = await call(server, tool, args)
-      const text = res.content.find(b => b.type === 'text')?.text ?? ''
-      if (res.isError) throw new Error(text || 'σφάλμα Notion')
-      return JSON.parse(text)
+      const text = await way.run(tool, args)
+      const value = JSON.parse(text)
+      working = way.name
+      return value
     } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err)
+      errors.push(`${way.name}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
-  throw new Error(`${lastError} · servers: ${servers.join(', ')}`)
+  throw new Error(errors.join(' | ') || 'Δεν βρέθηκε ο Notion connector')
 }
 
 function sql(urls: string[], query: string, params: string[] = []) {
@@ -40,15 +42,15 @@ function sql(urls: string[], query: string, params: string[] = []) {
 }
 
 /** Οι κάρτες του συνδεδεμένου χρήστη στο τρέχον sprint που δεν είναι Done. */
-export async function loadCards(call: Call, servers: string[]): Promise<Card[]> {
-  const self = await notion(call, servers, 'notion-get-self', {})
+export async function loadCards(ways: Way[]): Promise<Card[]> {
+  const self = await notion(ways, 'notion-get-self', {})
   const userId: string = self.user.id
-  const sprints = await notion(call, servers, 'notion-query-data-sources',
+  const sprints = await notion(ways, 'notion-query-data-sources',
     sql([SPRINTS], `SELECT url FROM "${SPRINTS}" WHERE "Sprint status" = 'Current'`))
   const sprintUrl: string | undefined = sprints.results[0]?.url
   if (!sprintUrl) return []
   const sprintId = sprintUrl.split('/').pop()!.replace(/-/g, '')
-  const tasks = await notion(call, servers, 'notion-query-data-sources', sql([TASKS],
+  const tasks = await notion(ways, 'notion-query-data-sources', sql([TASKS],
     `SELECT "userDefined:ID" AS id, "Task" AS title, "Task status" AS status, url FROM "${TASKS}"
      WHERE "Sprint" LIKE ? AND "Owner" LIKE ? AND "Task status" != 'Done'`,
     [`%${sprintId}%`, `%${userId}%`]))
@@ -58,22 +60,46 @@ export async function loadCards(call: Call, servers: string[]): Promise<Card[]> 
 
 let timer: { cancel: () => void } | undefined
 
-/** Οι servers που έχουν τα εργαλεία του Notion σε αυτό το session, και μετά τα γνωστά ονόματα. */
+/** Οι servers που έχουν τα εργαλεία του Notion σε αυτό το session (τοπικά ένα id ανά χρήστη). */
 async function notionServers($: EngineInterface): Promise<string[]> {
-  let found: string[] = []
   try {
-    found = (await $.tool.list()).flatMap(t => NOTION_TOOL.exec(t.name)?.[1] ?? [])
+    return (await $.tool.list()).flatMap(t => NOTION_TOOL.exec(t.name)?.[1] ?? [])
   } catch {
-    // χωρίς λίστα εργαλείων μένουν τα γνωστά ονόματα
+    return []
   }
-  return [...new Set([...found, ...SERVERS])]
+}
+
+/**
+ * Πρώτα $.mcp.call (χωρίς ερώτηση άδειας) στους servers που βρέθηκαν και στα γνωστά ονόματα, μετά
+ * $.tool.call όπως τα καλεί το Claude (περνά από τις άδειες), για connectors που δίνει η εφαρμογή.
+ */
+function notionWays($: EngineInterface, found: string[]): Way[] {
+  const direct = [...new Set([...found, ...SERVERS])].map((server): Way => ({
+    name: server,
+    run: async (tool, args) => {
+      const res = await $.mcp.call(server, tool, args)
+      const text = res.content.find(b => b.type === 'text')?.text ?? ''
+      if (res.isError) throw new Error(text || 'σφάλμα Notion')
+      return text
+    },
+  }))
+  const asTool = found.map((server): Way => ({
+    name: `tool:${server}`,
+    run: async (tool, args) => {
+      const res = await $.tool.call({ tool: `mcp__${server}__${tool}`, ...args } as never)
+      if (res.deny) throw new Error(res.deny)
+      if (res.isError) throw new Error(res.text || 'σφάλμα Notion')
+      return res.text ?? ''
+    },
+  }))
+  return [...direct, ...asTool]
 }
 
 async function refresh($: EngineInterface): Promise<Sprint> {
   let next: Sprint
   try {
-    const servers = await notionServers($)
-    next = { cards: await loadCards((server, tool, args) => $.mcp.call(server, tool, args), servers), updatedAt: await $.clock.now() }
+    const ways = notionWays($, await notionServers($))
+    next = { cards: await loadCards(ways), updatedAt: await $.clock.now() }
   } catch (err) {
     const prev = await read($, sprint)
     next = { ...prev, error: err instanceof Error ? err.message : String(err) }

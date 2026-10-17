@@ -79,10 +79,32 @@ test('finds a Notion server named by an id, as on the desktop', async ($, on) =>
   expect(ran.text?.split('\n')[0]).toBe('Sprint: 2 κάρτες')
 })
 
+test('falls back to calling the tool as the model does when $.mcp.call cannot reach it', async ($, on) => {
+  mock.clock(on)
+  on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('tool.list', async () => ({
+    value: [{ name: 'mcp__3eab-id__notion-query-data-sources', description: '', mcp: true }],
+  }))
+  on('mcp.call', async () => ({ value: { content: [{ type: 'text', text: 'no tool' }], isError: true } }))
+  const tools: string[] = []
+  on('tool.call', async (_$, e) => {
+    tools.push(e.tool)
+    const answer = (value: unknown) => ({ result: [], text: JSON.stringify(value) })
+    if (e.tool.endsWith('notion-get-self')) return answer({ user: { id: ME } })
+    const data = (e as unknown as { data: { query: string } }).data
+    if (data.query.includes('Sprint status')) return answer({ results: [{ url: SPRINT }] })
+    return answer({ results: ROWS })
+  })
+
+  const ran = await $.command.run(RUN)
+  expect(ran.text?.split('\n')[0]).toBe('Sprint: 2 κάρτες')
+  expect(tools[0]).toBe('mcp__3eab-id__notion-get-self')
+})
+
 test('says so when Notion is not connected', async ($, on) => {
   mock.clock(on)
   on('ui.open', async () => ({ value: { isPlaced: true } }))
   on('mcp.call', async () => ({ value: { content: [{ type: 'text', text: 'not connected' }], isError: true } }))
   const ran = await $.command.run(RUN)
-  expect(ran.text).toBe('Sprint: δεν διαβάστηκε το Notion (not connected · servers: Notion, claude.ai Notion).')
+  expect(ran.text).toBe('Sprint: δεν διαβάστηκε το Notion (Notion: not connected | claude.ai Notion: not connected).')
 })
