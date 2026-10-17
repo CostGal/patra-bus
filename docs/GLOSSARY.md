@@ -95,6 +95,10 @@ My words:
 Where it shows up in Telematica: `web/js/map.js`, with the library stored in `web/vendor/maplibre-gl/`.
 My words:
 
+**Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
+Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Sprint» pane with your current TEL cards from Notion (`/sprint` refreshes it).
+My words:
+
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
 Where it shows up in Telematica: walking time to a stop (`web/js/walk.js`), via the FOSSGIS server.
 My words:
