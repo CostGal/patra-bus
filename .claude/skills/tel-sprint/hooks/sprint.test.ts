@@ -15,7 +15,7 @@ const CURRENT = { url: SPRINT, name: 'Sprint 5', start: '2026-10-13', end: '2026
 const ROWS = [
   {
     id: 62, title: 'Words instead of symbols', status: 'Not started', url: 'https://app.notion.com/aaaa-0062',
-    area: 'Design', who: 'Dev', due: '2026-10-20', pr: null,
+    area: 'Design', who: 'Dev', due: '2026-10-20', pr: 'https://github.com/CostGal/patra-bus/issues/67',
   },
   {
     id: 90, title: 'Sprint pane', status: 'In progress', url: 'https://app.notion.com/p/bbbb-0090?pvs=4',
@@ -64,14 +64,14 @@ test('reads the current sprint and draws the cards grouped by status', async ($,
     // Κεφαλίδα: όνομα, ημερομηνίες, πρόοδος με τις Done κάρτες στο σύνολο.
     expect(await ui.find({ type: 'Text', text: 'Sprint 5' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: '13/10 – 19/10' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: '1/3 done' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '1/3 done · 33%' })).toBeDefined()
     if (surface === 'desktop') expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('1/3 done')
     else expect((await ui.find({ type: 'Text', text: /█/ }))?.text).toBe('███░░░░░░░')
     expect(await ui.find({ text: 'Φόρτωση…' })).toBeUndefined()
     // Ομάδες με πλήθος· η Done κάρτα δεν φαίνεται.
     expect(await ui.find({ type: 'Text', text: 'In progress' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'Not started' })).toBeDefined()
-    expect((await ui.findAll({ type: 'Text', text: '●' })).map(t => t.props.color)).toEqual(['#337EA9', '#9B9A97'])
+    expect((await ui.findAll({ type: 'Text', text: '●' })).map(t => t.props.color)).toEqual(['#5E9FE0', '#9B9B9B'])
     expect(await ui.find({ text: /TEL-89/ })).toBeUndefined()
     // Κάρτα σε πλαίσιο, τίτλος ως link στο www.notion.so.
     const card = await ui.find({ type: 'Box', key: 'TEL-90' })
@@ -79,13 +79,24 @@ test('reads the current sprint and draws the cards grouped by status', async ($,
     expect((await ui.find({ type: 'Link', text: 'Sprint pane' }))?.props.href).toBe('https://www.notion.so/bbbb0090')
     expect((await ui.find({ type: 'Link', text: 'Words instead of symbols' }))?.props.href)
       .toBe('https://www.notion.so/aaaa0062')
-    // Ετικέτες με τα χρώματα του Notion, Due και PR.
-    expect((await ui.find({ type: 'Text', text: ' App ' }))?.props.backgroundColor).toBe('#D3E5EF')
-    expect((await ui.find({ type: 'Text', text: ' Claude ' }))?.props.backgroundColor).toBe('#FADEC9')
-    expect((await ui.find({ type: 'Text', text: ' Design ' }))?.props.backgroundColor).toBe('#F5E0E9')
-    expect(await ui.find({ type: 'Text', text: ' Due 20/10 ' })).toBeDefined()
+    // Ετικέτες με τα χρώματα του Notion (dark), Due, PR και Issue.
+    const app = await ui.find({ type: 'Text', text: /^ ?App ?$/ })
+    expect(app?.props.color).toBe('#D5E5F5')
+    if (surface === 'desktop') {
+      // Pill: Box με στρογγυλό περίγραμμα στο χρώμα του φόντου.
+      expect((await ui.find({ type: 'Box', key: 'area' }))?.props)
+        .toMatchObject({ borderStyle: 'round', borderColor: '#28456C', backgroundColor: '#28456C' })
+      expect((await ui.find({ type: 'Box', key: 'status-In progress' }))?.props.backgroundColor).toBe('#28456C')
+    } else {
+      expect(app?.props.backgroundColor).toBe('#28456C')
+    }
+    expect((await ui.find({ type: 'Text', text: /^ ?Claude ?$/ }))?.props.color).toBe('#F5DCC8')
+    expect((await ui.find({ type: 'Text', text: /^ ?Design ?$/ }))?.props.color).toBe('#F3D6E4')
+    expect(await ui.find({ type: 'Text', text: /^ ?Due 20\/10 ?$/ })).toBeDefined()
     expect((await ui.find({ type: 'Link', text: 'PR #77' }))?.props.href)
       .toBe('https://github.com/CostGal/patra-bus/pull/77')
+    expect((await ui.find({ type: 'Link', text: 'Issue #67' }))?.props.href)
+      .toBe('https://github.com/CostGal/patra-bus/issues/67')
     await ui.unmount()
   }
 })

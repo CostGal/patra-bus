@@ -12,19 +12,26 @@ const NOTION_TOOL = /^mcp__(.+)__notion-query-data-sources$/
 const STATUSES = ['In progress', 'In review', 'Not started']
 const EVERY_MS = 5 * 60_000
 
-// Τα χρώματα των ετικετών του Notion (light): φόντο και κείμενο, και η τελεία κάθε ομάδας του board.
+// Τα χρώματα του Notion στο dark mode: σκούρο φόντο, ανοιχτό κείμενο. Διαβάζονται και σε ανοιχτό φόντο.
 const TAG = {
-  blue: { bg: '#D3E5EF', fg: '#183347' },
-  orange: { bg: '#FADEC9', fg: '#49290E' },
-  pink: { bg: '#F5E0E9', fg: '#4C2337' },
-  green: { bg: '#DBEDDB', fg: '#1C3829' },
-  gray: { bg: '#E3E2E0', fg: '#32302C' },
+  blue: { bg: '#28456C', fg: '#D5E5F5' },
+  orange: { bg: '#854C1D', fg: '#F5DCC8' },
+  pink: { bg: '#69314C', fg: '#F3D6E4' },
+  green: { bg: '#2B593F', fg: '#D2EBDC' },
+  gray: { bg: '#454545', fg: '#E3E3E3' },
 }
 type Tone = keyof typeof TAG
-const DOT: Record<string, string> = { 'In progress': '#337EA9', 'In review': '#D9730D', 'Not started': '#9B9A97' }
+// Κάθε ομάδα του board: χρώμα του pill και της τελείας.
+const GROUP: Record<string, { tone: Tone; dot: string }> = {
+  'In progress': { tone: 'blue', dot: '#5E9FE0' },
+  'In review': { tone: 'orange', dot: '#FFA344' },
+  'Not started': { tone: 'gray', dot: '#9B9B9B' },
+}
 const AREA: Record<string, Tone> = { App: 'blue', Worker: 'orange', Design: 'pink', Business: 'green' }
 const WHO: Record<string, Tone> = { Dev: 'blue', Claude: 'orange' }
-const DONE_COLOR = '#448361'
+const DONE_COLOR = '#4DAB7A'
+const TRACK_COLOR = '#3A3A3A'
+const CARD_BORDER = '#3A3A3A'
 
 const PANE = 'tel-sprint'
 const sprint = atom({ plugin: 'tel-sprint', key: 'sprint' } as const, { cards: [] })
@@ -166,7 +173,7 @@ function shortDate(iso: string): string {
 export function progressSvg(done: number, total: number): string {
   const w = total > 0 ? Math.round((done / total) * 100) : 0
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 8" preserveAspectRatio="none">`
-    + `<rect width="100" height="8" rx="4" fill="${TAG.gray.bg}"/>`
+    + `<rect width="100" height="8" rx="4" fill="${TRACK_COLOR}"/>`
     + (w > 0 ? `<rect width="${w}" height="8" rx="4" fill="${DONE_COLOR}"/>` : '')
     + `</svg>`
 }
@@ -175,6 +182,13 @@ export function progressSvg(done: number, total: number): string {
 export function progressText(done: number, total: number, width = 10): string {
   const full = total > 0 ? Math.round((done / total) * width) : 0
   return '█'.repeat(full) + '░'.repeat(width - full)
+}
+
+/** Το πεδίο «PR» μπορεί να έχει PR ή issue του GitHub: `…/pull/77` → `PR #77`, `…/issues/24` → `Issue #24`. */
+export function githubLabel(url: string): string {
+  const m = /\/(pull|issues)\/(\d+)/.exec(url)
+  if (!m) return 'PR'
+  return `${m[1] === 'pull' ? 'PR' : 'Issue'} #${m[2]}`
 }
 
 export const register: Register = on => {
@@ -198,8 +212,10 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const els = $.ui.resolve(e)
     const { Box, Text, Link, Button } = els
-    // Το terminal δεν έχει Svg (θα το έδειχνε κενό)· εκεί η μπάρα γίνεται με χαρακτήρες.
-    const Svg = e.surface !== 'terminal' && 'Svg' in els ? els.Svg : undefined
+    // Το terminal δεν έχει Svg ούτε στρογγυλές γωνίες (ένα περίγραμμα εκεί πιάνει 3 γραμμές):
+    // εκεί μένουν απλές χρωματιστές ετικέτες και μπάρα με χαρακτήρες.
+    const gui = e.surface !== 'terminal'
+    const Svg = gui && 'Svg' in els ? els.Svg : undefined
     const s = await read($, sprint)
     const loaded = s.updatedAt !== undefined
     const time = loaded
@@ -207,11 +223,23 @@ export const register: Register = on => {
       : '…'
     const done = s.done ?? 0
     const total = done + s.cards.length
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0
     const dates = [s.start, s.end].filter(Boolean).map(d => shortDate(d!)).join(' – ')
 
-    const tag = (key: string, label: string, tone: Tone) => (
-      <Text key={key} backgroundColor={TAG[tone].bg} color={TAG[tone].fg}> {label} </Text>
-    )
+    // Pill: στο desktop Box με στρογγυλό περίγραμμα στο χρώμα του φόντου· στο terminal Text με φόντο.
+    const pill = (key: string, tone: Tone, label: string, href?: string) => {
+      const { bg, fg } = TAG[tone]
+      if (!gui) {
+        return href
+          ? <Link key={key} href={href} label={label} />
+          : <Text key={key} backgroundColor={bg} color={fg}> {label} </Text>
+      }
+      return (
+        <Box key={key} borderStyle="round" borderColor={bg} backgroundColor={bg} paddingX={1}>
+          {href ? <Link href={href} label={label} /> : <Text color={fg}>{label}</Text>}
+        </Box>
+      )
+    }
 
     return (
       <Box flexDirection="column" gap={1}>
@@ -221,9 +249,9 @@ export const register: Register = on => {
             {dates && <Text dimColor>{dates}</Text>}
             <Box flexDirection="row" gap={1} alignItems="center">
               {Svg
-                ? <Svg source={progressSvg(done, total)} alt={`${done}/${total} done`} width={160} height={8} />
+                ? <Svg source={progressSvg(done, total)} alt={`${done}/${total} done`} width={200} height={10} />
                 : <Text color={DONE_COLOR}>{progressText(done, total)}</Text>}
-              <Text dimColor>{done}/{total} done</Text>
+              <Text dimColor>{done}/{total} done · {pct}%</Text>
             </Box>
           </Box>
         )}
@@ -233,23 +261,32 @@ export const register: Register = on => {
         {STATUSES.map(status => {
           const group = s.cards.filter(c => c.status === status)
           if (group.length === 0) return null
+          const { tone, dot } = GROUP[status]!
           return (
             <Box flexDirection="column" gap={1} key={status}>
-              <Box flexDirection="row" gap={1}>
-                <Text color={DOT[status]}>●</Text>
-                <Text bold>{status}</Text>
+              <Box flexDirection="row" gap={1} alignItems="center">
+                {gui
+                  ? (
+                    <Box key={`status-${status}`} flexDirection="row" gap={1} borderStyle="round"
+                      borderColor={TAG[tone].bg} backgroundColor={TAG[tone].bg} paddingX={1}>
+                      <Text color={dot}>●</Text>
+                      <Text color={TAG[tone].fg}>{status}</Text>
+                    </Box>
+                  )
+                  : <Text color={dot}>●</Text>}
+                {!gui && <Text bold>{status}</Text>}
                 <Text dimColor>{group.length}</Text>
               </Box>
               {group.map(c => {
-                const pr = c.pr ? /\/pull\/(\d+)/.exec(c.pr)?.[1] : undefined
                 const tags = [
-                  c.area && tag('area', c.area, AREA[c.area] ?? 'gray'),
-                  c.who && tag('who', c.who, WHO[c.who] ?? 'gray'),
-                  c.due && tag('due', `Due ${shortDate(c.due)}`, 'gray'),
-                  c.pr && <Link key="pr" href={c.pr} label={pr ? `PR #${pr}` : 'PR'} />,
+                  c.area && pill('area', AREA[c.area] ?? 'gray', c.area),
+                  c.who && pill('who', WHO[c.who] ?? 'gray', c.who),
+                  c.due && pill('due', 'gray', `Due ${shortDate(c.due)}`),
+                  c.pr && pill('pr', 'gray', githubLabel(c.pr), c.pr),
                 ].filter(Boolean)
                 return (
-                  <Box key={`TEL-${c.id}`} flexDirection="column" borderStyle="round" borderColor="#D9D9D6" paddingX={1}>
+                  <Box key={`TEL-${c.id}`} flexDirection="column"
+                    borderStyle="round" borderColor={CARD_BORDER} paddingX={1}>
                     <Text>
                       <Text dimColor>TEL-{c.id}</Text> <Link href={c.url} label={c.title} />
                     </Text>
@@ -260,7 +297,7 @@ export const register: Register = on => {
             </Box>
           )
         })}
-        <Box>
+        <Box flexDirection="row" alignItems="center">
           <Text dimColor>Ενημέρωση {time} · </Text>
           <Button key="refresh" label="Ανανέωση" onPress={() => void refresh($)} />
         </Box>
