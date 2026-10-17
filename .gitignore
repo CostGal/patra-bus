@@ -6,3 +6,6 @@ scripts/.cache/
 test-results/
 playwright-report/
 shots/
+
+# Claude Code: ρυθμίσεις ανά χρήστη (π.χ. άδειες για τον Notion connector του tel-sprint)
+.claude/settings.local.json

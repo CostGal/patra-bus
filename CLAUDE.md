@@ -141,4 +141,6 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Sessions follow **docs/WORKFLOW.md**: one list (Notion Tasks), `/plan-week` for the weekly planning, `/task TEL-<id>`
   for one task per session; every step the user does is given one at a time and Claude waits for confirmation.
 - The mod `.claude/skills/tel-sprint/` opens a pane «Sprint» in Claude Code with the connected Notion user's open cards
-  of the current sprint (read-only, through the Notion connector, every 5′ and on `/sprint`).
+  of the current sprint (read-only, through the Notion connector, every 5′ and on `/sprint`). In a local Claude desktop
+  session the connector is a server named by an id per user; in auto mode each user allows its two read tools once in
+  `.claude/settings.local.json` (gitignored): `mcp__<id>__notion-get-self`, `mcp__<id>__notion-query-data-sources`.
