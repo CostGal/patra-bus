@@ -35,7 +35,7 @@ npm run record-fixtures  # ξαναγράφει τα fixtures των smoke tests
 npm run dev:worker       # wrangler dev --local στο :8787 (local KV)
 npx wrangler deploy --config worker/wrangler.toml   # deploy του worker στο Cloudflare
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
-npm run shots            # screenshots (?demo, mocks) για συσκευές × light/dark × EL/EN στο shots/ + SUMMARY.md· `-- --device= --lang= --theme= --screen= --base=<preview URL> --chromium=<path>`· ~6′ για όλα, μόνο layout (όχι αφή/push/GPS/απόδοση)
+npm run shots            # screenshots (?demo, mocks) για συσκευές × light/dark × EL/EN στο shots/ + SUMMARY.md· `-- --device= --lang= --theme= --screen= --base=<preview URL> --web=<web/ άλλου checkout> --chromium=<path>`· ~6′ για όλα, μόνο layout (όχι αφή/push/GPS/απόδοση)
 ```
 Άνοιγμα: http://localhost:8080/ · demo (προσομοίωση για όλες τις στάσεις): http://localhost:8080/?demo#/stop/1011 · `?demo=nosvc`, `?demo=error` για τις αντίστοιχες καταστάσεις.
 Τα δύο dev servers υπάρχουν και στο `.claude/launch.json` (`worker`, `web`).

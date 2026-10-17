@@ -1,10 +1,11 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
-// Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview>]
+// Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
 // Uses the ?demo mode and the same network mocks as the smoke tests (nothing reaches citybus.gr or any third party), so
 // it checks LAYOUT only: the map tiles are blocked (the map area stays empty), and touch feel, push, install, GPS,
 // speed and sunlight still need a real phone (CLAUDE.md rule 9).
 import { spawn } from 'node:child_process';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, firefox, devices } from '@playwright/test';
 import { mockNetwork } from '../tests/e2e/mock.mjs';
@@ -41,9 +42,10 @@ const bad = [...wantDevices.filter((d) => !devices[d]).map((d) => `device "${d}"
   ...wantThemes.filter((t) => !['light', 'dark'].includes(t)).map((t) => `theme "${t}"`), ...wantScreens.filter((s) => !SCREENS.some((x) => x.id === s)).map((s) => `screen "${s}"`)];
 if (bad.length) { console.error(`Unknown: ${bad.join(', ')}\nDevices: ${Object.keys(devices).filter((d) => !/landscape/.test(d)).join(', ')}\nScreens: ${SCREENS.map((s) => s.id).join(', ')}`); process.exit(2); }
 
+const WEB = args.web ? resolve(String(args.web)) : `${ROOT}web`; // --web: serve another checkout's web/ (e.g. a git worktree of a PR branch)
 let server = null;
 async function startServer() {
-  server = spawn(process.execPath, [`${ROOT}node_modules/http-server/bin/http-server`, `${ROOT}web`, '-p', String(PORT), '-c-1', '--silent'], { stdio: 'ignore' });
+  server = spawn(process.execPath, [`${ROOT}node_modules/http-server/bin/http-server`, WEB, '-p', String(PORT), '-c-1', '--silent'], { stdio: 'ignore' });
   const url = `http://localhost:${PORT}`;
   for (let i = 0; i < 50; i++) { try { if ((await fetch(url)).ok) return url; } catch { /* not up yet */ } await new Promise((r) => setTimeout(r, 100)); }
   throw new Error('static server did not start');
