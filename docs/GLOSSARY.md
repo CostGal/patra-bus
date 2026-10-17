@@ -71,6 +71,10 @@ My words:
 Where it shows up in Telematica: the `hp` field in the problem report (`web/js/report.js`, `worker/src/report.js`).
 My words:
 
+**Hook** (SessionStart hook): a command Claude Code runs by itself at a fixed moment, like a checklist taped inside the project folder that gets done every time the folder is opened.
+Where it shows up in Telematica: `.claude/settings.json` runs `scripts/cloud-session-start.mjs` when a session starts; in a cloud session it installs packages and Chromium, locally it does nothing.
+My words:
+
 **i18n** (internationalisation): preparing an app so text can be shown in several languages, like menus printed in two languages.
 Where it shows up in Telematica: Greek text is the key, English lives in `web/js/i18n-en*.js`; `npm run check:i18n` checks it.
 My words:
