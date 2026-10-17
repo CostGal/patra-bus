@@ -30,7 +30,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 
 ## 4. Materials and depth
 - Floating chrome (search bar, bottom sheet, locate button, toasts) = translucent material:
-  `background: color-mix(in srgb, var(--surface) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`,
+  `background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`,
   a faint bright top edge, soft shadow; bigger surfaces = stronger blur + deeper shadow than small chips.
 - Never stack translucent on translucent. Text on materials: slightly heavier weight, full-contrast colour.
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.

@@ -16,7 +16,7 @@ const shapes = () => (shapesP ||= loadShapes().catch(() => ({})));
 const routeName = (ctx, r) => ctx.data.routeByCode.get(r.code)?.displayName || titleCase(r.name);
 // "Updated just now" / "Updated 14″ ago".
 const updated = (age) => (age < 5 ? t('Ενημερώθηκε μόλις τώρα') : t('Ενημερώθηκε πριν {t}', { t: age < 120 ? `${age}″` : `${Math.round(age / 60)}′` }));
-const backBtn = (label, onclick) => h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': label, onclick }, icon('back'));
+const backBtn = (label, onclick) => h('button', { type: 'button', class: 'btn round strong', 'aria-label': label, onclick }, icon('back'));
 
 // ---------------------------------------------------------------- list of lines
 
@@ -109,7 +109,7 @@ function buildLine(container, ctx, params) {
     container.replaceChildren(h('div', { class: 'ex-view' },
       h('header', { class: 'ex-head' }, backBtn(t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines')), h('h1', {}, t('Γραμμή'))),
       h('p', { class: 'ex-empty' }, t('Η γραμμή δεν βρέθηκε.')),
-      h('a', { class: 'ex-btn', href: cityHash('#/lines') }, t('Όλες οι γραμμές'))));
+      h('a', { class: 'btn rect', href: cityHash('#/lines') }, t('Όλες οι γραμμές'))));
     return { destroy() {} };
   }
 
@@ -120,7 +120,7 @@ function buildLine(container, ctx, params) {
   let open = null; // { code, poller, state, ticker, panel, btn } — one expanded stop at a time (one poller)
 
   const root = h('div', { class: 'ex-view lines-line' });
-  root.style.setProperty('--lc', line.color || 'var(--accent)');
+  root.style.setProperty('--lc', line.color || 'var(--primary)');
   root.style.setProperty('--lc-text', line.textColor || '#fff');
   const chips = h('div', { class: 'lines-routes', role: 'group', 'aria-label': t('Διαδρομές της γραμμής') });
   const sub = h('p', { class: 'ex-sub' });
@@ -142,7 +142,7 @@ function buildLine(container, ctx, params) {
     timesHint, timesStop, timesList, timesMsg);
   let term = null; // { code, poller, ticker, state, tiles } — the terminal stop's poller (one at a time)
 
-  const share = h('button', { type: 'button', class: 'ex-icon-btn', 'aria-label': t('Κοινοποίηση γραμμής'), onclick: async () => {
+  const share = h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Κοινοποίηση γραμμής'), onclick: async () => {
     const r = await shareLink({ title: t('Γραμμή {code} · {name}', { code: line.code, name: line.displayName }), text: t('Γραμμή {code} {name} — {app} · {city}', { code: line.code, name: line.displayName, app: APP_NAME, city: cityName(city(), lang()) }), url: `${location.origin}${location.pathname}${shareHash(location.hash)}` });
     if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
@@ -260,7 +260,7 @@ function buildLine(container, ctx, params) {
     const nodes = [];
     if (!state || state.loading && !state.data) nodes.push(h('p', { class: 'ex-sub' }, t('Φόρτωση…')));
     else if (state.error && !state.data) nodes.push(h('p', { class: 'ex-sub' }, t('Δεν φορτώθηκαν οι αφίξεις.')),
-      h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => open?.poller.refresh() }, t('Δοκίμασε ξανά')));
+      h('button', { type: 'button', class: 'btn rect sm', onclick: () => open?.poller.refresh() }, t('Δοκίμασε ξανά')));
     else if (state.data) {
       const now = Date.now();
       const mine = state.data.vehicles.filter((v) => v.lineCode === line.code)

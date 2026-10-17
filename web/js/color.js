@@ -3,7 +3,7 @@
 // line's colour and changes as little as possible: first a barely visible darkening (≤ 6%) of the background,
 // then the other text colour (dark on bright lines), and only if neither reads, a darker background.
 const MIN = 4.5;
-const DARK = '#1f1f1f'; // = --text (light theme)
+const DARK = '#1f1f1f'; // = --foreground (light theme)
 const LIGHT = '#ffffff';
 const NUDGE = 0.06;
 

@@ -3,9 +3,9 @@
 // Minimal UI: a tile is badge + destination + big countdown + a small LIVE / ΠΡΟΓΡ. flag; explanations live in Settings → Σχετικά.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
-import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, STALE_MS } from './api.js';
+import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, isStale } from './api.js';
 import { ageText } from './arrivals.js';
-import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
+import { isFavorite, toggleFavorite, addRecent, onChange, getSettings, setSetting } from './store.js';
 import { shareLink } from './share.js';
 import { t, etaTxt, etaSay } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
@@ -29,6 +29,7 @@ const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route
 
 export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null, stale = false } = {}) {
   const live = !!v.live;
+  const aged = live && stale; // TEL-52: its position is older than STALE_MS, so it must not read as LIVE any more
   const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
     : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
   const at = fetchedAt + v.etaSec * 1000; // ETA as a wall-clock instant; constant between fetches
@@ -37,13 +38,14 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
   const badge = lineBadge({ code: v.lineCode, color: line?.color || v.color, textColor: line?.textColor || v.textColor });
 
   const num = h('span', { class: 'atile-num tabular' });
+  const age = aged ? h('span', { class: 'atile-age' }) : null;
   const flag = live
-    ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'))
+    ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'), age)
     : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock));
   const usual = h('span', { class: 'atile-usual', hidden: true });
   const status = h('div', { class: 'atile-status' }, flag, live ? null : usual);
 
-  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
+  const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${aged ? ' atile-aged' : ''}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
     h('div', { class: 'atile-badge' }, badge),
     h('div', { class: 'atile-body' }, h('div', { class: 'atile-dest' }, dest), status),
     h('div', { class: 'atile-eta' }, num),
@@ -57,6 +59,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
       : t('Γραμμή {line}, {dest}. Προγραμματισμένη άφιξη στις {clock}, {when}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.', a) + (usualTxt ? ` ${usualTxt}.` : '') + hint;
   };
   el.tick = (t0 = Date.now()) => {
+    if (age) age.textContent = t('πριν {age}', { age: ageText((t0 - fetchedAt) / 1000) });
     const rem = remainingSec(v, fetchedAt, t0);
     const text = etaTxt(rem);
     el.classList.toggle('atile-now', rem < NOW_SEC);
@@ -99,7 +102,7 @@ export function mountStop(container, ctx, { code }) {
   if (!stop) {
     root.append(
       h('p', { class: 'stopv-msg' }, t('Η στάση δεν βρέθηκε.')),
-      h('button', { type: 'button', class: 'stopv-btn stopv-primary', onclick: () => ctx.navigate('#/') }, t('Πίσω στην αρχική')));
+      h('button', { type: 'button', class: 'btn primary', onclick: () => ctx.navigate('#/') }, t('Πίσω στην αρχική')));
     return { destroy() { root.remove(); } };
   }
 
@@ -121,8 +124,8 @@ export function mountStop(container, ctx, { code }) {
   addRecent('stop', { code, name: stop.displayName });
 
   // ---- header: name · ★ · ⋯ (share, directions) · close ----
-  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'stopv-btn', 'aria-label': label, title: label, onclick }, icon(name));
-  const star = h('button', { type: 'button', class: 'stopv-btn stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
+  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
+  const star = h('button', { type: 'button', class: 'btn round stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
   function paintStar() {
     const on = isFavorite(code);
     const label = on ? t('Αφαίρεση από τα αγαπημένα') : t('Προσθήκη στα αγαπημένα');
@@ -146,7 +149,7 @@ export function mountStop(container, ctx, { code }) {
   const menu = h('div', { class: 'stopv-menu', role: 'menu', hidden: true },
     h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); directions(); } }, icon('walk'), t('Οδηγίες ως εδώ')),
     h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); share(); } }, icon('share'), t('Κοινοποίηση')));
-  const moreBtn = h('button', { type: 'button', class: 'stopv-btn stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
+  const moreBtn = h('button', { type: 'button', class: 'btn round stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
   function setMenu(open) {
     menu.hidden = !open;
     moreBtn.setAttribute('aria-expanded', String(open));
@@ -166,17 +169,21 @@ export function mountStop(container, ctx, { code }) {
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
-  const bannerBtn = h('button', { type: 'button', class: 'stopv-btn stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
+  const bannerBtn = h('button', { type: 'button', class: 'btn ghost sm stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
   const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
-  const refreshBtn = h('button', { type: 'button', class: 'stopv-btn stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
+  // One quiet line that says what LIVE / ΠΡΟΓΡ. and ′ ″ mean, until the user closes it (flag legendSeen, kept across "reset settings").
+  const legend = h('div', { class: 'stopv-legend', hidden: true },
+    h('p', { class: 'stopv-legend-text' }, t('LIVE = το λεωφορείο στέλνει θέση · ΠΡΟΓΡ. = ώρα προγράμματος, χωρίς θέση · ′ = λεπτά, ″ = δευτερόλεπτα')),
+    h('button', { type: 'button', class: 'btn round stopv-legend-x', 'aria-label': t('Κλείσιμο'), onclick: () => { setSetting('legendSeen', true); legend.hidden = true; refreshBtn.focus({ preventScroll: true }); } }, icon('close')));
+  const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
-  root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  root.append(head, banner, chipBar, body, legend, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
   let saidKind = '', sayTimer = 0;
   function say(kind, text) {
     if (kind === saidKind) return;
@@ -222,7 +229,7 @@ export function mountStop(container, ctx, { code }) {
     if (dead) return;
     const now = Date.now();
     const data = st.data;
-    stale = !!data && now - data.fetchedAt > STALE_MS;
+    stale = !!data && isStale(data.fetchedAt, now);
     const all = data ? data.vehicles.filter((v) => leftSec(v, data.fetchedAt, now) > -GONE_SEC) : [];
 
     // chips (only worth showing when 2+ lines have arrivals)
@@ -270,7 +277,7 @@ export function mountStop(container, ctx, { code }) {
       if (!shown.length) {
         body.replaceChildren(h('div', { class: 'stopv-state' },
           icon('clock'), h('p', { class: 'stopv-state-title' }, t('Καμία άφιξη για τη γραμμή {line}', { line: filter })),
-          h('button', { type: 'button', class: 'stopv-btn stopv-small', onclick: () => { filter = null; render(); pushMap(); } }, t('Εμφάνιση όλων των γραμμών'))));
+          h('button', { type: 'button', class: 'btn ghost sm stopv-small', onclick: () => { filter = null; render(); pushMap(); } }, t('Εμφάνιση όλων των γραμμών'))));
       } else {
         const cut = showAll ? shown : shown.slice(0, MAX_TILES);
         const items = cut.map((v) => {
@@ -280,9 +287,9 @@ export function mountStop(container, ctx, { code }) {
           return h('li', {}, tl);
         });
         // replaceChildren would stringify a null child as "null", so only pass real nodes.
-        body.replaceChildren(h('ul', { class: `stopv-list${stale ? ' is-stale' : ''}` }, items));
+        body.replaceChildren(h('ul', { class: 'stopv-list' }, items));
         if (cut.length < shown.length) {
-          body.append(h('button', { type: 'button', class: 'stopv-btn stopv-more', 'data-key': 'more', onclick: () => {
+          body.append(h('button', { type: 'button', class: 'btn ghost stopv-more', 'data-key': 'more', onclick: () => {
             showAll = true;
             render();
             tiles[MAX_TILES]?.el.focus({ preventScroll: true }); // the first tile that just appeared
@@ -296,6 +303,7 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
+    legend.hidden = !(data && all.length) || getSettings().legendSeen === true;
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });
@@ -303,7 +311,7 @@ export function mountStop(container, ctx, { code }) {
     paintDynamic(now);
   }
 
-  const retryButton = () => h('button', { type: 'button', class: 'stopv-btn stopv-primary stopv-retry', 'data-key': 'retry', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
+  const retryButton = () => h('button', { type: 'button', class: 'btn primary stopv-retry', 'data-key': 'retry', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
 
   // Banner, retry labels and footer: cheap, repainted every second.
   function paintDynamic(now) {
@@ -357,7 +365,7 @@ export function mountStop(container, ctx, { code }) {
     const now = Date.now();
     const data = st.data;
     // Rebuild when the data went stale or a shown vehicle has left; otherwise just move the numbers.
-    if (data && ((now - data.fetchedAt > STALE_MS) !== stale || tiles.some((x) => leftSec(x.v, data.fetchedAt, now) <= -GONE_SEC))) {
+    if (data && (isStale(data.fetchedAt, now) !== stale || tiles.some((x) => leftSec(x.v, data.fetchedAt, now) <= -GONE_SEC))) {
       render();
       pushMap();
       return;

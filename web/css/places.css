@@ -2,36 +2,36 @@
 /* ---- home card: one headline line + one meta line ---- */
 /* surface + blur come from .material (app.css, added in places.js); .card-in's entrance keyframes
    live in css/nearby.css (shared by the three home-screen cards; that file is always loaded too). */
-.plc-card { display: block; padding: 10px 14px; border-radius: var(--radius); color: var(--text); text-decoration: none; }
+.plc-card { display: block; padding: 10px 14px; border-radius: var(--radius); color: var(--foreground); text-decoration: none; }
 .plc-card:hover { filter: brightness(1.04); }
-.plc-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.plc-head { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-size: 1rem; }
+.plc-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.plc-head { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-size: var(--text-base); }
 .plc-to { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.plc-sep { flex: none; color: var(--text-2); }
-.plc-head .badge { flex: none; display: inline-block; min-width: 2.4em; padding: .1em .45em; border-radius: 8px; font-size: .85rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.plc-sep { flex: none; color: var(--muted-foreground); }
+.plc-head .badge { flex: none; display: inline-block; min-width: 2.4em; padding: .1em .45em; border-radius: var(--radius-md); font-size: .85rem; font-weight: var(--weight-bold); text-align: center; font-variant-numeric: tabular-nums; }
 .plc-leave { flex: none; font-variant-numeric: tabular-nums; }
-.plc-flag { flex: none; margin-left: auto; font-size: .7rem; }
+.plc-flag { flex: none; margin-left: auto; font-size: var(--text-sm); }
 .plc-flag .icon { width: 12px; height: 12px; }
-.plc-meta { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-size: .875rem; font-variant-numeric: tabular-nums; }
+.plc-meta { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: .875rem; font-variant-numeric: tabular-nums; }
 
 /* ---- settings: places + routines ---- */
-.plc-set { margin: 0 0 8px; }
-.plc-title { margin-top: 4px; }
-.plc-row .ex-btn { flex: none; }
+.plc-set { margin: 0 0 var(--space-2); }
+.plc-title { margin-top: var(--space-1); }
+.plc-row .btn { flex: none; }
 .plc-slot + .plc-slot { border-top: 1px solid var(--border); }
-.plc-editor { display: grid; gap: 8px; padding: 4px 0 12px; }
-.plc-input { width: 100%; min-height: 44px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; }
-.plc-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.plc-editor { display: grid; gap: var(--space-2); padding: var(--space-1) 0 var(--space-3); }
+.plc-input { width: 100%; min-height: var(--control-h); padding: 0 var(--space-3); box-sizing: border-box; border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); font: inherit; }
+.plc-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .plc-results { display: grid; gap: 2px; }
-.plc-result { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.plc-result:hover { background: var(--surface); }
+.plc-result { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer; }
+.plc-result:hover { background: var(--card); }
 .plc-result-name { font-weight: 600; }
-.plc-form { display: grid; gap: 10px; margin-top: 8px; }
-.plc-field { display: grid; gap: 4px; min-width: 0; }
+.plc-form { display: grid; gap: 10px; margin-top: var(--space-2); }
+.plc-field { display: grid; gap: var(--space-1); min-width: 0; }
 .plc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.plc-days { display: flex; gap: 4px; }
-.plc-day { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; font-size: .8125rem; font-weight: 600; cursor: pointer; }
-.plc-day[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-.plc-day:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
-.plc-error { color: var(--danger); }
-.plc-push { display: grid; gap: 8px; }
+.plc-days { display: flex; gap: var(--space-1); }
+.plc-day { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
+.plc-day[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.plc-day:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.plc-error { color: var(--destructive); }
+.plc-push { display: grid; gap: var(--space-2); }

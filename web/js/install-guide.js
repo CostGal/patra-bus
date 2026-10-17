@@ -73,7 +73,7 @@ const lead = (text) => h('p', { class: 'install-lead' }, text);
 const note = (text) => h('p', { class: 'install-foot' }, text);
 
 // Row with a round badge and a line of text: the installed confirmation and the desktop one-liner.
-const statusRow = (g, text, tone) => h('p', { class: `install-state${tone ? ` is-${tone}` : ''}` },
+const statusRow = (g, text, tone) => h('p', { class: `install-state${tone ?` is-${tone}` : ''}` },
   h('span', { class: 'install-badge', 'aria-hidden': 'true' }, svg(g)), h('span', { class: 'install-state-text' }, text));
 
 async function copyLink(host, btn) {

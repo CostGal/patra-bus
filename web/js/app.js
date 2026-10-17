@@ -62,7 +62,7 @@ const ptStr = (p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
 const planHash = (to, name) => cityHash(`#/plan?to=${ptStr(to)}${name ? `&name=${encodeURIComponent(name)}` : ''}`);
 const msgEl = (text) => h('p', { class: 'state-msg' }, text);
 const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, t('Δοκίμασε ξανά')));
-const backBtn = (to = '#/') => h('a', { class: 'icon-btn', href: cityHash(to), 'aria-label': t('Πίσω') }, icon('back'));
+const backBtn = (to = '#/') => h('a', { class: 'btn round', href: cityHash(to), 'aria-label': t('Πίσω') }, icon('back'));
 
 function lineBadges(stop, max = 6) {
   return stop.lineCodes.slice(0, max).map((c) => lineBadge(data.lineByCode.get(c) || { code: c }));

@@ -268,9 +268,9 @@ export function mountPlacesSettings(container, ctx = {}) {
     return h('div', { class: 'plc-editor' },
       slot.nameEl,
       h('div', { class: 'set-actions' },
-        here ? h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => store(slot, here, t('Η θέση μου')) }, icon('locate'), t('Η τρέχουσα θέση')) : null,
-        center ? h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => store(slot, center, t('Σημείο χάρτη')) }, icon('pin'), t('Το κέντρο του χάρτη')) : null,
-        h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => { editing = null; render(); } }, t('Άκυρο'))),
+        here ? h('button', { type: 'button', class: 'btn rect sm', onclick: () => store(slot, here, t('Η θέση μου')) }, icon('locate'), t('Η τρέχουσα θέση')) : null,
+        center ? h('button', { type: 'button', class: 'btn rect sm', onclick: () => store(slot, center, t('Σημείο χάρτη')) }, icon('pin'), t('Το κέντρο του χάρτη')) : null,
+        h('button', { type: 'button', class: 'btn rect sm', onclick: () => { editing = null; render(); } }, t('Άκυρο'))),
       q, results);
   }
 
@@ -281,8 +281,8 @@ export function mountPlacesSettings(container, ctx = {}) {
         h('div', { class: 'set-item-main' },
           h('div', { class: 'set-label' }, p ? placeLabel(p) : t(DEFAULT_NAMES[slot.id])),
           h('span', { class: 'ex-sub' }, p ? `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}` : t('Δεν έχει οριστεί'))),
-        h('button', { type: 'button', class: 'ex-btn ex-btn-sm', 'aria-expanded': String(open), onclick: () => { editing = open ? null : slot; render(); } }, p ? t('Αλλαγή') : t('Ορισμός')),
-        p ? h('button', { type: 'button', class: 'ex-btn ex-btn-sm ex-btn-danger', 'aria-label': t('Διαγραφή: {name}', { name: placeLabel(p) }), onclick: () => { removePlace(p.id); if (editing?.id === p.id) editing = null; render(); } }, icon('trash')) : null),
+        h('button', { type: 'button', class: 'btn rect sm', 'aria-expanded': String(open), onclick: () => { editing = open ? null : slot; render(); } }, p ? t('Αλλαγή') : t('Ορισμός')),
+        p ? h('button', { type: 'button', class: 'btn rect sm destructive', 'aria-label': t('Διαγραφή: {name}', { name: placeLabel(p) }), onclick: () => { removePlace(p.id); if (editing?.id === p.id) editing = null; render(); } }, icon('trash')) : null),
       open ? editor(slot) : null);
   }
 
@@ -293,7 +293,7 @@ export function mountPlacesSettings(container, ctx = {}) {
     for (const p of places.filter((x) => slotOrder(x) === 2)) rows.push(row({ id: p.id }, p));
     if (editing?.id === 'new') rows.push(h('div', { class: 'plc-slot' }, h('div', { class: 'set-label' }, t('Νέος τόπος')), editor(editing)));
     else if (places.filter((x) => slotOrder(x) === 2).length < MAX_CUSTOM) {
-      rows.push(h('div', { class: 'set-actions' }, h('button', { type: 'button', class: 'ex-btn ex-btn-sm', onclick: () => { editing = { id: 'new' }; render(); } }, '+ ', t('Προσθήκη τόπου'))));
+      rows.push(h('div', { class: 'set-actions' }, h('button', { type: 'button', class: 'btn rect sm', onclick: () => { editing = { id: 'new' }; render(); } }, '+ ', t('Προσθήκη τόπου'))));
     }
     root.replaceChildren(h('h3', { class: 'set-sub plc-title' }, t('Αγαπημένοι τόποι')), h('div', { class: 'set-list' }, ...rows));
   }
