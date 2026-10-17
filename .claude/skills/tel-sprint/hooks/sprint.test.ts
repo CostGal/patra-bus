@@ -32,7 +32,13 @@ test('reads the current sprint and draws the cards grouped by status', async ($,
   })
 
   const ran = await $.command.run(RUN)
-  expect(ran.text).toBe('Sprint: 2 κάρτες')
+  expect(ran.text).toBe([
+    'Sprint: 2 κάρτες',
+    'In progress (1)',
+    '  TEL-90 · Sprint pane',
+    'Not started (1)',
+    '  TEL-62 · Words instead of symbols',
+  ].join('\n'))
   expect(queries).toContainEqual(['%0000000000000000000000000000aaaa%', `%${ME}%`])
 
   for (const surface of ['terminal', 'desktop'] as const) {

@@ -69,6 +69,18 @@ async function refresh($: EngineInterface): Promise<Sprint> {
   return next
 }
 
+/** Η λίστα ως κείμενο, για την απάντηση του /sprint (και όπου δεν φαίνεται το pane). */
+export function listText(cards: Card[]): string {
+  const lines = [`Sprint: ${cards.length} κάρτες`]
+  for (const status of STATUSES) {
+    const group = cards.filter(c => c.status === status)
+    if (group.length === 0) continue
+    lines.push(`${status} (${group.length})`)
+    for (const c of group) lines.push(`  TEL-${c.id} · ${c.title}`)
+  }
+  return lines.join('\n')
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'sprint', description: 'Οι κάρτες TEL του τρέχοντος sprint σου (Notion)' })
@@ -80,10 +92,11 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'sprint' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Sprint' })
+    const { isPlaced } = await $.ui.open({ id: PANE, title: 'Sprint' })
     const s = await refresh($)
     if (s.error) return { text: `Sprint: δεν διαβάστηκε το Notion (${s.error}).` }
-    return { text: `Sprint: ${s.cards.length} κάρτες` }
+    const where = isPlaced ? '' : '\n(Το pane δεν εμφανίζεται σε αυτό το session.)'
+    return { text: listText(s.cards) + where }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
