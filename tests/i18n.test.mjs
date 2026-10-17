@@ -21,8 +21,14 @@ test('auto detection: navigator.language starting with el -> el, anything else -
   assert.equal(resolveLang('en', 'el-GR'), 'en');
 });
 
+test('default language is Greek even on a non-Greek device (TEL-58, temporary until #35)', () => {
+  assert.equal(getSettings().lang, 'el');
+  assert.equal(resolveLang(getSettings().lang, 'en-US'), 'el');
+  assert.equal(resolveLang('auto', 'en-US'), 'en'); // explicit "Automatic" still follows the device
+});
+
 test('starts in Greek for an el browser, <html lang> follows', () => {
-  assert.equal(langPref(), 'auto');
+  assert.equal(langPref(), 'el'); // default is Greek, not auto (TEL-58)
   assert.equal(lang(), 'el');
   assert.equal(html.lang, 'el');
   assert.equal(locale(), 'el-GR');

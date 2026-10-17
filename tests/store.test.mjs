@@ -21,7 +21,7 @@ test('defaults', () => {
   assert.deepEqual(s.getFavorites(), []);
   assert.deepEqual(s.getRecents('stop'), []);
   assert.deepEqual(s.getRecents('place'), []);
-  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'auto' });
+  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el' });
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
   assert.equal(s.isFavorite('1011'), false);
 });
@@ -125,7 +125,7 @@ test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   assert.equal(s.setSetting('walkSpeed', 'fast'), true);
   assert.equal(s.setSetting('bufferMin', '5'), true); // from a <select>
   assert.equal(s.setSetting('reminderMin', 3), true);
-  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3, lang: 'auto' });
+  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3, lang: 'el' });
   assert.equal(s.setSetting('theme', 'blue'), false);
   assert.equal(s.setSetting('bufferMin', -1), false);
   assert.equal(s.setSetting('bufferMin', 2.5), false);
@@ -310,9 +310,9 @@ test('reminders: long horizons are re-checked at least every 30 s; works without
   t += 1000; timers.at(-1).fn(); assert.deepEqual(fired, ['mem']);
 });
 
-test('settings: lang is auto|el|en, defaults to auto, persists, rejects anything else', () => {
+test('settings: lang is auto|el|en, defaults to el, persists, rejects anything else', () => {
   const { s, ls } = make();
-  assert.equal(s.getSettings().lang, 'auto');
+  assert.equal(s.getSettings().lang, 'el');
   for (const v of ['el', 'en', 'auto']) assert.equal(s.setSetting('lang', v), true);
   assert.equal(s.setSetting('lang', 'fr'), false);
   assert.equal(s.setSetting('lang', 'EN'), false);
@@ -321,7 +321,7 @@ test('settings: lang is auto|el|en, defaults to auto, persists, rejects anything
   assert.equal(JSON.parse(ls.getItem(KEY)).settings.lang, 'en');
   assert.equal(make(ls).s.getSettings().lang, 'en'); // survives a reload
   s.resetSettings();
-  assert.equal(s.getSettings().lang, 'auto');
+  assert.equal(s.getSettings().lang, 'el');
 });
 
 test('settings: a corrupt stored lang is dropped to the default', () => {

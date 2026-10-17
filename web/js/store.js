@@ -11,7 +11,9 @@ const SCHEMA = 3;
 const MAX_RECENTS = 10;
 const MAX_FAVS = 100;
 
-export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'auto' });
+// TEMPORARY (TEL-58, #33): lang defaults to 'el' instead of 'auto' so new users always start in Greek.
+// End state is a first-run setup (#35) where the user picks the language, pre-selected from the system language.
+export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el' });
 const intIn = (lo, hi) => (v) => Number.isInteger(v) && v >= lo && v <= hi;
 const VALID = {
   theme: (v) => ['auto', 'light', 'dark'].includes(v),
