@@ -5,3 +5,4 @@ node_modules/
 scripts/.cache/
 test-results/
 playwright-report/
+shots/
