@@ -138,3 +138,5 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
   words what changed, why, and how it could break. Write those 3 lines in the commit/PR.
 - Update docs/ARCHITECTURE.md whenever how the parts connect changes.
 - New technical terms go in docs/GLOSSARY.md.
+- Sessions follow **docs/WORKFLOW.md**: one list (Notion Tasks), `/plan-week` for the weekly planning, `/task TEL-<id>`
+  for one task per session; every step the user does is given one at a time and Claude waits for confirmation.

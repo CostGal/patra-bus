@@ -135,6 +135,10 @@ My words:
 Where it shows up in Telematica: `web/sw.js` keeps the app working offline; `web/sw-push.js` shows notifications.
 My words:
 
+**Skill** (slash command): a saved set of instructions Claude Code loads when you type its name, like a recipe card you hand the cook.
+Where it shows up in Telematica: `/plan-week` and `/task TEL-<id>` in `.claude/skills/`, both following `docs/WORKFLOW.md`.
+My words:
+
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
 My words:
