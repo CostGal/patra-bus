@@ -91,7 +91,8 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
   retries included. `api.js` enforces this globally (per-code memo + in-flight dedupe). Pollers run every 20 s,
   only while `document.visibilityState === 'visible'`.
 - No calls to citybus endpoints other than the ones in CLAUDE.md. No probing / guessing upstream URLs.
-- Coordinates `0/0` never shown or used. Only live vehicles carry `lat/lng`.
+- Coordinates `0/0` never shown or used. Only live vehicles carry `lat/lng`, and only inside the active city's
+  `bbox` (`api.js` `cleanVehicle`: an outside position is dropped, the vehicle stays live).
 - Names: `titleCase()` for display only, final ς, accents never guessed.
 - Service worker never caches `/api/` or any other origin (map tiles, routing, geocoding included).
   Bump `CACHE` in `web/sw.js` when shell files change.
