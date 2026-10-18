@@ -241,6 +241,19 @@ test('client-side sanitising: 0/0 never live, scheduled lose coordinates, vehicl
   assert.deepEqual([vehicles[0].lat, vehicles[0].lng], [38.26, 21.75]);
 });
 
+test('a live position outside the active city is dropped, the vehicle stays live', async () => {
+  const w = rig();
+  w.handler = () => w.ok(w.body([
+    w.vehicle({ vehicleCode: 'IN', etaSec: 10 }), // Patras, unchanged
+    w.vehicle({ vehicleCode: 'SWAP', etaSec: 20, lat: 21.75, lng: 38.26 }), // lat/lng swapped: valid on Earth, not here
+    w.vehicle({ vehicleCode: 'CORFU', etaSec: 30, lat: 39.62, lng: 19.92 }), // another city's position
+  ]));
+  const { vehicles } = await fetchLive('1011');
+  assert.deepEqual(vehicles.map((v) => v.live), [true, true, true]);
+  assert.deepEqual([vehicles[0].lat, vehicles[0].lng], [38.26, 21.75]);
+  for (const v of vehicles.slice(1)) assert.ok(!('lat' in v) && !('lng' in v), v.vehicleCode);
+});
+
 test('clock skew: a fetchedAt far from the device clock is replaced by "now"; a normal cache age is kept', async () => {
   const w = rig();
   w.handler = () => w.ok(w.body([w.vehicle()], { fetchedAt: w.now - 12000 })); // worker cache hit

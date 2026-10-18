@@ -15,6 +15,10 @@ My words:
 Where it shows up in Telematica: the Worker gets the citybus token from their web page and keeps it in KV (`getToken` in `worker/src/index.js`). It must never be in the browser or in git.
 My words:
 
+**Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
+Where it shows up in Telematica: each city's area in `web/js/cities.js`; `inArea()` in `geo.js` checks a point against it, e.g. to drop a live bus position that lands outside the city (`api.js`).
+My words:
+
 **Branch**: your own copy-line of the project where you try changes without disturbing the main version, like a draft next to the final document.
 Where it shows up in Telematica: every task gets `<name>/TEL-<id>-<slug>`; `main` is protected (see `CLAUDE.md`).
 My words:
