@@ -7,6 +7,7 @@ import { demoLive, demoReady } from './demo.js';
 import { t } from './i18n.js';
 import { cityId } from './cities.js';
 import { readableLine } from './color.js';
+import { inArea } from './geo.js';
 
 export const MIN_GAP_MS = 15000; // floor between upstream attempts for one stop
 export const POLL_MS = 20000; // poller period
@@ -79,10 +80,11 @@ function cleanVehicle(v) {
     vehicleCode: v.vehicleCode ? String(v.vehicleCode) : null, // older workers don't send it
   };
   // Re-check on the client: coordinates survive only for a live vehicle with real (non-0/0) ones.
+  // A position outside the active city (GPS glitch, swapped lat/lng) is dropped; the vehicle stays live.
   if (v.live && isLive({ latitude: v.lat, longitude: v.lng })) {
     out.live = true;
-    out.lat = Number(v.lat);
-    out.lng = Number(v.lng);
+    const p = { lat: Number(v.lat), lng: Number(v.lng) };
+    if (inArea(p)) Object.assign(out, p);
   }
   return out;
 }
