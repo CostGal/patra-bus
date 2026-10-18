@@ -39,6 +39,10 @@ My words:
 Where it shows up in Telematica: `ALLOWED_ORIGIN` in `worker/wrangler.toml` and `worker/src/origin.js` list the sites allowed to call our Worker.
 My words:
 
+**Deduplication**: finding two entries that are really the same thing and keeping only one, like crossing out a name written twice on a guest list.
+Where it shows up in Telematica: a scheduled row that is the same bus as a live row is dropped, so only the live one shows (`dropScheduledDuplicates` in `web/js/arrivals.js`).
+My words:
+
 **Device emulation**: a desktop browser pretending to be a phone by copying its screen size, pixel density and touch behaviour, like trying on a costume. It matches the layout, not the real hardware.
 Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device list (iPhone SE, iPhone 15, Pixel 7, iPad Mini); touch feel, push, GPS and speed still need a real phone.
 My words:
@@ -49,6 +53,10 @@ My words:
 
 **ES module**: a JavaScript file that declares what it shares (`export`) and what it borrows (`import`), like a kitchen drawer with a label.
 Where it shows up in Telematica: all of `web/js/` loads as modules directly in the browser, with no build step.
+My words:
+
+**Fallback**: a second way to do something when the first way doesn't work, like taking the stairs when the lift is broken.
+Where it shows up in Telematica: the same-bus check tries `vehicleCode` first, then same line + arrival within 60 s (`web/js/arrivals.js`).
 My words:
 
 **Fixture**: saved sample data used in tests, like a photo of a situation you can replay anytime.
@@ -169,6 +177,10 @@ My words:
 
 **VAPID**: a pair of keys that proves to push services that our server is the one sending a notification, like a signed delivery slip.
 Where it shows up in Telematica: `VAPID_PUBLIC_KEY` in `worker/wrangler.toml`, private key as a secret (`worker/src/push.js`).
+My words:
+
+**vehicleCode**: the ID of one bus trip that citybus.gr sends with each arrival, like a booking number.
+Where it shows up in Telematica: it links a bus across stops and views (`#/bus/…`, onboard alerts) and decides whether a live and a scheduled row are the same bus (`web/js/arrivals.js`).
 My words:
 
 **Web Push**: the standard way a server sends a notification to a phone even when the app is closed, like a postal delivery to your door.

@@ -11,9 +11,31 @@ export function isLive(v) {
   return !(lat === 0 && lng === 0);
 }
 
+// A scheduled row that is the same bus as a live row would show twice. Keep the live one.
+// Same bus = same vehicleCode (rule A). Only if that does not match: same line and ETA within 60 s (rule B).
+// Each live row can absorb at most one scheduled row.
+export const SAME_BUS_WINDOW_SEC = 60;
+export function dropScheduledDuplicates(vehicles) {
+  const live = vehicles.filter((v) => v.live);
+  const scheduled = vehicles.filter((v) => !v.live);
+  const taken = new Set();
+  const dupes = new Set();
+  for (const s of scheduled) {
+    if (!s.vehicleCode) continue;
+    const l = live.find((x) => !taken.has(x) && x.vehicleCode === s.vehicleCode);
+    if (l) { taken.add(l); dupes.add(s); }
+  }
+  for (const s of scheduled) {
+    if (dupes.has(s)) continue;
+    const l = live.find((x) => !taken.has(x) && x.lineCode === s.lineCode && Math.abs(x.etaSec - s.etaSec) <= SAME_BUS_WINDOW_SEC);
+    if (l) { taken.add(l); dupes.add(s); }
+  }
+  return vehicles.filter((v) => !dupes.has(v));
+}
+
 // raw: upstream /stops/live/{code} body. fetchedAt: epoch ms of the upstream fetch.
 export function normalizeLive(raw, fetchedAt) {
-  const vehicles = (raw && Array.isArray(raw.vehicles) ? raw.vehicles : []).map((v) => {
+  const mapped = (raw && Array.isArray(raw.vehicles) ? raw.vehicles : []).map((v) => {
     const live = isLive(v);
     const mins = Number(v.departureMins) || 0;
     const secs = Number(v.departureSeconds) || 0; // remainder 0–59, not a total
@@ -37,6 +59,7 @@ export function normalizeLive(raw, fetchedAt) {
     }
     return out;
   });
+  const vehicles = dropScheduledDuplicates(mapped);
   vehicles.sort((a, b) => a.etaSec - b.etaSec);
   return { fetchedAt, vehicles };
 }
