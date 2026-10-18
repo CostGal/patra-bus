@@ -227,6 +227,8 @@ const PAIRS = [
   ['Ξανά', 'Retry'],
   ['Η πυξίδα δεν είναι διαθέσιμη σε αυτή τη συσκευή.', 'The compass is not available on this device.'],
   ['Ξανά σε σύνδεση', 'Back online'],
+  ['Βρίσκεσαι στην {city}. Να αλλάξω πόλη;', 'You are in {city}. Switch city?'],
+  ['Μπορείς να αλλάξεις πόλη και από τις Ρυθμίσεις.', 'You can also change the city in Settings.'],
   ['Κλείσιμο αναζήτησης', 'Close search'],
   ['Πρόσφατα', 'Recent'],
   ['Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.', 'Type a stop name, a stop code or a place.'],

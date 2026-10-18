@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CITIES } from '../web/js/cities.js';
-import { cityAt } from '../web/js/city-detect.js';
+import { cityAt, cityToOffer } from '../web/js/city-detect.js';
 
 test('a point in Patras is Patras, a point in Corfu is Corfu', () => {
   assert.equal(cityAt({ lat: CITIES.patra.center.lat, lng: CITIES.patra.center.lng }), 'patra');
@@ -47,4 +47,33 @@ test('a custom table of cities can be passed in', () => {
   const fake = { x: { id: 'x', bbox: { west: 0, south: 0, east: 1, north: 1 } } };
   assert.equal(cityAt({ lat: 0.5, lng: 0.5 }, fake), 'x');
   assert.equal(cityAt({ lat: 0.5, lng: 0.5 }), null);
+});
+
+// ---- cityToOffer ----
+const gps = (pt, over = {}) => ({ ...pt, accuracy: 20, source: 'gps', ...over });
+const CORFU = { lat: CITIES.corfu.center.lat, lng: CITIES.corfu.center.lng };
+const PATRA = { lat: CITIES.patra.center.lat, lng: CITIES.patra.center.lng };
+
+test('offers Corfu to someone in Corfu who is looking at Patras, and the other way round', () => {
+  assert.equal(cityToOffer(gps(CORFU), 'patra'), 'corfu');
+  assert.equal(cityToOffer(gps(PATRA), 'corfu'), 'patra');
+});
+
+test('offers nothing when the user is already on the city they are in', () => {
+  assert.equal(cityToOffer(gps(CORFU), 'corfu'), null);
+});
+
+test('offers nothing outside both cities or without a fix', () => {
+  assert.equal(cityToOffer(gps({ lat: 37.98, lng: 23.73 }), 'patra'), null);
+  assert.equal(cityToOffer(null, 'patra'), null);
+});
+
+test('a pin dropped by hand never triggers an offer', () => {
+  assert.equal(cityToOffer(gps(CORFU, { source: 'manual', accuracy: 0 }), 'patra'), null);
+});
+
+test('a coarse or unknown accuracy never triggers an offer', () => {
+  assert.equal(cityToOffer(gps(CORFU, { accuracy: 2000 }), 'patra'), 'corfu');
+  assert.equal(cityToOffer(gps(CORFU, { accuracy: 2001 }), 'patra'), null);
+  assert.equal(cityToOffer(gps(CORFU, { accuracy: undefined }), 'patra'), null);
 });

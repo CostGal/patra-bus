@@ -155,6 +155,10 @@ My words:
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
 My words:
 
+**Toast**: a small message that slides in at the bottom of the screen for a few seconds and then disappears by itself, like a sticky note that falls off on its own.
+Where it shows up in Telematica: `toast()` in `web/js/ui.js`, e.g. "Back online" or the "Switch city?" offer (TEL-142).
+My words:
+
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
 My words:

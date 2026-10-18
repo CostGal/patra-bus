@@ -11,3 +11,13 @@ export function cityAt(point, cities = CITIES) {
   }
   return null;
 }
+
+const MAX_ACCURACY_M = 2000; // a coarser fix could be on the wrong side of the city edge
+
+// The city to offer the user, or null. Only a real GPS fix counts (not a pin dropped by hand), it must be accurate
+// enough, inside a known city, and that city must differ from the one on screen.
+export function cityToOffer(fix, activeId, cities = CITIES) {
+  if (!fix || fix.source !== 'gps' || !(fix.accuracy <= MAX_ACCURACY_M)) return null;
+  const there = cityAt(fix, cities);
+  return there && there !== activeId ? there : null;
+}
