@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { isLive, normalizeLive, noServiceResult, etaText, etaSpoken, ageText } from '../web/js/arrivals.js';
+import { isLive, normalizeLive, noServiceResult, etaText, etaSpoken, ageText, dropScheduledDuplicates } from '../web/js/arrivals.js';
 import { demoLive, demoRoutes, _setDemoData } from '../web/js/demo.js';
 
 const readJSON = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
@@ -55,7 +55,7 @@ test('string coordinates become numbers; a single zero axis is still live', () =
 });
 
 test('departureSeconds is a 0-59 remainder, also on scheduled departures', () => {
-  const [b, a] = normalizeLive({ vehicles: [raw({ departureMins: 21, departureSeconds: 33 }), raw({ latitude: '38.2', longitude: '21.7', departureMins: 0, departureSeconds: 40 })] }, T).vehicles;
+  const [b, a] = normalizeLive({ vehicles: [raw({ departureMins: 21, departureSeconds: 33, vehicleCode: 'S' }), raw({ latitude: '38.2', longitude: '21.7', departureMins: 0, departureSeconds: 40, vehicleCode: 'L' })] }, T).vehicles;
   assert.equal(b.etaSec, 40);
   assert.equal(b.live, true);
   assert.equal(a.etaSec, 21 * 60 + 33);
@@ -91,6 +91,58 @@ test('sorted by ETA; garbage input yields an empty list', () => {
   const r = normalizeLive({ vehicles: [raw({ departureMins: 9 }), raw({ departureMins: 2 }), raw({ departureMins: 5 })] }, T);
   assert.deepEqual(r.vehicles.map((v) => v.departureMins), [2, 5, 9]);
   for (const bad of [null, undefined, {}, { vehicles: 'x' }, []]) assert.deepEqual(normalizeLive(bad, T), { fetchedAt: T, vehicles: [] });
+});
+
+// Same bus, live and scheduled: only the live row stays (TEL-81, issue #55).
+test('same vehicleCode: the scheduled row goes, the live one stays', () => {
+  const r = normalizeLive({ vehicles: [
+    raw({ vehicleCode: 'B1', departureMins: 9 }),
+    raw({ vehicleCode: 'B1', latitude: '38.2', longitude: '21.7', departureMins: 9, lineCode: '606' }),
+  ] }, T).vehicles;
+  assert.equal(r.length, 1);
+  assert.equal(r[0].live, true);
+});
+
+test('different vehicleCode and different line: both stay', () => {
+  const r = normalizeLive({ vehicles: [
+    raw({ vehicleCode: 'B1', latitude: '38.2', longitude: '21.7', departureMins: 9, lineCode: '201' }),
+    raw({ vehicleCode: 'B2', departureMins: 9, lineCode: '606' }),
+  ] }, T).vehicles;
+  assert.equal(r.length, 2);
+});
+
+// Known trade-off of rule B: two different buses of one line at the same minute look like one bus.
+test('different vehicleCode, same line, same ETA: rule B merges them (known trade-off)', () => {
+  const r = normalizeLive({ vehicles: [
+    raw({ vehicleCode: 'B1', latitude: '38.2', longitude: '21.7', departureMins: 9, lineCode: '201' }),
+    raw({ vehicleCode: 'B2', departureMins: 9, lineCode: '201' }),
+  ] }, T).vehicles;
+  assert.equal(r.length, 1);
+});
+
+test('no vehicleCode match: same line and ETA within 60 s is the same bus (fallback)', () => {
+  const live = raw({ vehicleCode: 'L1', latitude: '38.2', longitude: '21.7', departureMins: 9, departureSeconds: 0 }); // 540 s
+  const at40 = raw({ vehicleCode: 'S1', departureMins: 9, departureSeconds: 40 }); // 580 s: 40 s apart
+  const at60 = raw({ vehicleCode: 'S2', departureMins: 10, departureSeconds: 0 }); // 600 s: exactly 60 s apart
+  const at65 = raw({ vehicleCode: 'S3', departureMins: 10, departureSeconds: 5 }); // 605 s: 65 s apart
+  assert.equal(normalizeLive({ vehicles: [live, at40] }, T).vehicles.length, 1);
+  assert.equal(normalizeLive({ vehicles: [live, at60] }, T).vehicles.length, 1);
+  assert.equal(normalizeLive({ vehicles: [live, at65] }, T).vehicles.length, 2);
+});
+
+test('same line but different time: scheduled rows stay; one live row absorbs only one scheduled row', () => {
+  const r = normalizeLive({ vehicles: [
+    raw({ vehicleCode: 'L1', latitude: '38.2', longitude: '21.7', departureMins: 9, lineCode: '201' }), // 540 s, live
+    raw({ vehicleCode: 'S1', departureMins: 20, lineCode: '201' }), // 1200 s: far away, stays
+    raw({ vehicleCode: 'S2', departureMins: 9, departureSeconds: 10, lineCode: '201' }), // 550 s: matches L1, absorbed
+    raw({ vehicleCode: 'S3', departureMins: 9, departureSeconds: 5, lineCode: '201' }), // 545 s: L1 already taken, stays
+  ] }, T).vehicles;
+  assert.deepEqual(r.map((v) => v.vehicleCode).sort(), ['L1', 'S1', 'S3']);
+});
+
+test('dropScheduledDuplicates: a scheduled row with no live partner is kept', () => {
+  const sched = normalizeLive({ vehicles: [raw({ departureMins: 4 })] }, T).vehicles;
+  assert.deepEqual(dropScheduledDuplicates(sched), sched);
 });
 
 test('noServiceResult shape', () => {
