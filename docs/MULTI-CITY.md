@@ -92,7 +92,10 @@ touches the SW `SHELL` list, `data.js` and the tests. It happens in the same cha
 - `GET /api/{city}/live/:code`, `/api/{city}/stops`, `/api/{city}/lines`, `/api/{city}/stats/:route/:stop`.
   `{city}` must be a key of `CITIES` in `web/js/cities.js`, else 404 `{error:'not_found'}`.
 - Aliases for Patras, kept indefinitely: `/api/live/:code`, `/api/stops`, `/api/lines`, `/api/stats/:route/:stop`.
-- `/health` → `{ ok, now, tokenExp /* patra, back-compat */, cities: { [id]: { tokenExp } } }`.
+- `/health` → `{ ok, now, tokenExp /* patra, back-compat */, cities: { [id]: { tokenExp } } }`. `tokenExp` is read
+  from KV only (`/health` never fetches a token). `null` means no token is stored for that city right now: no request
+  for it yet, or its token expired and no request came after. It is not an error; the next live request for that city
+  fetches a new token (checked 2026-10-19, TEL-95).
 - Keys: edge cache `live/{city}/{code}`, `stats/{city}/{route}/{stop}`, `{city}/stops|lines`; KV token `token/{city}`;
   Stats DO name: **Patras keeps `{route}/{stop}`** (keeps its history), other cities `{city}/{route}/{stop}`.
 - Push routes stay un-prefixed (`/api/push/…`). `POST /api/push/reminders` and `/api/push/routines` take an optional

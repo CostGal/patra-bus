@@ -32,7 +32,7 @@ for features that must work when the app is closed (push reminders, routines, de
 |---|---|---|
 | **On the phone only** | Favourites, recents, settings, saved places (home/work), routines, language, one big blob in `localStorage` ⓖ (`patra-bus:v2`, places in `patra-bus:places`) | Cleared by "Delete all" in Settings. |
 | **On the phone, never stored** | Your live GPS location | Only a flag "permission granted" is saved. Never sent to our Worker, never put in a link. |
-| **Cloudflare KV** ⓖ | Citybus token per city (`token/{city}`), daily report counter (`report-day/{date}`), short fallback cache (`memo/…`, 60 s) | Token expires every 48 h and is re-fetched. |
+| **Cloudflare KV** ⓖ | Citybus token per city (`token/{city}`), daily report counter (`report-day/{date}`), short fallback cache (`memo/…`, 60 s) | Token expires every 48 h. It is fetched only when a request needs it: the first request for that city, any request in the last 5 min before expiry, or a retry after a 401/403. No timer refreshes it. The KV entry expires with the token, so a city with no requests since then has no token (`/health` shows `null`). |
 | **Cloudflare Durable Objects** ⓖ | **Push reminders** (one-off: push subscription ⓖ, time, bus line/stop codes), **routines** (weekly: same, kept up to 120 days), **delay statistics** (last 200 samples per route + stop) | A reminder is deleted after it is sent. No place names or coordinates are stored. |
 | **GitHub repo** | Stops, lines, routes (`web/data/`), all code | Public. Secrets are never committed. |
 | **Notion** | Problem reports a user chose to send | Via the Worker. |
