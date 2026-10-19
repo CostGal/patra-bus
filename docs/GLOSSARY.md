@@ -31,6 +31,10 @@ My words:
 Where it shows up in Telematica: the Worker keeps each stop's live answer for 15 s; the phone keeps app files offline (`worker/src/index.js`, `web/sw.js`).
 My words:
 
+**Checkout**: a folder on your computer holding a working copy of the project files at one branch, like a photocopy of a book you can scribble on without touching the original. The command `git checkout` is the other meaning: it switches which branch that folder shows.
+Where it shows up in Telematica: `C:\dev\patra-bus` is the main checkout; each Claude task works in its own extra one (see Worktree).
+My words:
+
 **CI** (continuous integration): a robot that runs the tests automatically on every proposed change, like a spell-checker that runs before anything is published.
 Where it shows up in Telematica: GitHub Actions in `.github/workflows/` (tests, Lighthouse, Pages).
 My words:
@@ -93,6 +97,10 @@ My words:
 
 **Headless browser**: a real browser that runs without a visible window, so a script can open pages and take screenshots, like a robot using the browser for you.
 Where it shows up in Telematica: Playwright runs Chromium this way for the smoke tests and for `npm run shots`.
+My words:
+
+**Health check**: a small address a service answers with "I'm alive, and this is my state", like a nurse who takes your pulse before the doctor comes in.
+Where it shows up in Telematica: `GET /health` of the Worker (`worker/src/index.js`) returns `ok`, the time and `tokenExp` per city.
 My words:
 
 **Honeypot**: a hidden form field that humans never fill but spam robots do, like a bowl of candy that only thieves reach for.
@@ -195,6 +203,10 @@ My words:
 Where it shows up in Telematica: `toast()` in `web/js/ui.js`, e.g. "Back online" or the "Switch city?" offer (TEL-142).
 My words:
 
+**tokenExp**: the moment the saved citybus token stops working, like the expiry date printed on a visitor badge.
+Where it shows up in Telematica: `/health` returns it per city, read from the KV key `token/{city}`; it is `null` when no token is saved (`worker/src/index.js`).
+My words:
+
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
 My words:
@@ -221,6 +233,10 @@ My words:
 
 **WebKit**: the browser engine inside Safari and every iPhone browser, like the engine block that all iPhone browsers share.
 Where it shows up in Telematica: `npm run shots` can render the app with WebKit to get closer to how it looks on an iPhone.
+My words:
+
+**Worktree**: a second checkout of the same repo in another folder, on its own branch, like a second desk with its own copy of the file while both desks share one archive.
+Where it shows up in Telematica: each Claude session works in its own worktree under `.claude/worktrees/`, so tasks never mix.
 My words:
 
 **Wrangler**: Cloudflare's command-line tool for running and deploying Workers, like the remote control for our Worker.
