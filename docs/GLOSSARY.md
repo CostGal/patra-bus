@@ -3,6 +3,10 @@
 Technical words used in this project, in plain language. Add new terms in alphabetical order.
 "My words:" is for you: rewrite the entry in your own words. If you can't, that term goes to [LEARNING.md](LEARNING.md).
 
+**ADR** (architecture decision record): a one-page note of one decision: what we chose, why, and what it changes, like the minutes of a meeting about a single question.
+Where it shows up in Telematica: proposed in Amarildo's Moovit handoff (`/docs/decisions/`); not adopted yet, a finding of TEL-135.
+My words:
+
 **Alarm** (Durable Object alarm): a wake-up call a program sets for itself, like an alarm clock that starts the code at an exact time.
 Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
 My words:
@@ -17,6 +21,10 @@ My words:
 
 **API token**: a secret pass that proves "I'm allowed to ask", like a visitor badge that expires.
 Where it shows up in Telematica: the Worker gets the citybus token from their web page and keeps it in KV (`getToken` in `worker/src/index.js`). It must never be in the browser or in git.
+My words:
+
+**Benchmark**: the same small task, timed and counted on every app, like timing two runners on the same track.
+Where it shows up in Telematica: TEL-135 runs 12 tasks (e.g. "next bus at stop 1011") on Moovit, Google Maps and our app; results in Notion.
 My words:
 
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
@@ -37,6 +45,10 @@ My words:
 
 **CI** (continuous integration): a robot that runs the tests automatically on every proposed change, like a spell-checker that runs before anything is published.
 Where it shows up in Telematica: GitHub Actions in `.github/workflows/` (tests, Lighthouse, Pages).
+My words:
+
+**Clean-room**: learning how a rival product works only by using it and reading public sources, never from its code or private data, like working out a recipe by tasting the dish instead of stealing the chef's notebook.
+Where it shows up in Telematica: the rule for all competitor research (TEL-135): no Moovit code, images, keys, endpoints or data in our app or repo.
 My words:
 
 **Cliff** (in vesting): a starting hurdle: if you leave before it, you keep nothing; after it, a first chunk unlocks at once, like a gym deal that only starts counting after the first full year.
@@ -159,6 +171,10 @@ My words:
 Where it shows up in Telematica: walking time to a stop (`web/js/walk.js`), via the FOSSGIS server.
 My words:
 
+**Parity matrix** (feature matrix): a table with features down the side and "them vs us" across, like the spec sheets of two phones side by side.
+Where it shows up in Telematica: TEL-135 compares 40+ Moovit features with ours and marks each one Learn, Beat or Skip (in Notion).
+My words:
+
 **Playwright**: a tool that opens a real browser by itself and clicks through the app, like a robot tester.
 Where it shows up in Telematica: smoke tests in `tests/e2e/` (`npm run test:e2e`).
 My words:
@@ -205,6 +221,10 @@ My words:
 
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
+My words:
+
+**Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.
+Where it shows up in Telematica: Amarildo's Moovit teardown and the TEL-135 study (notes in Notion, never in the public repo).
 My words:
 
 **Toast**: a small message that slides in at the bottom of the screen for a few seconds and then disappears by itself, like a sticky note that falls off on its own.
