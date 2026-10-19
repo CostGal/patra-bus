@@ -60,7 +60,23 @@ Third-party services (free, no key, credit shown in Settings and on the map):
 | Storage on the phone, settings | `web/js/store.js`, `settings-view.js` |
 | Cities (Patras, Corfu) | `web/js/cities.js`, `docs/MULTI-CITY.md` |
 | Greek / English text | `web/js/i18n.js`, `i18n-en*.js` |
-| Deploys and checks | `.github/workflows/` (Pages, tests, Lighthouse), `worker/wrangler.toml` (Worker settings) |
+| Deploys and checks | `.github/workflows/` (Pages, tests, Lighthouse, same-bus watch), `worker/wrangler.toml` (Worker settings) |
+| Same-bus watcher (is rule B needed?) | `scripts/watch-same-bus.mjs`, `.github/workflows/watch-same-bus.yml`, `tests/watch-same-bus.test.mjs` |
+
+## Same-bus watcher (TEL-145)
+When the same bus shows up twice for a stop (once live, once scheduled), `dropScheduledDuplicates` in `web/js/arrivals.js` hides the scheduled one with two rules: **A** = same `vehicleCode`, **B** = same line and arrival time within 60 s. Rule B can hide a second real bus of the same line, so we want to know if rule A is enough on its own. We had never seen a real pair, so a **scheduled workflow** ⓖ now looks for us.
+
+- **What runs:** `.github/workflows/watch-same-bus.yml`, every 30 min in daytime (cron `7,37 5-17 * * *`, UTC), only from `main`. It scrapes the token like `npm run record-fixtures` (never written down), then makes **one** `/stops/live/{code}` request each for Patras 280 and 1011 and Corfu 801, nothing else. No rider data is involved. Pause it from the Actions tab ("Disable workflow") or by deleting the workflow file.
+- **Where it reports:** one standing issue, **"Same-bus watch (TEL-145)"** (created by the first finding, assigned to the repo owner so a comment sends an email). Each run also writes a short summary in the Actions tab. If the run itself fails (token not found, upstream error) the job turns red and GitHub emails a failure notice; empty answers and the nightly 404 are not failures.
+- **The two comment kinds:**
+  - **"Rule A confirmed"**: a live and a scheduled row share one `vehicleCode`. Evidence that A works; posted for the first 5 only.
+  - **"Rule B fired without rule A"**: same line, ETA within 60 s, **different** codes. Always posted (once per pair).
+- **What to do when it fires** (codes look like `20261009_6091_0000100_22_10` = date, route, …, departure time; this format is an unconfirmed observation):
+  1. *Mismatch with a different route or time part in the codes*: two real buses, and rule B is hiding one. Open a card to remove rule B from `arrivals.js` (shared with the Worker, so only Kostas can deploy it).
+  2. *Mismatch where the codes are the same trip written differently*: rule A is not enough. Keep rule B and note it on the card.
+  3. *About 5 "Rule A confirmed" comments and no mismatch for roughly two weeks*: open a card to remove rule B, with the comments as the evidence.
+  When the question is settled, disable the workflow and close the issue.
+- **Limits:** a pair only shows if one of the three stops has one at the moment of the request, so it may take days. The watcher repeats the pairing rules of `arrivals.js` instead of importing them (the Worker must stay untouched); a unit test checks that both agree.
 
 ## Fragile points
 - **Token scraping.** The Worker finds the token by looking for the text `const token = '…'` in the citybus.gr web page. If they change that page, every live request fails ("token not found") until we fix the code.

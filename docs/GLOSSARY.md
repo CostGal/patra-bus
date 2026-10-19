@@ -87,6 +87,10 @@ My words:
 Where it shows up in Telematica: it serves the `web/` folder at costgal.github.io/patra-bus (`.github/workflows/pages.yml`).
 My words:
 
+**GITHUB_TOKEN**: a temporary key GitHub hands to each Action run, which opens only what the workflow's `permissions:` list allows, like a one-day visitor pass limited to certain rooms.
+Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` uses it (permission `issues: write`) to comment on the watch issue; nothing is stored.
+My words:
+
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
 Where it shows up in Telematica: `#/stop/1011`, `#/plan`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
@@ -173,6 +177,10 @@ My words:
 
 **Rate limit**: a cap on how many requests are allowed in a time window, like "one coffee per person per minute".
 Where it shows up in Telematica: 15 s minimum between live requests per stop; per-IP limits on reminders and reports (`worker/src/index.js`).
+My words:
+
+**Scheduled workflow** (cron): a GitHub Action that starts by itself on a timetable, like an alarm clock that rings every 30 minutes. It only runs from the `main` branch.
+Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` (`schedule:` with `cron: '7,37 5-17 * * *'`).
 My words:
 
 **Secret** (Cloudflare secret): a private value stored on the server and hidden from the code in git, like a safe's combination.

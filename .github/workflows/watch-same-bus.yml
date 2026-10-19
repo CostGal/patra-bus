@@ -1,0 +1,38 @@
+name: Same-bus watch
+
+# TEL-145: looks for live + scheduled rows of the same line that could be the same bus and reports on the issue
+# "Same-bus watch (TEL-145)" when rule B (arrivals.js) fires without rule A. Details: docs/ARCHITECTURE.md.
+# Scheduled runs only ever start from the default branch (main).
+on:
+  schedule:
+    # Every 30 min, 05:00-17:37 UTC (about 08:00-20:37 in Greece in summer time, 07:00-19:37 in winter).
+    # Odd minutes on purpose: the top of the hour is when GitHub's scheduler is busiest.
+    - cron: '7,37 5-17 * * *'
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: 'Dry run: print findings, do not touch the issue'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write # the built-in GITHUB_TOKEN may comment on the watch issue; no other secret is used
+
+concurrency:
+  group: watch-same-bus
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # No npm install: the script only uses Node and the shared modules in web/js/.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/watch-same-bus.mjs ${{ inputs.dry && '--dry' || '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
