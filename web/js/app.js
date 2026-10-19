@@ -10,7 +10,8 @@ import locationService from './location.js';
 import { DEMO } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
 import { t, tn, N_, onLangChange, lang, APP_NAME } from './i18n.js';
-import { city, cityId, cityName, isCity } from './cities.js';
+import { CITIES, city, cityId, cityName, isCity } from './cities.js';
+import { cityToOffer } from './city-detect.js';
 import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
@@ -229,6 +230,8 @@ const locLabel = (m) => t(LOC_LABEL[m]);
 let locMode = 'idle';
 let wantFix = false; // the user asked for a location and we are waiting for the first fix
 let firstFixHandled = false;
+let cityOffered = false; // the "switch city?" offer is shown at most once per launch
+const CITY_OFFER_MS = 15000, CITY_HINT_MS = 5000;
 
 function paintLocLabel() {
   locateBtn.setAttribute('aria-label', locLabel(locMode));
@@ -261,6 +264,14 @@ function onLocation(fix, status) {
   if (fix && !firstFixHandled && inArea(fix)) {
     firstFixHandled = true;
     if (currentHead === '' && locMode === 'idle') map?.flyTo(fix, 15.5);
+  }
+  // A real GPS fix inside the other city: offer to switch (TEL-142). The check runs on the device; no reload unless the user taps.
+  const offer = !cityOffered && cityToOffer(fix, cityId());
+  if (offer) {
+    cityOffered = true;
+    toast(t('Βρίσκεσαι στην {city}. Να αλλάξω πόλη;', { city: cityName(CITIES[offer], lang()) }), { action: { label: t('Αλλαγή πόλης'), onClick: () => switchCity(offer) }, ms: CITY_OFFER_MS });
+    // Not tapped (a tap reloads the page, so this never runs then): a short hint that Settings can do it later.
+    setTimeout(() => toast(t('Μπορείς να αλλάξεις πόλη και από τις Ρυθμίσεις.'), { action: { label: t('Ρυθμίσεις'), onClick: () => navigate('#/settings') }, ms: CITY_HINT_MS }), CITY_OFFER_MS);
   }
   paintLocating();
 }

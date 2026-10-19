@@ -16,7 +16,7 @@ Where it shows up in Telematica: the Worker gets the citybus token from their we
 My words:
 
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
-Where it shows up in Telematica: each city's area in `web/js/cities.js`; `inArea()` in `geo.js` checks a point against it, e.g. to drop a live bus position that lands outside the city (`api.js`).
+Where it shows up in Telematica: each city's area in `web/js/cities.js`; `inArea()` in `geo.js` checks a point against it, e.g. to drop a live bus position that lands outside the city (`api.js`); `cityAt()` in `web/js/city-detect.js` uses the boxes to tell which city the user is in (TEL-142).
 My words:
 
 **Branch**: your own copy-line of the project where you try changes without disturbing the main version, like a draft next to the final document.
@@ -161,6 +161,10 @@ My words:
 
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
+My words:
+
+**Toast**: a small message that slides in at the bottom of the screen for a few seconds and then disappears by itself, like a sticky note that falls off on its own.
+Where it shows up in Telematica: `toast()` in `web/js/ui.js`, e.g. "Back online" or the "Switch city?" offer (TEL-142).
 My words:
 
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.

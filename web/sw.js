@@ -69,6 +69,7 @@ const SHELL = [
   'js/demo.js',
   'js/location.js',
   'js/cities.js',
+  'js/city-detect.js',
   'js/route.js',
   'js/notif-link.js',
   'js/boot-city.js',
