@@ -7,6 +7,10 @@ Technical words used in this project, in plain language. Add new terms in alphab
 Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
 My words:
 
+**All rights reserved**: the default legal state of a piece of work: people may look at it, but copying or using it needs the owner's permission, like a library book you can read but not photocopy and sell.
+Where it shows up in Telematica: the repo has no license file, so the code is "all rights reserved"; the founders' proposal (TEL-1) keeps it that way until a lawyer helps decide.
+My words:
+
 **API**: a menu of requests one program can make to another, like ordering from a restaurant menu without entering the kitchen.
 Where it shows up in Telematica: citybus.gr's API gives bus data; our Worker offers its own API to the app (`worker/src/index.js`).
 My words:
@@ -31,8 +35,16 @@ My words:
 Where it shows up in Telematica: GitHub Actions in `.github/workflows/` (tests, Lighthouse, Pages).
 My words:
 
+**Cliff** (in vesting): a starting hurdle: if you leave before it, you keep nothing; after it, a first chunk unlocks at once, like a gym deal that only starts counting after the first full year.
+Where it shows up in Telematica: the founders' proposal (TEL-1) suggests a 12-month cliff inside a 4-year vesting.
+My words:
+
 **Cloudflare Worker**: a small program that runs on Cloudflare's computers around the world, so we don't need our own server; like a shop clerk who works at the counter for us.
 Where it shows up in Telematica: the `patra-bus` Worker in `worker/` is the go-between for the app and citybus.gr.
+My words:
+
+**Copyleft**: a kind of license (GPL, AGPL) that lets anyone use your code but requires their own work built on it to be shared openly too, like a recipe you may cook from only if you publish your own recipe as well.
+Where it shows up in Telematica: not used; it is one of the options compared in the founders' proposal (TEL-1).
 My words:
 
 **CORS**: a browser rule about which websites may read answers from another website, like a doorman with a guest list.
@@ -63,6 +75,10 @@ My words:
 Where it shows up in Telematica: recorded citybus.gr answers in `tests/e2e/fixtures/` and `web/fixtures/` so tests never use the network.
 My words:
 
+**Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
+Where it shows up in Telematica: the temporary founders' arrangement between Kostas, Fanis and Amarildo until a lawyer writes a real agreement (TEL-1).
+My words:
+
 **Geocoding**: turning a place name into map coordinates, like looking up an address in a phone book.
 Where it shows up in Telematica: place search with Photon in `web/js/geocode.js`.
 My words:
@@ -91,12 +107,24 @@ My words:
 Where it shows up in Telematica: Greek text is the key, English lives in `web/js/i18n-en*.js`; `npm run check:i18n` checks it.
 My words:
 
+**IKE** (Ιδιωτική Κεφαλαιουχική Εταιρεία, a Greek private limited company): a company type where the owners risk only what they put in, like a fence around their personal savings.
+Where it shows up in Telematica: the likely permanent legal form for the software company (TEL-1); nothing is registered yet.
+My words:
+
 **JWT** (JSON Web Token): a signed pass with an expiry time written inside, like a concert wristband with a printed date.
 Where it shows up in Telematica: the citybus token is a JWT valid 48 h; the Worker reads its expiry (`jwtExp` in `worker/src/index.js`).
 My words:
 
 **KV** (key-value store): a giant list of labels and values, like a coat-check: hand over a label, get your coat back.
 Where it shows up in Telematica: Cloudflare KV holds the citybus tokens and the daily report counter (`worker/wrangler.toml`).
+My words:
+
+**Leaver** (good leaver / bad leaver): someone who leaves the company. A good leaver keeps what they already earned; a bad leaver loses part of it, like leaving a job with notice versus walking out mid-shift.
+Where it shows up in Telematica: the founders' proposal (TEL-1) defines both cases for vesting.
+My words:
+
+**License**: a text that tells everyone what they may do with your code, like a sign in a park ("you may walk", "no picking flowers"). Permissive licenses (MIT, Apache-2.0) allow almost anything; copyleft ones (GPL) require sharing back; with no license, nobody has permission.
+Where it shows up in Telematica: the repo has none; MapLibre, OpenFreeMap and the other third-party parts keep their own licenses and credits.
 My words:
 
 **localStorage**: a small notebook the browser keeps on your device for a website, like a sticky note only you can read.
@@ -181,6 +209,10 @@ My words:
 
 **vehicleCode**: the ID of one bus trip that citybus.gr sends with each arrival, like a booking number.
 Where it shows up in Telematica: it links a bus across stops and views (`#/bus/…`, onboard alerts) and decides whether a live and a scheduled row are the same bus (`web/js/arrivals.js`).
+My words:
+
+**Vesting**: earning your share of a company step by step over time, instead of owning it all on day one, like getting the office key a month at a time.
+Where it shows up in Telematica: the founders' proposal (TEL-1) suggests 4 years with a 12-month cliff for Fanis and Amarildo.
 My words:
 
 **Web Push**: the standard way a server sends a notification to a phone even when the app is closed, like a postal delivery to your door.
