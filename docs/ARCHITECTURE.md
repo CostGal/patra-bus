@@ -74,7 +74,8 @@ When the same bus shows up twice for a stop (once live, once scheduled), `dropSc
 - **What to do when it fires** (codes look like `20261009_6091_0000100_22_10` = date, route, …, departure time; this format is an unconfirmed observation):
   1. *Mismatch with a different route or time part in the codes*: two real buses, and rule B is hiding one. Open a card to remove rule B from `arrivals.js` (shared with the Worker, so only Kostas can deploy it).
   2. *Mismatch where the codes are the same trip written differently*: rule A is not enough. Keep rule B and note it on the card.
-  3. *About 5 "Rule A confirmed" comments and no mismatch for roughly two weeks*: open a card to remove rule B, with the comments as the evidence.
+  3. *Mismatch where the live code is not a trip code* (a bare number, e.g. `1599524552076686932` on 2026-10-20, issue #96): upstream did not link the bus to its trip and sent the trip as a separate scheduled row. Rule A can never match it, so keep rule B; the watcher's comment says so. Only act if the ETAs or route point to two different buses.
+  4. *About 5 "Rule A confirmed" comments and no mismatch for roughly two weeks*: open a card to remove rule B, with the comments as the evidence.
   When the question is settled, disable the workflow and close the issue.
 - **Limits:** a pair only shows if one of the three stops has one at the moment of the request, so it may take days. The watcher repeats the pairing rules of `arrivals.js` instead of importing them (the Worker must stay untouched); a unit test checks that both agree.
 

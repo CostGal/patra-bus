@@ -52,6 +52,10 @@ export function findPairs(rawVehicles) {
   return pairs;
 }
 
+// Trip codes look like 20261009_6091_0000100_22_10 (date, route, …, departure time; unconfirmed format).
+// A live row without one (2026-10-20: a bare 19-digit number) was not linked to a trip upstream, so rule A can't match it.
+export const isTripCode = (code) => /^\d{8}_/.test(code ?? '');
+
 const fmtRow = (r) => `line ${r.lineCode}, route ${r.routeCode}, ETA ${r.etaSec} s, \`${r.vehicleCode ?? '(no vehicleCode)'}\``;
 
 // One comment per finding. The first line is a hidden marker used to skip pairs already reported and to count evidence.
@@ -62,7 +66,9 @@ export function commentFor(kind, { city, stop, at, pair }) {
   if (kind === 'match') {
     return `${head}\n**Rule A confirmed** (${where}): live and scheduled row share one vehicleCode.\n- both: ${fmtRow(pair.live)}`;
   }
-  return `${head}\n**Rule B fired without rule A** (${where}): a live and a scheduled row of the same line are within ${SAME_BUS_WINDOW_SEC} s but have different vehicleCodes.\n- live: ${fmtRow(pair.live)}\n- scheduled: ${fmtRow(pair.scheduled)}\n\nDifferent trip in the codes (route or time part) = two real buses and rule B hides one. Same trip, different format = rule A is not enough. See docs/ARCHITECTURE.md, "Same-bus watcher".`;
+  return `${head}\n**Rule B fired without rule A** (${where}): a live and a scheduled row of the same line are within ${SAME_BUS_WINDOW_SEC} s but have different vehicleCodes.\n- live: ${fmtRow(pair.live)}\n- scheduled: ${fmtRow(pair.scheduled)}\n\n${isTripCode(pair.live.vehicleCode)
+    ? 'Different trip in the codes (route or time part) = two real buses and rule B hides one. Same trip, different format = rule A is not enough.'
+    : 'The live code is not a trip code (no date/route/time part): upstream did not link this bus to a trip, so rule A can never match it and rule B is needed. Keep rule B unless the ETAs say two buses.'} See docs/ARCHITECTURE.md, "Same-bus watcher".`;
 }
 
 // Which findings still need a comment, given the markers/bodies already on the issue.

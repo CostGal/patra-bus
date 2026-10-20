@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findPairs, commentFor, selectNew, MAX_MATCH_COMMENTS } from '../scripts/watch-same-bus.mjs';
+import { findPairs, commentFor, selectNew, isTripCode, MAX_MATCH_COMMENTS } from '../scripts/watch-same-bus.mjs';
 import { normalizeLive } from '../web/js/arrivals.js';
 
 const raw = (lineCode, mins, secs, vehicleCode, live) => ({
@@ -53,6 +53,17 @@ test('commentFor: marker line, no coordinates, mismatch carries both codes', () 
   assert.match(text, /^<!-- same-bus:mismatch:D_2011_0_10_00\|D_2011_0_10_30 -->/);
   assert.match(text, /D_2011_0_10_30/);
   assert.doesNotMatch(text, /38\.27|21\.74/);
+});
+
+test('commentFor: a live code without trip format says rule A cannot match it', () => {
+  assert.equal(isTripCode('20261020_6091_0100000_12_35'), true);
+  assert.equal(isTripCode('1599524552076686932'), false);
+  assert.equal(isTripCode(null), false);
+  const pair = findPairs([raw('609', 9, 2, '1599524552076686932', true), raw('609', 8, 7, '20261020_6091_0100000_12_35', false)])[0];
+  const at = { city: 'patra', stop: '280', at: '2026-10-20T09:58:30Z' };
+  assert.match(commentFor('mismatch', { ...at, pair }), /not a trip code/);
+  const trip = findPairs([raw('201', 5, 0, '20261019_2011_0_10_00', true), raw('201', 5, 50, '20261019_2011_0_10_30', false)])[0];
+  assert.doesNotMatch(commentFor('mismatch', { ...at, pair: trip }), /not a trip code/);
 });
 
 test('selectNew: skips pairs already on the issue and caps match evidence', () => {
