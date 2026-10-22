@@ -57,7 +57,9 @@ planάρουμε τόσο μπροστά. Σε αυτό το session δεν γρ
 3. **Υλοποίηση.** Κάρτα → In progress, branch, αλλαγές, `npm test` + `npm run check:i18n`, `npm run shots` για ό,τι
    φαίνεται στην οθόνη. Draft PR με το template και τις 3 γραμμές explain-back. Κάρτα → In review, `PR` = link.
 4. **Έλεγχος από τον Kostas.** Βήμα-βήμα (ενότητα 3), μόνο για ό,τι δεν δείχνει το `shots` (κανόνας 9 στο CLAUDE.md).
-5. **Merge.** Μόνο ο Kostas. Ο Claude λέει πότε το CI είναι πράσινο και δίνει το link.
+5. **Merge.** Μόνο ο Kostas. Ο Claude λέει πότε το CI είναι πράσινο και δίνει το link. Δευ–Παρ 08:30–17:30 (merge
+   window, TEL-182) το `merge-window` είναι κίτρινο: ο Claude δίνει βήμα «Enable auto-merge» αντί για «Merge», και το
+   PR γίνεται merge μόνο του μετά τις 17:30.
 6. **Κλείσιμο.** Κάρτα → Done + `Completed on`, findings → κάρτες, σύνοψη: τι έγινε, τι μένει, πρόταση για το
    επόμενο task.
 
