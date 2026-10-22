@@ -5,7 +5,7 @@ import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
 import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, isStale } from './api.js';
 import { ageText } from './arrivals.js';
-import { isFavorite, toggleFavorite, addRecent, onChange, getSettings, setSetting } from './store.js';
+import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
 import { shareLink } from './share.js';
 import { t, etaTxt, etaSay } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
@@ -176,14 +176,10 @@ export function mountStop(container, ctx, { code }) {
   const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
-  // One quiet line that says what LIVE / ΠΡΟΓΡ. and ′ ″ mean, until the user closes it (flag legendSeen, kept across "reset settings").
-  const legend = h('div', { class: 'stopv-legend', hidden: true },
-    h('p', { class: 'stopv-legend-text' }, t('LIVE = το λεωφορείο στέλνει θέση · ΠΡΟΓΡ. = ώρα προγράμματος, χωρίς θέση · ′ = λεπτά, ″ = δευτερόλεπτα')),
-    h('button', { type: 'button', class: 'btn round stopv-legend-x', 'aria-label': t('Κλείσιμο'), onclick: () => { setSetting('legendSeen', true); legend.hidden = true; refreshBtn.focus({ preventScroll: true }); } }, icon('close')));
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
-  root.append(head, banner, chipBar, body, legend, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
   let saidKind = '', sayTimer = 0;
   function say(kind, text) {
     if (kind === saidKind) return;
@@ -303,7 +299,6 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
-    legend.hidden = !(data && all.length) || getSettings().legendSeen === true;
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });

@@ -10,7 +10,6 @@ const PAIRS = [
   ['LIVE', 'LIVE'],
   ['ΠΡΟΓΡ.', 'SCHED.'],
   ['πριν {age}', '{age} ago'],
-  ['LIVE = το λεωφορείο στέλνει θέση · ΠΡΟΓΡ. = ώρα προγράμματος, χωρίς θέση · ′ = λεπτά, ″ = δευτερόλεπτα', 'LIVE = the bus is sending its position · SCHED. = timetable time, no position · ′ = minutes, ″ = seconds'],
   ['τώρα', 'now'],
   ['Φύγε σε {n}′', 'Leave in {n}′'],
   ['Φύγε τώρα', 'Leave now'],

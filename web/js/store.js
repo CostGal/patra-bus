@@ -25,7 +25,7 @@ const VALID = {
   guideSeen: (v) => typeof v === 'boolean', // absent = not seen yet
   installHintDismissed: (v) => typeof v === 'boolean', // absent = not dismissed
   welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
-  legendSeen: (v) => typeof v === 'boolean', // absent = the LIVE / ΠΡΟΓΡ. legend on the stop view was not dismissed yet
+  legendSeen: (v) => typeof v === 'boolean', // unused since TEL-65 removed the stop-view legend; kept for the first-run onboarding (TEL-74)
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
 const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen'];
