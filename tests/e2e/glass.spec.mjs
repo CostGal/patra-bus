@@ -13,7 +13,7 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   await page.goto('/?glass&demo#/stop/1011');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.classList.contains('glass'))).toBe(true);
-  expect(await sheetFilter(page)).toContain('blur(28px)');
+  expect(await sheetFilter(page)).toContain('blur(40px)');
   // tiles inside the sheet are tinted, never a second blur
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv .atile')).backdropFilter)).toBe('none');
   // LIVE and scheduled still differ in stripe, countdown and pill (same check as smoke.spec.mjs)

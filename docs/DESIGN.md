@@ -37,8 +37,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
 - Glass prototype (TEL-83, `?glass` only, `web/css/glass.css`): **glass** = floating chrome over the map (search bar, chips,
-  locate FAB, sheet / side panel, menu popover, setup and welcome dialogs): ~60% card colour, blur 16px (small) / 28px (big),
-  bright inner top edge, deeper shadow. **Tinted** = every surface inside the sheet: translucent card colour, no blur of its
+  locate FAB, sheet / side panel, menu popover, setup and welcome dialogs): ~40% card colour (45% big), blur 20px (small) / 40px (big)
+  with saturate 200–220%, bright top edge + thin rim, a light sheen at the top, deeper shadow. **Tinted** = every surface inside the sheet: 50% card colour, no blur of its
   own (`.material` cards there drop theirs). Solid on purpose: toast (TEL-47 contrast), full-screen search panel, stop menu,
   map marker labels. Not the default until the speed check (TEL-70) and a real-phone test.
 

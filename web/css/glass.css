@@ -10,34 +10,39 @@
 
 html.glass {
   --g-card: var(--card); /* solid card colour of the theme, kept before the sheet overrides --card */
-  --g-bg: color-mix(in srgb, var(--g-card) 58%, transparent);
-  --g-bg-lg: color-mix(in srgb, var(--g-card) 62%, transparent);
-  --g-tint: color-mix(in srgb, var(--g-card) 62%, transparent);
-  --g-sticky: color-mix(in srgb, var(--g-card) 90%, transparent);
-  --g-blur: blur(16px) saturate(180%);
-  --g-blur-lg: blur(28px) saturate(180%);
-  --g-edge: rgba(255, 255, 255, .7);
-  --g-line: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  --g-bg: color-mix(in srgb, var(--g-card) 38%, transparent);
+  --g-bg-lg: color-mix(in srgb, var(--g-card) 45%, transparent);
+  --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent);
+  --g-sticky: color-mix(in srgb, var(--g-card) 85%, transparent);
+  --g-blur: blur(20px) saturate(200%);
+  --g-blur-lg: blur(40px) saturate(220%);
+  --g-edge: rgba(255, 255, 255, .9);
+  --g-rim: rgba(255, 255, 255, .35); /* thin bright rim all round, the "glass" edge */
+  --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 45%); /* light catching the top */
+  --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 80px);
+  --g-line: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
   --g-shadow: 0 4px 16px rgba(0, 0, 0, .12);
   --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .18);
 }
 @media (prefers-color-scheme: dark) {
-  html.glass:not([data-theme="light"]) { --g-bg: color-mix(in srgb, var(--g-card) 55%, transparent); --g-edge: rgba(255, 255, 255, .14); --g-shadow: 0 4px 16px rgba(0, 0, 0, .4); --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .5); }
+  html.glass:not([data-theme="light"]) { --g-bg: color-mix(in srgb, var(--g-card) 42%, transparent); --g-edge: rgba(255, 255, 255, .22); --g-rim: rgba(255, 255, 255, .1); --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 45%); --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 80px); --g-shadow: 0 4px 16px rgba(0, 0, 0, .4); --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .5); }
 }
-html.glass[data-theme="dark"] { --g-bg: color-mix(in srgb, var(--g-card) 55%, transparent); --g-edge: rgba(255, 255, 255, .14); --g-shadow: 0 4px 16px rgba(0, 0, 0, .4); --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .5); }
+html.glass[data-theme="dark"] { --g-bg: color-mix(in srgb, var(--g-card) 42%, transparent); --g-edge: rgba(255, 255, 255, .22); --g-rim: rgba(255, 255, 255, .1); --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 45%); --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 80px); --g-shadow: 0 4px 16px rgba(0, 0, 0, .4); --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .5); }
 
 /* ---------- glass: floating chrome ---------- */
 html.glass .searchbar, html.glass .fab, html.glass .chip {
-  background: var(--g-bg); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), var(--g-shadow);
+  background: var(--g-sheen), var(--g-bg); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
 }
-html.glass .searchbar:focus-within { box-shadow: inset 0 1px 0 var(--g-edge), var(--g-shadow), 0 0 0 2px var(--ring); }
+html.glass .searchbar:focus-within { box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow), 0 0 0 2px var(--ring); }
 html.glass .fab:hover { background: color-mix(in srgb, var(--muted) 70%, transparent); }
 
 html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-card {
-  background: var(--g-bg-lg); -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
-  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), var(--g-shadow-lg);
+  background: var(--g-sheen), var(--g-bg-lg); -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
+  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
 }
+/* the sheet is tall: keep its sheen to the top edge only */
+html.glass .sheet { background: var(--g-sheen-lg), var(--g-bg-lg); }
 html.glass .sheet { border-bottom: 0; }
 @media (min-width: 900px) { html.glass .sheet { border-top: 0; border-left: 0; } }
 
@@ -56,8 +61,8 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 
 /* ---------- fallbacks: solid, no blur ---------- */
 @media (prefers-reduced-transparency: reduce) {
-  html.glass { --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-sticky: var(--g-card); --g-blur: none; --g-blur-lg: none; }
+  html.glass { --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent; --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-sticky: var(--g-card); --g-blur: none; --g-blur-lg: none; }
 }
 @media (prefers-contrast: more) {
-  html.glass { --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-sticky: var(--g-card); --g-blur: none; --g-blur-lg: none; --g-line: 1px solid var(--border); }
+  html.glass { --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent; --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-sticky: var(--g-card); --g-blur: none; --g-blur-lg: none; --g-line: 1px solid var(--border); }
 }
