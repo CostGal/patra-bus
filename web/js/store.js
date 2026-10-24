@@ -25,7 +25,7 @@ const VALID = {
   guideSeen: (v) => typeof v === 'boolean', // absent = not seen yet
   installHintDismissed: (v) => typeof v === 'boolean', // absent = not dismissed
   welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
-  legendSeen: (v) => typeof v === 'boolean', // absent = the LIVE / ΠΡΟΓΡ. legend on the stop view was not dismissed yet
+  legendSeen: (v) => typeof v === 'boolean', // unused since TEL-65 removed the stop-view legend (the first-run setup explains LIVE / ΠΡΟΓΡ. now); kept so stored flags still validate
   setupDone: (v) => typeof v === 'boolean', // absent = the first-run setup (language, city, LIVE / ΠΡΟΓΡ.) was not shown yet
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
