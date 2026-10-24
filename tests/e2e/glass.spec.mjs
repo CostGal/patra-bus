@@ -22,12 +22,14 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(14px\)/);
   // the sticky chip bar is glass over the list scrolling under it
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar')).backdropFilter)).toContain('blur(');
-  // a press lights the glass up, release lets it go
+  // a press lights the glass up and grows it, release lets it go
   const fab = page.locator('#locate-btn');
   const box = await fab.boundingBox();
   await page.mouse.move(box.x + 10, box.y + 10);
   await page.mouse.down();
   await expect(fab).toHaveClass(/g-press/);
+  // touch & hold: it grows (Web Animations on `scale`)
+  await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
   await page.mouse.move(5, 300);
   await page.mouse.up();
   await expect(fab).not.toHaveClass(/g-press/);

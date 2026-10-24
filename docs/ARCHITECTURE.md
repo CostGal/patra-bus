@@ -417,10 +417,12 @@ hash navigation keeps the query); the same script then loads `js/glass.js` as a 
 All rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
 surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables.
 `glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
-`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; sets `--gx`/`--gy` and `.g-press`/`.g-hover` on the
-glass element under the pointer; sets `--g-shift` on `<html>` from the sheet's scroll and its `--sheet-y` (a
-MutationObserver on the sheet's style, so drags and springs both count). Does nothing with reduced transparency or more
-contrast; skips the band with reduced motion. Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
+`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; on pointerdown puts `.g-press` and `--gx`/`--gy` on the
+control under the finger (`button, a[href], [role=button], summary, label, .atile-link`; the whole `.searchbar` for its
+input; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
+untouched; never the sheet, menu, dialogs or sheet handle), leans it via `translate` while held, and springs it back on
+pointerup/cancel; `.g-hover` on glass surfaces for a mouse. Does nothing with reduced transparency or more contrast; with
+reduced motion it keeps only the light (no `scale`/`translate`). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
 `npm run shots -- --glass --map`. Rules in DESIGN.md §4.
 
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`
