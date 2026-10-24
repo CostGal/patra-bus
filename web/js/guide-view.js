@@ -71,7 +71,8 @@ const isEl = (x) => !!x && typeof x === 'object' && x.nodeType === 1;
 let uid = 0;
 
 // Real-looking tile for the explanation (same markup and classes as arrivals-view.js, without the live countdown).
-function exampleTile({ live, line, dest, mins }) {
+// Also used by the first-run setup (js/setup.js).
+export function exampleTile({ live, line, dest, mins }) {
   const clock = fmtClock(Date.now() + mins * 60000);
   const flag = live
     ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'))
@@ -86,7 +87,7 @@ function exampleTile({ live, line, dest, mins }) {
 }
 
 // Two sample lines: the first two of the active city when available (their real colours), else neutral ones.
-function sampleLines(ctx) {
+export function sampleLines(ctx) {
   const real = (ctx?.data?.lines || []).filter((l) => l && l.code && l.color).slice(0, 2);
   const fallback = [{ code: '1', color: '#1a73e8', textColor: '#ffffff' }, { code: '2', color: '#e8710a', textColor: '#ffffff' }];
   return [real[0] || fallback[0], real[1] || fallback[1]];
