@@ -1,5 +1,7 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
 // Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
+//      --glass: add ?glass (glass prototype, TEL-83) · --map: let OpenFreeMap through so the map is drawn behind the chrome
+//      (tiles only: no location, no user data; every other third party stays blocked)
 // Uses the ?demo mode and the same network mocks as the smoke tests (nothing reaches citybus.gr or any third party), so
 // it checks LAYOUT only: the map tiles are blocked (the map area stays empty), fonts are the computer's (not SF/Roboto), and touch feel, push, install, GPS,
 // speed and sunlight still need a real phone (CLAUDE.md rule 9).
@@ -81,13 +83,15 @@ const scrollerInfo = () => {
 
 async function shoot(page, file) { await page.screenshot({ path: file }); }
 
+const screenUrl = (url) => (args.glass ? url.replace('/?', '/?glass&') : url);
+
 async function capture(context, base, screen, dir, summary) {
   const page = await context.newPage();
   const problems = [];
   page.on('pageerror', (e) => problems.push(`error: ${e.message}`));
-  await page.goto(base + screen.url);
+  await page.goto(base + screenUrl(screen.url));
   await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !/Φόρτωση…|Loading…/.test(c.textContent || ''); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(args.map ? 2500 : 500); // --map: give the tiles time to draw
   const files = [];
   const first = `${screen.id}.png`;
   await shoot(page, `${dir}/${first}`); files.push(first);
@@ -125,6 +129,8 @@ try {
       const context = await browser.newContext({ ...desc, locale: lang === 'el' ? 'el-GR' : 'en-GB', timezoneId: 'Europe/Athens', colorScheme: theme, reducedMotion: 'reduce', serviceWorkers: 'block' });
       await context.addInitScript(seed(lang));
       await mockNetwork(context, base);
+      // registered after the mocks, so it wins for this host only
+      if (args.map) await context.route((u) => u.hostname === 'tiles.openfreemap.org', (route) => route.continue());
       for (const screen of screens) await capture(context, base, screen, dir, summary);
       await context.close();
       console.log(`${device} · ${lang} · ${theme} (${engine}): ${screens.length} screens`);
@@ -136,7 +142,7 @@ try {
 }
 
 const rel = (p) => p.replace(OUT, '');
-const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', 'Layout only (demo data, map tiles blocked). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as `device-test` issues.', ''];
+const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', `Layout only (demo data, ${args.map ? 'map tiles from OpenFreeMap' : 'map tiles blocked'}${args.glass ? ', glass prototype ?glass' : ''}). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as \`device-test\` issues.`, ''];
 for (const n of notes) lines.push(`> **Note:** ${n}`, '');
 const flagged = summary.filter((s) => s.problems.length);
 lines.push(`## Problems found by the script (${flagged.length})`, '');

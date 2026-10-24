@@ -36,6 +36,17 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
+- Glass prototype (TEL-83, `?glass` only, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
+  **glass** = floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and
+  welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
+  clear, bright top edge + rim, a static top sheen (no ambient shine: light comes only from touch), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
+  (~10 px, ≤ 8%, instead of §1's .97 shrink), leans a few px towards the finger, turns more opaque and lifts with a
+  light at the finger, then springs back with a small wobble. Legibility comes
+  from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
+  (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
+  headers in the sheet are glass over the list scrolling under them, like iOS bars. Solid on purpose: toast (TEL-47
+  contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
+  static; reduced motion: light only, no growing or moving. Not the default until the speed check (TEL-70) and a real-phone test.
 
 ## 5. Typography
 - System font stack (`system-ui`), which already has optical sizing.
