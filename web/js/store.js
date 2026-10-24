@@ -11,8 +11,8 @@ const SCHEMA = 3;
 const MAX_RECENTS = 10;
 const MAX_FAVS = 100;
 
-// TEMPORARY (TEL-58, #33): lang defaults to 'el' instead of 'auto' so new users always start in Greek.
-// End state is a first-run setup (#35) where the user picks the language, pre-selected from the system language.
+// lang defaults to 'el' (TEL-58, #33): the first-run setup (TEL-74, js/setup.js) stores the language the user picks,
+// pre-selected from the system language; 'el' only applies to whoever skips that step.
 export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el' });
 const intIn = (lo, hi) => (v) => Number.isInteger(v) && v >= lo && v <= hi;
 const VALID = {
@@ -26,9 +26,10 @@ const VALID = {
   installHintDismissed: (v) => typeof v === 'boolean', // absent = not dismissed
   welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
   legendSeen: (v) => typeof v === 'boolean', // absent = the LIVE / ΠΡΟΓΡ. legend on the stop view was not dismissed yet
+  setupDone: (v) => typeof v === 'boolean', // absent = the first-run setup (language, city, LIVE / ΠΡΟΓΡ.) was not shown yet
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
-const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen'];
+const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen', 'setupDone'];
 const NUMERIC = new Set(['bufferMin', 'reminderMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };

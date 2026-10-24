@@ -41,10 +41,23 @@ export async function mockNetwork(context, baseURL) {
   return { blocked, liveCalls };
 }
 
+// The first-run setup (TEL-74) would cover every home-view test: mark it as done before any page script runs, keeping
+// whatever else a test stored. `test.use({ firstRun: true })` leaves it out, for the setup's own tests.
+export const SKIP_SETUP = () => {
+  try {
+    const k = 'patra-bus:v2';
+    const b = JSON.parse(localStorage.getItem(k) || 'null') || { v: 3, favorites: [], recents: { stop: [], place: [] }, settings: {} };
+    b.settings = { ...b.settings, setupDone: true };
+    localStorage.setItem(k, JSON.stringify(b));
+  } catch { /* no storage */ }
+};
+
 // `net` is set up before the page exists, so even the first request is covered. Uncaught page errors fail the test.
 export const test = base.extend({
+  firstRun: [false, { option: true }],
   net: async ({ context, baseURL }, use) => { await use(await mockNetwork(context, baseURL)); },
-  page: async ({ page, net }, use) => {
+  page: async ({ page, net, firstRun }, use) => {
+    if (!firstRun) await page.addInitScript(SKIP_SETUP);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await use(page);
