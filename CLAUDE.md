@@ -37,7 +37,7 @@ npx wrangler deploy --config worker/wrangler.toml   # deploy του worker στ�
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
 npm run shots            # screenshots (?demo, mocks) για συσκευές × light/dark × EL/EN στο shots/ + SUMMARY.md· `-- --device= --lang= --theme= --screen= --base=<preview URL> --web=<web/ άλλου checkout> --chromium=<path> --glass (?glass) --map (αφήνει μόνο το OpenFreeMap, για να φαίνεται ο χάρτης πίσω από το glass)`· ~6′ για όλα, μόνο layout (όχι αφή/push/GPS/απόδοση)
 ```
-Άνοιγμα: http://localhost:8080/ · demo (προσομοίωση για όλες τις στάσεις): http://localhost:8080/?demo#/stop/1011 · `?demo=nosvc`, `?demo=error`, `?demo=stale` (δεδομένα 90″ παλιά: τα LIVE tiles «γερνούν») για τις αντίστοιχες καταστάσεις. `?glass` = πρωτότυπο glass UI (TEL-83, `css/glass.css`), μόνο όσο είναι στο URL.
+Άνοιγμα: http://localhost:8080/ · demo (προσομοίωση για όλες τις στάσεις): http://localhost:8080/?demo#/stop/1011 · `?demo=nosvc`, `?demo=error`, `?demo=stale` (δεδομένα 90″ παλιά: τα LIVE tiles «γερνούν») για τις αντίστοιχες καταστάσεις. `?glass` = πρωτότυπο glass UI (TEL-83, `css/glass.css` + `js/glass.js`: refraction μόνο σε Chromium, ανταύγειες στο άγγιγμα/scroll), μόνο όσο είναι στο URL.
 Τα δύο dev servers υπάρχουν και στο `.claude/launch.json` (`worker`, `web`).
 
 ## GitHub / Pages / Cloudflare

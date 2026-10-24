@@ -49,8 +49,11 @@
       var t = ((JSON.parse(localStorage.getItem('patra-bus:v2')) || {}).settings || {}).theme;
       if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     } catch (e) { /* ignore */ }
-    // Glass prototype (TEL-83): only with ?glass in the URL, never stored.
-    if (/[?&]glass(=|&|$)/.test(location.search)) document.documentElement.classList.add('glass');
+    // Glass prototype (TEL-83): only with ?glass in the URL, never stored. js/glass.js adds the light effects.
+    if (/[?&]glass(=|&|$)/.test(location.search)) {
+      document.documentElement.classList.add('glass');
+      var g = document.createElement('script'); g.type = 'module'; g.src = 'js/glass.js'; document.head.appendChild(g);
+    }
   </script>
   <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
   <script type="module" src="js/app.js"></script>

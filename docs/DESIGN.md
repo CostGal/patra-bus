@@ -36,11 +36,16 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
-- Glass prototype (TEL-83, `?glass` only, `web/css/glass.css`): **glass** = floating chrome over the map (search bar, chips,
-  locate FAB, sheet / side panel, menu popover, setup and welcome dialogs): ~40% card colour (45% big), blur 20px (small) / 40px (big)
-  with saturate 200–220%, bright top edge + thin rim, a light sheen at the top, deeper shadow. **Tinted** = every surface inside the sheet: 50% card colour, no blur of its
-  own (`.material` cards there drop theirs). Solid on purpose: toast (TEL-47 contrast), full-screen search panel, stop menu,
-  map marker labels. Not the default until the speed check (TEL-70) and a real-phone test.
+- Glass prototype (TEL-83, `?glass` only, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
+  **glass** = floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and
+  welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
+  clear, bright top edge + rim, a specular band that slides with scroll and sheet drags, a highlight under the finger,
+  and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). Legibility comes
+  from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
+  (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
+  headers in the sheet are glass over the list scrolling under them, like iOS bars. Solid on purpose: toast (TEL-47
+  contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
+  static; reduced motion: the band stays put. Not the default until the speed check (TEL-70) and a real-phone test.
 
 ## 5. Typography
 - System font stack (`system-ui`), which already has optical sizing.

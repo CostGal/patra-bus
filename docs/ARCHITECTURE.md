@@ -411,11 +411,17 @@ get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-e
 instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
 `(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
 
-**Glass prototype (TEL-83): `web/css/glass.css`.** Loaded always, active only under `html.glass`, which the inline script
-in `index.html` sets before first paint when the URL has `?glass` (never stored; hash navigation keeps the query). All
-rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
-surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables. Tests:
-`tests/e2e/glass.spec.mjs`. Screenshots: `npm run shots -- --glass --map`. Rules in DESIGN.md §4.
+**Glass prototype (TEL-83): `web/css/glass.css` + `web/js/glass.js`.** The CSS loads always and is active only under
+`html.glass`, which the inline script in `index.html` sets before first paint when the URL has `?glass` (never stored;
+hash navigation keeps the query); the same script then loads `js/glass.js` as a module (app.js never imports it).
+All rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
+surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables.
+`glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
+`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; sets `--gx`/`--gy` and `.g-press`/`.g-hover` on the
+glass element under the pointer; sets `--g-shift` on `<html>` from the sheet's scroll and its `--sheet-y` (a
+MutationObserver on the sheet's style, so drags and springs both count). Does nothing with reduced transparency or more
+contrast; skips the band with reduced motion. Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
+`npm run shots -- --glass --map`. Rules in DESIGN.md §4.
 
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`
 Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; see the map below):

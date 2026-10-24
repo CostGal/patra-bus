@@ -1,68 +1,135 @@
-/* Glass prototype (TEL-83). Only active with ?glass in the URL (index.html adds html.glass before first paint), so
-   testers see nothing until a decision is made after the speed check (TEL-70). DESIGN.md §4, pushed further:
+/* Glass prototype (TEL-83), "true glass" pass after Kostas's review: closer to Apple's Liquid Glass.
+   Only active with ?glass in the URL (index.html adds html.glass before first paint and loads js/glass.js), so testers
+   see nothing until a decision is made after the speed check (TEL-70). DESIGN.md §4, pushed further:
    - floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and welcome
-     dialogs) = real glass: more see-through, stronger blur, bright inner top edge, deeper shadow on big surfaces;
-   - everything inside the sheet = tinted: --card becomes translucent there, with NO second blur (never stack
-     translucent on translucent). .material cards inside the sheet drop their blur for the same reason;
+     dialogs) = glass: very see-through, light blur (clear, not frosted), bright rim, a specular band that slides with
+     scroll and sheet drags, a highlight under the finger (both driven by js/glass.js through --g-shift / --gx --gy);
+   - refraction: on Chromium only (html.glass-lens, set by js/glass.js), the backdrop bends at the edges like a lens
+     (SVG displacement filters #g-lens / #g-lens-lg). Safari cannot use SVG filters in backdrop-filter: blur only;
+   - everything inside the sheet = tinted (translucent --card, no blur of its own), except the sticky headers, which
+     are glass over the list scrolling under them;
    - stays solid on purpose: the toast (TEL-47: 4.5:1 for the action over a bright map), the full-screen search panel
      (a page of text, sits over the sheet), the stop menu (popover over the sheet), map marker labels (one blur each).
-   Reduced transparency and more contrast fall back to solid surfaces through the --g-* variables at the bottom. */
+   Reduced transparency and more contrast fall back to solid, static surfaces through the --g-* variables at the bottom. */
+
+/* animatable, so the finger highlight fades in and out */
+@property --g-hl-a { syntax: '<number>'; inherits: false; initial-value: 0; }
 
 html.glass {
   --g-card: var(--card); /* solid card colour of the theme, kept before the sheet overrides --card */
-  --g-bg: color-mix(in srgb, var(--g-card) 38%, transparent);
-  --g-bg-lg: color-mix(in srgb, var(--g-card) 45%, transparent);
-  --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent);
-  --g-sticky: color-mix(in srgb, var(--g-card) 85%, transparent);
-  --g-blur: blur(20px) saturate(200%);
-  --g-blur-lg: blur(40px) saturate(220%);
-  --g-edge: rgba(255, 255, 255, .9);
-  --g-rim: rgba(255, 255, 255, .35); /* thin bright rim all round, the "glass" edge */
-  --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 45%); /* light catching the top */
-  --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 80px);
-  --g-line: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-  --g-shadow: 0 4px 16px rgba(0, 0, 0, .12);
-  --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .18);
+  --g-bg: color-mix(in srgb, var(--g-card) 22%, transparent);
+  --g-bg-lg: color-mix(in srgb, var(--g-card) 28%, transparent);
+  --g-tint: color-mix(in srgb, var(--g-card) 45%, transparent);
+  --g-head: color-mix(in srgb, var(--g-card) 62%, transparent);
+  --g-blur: blur(10px) saturate(190%) brightness(1.04);
+  --g-blur-lg: blur(14px) saturate(200%) brightness(1.04);
+  --g-blur-head: blur(16px) saturate(180%);
+  --g-edge: rgba(255, 255, 255, .95);
+  --g-rim: rgba(255, 255, 255, .45);
+  --g-glint: rgba(255, 255, 255, .28); /* the moving specular band */
+  --g-touch: rgba(255, 255, 255, .55); /* the highlight under the finger */
+  --g-halo: color-mix(in srgb, var(--g-card) 85%, transparent); /* soft glow behind text on glass, for legibility */
+  --g-line: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  --g-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+  --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .2);
+  --g-fx: 1; /* 0 switches the finger highlight off (fallbacks) */
+  /* layers, top to bottom: finger highlight (--g-hl, per element, below), specular band, top sheen.
+     --g-shift moves the band (px), set on <html> by js/glass.js */
+  --g-spec: linear-gradient(115deg, transparent calc(20% + var(--g-shift, 0px)), var(--g-glint) calc(32% + var(--g-shift, 0px)), transparent calc(44% + var(--g-shift, 0px)));
+  --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .4), rgba(255, 255, 255, 0) 50%);
+  --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 90px);
 }
 @media (prefers-color-scheme: dark) {
-  html.glass:not([data-theme="light"]) { --g-bg: color-mix(in srgb, var(--g-card) 42%, transparent); --g-edge: rgba(255, 255, 255, .22); --g-rim: rgba(255, 255, 255, .1); --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 45%); --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 80px); --g-shadow: 0 4px 16px rgba(0, 0, 0, .4); --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .5); }
+  html.glass:not([data-theme="light"]) {
+    --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
+    --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 66%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
+    --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
+    --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-glint: rgba(255, 255, 255, .1); --g-touch: rgba(255, 255, 255, .22);
+    --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
+    --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
+    --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
+  }
 }
-html.glass[data-theme="dark"] { --g-bg: color-mix(in srgb, var(--g-card) 42%, transparent); --g-edge: rgba(255, 255, 255, .22); --g-rim: rgba(255, 255, 255, .1); --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 45%); --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 80px); --g-shadow: 0 4px 16px rgba(0, 0, 0, .4); --g-shadow-lg: 0 12px 40px rgba(0, 0, 0, .5); }
+html.glass[data-theme="dark"] {
+  --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
+  --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 66%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
+  --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
+  --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-glint: rgba(255, 255, 255, .1); --g-touch: rgba(255, 255, 255, .22);
+  --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
+  --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
+  --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
+}
 
 /* ---------- glass: floating chrome ---------- */
-html.glass .searchbar, html.glass .fab, html.glass .chip {
-  background: var(--g-sheen), var(--g-bg); -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
+/* declared on each glass element, not on <html>: --gx/--gy/--g-hl-a are per element and var() resolves where declared */
+html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
+  --g-hl: radial-gradient(circle 90px at var(--gx, 50%) var(--gy, 0%), color-mix(in srgb, var(--g-touch) calc(var(--g-hl-a) * var(--g-fx) * 100%), transparent), transparent);
 }
+html.glass .searchbar, html.glass .fab, html.glass .chip {
+  background: var(--g-hl), var(--g-spec), var(--g-sheen), var(--g-bg);
+  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
+  transition: --g-hl-a .35s ease-out;
+}
+html.glass .fab { transition: --g-hl-a .35s ease-out, background .15s, color .15s, transform .1s; }
 html.glass .searchbar:focus-within { box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow), 0 0 0 2px var(--ring); }
-html.glass .fab:hover { background: color-mix(in srgb, var(--muted) 70%, transparent); }
+html.glass .fab:hover { background: var(--g-hl), var(--g-spec), var(--g-sheen), color-mix(in srgb, var(--muted) 45%, transparent); }
 
 html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-card {
-  background: var(--g-sheen), var(--g-bg-lg); -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
+  background: var(--g-hl), var(--g-spec), var(--g-sheen), var(--g-bg-lg);
+  -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
+  transition: --g-hl-a .35s ease-out;
 }
-/* the sheet is tall: keep its sheen to the top edge only */
-html.glass .sheet { background: var(--g-sheen-lg), var(--g-bg-lg); }
-html.glass .sheet { border-bottom: 0; }
+/* the sheet is tall: its sheen stays at the top edge */
+html.glass .sheet { background: var(--g-hl), var(--g-spec), var(--g-sheen-lg), var(--g-bg-lg); border-bottom: 0; }
 @media (min-width: 900px) { html.glass .sheet { border-top: 0; border-left: 0; } }
+/* pressed: the glass lights up under the finger (js/glass.js sets --g-hl-a; this keeps it on while held) */
+html.glass .g-press { --g-hl-a: 1; transition-duration: .08s; }
+html.glass .g-hover { --g-hl-a: .5; }
 
-/* text on glass: a step heavier (§4) */
+/* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
+html.glass-lens .searchbar, html.glass-lens .fab, html.glass-lens .chip {
+  -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
+}
+html.glass-lens .sheet, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
+  -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
+}
+
+/* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
 html.glass .sheet-content h2, html.glass .pop-head, html.glass .pop-city-sub { font-weight: var(--weight-semibold); }
+html.glass .searchbar, html.glass .chip, html.glass #menu-pop, html.glass .sheet-content > h1, html.glass .sheet-content > h2,
+html.glass .stopv-head, html.glass .pl-head { text-shadow: 0 0 6px var(--g-halo), 0 0 2px var(--g-halo); }
 
-/* ---------- tinted: surfaces inside the sheet ---------- */
+/* ---------- inside the sheet ---------- */
 html.glass .sheet { --card: var(--g-tint); }
 html.glass .sheet .material, html.glass .sheet .material-lg {
   background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 1px 0 var(--g-edge), var(--shadow-1);
 }
-/* sticky headers cover scrolling content, so they stay almost solid */
-html.glass .stopv-chipbar, html.glass .pl-head { background: var(--g-sticky); }
+/* sticky headers = glass over the list scrolling under them (the sheet is their backdrop root: they blur the list) */
+html.glass .stopv-chipbar, html.glass .pl-head {
+  background: var(--g-sheen), var(--g-head); -webkit-backdrop-filter: var(--g-blur-head); backdrop-filter: var(--g-blur-head);
+  box-shadow: inset 0 -1px 0 var(--g-rim);
+}
+html.glass .stopv-chipbar::after { content: none; }
+html.glass .stopv-chipbar .stopv-chip { background: color-mix(in srgb, var(--g-card) 85%, transparent); } /* chips stay readable over the list */ /* the solid fade below it would hide the list */
+html.glass .pl-head { border-bottom-color: transparent; }
 /* dots on a line drawing must hide the line behind them */
 html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 
-/* ---------- fallbacks: solid, no blur ---------- */
+/* ---------- fallbacks: solid, no blur, no light effects ---------- */
 @media (prefers-reduced-transparency: reduce) {
-  html.glass { --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent; --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-sticky: var(--g-card); --g-blur: none; --g-blur-lg: none; }
+  html.glass {
+    --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
+    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-fx: 0; --g-spec: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+  }
 }
 @media (prefers-contrast: more) {
-  html.glass { --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent; --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-sticky: var(--g-card); --g-blur: none; --g-blur-lg: none; --g-line: 1px solid var(--border); }
+  html.glass {
+    --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
+    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-fx: 0; --g-spec: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-line: 1px solid var(--border);
+  }
 }
+/* reduced motion: the band stays where it is (js/glass.js does not move it either) */
+@media (prefers-reduced-motion: reduce) { html.glass { --g-shift: 0px; } }

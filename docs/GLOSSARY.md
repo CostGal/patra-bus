@@ -75,6 +75,10 @@ My words:
 Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device list (iPhone SE, iPhone 15, Pixel 7, iPad Mini); touch feel, push, GPS and speed still need a real phone.
 My words:
 
+**Displacement map**: a picture whose colours tell a filter how far to shift each pixel of what lies behind, like looking through the thick rim of a glass. Browsers can use one inside `backdrop-filter` only in Chrome-based browsers, not Safari.
+Where it shows up in Telematica: the lens bend at the edges of the glass prototype (`?glass`, `web/js/glass.js`, TEL-83).
+My words:
+
 **Durable Object**: a small box of memory on Cloudflare that has an ID and can wake itself up later, like a labelled locker with its own alarm clock.
 Where it shows up in Telematica: one per push reminder and routine, plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
 My words:
