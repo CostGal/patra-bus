@@ -42,12 +42,15 @@
   <link rel="stylesheet" href="css/report.css">
   <link rel="stylesheet" href="css/welcome.css">
   <link rel="stylesheet" href="css/setup.css">
+  <link rel="stylesheet" href="css/glass.css">
   <script>
     // Apply a forced theme before first paint (best effort; app.js owns the real logic).
     try {
       var t = ((JSON.parse(localStorage.getItem('patra-bus:v2')) || {}).settings || {}).theme;
       if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     } catch (e) { /* ignore */ }
+    // Glass prototype (TEL-83): only with ?glass in the URL, never stored.
+    if (/[?&]glass(=|&|$)/.test(location.search)) document.documentElement.classList.add('glass');
   </script>
   <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
   <script type="module" src="js/app.js"></script>

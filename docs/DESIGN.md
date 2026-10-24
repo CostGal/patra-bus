@@ -36,6 +36,11 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
+- Glass prototype (TEL-83, `?glass` only, `web/css/glass.css`): **glass** = floating chrome over the map (search bar, chips,
+  locate FAB, sheet / side panel, menu popover, setup and welcome dialogs): ~60% card colour, blur 16px (small) / 28px (big),
+  bright inner top edge, deeper shadow. **Tinted** = every surface inside the sheet: translucent card colour, no blur of its
+  own (`.material` cards there drop theirs). Solid on purpose: toast (TEL-47 contrast), full-screen search panel, stop menu,
+  map marker labels. Not the default until the speed check (TEL-70) and a real-phone test.
 
 ## 5. Typography
 - System font stack (`system-ui`), which already has optical sizing.

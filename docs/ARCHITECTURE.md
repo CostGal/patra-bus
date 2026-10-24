@@ -411,6 +411,12 @@ get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-e
 instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
 `(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
 
+**Glass prototype (TEL-83): `web/css/glass.css`.** Loaded always, active only under `html.glass`, which the inline script
+in `index.html` sets before first paint when the URL has `?glass` (never stored; hash navigation keeps the query). All
+rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
+surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables. Tests:
+`tests/e2e/glass.spec.mjs`. Screenshots: `npm run shots -- --glass --map`. Rules in DESIGN.md §4.
+
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`
 Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; see the map below):
 1. **Roles** (names as in shadcn/ui): `--background/--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted/--muted-foreground`,

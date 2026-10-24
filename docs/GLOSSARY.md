@@ -107,6 +107,10 @@ My words:
 Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` uses it (permission `issues: write`) to comment on the watch issue; nothing is stored.
 My words:
 
+**Glassmorphism** (backdrop blur): a see-through panel that blurs whatever lies behind it, like frosted glass in front of the map. The blur costs work from the phone's graphics chip, more so on cheap Android phones.
+Where it shows up in Telematica: the floating search bar and bottom sheet (`.material` in `app.css`); the fuller look is tested with `?glass` (TEL-83, `css/glass.css`).
+My words:
+
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
 Where it shows up in Telematica: `#/stop/1011`, `#/plan`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
