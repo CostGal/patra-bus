@@ -23,6 +23,10 @@ My words:
 Where it shows up in Telematica: the Worker gets the citybus token from their web page and keeps it in KV (`getToken` in `worker/src/index.js`). It must never be in the browser or in git.
 My words:
 
+**Auto-merge**: a switch on a pull request that says "merge this by yourself as soon as every required check is green", like leaving a letter at the post office to be sent the moment it opens.
+Where it shows up in Telematica: inside the merge window Kostas turns it on instead of pressing Merge, and the PR merges by itself at 17:30 (TEL-182).
+My words:
+
 **Benchmark**: the same small task, timed and counted on every app, like timing two runners on the same track.
 Where it shows up in Telematica: TEL-135 runs 12 tasks (e.g. "next bus at stop 1011") on Moovit, Google Maps and our app; results in Notion.
 My words:
@@ -171,6 +175,10 @@ My words:
 Where it shows up in Telematica: `web/js/map.js`, with the library stored in `web/vendor/maplibre-gl/`.
 My words:
 
+**Merge window**: the hours when merging into `main` is allowed; outside them a required check stays yellow and the Merge button is locked, like a shop that only takes deliveries after closing time.
+Where it shows up in Telematica: closed on weekdays 08:30–17:30 Athens time, holidays in the repo variable `MERGE_WINDOW_HOLIDAYS` (`.github/workflows/merge-window.yml`, TEL-182).
+My words:
+
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Sprint» pane with your current TEL cards from Notion (`/sprint` refreshes it).
 My words:
@@ -209,6 +217,10 @@ My words:
 
 **Rate limit**: a cap on how many requests are allowed in a time window, like "one coffee per person per minute".
 Where it shows up in Telematica: 15 s minimum between live requests per stop; per-IP limits on reminders and reports (`worker/src/index.js`).
+My words:
+
+**Required check**: a test or status that must be green on a pull request before GitHub lets anyone merge it, like a signature a form needs before it is accepted.
+Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
 My words:
 
 **Scheduled workflow** (cron): a GitHub Action that starts by itself on a timetable, like an alarm clock that rings every 30 minutes. It only runs from the `main` branch.
