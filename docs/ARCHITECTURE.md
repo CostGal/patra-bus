@@ -156,6 +156,17 @@ parallel with boot and never awaited, and `captureInstallPrompt()` runs as soon 
 here?" until `guideSeen`, else the one-time install hint until `installHintDismissed`; never both, and only when the page booted on the home
 view (not a deep link). Opening the guide or pressing ✕ sets the flag.
 
+**First-run setup** (TEL-74, `js/setup.js` + `css/setup.css` + `js/i18n-en-setup.js`): a 3-step dialog (language, city, LIVE vs ΠΡΟΓΡ.)
+shown once, only when the page boots on the home view. `app.js` imports it in parallel with boot and calls
+`maybeSetup({ bootHome, ctx })` just **before** the first `route()`, so it can set `setupDone` + `guideSeen` on show and the home's
+"first time here?" card never paints under it. `maybeSetup` returns a promise that resolves on close (or `null`); the testers'
+welcome (`welcome.js`) waits for it. A language tap calls `setLang` at once (the setup re-renders on `onLangChange`; "Next" commits
+the highlighted one, pre-selected from `navigator.language`); the city is applied on close (done, skip or Esc): a different city =
+`settings.city` + reload, like `switchCity`. Skipping stores no `lang`, so the store default (`'el'`) applies. `?setup` previews it
+without touching the flags. The sample tiles reuse `exampleTile` / `sampleLines` exported by `guide-view.js`. E2E: `tests/e2e/mock.mjs`
+marks the setup done for every spec unless `test.use({ firstRun: true })`; `scripts/shots.mjs` seeds the same flag and shoots the
+dialog as screen `setup`.
+
 **City prefix** (docs/MULTI-CITY.md, `js/route.js`): any hash may start with a city id, `#/corfu/stop/123`. Views and links use
 city-relative hashes; `cityHash()` adds the prefix for every city but Patras (links, `navigate`, `replaceState`), `shareHash()`
 always adds it (share links, reminder/push urls). `js/boot-city.js` (first import of `app.js`) sets the active city: prefix, else an

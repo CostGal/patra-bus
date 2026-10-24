@@ -22,8 +22,10 @@ import './notify.js'; // re-arms persisted reminders after a reload
 let installP = null;
 const installGuide = () => (installP ||= import('./install-guide.js').catch((err) => { installP = null; throw err; }));
 installGuide().then((m) => m.captureInstallPrompt()).catch(() => {});
-// Was the page opened on the home view (not a deep link)? Only then the first-run guide / install hint may appear.
+// Was the page opened on the home view (not a deep link)? Only then the first-run setup / guide / install hint may appear.
 const bootHome = parseHash(location.hash).path === '/';
+// First-run setup (js/setup.js, TEL-74): fetched in parallel with boot, opened just before the first route.
+const setupP = import('./setup.js').catch(() => null);
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -920,10 +922,14 @@ async function boot() {
 
   window.addEventListener('hashchange', () => route());
   onLangChange(() => { localizeChrome(); route(); });
+  // Opened before the home view mounts, so the home's "first time here?" card already sees the flags the setup sets.
+  let setupClosed = null;
+  try { setupClosed = (await setupP)?.maybeSetup({ bootHome, ctx }) ?? null; } catch (err) { console.error('[setup]', err); }
   await route();
   booted = true;
   // One-time thank-you for the testers, only when opened as an installed app (or with ?welcome to preview). Never blocks boot.
-  import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {});
+  // After the first-run setup, when both apply (first launch of the installed app).
+  Promise.resolve(setupClosed).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
 
   if ('serviceWorker' in navigator) {
     const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});

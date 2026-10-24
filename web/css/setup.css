@@ -1,0 +1,73 @@
+/* First-run setup (owner: extras, TEL-74). Prefix su-. Modal = dim scrim (DESIGN §4) and a solid card, like css/welcome.css.
+   The card's rise/sink is the spring in js/setup.js; a new step slides in from the side it comes from (--dir). */
+
+.su {
+  position: fixed; inset: 0; z-index: 100; display: flex; overflow-y: auto; overscroll-behavior: contain;
+  padding: calc(var(--safe-top) + var(--space-4)) calc(var(--safe-right) + var(--space-4)) calc(var(--safe-bottom) + var(--space-4)) calc(var(--safe-left) + var(--space-4));
+  color: var(--foreground); font-family: var(--font);
+}
+.su *, .su *::before, .su *::after { box-sizing: border-box; }
+.su :focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.su-scrim { position: absolute; inset: 0; background: var(--overlay); }
+.su-card {
+  position: relative; display: flex; flex-direction: column; margin: auto; width: min(100%, 24rem); height: min(100%, 36rem);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg); background: var(--popover); color: var(--popover-foreground); box-shadow: 0 16px 48px rgba(0, 0, 0, .3);
+  transform-origin: 50% 60%; overflow: hidden;
+}
+
+.su-top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.su-dots { display: flex; gap: 6px; }
+.su-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: width .25s var(--spring-ease), background-color .25s; }
+.su-dot.on { width: 22px; border-radius: 4px; background: var(--primary); }
+.su-skip { min-height: 44px; color: var(--muted-foreground); }
+
+/* same card height on every step; only the step scrolls, so Back / Next never leave the screen */
+.su-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 calc(-1 * var(--space-1)); padding: 0 var(--space-1); }
+.su-step-in { animation: su-in .32s var(--spring-ease) both; }
+.su-count { margin: var(--space-2) 0 0; color: var(--muted-foreground); font-size: var(--text-sm); font-weight: 600; }
+.su .su-title { margin: var(--space-1) 0 var(--space-2); color: var(--foreground); font-size: 1.5rem; font-weight: 700; line-height: var(--lead-display); letter-spacing: var(--track-display); }
+.su-title:focus { outline: none; }
+.su-p { margin: 0 0 var(--space-3); color: var(--muted-foreground); font-size: var(--text-md); line-height: var(--lead-body); letter-spacing: var(--track-body); }
+
+.su-choices { display: grid; gap: var(--space-2); }
+.su-choice {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-3);
+  border: 2px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground);
+  font: inherit; font-size: var(--text-md); font-weight: 600; text-align: start; cursor: pointer;
+}
+.su-choice[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
+.su-check { width: 22px; height: 22px; flex: none; border: 2px solid var(--border); border-radius: 50%; }
+.su-choice[aria-pressed="true"] .su-check { border: 7px solid var(--primary); }
+
+.su-eg { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); }
+.su-eg .atile { pointer-events: none; }
+.su-cap { margin: 0; font-size: var(--text-sm); }
+.su-units { margin-bottom: var(--space-2); font-size: var(--text-sm); }
+.su-guide {
+  display: inline-flex; align-items: center; min-height: 44px; border-radius: var(--radius-full); padding: 0 var(--space-2); margin-inline-start: calc(-1 * var(--space-2));
+  color: var(--primary); font-weight: 600; text-decoration: none;
+}
+.su-guide:hover { background: var(--muted); }
+
+.su-foot { display: flex; flex: none; gap: var(--space-2); justify-content: flex-end; padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.su-foot .btn { min-height: 48px; padding: 0 var(--space-4); }
+.su-next { flex: 1; }
+.su-back[hidden] { display: none; }
+
+@keyframes su-in { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 24px)); } to { opacity: 1; transform: none; } }
+@keyframes su-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* narrow phones (iPhone SE): less padding, so the sample tiles get the width a real stop list gives them */
+@media (max-width: 360px) {
+  .su { padding-left: calc(var(--safe-left) + var(--space-2)); padding-right: calc(var(--safe-right) + var(--space-2)); }
+  .su-card { padding-left: var(--space-3); padding-right: var(--space-3); }
+}
+
+/* reduced motion (§7): no sliding; the dialog and each step just fade (<= 200 ms) */
+@media (prefers-reduced-motion: reduce) {
+  .su { animation: su-fade .18s linear; }
+  .su.su-out { opacity: 0; transition: opacity .18s linear; }
+  .su-step-in { animation: su-fade .15s linear both; }
+  .su-dot { transition: none; }
+}
