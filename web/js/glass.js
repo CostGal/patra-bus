@@ -5,13 +5,15 @@
 //   the finger), grows a little, leans towards the finger and springs back with a wobble (Web Animations on the
 //   `scale`/`translate` properties, so the elements' own transforms are untouched); .g-hover for a mouse.
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
-// - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate).
+// - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕.
 // Nothing is stored or sent. Reduced transparency / more contrast: no lens and no effects (CSS is solid then);
 // reduced motion: light only, no growing or moving.
 const root = document.documentElement;
 const mq = (q) => matchMedia(q).matches;
 const solid = mq('(prefers-reduced-transparency: reduce)') || mq('(prefers-contrast: more)');
 const still = mq('(prefers-reduced-motion: reduce)');
+import { icon } from './ui.js';
+
 const SVG = 'http://www.w3.org/2000/svg';
 
 // Displacement map: neutral grey in the middle, red/green ramps towards the edges, so the backdrop is pulled in from
@@ -190,6 +192,16 @@ function watchMenu() {
   root.classList.add('glass-morph');
 }
 
+// ☰ → ✕: a ✕ lives in the menu button next to its icon (CSS stacks them and crossfades them with the morph, or swaps
+// them with reduced motion). app.js redraws the button (☰ ↔ back arrow for search), so the ✕ is put back when it does.
+function addCloseIcon() {
+  const btn = document.getElementById('menu-btn');
+  if (!btn) return;
+  const ensure = () => { if (!btn.querySelector('.g-x')) { const x = icon('close'); x.classList.add('g-x'); btn.append(x); } };
+  ensure();
+  new MutationObserver(ensure).observe(btn, { childList: true });
+}
+
 function start() {
   if (solid) return;
   if (navigator.userAgentData) addLens(); // Chromium only (Chrome, Edge, Samsung Internet)
@@ -198,6 +210,7 @@ function start() {
   document.addEventListener('pointerup', release, { passive: true });
   document.addEventListener('pointercancel', release, { passive: true });
   watchScroll();
+  addCloseIcon();
   if (!still) watchMenu();
 }
 

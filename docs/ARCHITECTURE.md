@@ -426,7 +426,8 @@ sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserve
 opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
 in two phases (a circle swelling around the ☰
 button's centre, then opening into the panel's box; also `--g-morph` on the button, which blurs its lines out) (disconnects while writing; adds `html.glass-morph`, which keeps the shell
-opaque and fades the items by `--g-morph`); not with reduced motion. Does nothing with reduced transparency or more contrast; with
+opaque and fades the items by `--g-morph`); not with reduced motion. Adds a ✕ (`icon('close')` from `ui.js`, class `.g-x`) to
+`#menu-btn` and puts it back whenever app.js redraws the button (☰ ↔ back); CSS crossfades ☰ → ✕ by `--g-morph`. Does nothing with reduced transparency or more contrast; with
 reduced motion it keeps only the light (no `scale`/`translate`). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
 `npm run shots -- --glass --map`. Rules in DESIGN.md §4.
 

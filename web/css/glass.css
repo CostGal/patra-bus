@@ -132,7 +132,21 @@ html.glass-morph #menu-pop {
    its lines blur and fade out, and blur back in on close. Only while glass.js has a morph value on it */
 html.glass-morph #menu-btn { transition: background-color .25s ease-out; }
 html.glass-morph #menu-btn[style*="--g-morph"] { background-color: color-mix(in srgb, var(--g-card) calc((1 - var(--g-morph)) * 72%), transparent); }
-html.glass-morph #menu-btn .icon { filter: blur(calc(var(--g-morph, 0) * 16px)); opacity: calc(1 - var(--g-morph, 0) * 1.8); }
+/* ☰ → ✕: both icons sit in the same spot (js/glass.js adds .g-x); the ☰ lines blur out and turn a little, the ✕
+   blurs in from a quarter turn and settles; on close the ✕ blurs out and the ☰ comes back */
+html.glass #menu-btn > .icon { grid-area: 1 / 1; }
+html.glass #menu-btn > .g-x { opacity: 0; pointer-events: none; }
+html.glass-morph #menu-btn > .icon:not(.g-x) {
+  filter: blur(calc(var(--g-morph, 0) * 16px)); opacity: calc(1 - var(--g-morph, 0) * 1.8); rotate: calc(var(--g-morph, 0) * 45deg);
+}
+html.glass-morph #menu-btn > .g-x {
+  filter: blur(calc((1 - var(--g-morph, 0)) * 16px)); opacity: clamp(0, calc((var(--g-morph, 0) - .35) / .65), 1); rotate: calc((1 - var(--g-morph, 0)) * -90deg);
+}
+/* reduced motion (no morph): the icon just swaps while the menu is open */
+@media (prefers-reduced-motion: reduce) {
+  html.glass #menu-btn[aria-expanded="true"] > .icon:not(.g-x) { opacity: 0; }
+  html.glass #menu-btn[aria-expanded="true"] > .g-x { opacity: 1; }
+}
 html.glass-morph #menu-pop > * { opacity: clamp(0, calc((var(--g-morph, 1) - .5) / .5), 1); }
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
