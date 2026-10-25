@@ -171,6 +171,10 @@ My words:
 Where it shows up in Telematica: closed on weekdays 08:30–17:30 Athens time, holidays in the repo variable `MERGE_WINDOW_HOLIDAYS` (`.github/workflows/merge-window.yml`, TEL-182).
 My words:
 
+**Migration** (Durable Object migration): a note in `worker/wrangler.toml` telling Cloudflare that a new kind of Durable Object now exists, like registering a new shelf in a warehouse before you put boxes on it.
+Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `worker/wrangler.toml` (`v3` adds `Counters`, TEL-193).
+My words:
+
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Sprint» pane with your current TEL cards from Notion (`/sprint` refreshes it).
 My words:
@@ -249,6 +253,10 @@ My words:
 
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
+My words:
+
+**Upsert**: "update the row if it exists, otherwise create it", in one step, like a tally sheet where you add a stroke to a line or start the line if it is new.
+Where it shows up in Telematica: the `INSERT … ON CONFLICT … DO UPDATE` that adds 1 in `worker/src/counters.js` (TEL-193).
 My words:
 
 **Upstream**: the original source your program depends on, like the river above your mill.

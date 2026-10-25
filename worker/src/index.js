@@ -3,6 +3,7 @@ import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
 import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
+import { CountersBase, recordCount } from './counters.js';
 import { corsOriginFor, isAllowedOrigin, isPatternOrigin } from './origin.js';
 import { MAX_REPORT_BYTES, ForwardError, forwardReport, takeDailySlot } from './report.js';
 import { validateReport, isHoneypot } from '../../web/js/report.js';
@@ -179,6 +180,8 @@ export class Routine extends RoutineBase {
 
 export class Stats extends StatsBase {}
 
+export class Counters extends CountersBase {}
+
 const PUSH_ID = /^[0-9a-f]{32}$/;
 
 // Best-effort abuse brake: per isolate, so not global, but it stops a single client hammering one edge.
@@ -290,6 +293,7 @@ async function reportRoute(request, env, cors) {
     console.error(`/api/report: ${err instanceof ForwardError ? err.message : 'forward failed'}`); // status only, never the content
     return json(cors, { error: 'forward_failed' }, 502, { 'Cache-Control': 'no-store' });
   }
+  await recordCount(env, 'feedback', v.value.diag?.city, now); // anonymous daily total, see counters.js
   return json(cors, { ok: true }, 200, { 'Cache-Control': 'no-store' });
 }
 
