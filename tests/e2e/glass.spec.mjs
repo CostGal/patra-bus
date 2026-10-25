@@ -20,8 +20,19 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   // Chromium: refraction filter in front of the blur
   await expect(page.locator('html.glass-lens')).toHaveCount(1);
   expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(14px\)/);
-  // the sticky chip bar is glass over the list scrolling under it
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar')).backdropFilter)).toContain('blur(');
+  // the sticky chip bar has no band at rest; its blur layer shows only once the list scrolls under it
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar')).backgroundImage)).toBe('none');
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar'), '::before').backdropFilter)).toContain('blur(');
+  await page.evaluate(() => { document.getElementById('sheet-body').scrollTop = 120; });
+  await expect(page.locator('.sheet.g-scrolled')).toHaveCount(1);
+  await page.evaluate(() => { document.getElementById('sheet-body').scrollTop = 0; });
+  await expect(page.locator('.sheet.g-scrolled')).toHaveCount(0);
+  // the menu morphs out of the ☰ button: clipped and moved while it opens, plain when open
+  await page.click('#menu-btn');
+  await expect(page.locator('#menu-pop')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.getElementById('menu-pop').style.clipPath)).toMatch(/^inset\(0px round \d/);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#menu-pop')).toBeHidden();
   // a press lights the glass up and grows it, release lets it go
   const fab = page.locator('#locate-btn');
   const box = await fab.boundingBox();

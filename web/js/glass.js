@@ -4,6 +4,8 @@
 // - touch, like Apple's glass: the control under the finger gets .g-press with --gx/--gy (CSS: more opaque, light at
 //   the finger), grows a little, leans towards the finger and springs back with a wobble (Web Animations on the
 //   `scale`/`translate` properties, so the elements' own transforms are untouched); .g-hover for a mouse.
+// - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
+// - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate).
 // Nothing is stored or sent. Reduced transparency / more contrast: no lens and no effects (CSS is solid then);
 // reduced motion: light only, no growing or moving.
 const root = document.documentElement;
@@ -125,6 +127,51 @@ function release() {
   el.glassAnim = el.animate([from, { scale: '0.985', translate: '0px 0px', offset: 0.45 }, { scale: '1.006', offset: 0.75 }, { scale: '1', translate: '0px 0px' }], { duration: 520, easing: 'ease-out' });
 }
 
+// sticky headers: .g-scrolled on the sheet once its list has scrolled, so their blur layer only shows when needed
+function watchScroll() {
+  const sheet = document.querySelector('.sheet');
+  if (!sheet) return;
+  document.addEventListener('scroll', (e) => {
+    if (e.target instanceof Element && e.target.id === 'sheet-body') sheet.classList.toggle('g-scrolled', e.target.scrollTop > 4);
+  }, { capture: true, passive: true });
+}
+
+// menu: morphs out of the ☰ button. app.js drives the popover with its spring and paints opacity = progress (0..1);
+// this follows that progress and turns it into a shape: a circle over the button that grows into the panel
+// (clip-path inset + round, and `translate`, which composes with app.js's own scale).
+function watchMenu() {
+  const pop = document.getElementById('menu-pop');
+  const btn = document.getElementById('menu-btn');
+  if (!pop || !btn) return;
+  const ease = (t) => t * t * (3 - 2 * t); // ease-in-out over the spring's progress, so the shape grows the whole way
+  const opts = { attributes: true, attributeFilter: ['style', 'hidden'] };
+  let obs = null;
+  // our own style writes would wake the observer again: stop listening while writing
+  const write = (fn) => { obs.disconnect(); fn(); obs.observe(pop, opts); };
+  const reset = () => write(() => { pop.style.removeProperty('clip-path'); pop.style.removeProperty('translate'); pop.style.removeProperty('--g-morph'); });
+  const paint = () => {
+    const v = parseFloat(pop.style.opacity);
+    if (pop.hidden || Number.isNaN(v) || v <= 0.001) { reset(); return; }
+    const t = ease(Math.min(1, v));
+    const cs = getComputedStyle(pop);
+    const left = parseFloat(cs.left);
+    const top = parseFloat(cs.top);
+    const w = pop.offsetWidth;
+    const h = pop.offsetHeight;
+    const b = btn.getBoundingClientRect();
+    const r = parseFloat(cs.borderTopLeftRadius) || 16;
+    const k = 1 - t;
+    write(() => {
+      pop.style.translate = `${((b.left - left) * k).toFixed(1)}px ${((b.top - top) * k).toFixed(1)}px`;
+      pop.style.clipPath = `inset(0 ${((w - b.width) * k).toFixed(1)}px ${((h - b.height) * k).toFixed(1)}px 0 round ${(b.width / 2 * k + r * t).toFixed(1)}px)`;
+      pop.style.setProperty('--g-morph', t.toFixed(3));
+    });
+  };
+  obs = new MutationObserver(paint);
+  obs.observe(pop, opts);
+  root.classList.add('glass-morph');
+}
+
 function start() {
   if (solid) return;
   if (navigator.userAgentData) addLens(); // Chromium only (Chrome, Edge, Samsung Internet)
@@ -132,6 +179,8 @@ function start() {
   document.addEventListener('pointermove', onMove, { passive: true });
   document.addEventListener('pointerup', release, { passive: true });
   document.addEventListener('pointercancel', release, { passive: true });
+  watchScroll();
+  if (!still) watchMenu();
 }
 
 if (root.classList.contains('glass')) {

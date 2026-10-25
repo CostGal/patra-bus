@@ -421,7 +421,11 @@ surface there turns tinted without touching module CSS. The fallbacks only reset
 control under the finger (`button, a[href], [role=button], summary, label, .atile-link`; the whole `.searchbar` for its
 input; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
 untouched; never the sheet, menu, dialogs or sheet handle), leans it via `translate` while held, and springs it back on
-pointerup/cancel; `.g-hover` on glass surfaces for a mouse. Does nothing with reduced transparency or more contrast; with
+pointerup/cancel; `.g-hover` on glass surfaces for a mouse. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
+sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
+opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
+from the ☰ button's box to the panel's (disconnects while writing; adds `html.glass-morph`, which keeps the shell
+opaque and fades the items by `--g-morph`); not with reduced motion. Does nothing with reduced transparency or more contrast; with
 reduced motion it keeps only the light (no `scale`/`translate`). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
 `npm run shots -- --glass --map`. Rules in DESIGN.md §4.
 
