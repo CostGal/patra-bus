@@ -4,6 +4,7 @@ import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
 import { CountersBase, recordCount } from './counters.js';
+import { adminRoute } from './admin.js';
 import { corsOriginFor, isAllowedOrigin, isPatternOrigin } from './origin.js';
 import { MAX_REPORT_BYTES, ForwardError, forwardReport, takeDailySlot } from './report.js';
 import { validateReport, isHoneypot } from '../../web/js/report.js';
@@ -316,6 +317,11 @@ export default {
     const { pathname } = new URL(request.url);
     try {
       if (pathname === '/api/report') return await reportRoute(request, env, cors);
+      // Private stats: no CORS headers on purpose, so no other site can read the answer.
+      const admin = await adminRoute(request, env, {
+        limited: () => rateLimited(`admin:${request.headers.get('CF-Connecting-IP') || 'local'}`, Date.now(), REPORT_RATE_MAX),
+      });
+      if (admin) return admin;
       if (pathname.startsWith('/api/push/')) {
         const res = await pushRoute(request, env, cors, pathname);
         return res || json(cors, { error: 'not_found' }, 404);
