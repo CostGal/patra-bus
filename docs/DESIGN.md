@@ -49,7 +49,10 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   pills. **Menu:** morphs out of the ☰ button: pressed, ☰ is a whiter glass circle;
   as the menu opens, its glass starts clear over that circle and its blur grows with it, so the ☰ lines blur out through
   it and a ✕ blurs in where they were (the open menu's close button); the circle swells around the button, then opens into the panel (items fade in late); closing runs the same path
-  back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
+  back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Same logic elsewhere: every round button (☆, ⋯, ✕,
+  the map's i) presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
+  to the stop's close ✕) and the map's i grows into the attribution pill and back; the selected line chip is one glass
+  lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
   contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Not the default until the speed check (TEL-70) and a real-phone test.
 

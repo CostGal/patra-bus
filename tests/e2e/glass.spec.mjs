@@ -37,6 +37,20 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu-pop')).toBeHidden();
   await expect.poll(icons).toBe('1 0');
+  // the stop's ⋯ menu morphs the same way: ⋯ turns into ˄ while open, and the menu is hidden only after it shrank back
+  await page.click('.stopv-more-btn');
+  await expect(page.locator('.stopv-menu')).toBeVisible();
+  await expect(page.locator('.stopv-more-btn')).toHaveClass(/g-open/);
+  await page.click('.stopv-more-btn');
+  await expect(page.locator('.stopv-more-btn')).not.toHaveClass(/g-open/);
+  await expect(page.locator('.stopv-menu')).toBeHidden();
+  // line chips: one glass lens sits on the selected chip and follows the selection
+  const lensOn = () => page.evaluate(() => { const l = document.querySelector('.g-lens').getBoundingClientRect(); const c = document.querySelector('.stopv-chip.on').getBoundingClientRect(); return Math.abs(l.left - c.left) < 2 && Math.abs(l.width - c.width) < 2; });
+  await expect.poll(lensOn).toBe(true);
+  await page.locator('.stopv-chip').nth(1).click();
+  await expect(page.locator('.stopv-chip').nth(1)).toHaveClass(/\bon\b/);
+  await expect.poll(lensOn).toBe(true);
+  await page.locator('.stopv-chip').first().click();
   // a press lights the glass up and grows it, release lets it go
   const fab = page.locator('#locate-btn');
   const box = await fab.boundingBox();

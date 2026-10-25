@@ -31,6 +31,7 @@ html.glass {
   --g-edge: rgba(255, 255, 255, .95);
   --g-rim: rgba(255, 255, 255, .45);
   --g-touch: rgba(255, 255, 255, .55); /* the highlight under the finger */
+  --g-pressed: rgba(255, 255, 255, .75); /* a pressed round button: a whiter glass circle, still a little see-through */
   --g-halo: color-mix(in srgb, var(--g-card) 85%, transparent); /* soft glow behind text on glass, for legibility */
   --g-line: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .14);
@@ -45,7 +46,7 @@ html.glass {
     --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
     --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 26%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
     --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
-    --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-touch: rgba(255, 255, 255, .22);
+    --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-touch: rgba(255, 255, 255, .22); --g-pressed: rgba(255, 255, 255, .22);
     --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
     --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
     --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
@@ -55,7 +56,7 @@ html.glass[data-theme="dark"] {
   --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
   --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 26%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
   --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
-  --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-touch: rgba(255, 255, 255, .22);
+  --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-touch: rgba(255, 255, 255, .22); --g-pressed: rgba(255, 255, 255, .22);
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
@@ -99,8 +100,8 @@ html.glass .g-press {
   --g-chip: color-mix(in srgb, var(--g-card) 75%, transparent);
 }
 html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
-/* the search bar's round buttons (☰, back): pressed, they become a whiter glass circle, still a little see-through */
-html.glass .sb-btn.g-press { background-color: color-mix(in srgb, var(--g-card) 72%, transparent); }
+/* round buttons (☰, back, ☆, ⋯, ✕, the map's i): pressed, they become a whiter glass circle, still a little see-through */
+html.glass :is(.sb-btn, .btn.round, .maplibregl-ctrl-attrib-button).g-press { background-color: var(--g-pressed); }
 /* controls that are not glass surfaces get the finger light as an image over their own colour */
 html.glass .g-press:not(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
   background-image: radial-gradient(circle 70px at var(--gx, 50%) var(--gy, 50%), var(--g-touch), transparent);
@@ -131,7 +132,7 @@ html.glass-morph #menu-pop {
 /* the ☰ itself: its pressed glass circle hands over to the menu as it grows (and comes back as it shrinks into it);
    its lines blur and fade out, and blur back in on close. Only while glass.js has a morph value on it */
 html.glass-morph #menu-btn { transition: background-color .25s ease-out; }
-html.glass-morph #menu-btn[style*="--g-morph"] { background-color: color-mix(in srgb, var(--g-card) calc((1 - var(--g-morph)) * 72%), transparent); }
+html.glass-morph #menu-btn[style*="--g-morph"] { background-color: color-mix(in srgb, var(--g-pressed) calc((1 - var(--g-morph)) * 100%), transparent); }
 /* ☰ → ✕: both icons sit in the same spot (js/glass.js adds .g-x); the ☰ lines blur out and turn a little, the ✕
    blurs in from a quarter turn and settles; on close the ✕ blurs out and the ☰ comes back */
 html.glass #menu-btn > .icon { grid-area: 1 / 1; }
@@ -148,6 +149,37 @@ html.glass-morph #menu-btn > .g-x {
   html.glass #menu-btn[aria-expanded="true"] > .g-x { opacity: 1; }
 }
 html.glass-morph #menu-pop > * { opacity: clamp(0, calc((var(--g-morph, 1) - .5) / .5), 1); }
+
+/* ---------- more morphs (js/glass.js, html.glass-fx): the same Liquid Glass logic as ☰ ---------- */
+/* buttons whose icon turns into another while their popover is open (⋯ → ˄): both stacked, crossfaded with blur and a turn */
+html.glass-fx .g-morph-btn { display: inline-grid; place-items: center; }
+html.glass-fx .g-morph-btn > * { grid-area: 1 / 1; transition: filter .34s ease-out, opacity .34s ease-out, rotate .34s ease-out; }
+html.glass-fx .g-morph-btn > .g-x { opacity: 0; filter: blur(12px); rotate: -90deg; pointer-events: none; }
+html.glass-fx .g-morph-btn.g-open > :not(.g-x) { opacity: 0; filter: blur(12px); rotate: 45deg; }
+html.glass-fx .g-morph-btn.g-open > .g-x { opacity: 1; filter: none; rotate: 0deg; }
+/* the stop's ⋯ menu: glass too now that it grows out of its button (more tinted: it floats over the sheet) */
+html.glass-fx .stopv-menu {
+  background: var(--g-sheen), color-mix(in srgb, var(--g-card) 80%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
+}
+html.glass-fx .stopv-item:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
+/* the map's i: a glass circle that grows into the attribution pill (and back) */
+html.glass-fx .maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--g-sheen), var(--g-bg) !important; -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+  border: var(--g-line); border-radius: 22px; box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
+}
+html.glass-fx .maplibregl-ctrl-attrib-button { border-radius: 50%; }
+html.glass-fx .maplibregl-ctrl-attrib-button:focus:not(:focus-visible) { box-shadow: none; outline: none; }
+/* line filter chips: the selection is one glass lens that slides (and stretches) from chip to chip */
+html.glass-fx .stopv-chips { position: relative; z-index: 1; }
+html.glass-fx .stopv-chip.on { background: transparent; border-color: transparent; }
+html.glass-fx .g-lens {
+  position: absolute; z-index: 0; top: 0; left: 0; pointer-events: none; border-radius: var(--radius-full);
+  background: var(--g-chip-on); border: 1px solid color-mix(in srgb, var(--primary) 65%, transparent);
+  box-shadow: inset 0 1px 0 var(--g-edge), 0 2px 10px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+html.glass-fx .g-lens[hidden] { display: none; }
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
 html.glass .sheet-content h2, html.glass .pop-head, html.glass .pop-city-sub { font-weight: var(--weight-semibold); }

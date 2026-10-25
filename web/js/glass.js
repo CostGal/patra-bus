@@ -5,7 +5,9 @@
 //   the finger), grows a little, leans towards the finger and springs back with a wobble (Web Animations on the
 //   `scale`/`translate` properties, so the elements' own transforms are untouched); .g-hover for a mouse.
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
-// - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕.
+// - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕;
+// - the stop's ⋯ menu and the map's i morph the same way (⋯ → ˄), with their own timing;
+// - line filter chips: a glass lens slides from the selected chip to the next.
 // Nothing is stored or sent. Reduced transparency / more contrast: no lens and no effects (CSS is solid then);
 // reduced motion: light only, no growing or moving.
 const root = document.documentElement;
@@ -202,6 +204,145 @@ function addCloseIcon() {
   new MutationObserver(ensure).observe(btn, { childList: true });
 }
 
+// ---- more morphs: the stop's ⋯ menu and the map's i, with the same logic as ☰ (a circle over the button that swells,
+// then opens into the panel; the same path back). These popovers are shown and hidden by other code in one step
+// (the `hidden` attribute, a class), so the opening plays after it shows, and the closing is held back: the popover is
+// kept visible, shrinks into its button, and is hidden again when the animation ends.
+const OPEN_MS = 460;
+const CLOSE_MS = 380;
+const OUT = 'cubic-bezier(.3, .7, .2, 1)';
+const busy = new WeakSet(); // popovers we are hiding ourselves (their own mutation is not a request)
+const relBox = (pr, x, y, w, h, bw, bh, rad) => ({
+  translate: `${(x - pr.left).toFixed(1)}px ${(y - pr.top).toFixed(1)}px`,
+  clipPath: `inset(0px ${Math.max(0, w - bw).toFixed(1)}px ${Math.max(0, h - bh).toFixed(1)}px 0px round ${rad.toFixed(1)}px)`,
+});
+// circle over `from` (a rect) → a 1.5× circle around its centre → the popover's own box
+function shapeFrames(pop, from) {
+  pop.getAnimations().forEach((a) => a.cancel());
+  const pr = pop.getBoundingClientRect();
+  const r = parseFloat(getComputedStyle(pop).borderTopLeftRadius) || 12;
+  const d = Math.min(from.width, from.height);
+  const D = d * 1.5;
+  const cx = from.left + from.width / 2;
+  const cy = from.top + from.height / 2;
+  return [
+    { ...relBox(pr, cx - d / 2, cy - d / 2, pr.width, pr.height, d, d, d / 2), opacity: 0 },
+    { ...relBox(pr, cx - D / 2, cy - D / 2, pr.width, pr.height, D, D, D / 2), opacity: 1, offset: 0.3 },
+    { ...relBox(pr, pr.left, pr.top, pr.width, pr.height, pr.width, pr.height, r), opacity: 1 },
+  ];
+}
+function morphOpen(pop, from, items) {
+  const frames = shapeFrames(pop, from);
+  pop.animate(frames, { duration: OPEN_MS, easing: OUT });
+  for (const it of items) it.animate([{ opacity: 0 }, { opacity: 0, offset: 0.45 }, { opacity: 1 }], { duration: OPEN_MS, easing: 'ease-out' });
+}
+function morphClose(pop, from, items, hide) {
+  busy.add(pop);
+  const frames = shapeFrames(pop, from).reverse().map((f, i) => ({ ...f, offset: [0, 0.7, 1][i] }));
+  for (const it of items) it.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], { duration: CLOSE_MS, easing: 'ease-in' });
+  const a = pop.animate(frames, { duration: CLOSE_MS, easing: 'cubic-bezier(.5, 0, .7, .4)', fill: 'forwards' });
+  a.onfinish = () => { hide(); a.cancel(); pop.getAnimations().forEach((x) => x.cancel()); requestAnimationFrame(() => busy.delete(pop)); };
+}
+// the button that opens a popover turns its icon into another while it is open (⋯ → ˄: a ✕ there would sit next to
+// the stop's own close ✕ and read as the same thing)
+function morphButton(btn, to = 'chevron-up') {
+  if (btn.classList.contains('g-morph-btn')) return;
+  for (const n of [...btn.childNodes]) {
+    if (n.nodeType === Node.TEXT_NODE && n.textContent.trim()) { const s = document.createElement('span'); s.setAttribute('aria-hidden', 'true'); s.textContent = n.textContent; n.replaceWith(s); }
+  }
+  const x = icon(to);
+  x.classList.add('g-x');
+  btn.append(x);
+  btn.classList.add('g-morph-btn');
+}
+
+const attribFrom = new WeakMap(); // the i circle's box, taken when it is tapped (it is gone once the pill is open)
+function watchPopovers() {
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target instanceof Element && e.target.closest('.maplibregl-ctrl-attrib-button');
+    const box = b?.closest('.maplibregl-ctrl-attrib');
+    if (box && !box.classList.contains('maplibregl-compact-show')) attribFrom.set(box, b.getBoundingClientRect());
+  }, { capture: true, passive: true });
+
+  new MutationObserver((recs) => {
+    for (const r of recs) {
+      const el = r.target;
+      if (!(el instanceof Element) || busy.has(el)) continue;
+      // the stop's ⋯ menu (hidden attribute)
+      if (r.attributeName === 'hidden' && el.classList.contains('stopv-menu')) {
+        const btn = el.parentElement?.querySelector('.stopv-more-btn');
+        if (!btn) continue;
+        morphButton(btn);
+        const items = [...el.children];
+        if (!el.hidden) { btn.classList.add('g-open'); morphOpen(el, btn.getBoundingClientRect(), items); }
+        else {
+          btn.classList.remove('g-open');
+          el.hidden = false; // keep it on screen while it shrinks back into ⋯
+          busy.add(el);
+          morphClose(el, btn.getBoundingClientRect(), items, () => { el.hidden = true; });
+        }
+      }
+      // the map's i (MapLibre toggles maplibregl-compact-show)
+      if (r.attributeName === 'class' && el.classList.contains('maplibregl-ctrl-attrib')) {
+        const open = el.classList.contains('maplibregl-compact-show');
+        const was = (r.oldValue || '').includes('maplibregl-compact-show');
+        if (open === was) continue;
+        const items = [...el.querySelectorAll('.maplibregl-ctrl-attrib-inner')];
+        const from = attribFrom.get(el);
+        if (!from) continue;
+        if (open) morphOpen(el, from, items);
+        else {
+          busy.add(el);
+          el.classList.add('maplibregl-compact-show'); // keep the pill while it shrinks back into the i
+          morphClose(el, from, items, () => { el.classList.remove('maplibregl-compact-show'); });
+        }
+      }
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ['hidden', 'class'], attributeOldValue: true, subtree: true });
+}
+
+// ---- line filter chips: one glass lens marks the selected chip and slides to the next one, stretching over both
+// on the way (the chips are rebuilt on every change, so the lens lives in their bar, outside the rebuilt row)
+function watchChips() {
+  let from = null;
+  const rel = (el, bar) => { const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height }; };
+  const place = (bar, animate) => {
+    let lens = bar.querySelector(':scope > .g-lens');
+    if (!lens) { lens = document.createElement('div'); lens.className = 'g-lens'; lens.setAttribute('aria-hidden', 'true'); bar.prepend(lens); }
+    const on = bar.querySelector('.stopv-chip.on');
+    if (!on) { lens.hidden = true; return; }
+    lens.hidden = false;
+    const to = rel(on, bar);
+    lens.style.width = `${to.w}px`;
+    lens.style.height = `${to.h}px`;
+    lens.style.transform = `translate(${to.x}px, ${to.y}px)`;
+    if (animate && from && !still && Math.abs(from.x - to.x) > 1) {
+      const left = Math.min(from.x, to.x);
+      const right = Math.max(from.x + from.w, to.x + to.w);
+      lens.animate([
+        { width: `${from.w}px`, transform: `translate(${from.x}px, ${from.y}px)` },
+        { width: `${right - left}px`, transform: `translate(${left}px, ${to.y}px) scaleY(.86)`, offset: 0.45 },
+        { width: `${to.w}px`, transform: `translate(${to.x}px, ${to.y}px)` },
+      ], { duration: 480, easing: OUT });
+    }
+    from = null;
+  };
+  document.addEventListener('pointerdown', (e) => {
+    const chip = e.target instanceof Element && e.target.closest('.stopv-chip');
+    const bar = chip?.closest('.stopv-chipbar');
+    const on = bar?.querySelector('.stopv-chip.on');
+    from = on ? rel(on, bar) : null;
+  }, { capture: true, passive: true });
+  new MutationObserver((recs) => {
+    const bars = new Set(recs.map((r) => r.target).filter((t) => t instanceof Element && t.classList.contains('stopv-chips')).map((t) => t.closest('.stopv-chipbar')));
+    for (const bar of bars) if (bar) place(bar, true);
+  }).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('scroll', (e) => {
+    const bar = e.target instanceof Element && e.target.classList.contains('stopv-chips') && e.target.closest('.stopv-chipbar');
+    if (bar) place(bar, false);
+  }, { capture: true, passive: true });
+}
+
 function start() {
   if (solid) return;
   if (navigator.userAgentData) addLens(); // Chromium only (Chrome, Edge, Samsung Internet)
@@ -211,7 +352,9 @@ function start() {
   document.addEventListener('pointercancel', release, { passive: true });
   watchScroll();
   addCloseIcon();
-  if (!still) watchMenu();
+  watchChips();
+  root.classList.add('glass-fx');
+  if (!still) { watchMenu(); watchPopovers(); }
 }
 
 if (root.classList.contains('glass')) {
