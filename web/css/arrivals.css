@@ -108,11 +108,6 @@
 @keyframes skel-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 /* ---- footer: one quiet line ---- */
-/* ---- legend (TEL-49): LIVE / ΠΡΟΓΡ. / ′ ″, until dismissed ---- */
-.stopv-legend { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--radius-md); background: var(--muted); color: var(--muted-foreground); font-size: var(--text-sm); line-height: var(--lead-label); }
-.stopv-legend[hidden] { display: none; }
-.stopv-legend-text { flex: 1; min-width: 0; }
-.btn.stopv-legend-x .icon { --icon: 18px; }
 
 .stopv-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: 2px; color: var(--muted-foreground); font-size: var(--text-sm); }
 .stopv-foot-text { margin: 0; font-variant-numeric: tabular-nums; }

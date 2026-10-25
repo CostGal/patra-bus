@@ -16,7 +16,8 @@ const PORT = 4174; // 4173 belongs to the smoke tests
 const ENGINES = { chromium, webkit, firefox };
 
 const DEFAULT_DEVICES = ['iPhone SE', 'iPhone 15', 'Pixel 7', 'iPad Mini landscape'];
-// hash is appended to <base>/?demo…; scroll = also capture the content below the fold (pages of the sheet).
+// hash is appended to <base>/?demo…; scroll = also capture the content below the fold (pages of the sheet);
+// steps = also capture that many next steps of a dialog (its .su-next button).
 const SCREENS = [
   { id: 'home', url: '/?demo#/' },
   { id: 'stop', url: '/?demo#/stop/1011', scroll: 1 },
@@ -29,6 +30,7 @@ const SCREENS = [
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
   { id: 'guide', url: '/?demo#/guide', scroll: 2 },
   { id: 'report', url: '/?demo#/report', scroll: 1 },
+  { id: 'setup', url: '/?demo&setup#/', steps: 2 },
 ];
 
 const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => { const [k, ...v] = a.slice(2).split('='); return [k, v.join('=') || 'true']; }));
@@ -52,7 +54,7 @@ async function startServer() {
 }
 
 // The app picks its language from settings (default 'auto' follows the phone), so the blob is written before the app starts.
-const seed = (lang) => `try { if (!localStorage.getItem('patra-bus:v2')) localStorage.setItem('patra-bus:v2', JSON.stringify({ v: 3, favorites: [], recents: { stop: [], place: [] }, settings: { lang: '${lang}' } })); } catch {}`;
+const seed = (lang) => `try { if (!localStorage.getItem('patra-bus:v2')) localStorage.setItem('patra-bus:v2', JSON.stringify({ v: 3, favorites: [], recents: { stop: [], place: [] }, settings: { lang: '${lang}', setupDone: true } })); } catch {}`;
 
 const launched = new Map();
 async function browserFor(device, notes) {
@@ -89,6 +91,12 @@ async function capture(context, base, screen, dir, summary) {
   const files = [];
   const first = `${screen.id}.png`;
   await shoot(page, `${dir}/${first}`); files.push(first);
+  for (let i = 1; i <= (screen.steps || 0); i++) {
+    await page.click('.su-next');
+    await page.waitForTimeout(500);
+    const f = `${screen.id}-step${i + 1}.png`;
+    await shoot(page, `${dir}/${f}`); files.push(f);
+  }
   const info = await page.evaluate(scrollerInfo);
   for (let i = 1; info && i <= (screen.scroll || 0); i++) {
     const moved = await page.evaluate(() => { const el = document.getElementById('sheet-body'); const before = el.scrollTop; el.scrollTop = before + el.clientHeight * 0.85; return el.scrollTop > before; });

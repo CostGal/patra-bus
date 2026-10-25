@@ -4,7 +4,7 @@ import { isLive } from '../../web/js/arrivals.js';
 
 const CITY = {
   patra: { home: '/#/', name: 'Πάτρα', query: 'πανεπιστημιου αρεθα', stopName: 'Πανεπιστημίου & Αρέθα', stopHash: '#/stop/1011' },
-  corfu: { home: '/#/corfu/', name: 'Κέρκυρα', query: 'σαροκου', stopName: 'Πλατεία Σαροκου', stopHash: '#/corfu/stop/801' },
+  corfu: { home: '/#/corfu/', name: 'Κέρκυρα', query: 'πολυκλινικη', stopName: 'Πολυκλινικη', stopHash: '#/corfu/stop/404' },
 };
 const tiles = (page) => page.locator('.stopv .atile:not(.atile-skel)');
 
@@ -44,10 +44,10 @@ for (const [id, c] of Object.entries(CITY)) {
   });
 }
 
-test('LIVE and scheduled departures look different', async ({ page }) => {
-  const vs = FIXTURES.patra.body.vehicles;
-  expect(vs.some(isLive) && !vs.every(isLive), 'the Patras fixture needs one LIVE and one scheduled departure').toBe(true);
-  await page.goto(`/${CITY.patra.stopHash}`);
+for (const id of Object.keys(CITY)) test(`${id}: LIVE and scheduled departures look different`, async ({ page }) => {
+  const vs = FIXTURES[id].body.vehicles;
+  expect(vs.some(isLive) && !vs.every(isLive), `the ${id} fixture needs one LIVE and one scheduled departure`).toBe(true);
+  await page.goto(`/${CITY[id].stopHash}`);
   const live = page.locator('.atile-live').first();
   const sched = page.locator('.atile-sched').first();
   await expect(live).toBeVisible();
@@ -69,7 +69,7 @@ test('LIVE and scheduled departures look different', async ({ page }) => {
   const [l, s] = [await look(live), await look(sched)];
   for (const k of Object.keys(l)) expect(l[k], `${k} colour`).not.toBe(s[k]);
 
-  await test.info().attach('live-vs-scheduled.png', { body: await page.locator('.stopv').screenshot(), contentType: 'image/png' });
+  await test.info().attach(`${id}-live-vs-scheduled.png`, { body: await page.locator('.stopv').screenshot(), contentType: 'image/png' });
 });
 
 // Greek letters in visible text, placeholders and labels, minus upstream data (stop and route names) and the

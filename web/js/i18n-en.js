@@ -4,13 +4,13 @@ import { PAIRS as GUIDE_PAIRS } from './i18n-en-guide.js';
 import { PAIRS as INSTALL_PAIRS } from './i18n-en-install.js';
 import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 import { PAIRS as WELCOME_PAIRS } from './i18n-en-welcome.js';
+import { PAIRS as SETUP_PAIRS } from './i18n-en-setup.js';
 
 const PAIRS = [
   // ---- shared: arrivals, status, common controls ----
   ['LIVE', 'LIVE'],
   ['ΠΡΟΓΡ.', 'SCHED.'],
   ['πριν {age}', '{age} ago'],
-  ['LIVE = το λεωφορείο στέλνει θέση · ΠΡΟΓΡ. = ώρα προγράμματος, χωρίς θέση · ′ = λεπτά, ″ = δευτερόλεπτα', 'LIVE = the bus is sending its position · SCHED. = timetable time, no position · ′ = minutes, ″ = seconds'],
   ['τώρα', 'now'],
   ['Φύγε σε {n}′', 'Leave in {n}′'],
   ['Φύγε τώρα', 'Leave now'],
@@ -575,4 +575,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS]);
+export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);

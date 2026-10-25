@@ -1,0 +1,52 @@
+{
+  "city": "corfu",
+  "stop": "404",
+  "recordedAt": "2026-10-19T15:08:40.287Z",
+  "status": 200,
+  "body": {
+    "vehicles": [
+      {
+        "lineCode": "11",
+        "lineName": "ΠΕΛΕΚΑΣ",
+        "routeCode": "67",
+        "routeName": "ΣΑΡΟΚΟ (ΠΟΛΗ) - ΑΓ. ΙΩΑΝΝΗΣ - ΜΟΥΧΑ",
+        "latitude": "39.622135",
+        "longitude": "19.911063",
+        "departureMins": 1,
+        "departureSeconds": 33,
+        "vehicleCode": "20261019_67_1000000_18_05",
+        "lineColor": "#ff9800",
+        "lineTextColor": "#ffffff",
+        "borderColor": "#D68000"
+      },
+      {
+        "lineCode": "04",
+        "lineName": "ΠΟΤΑΜΟΣ - ΕΥΡΩΠΟΥΛΟΙ - ΤΕΜΠΛΟΝΙ",
+        "routeCode": "7",
+        "routeName": "ΣΑΡΟΚΟ (ΠΟΛΗ) - ΠΟΤΑΜΟΣ- ΕΥΡΩΠΟΥΛΟΙ",
+        "latitude": "0",
+        "longitude": "0",
+        "departureMins": 24,
+        "departureSeconds": 16,
+        "vehicleCode": "20261019_7_1000000_18_30",
+        "lineColor": "#ff4081",
+        "lineTextColor": "#ffffff",
+        "borderColor": "#FF1766"
+      },
+      {
+        "lineCode": "07",
+        "lineName": "ΥΨΟΣ - ΔΑΣΙΑ",
+        "routeCode": "19",
+        "routeName": "ΣΑΡΟΚΟ (ΠΟΛΗ) - ΥΨΟΣ",
+        "latitude": "0",
+        "longitude": "0",
+        "departureMins": 24,
+        "departureSeconds": 56,
+        "vehicleCode": "20261019_19_1000000_18_30",
+        "lineColor": "#304ffe",
+        "lineTextColor": "#ffffff",
+        "borderColor": "#072CFE"
+      }
+    ]
+  }
+}

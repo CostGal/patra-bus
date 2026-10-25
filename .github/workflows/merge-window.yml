@@ -1,0 +1,52 @@
+name: Merge window
+
+# TEL-182: no merges into main on weekdays 08:30–17:30, Athens time (the rule is 09:00; the 30′ margin covers GitHub's
+# late cron runs). The required commit status `merge-window` is pending while merging is closed and success otherwise.
+# A PR with auto-merge on waits and merges by itself once the 17:30 run turns the status green.
+# Holidays: add the date (YYYY-MM-DD, comma-separated) to the repo variable MERGE_WINDOW_HOLIDAYS; to open at once,
+# run this workflow by hand (Actions → Merge window → Run workflow).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # UTC, so both Athens offsets (EEST +3, EET +2) are listed; the job decides by Athens time. Off :00/:30, where
+    # GitHub delays scheduled runs the most; two runs each, in case one is dropped.
+    - cron: '31,46 5,6 * * 1-5'   # close: 08:31 and 08:46 Athens
+    - cron: '31,41 14,15 * * 1-5' # open: 17:31 and 17:41 Athens
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+  pull-requests: read
+
+# One group per PR (and one for the timed runs): a shared group would cancel a waiting run and leave a PR without status.
+concurrency: merge-window-${{ github.event.pull_request.number || 'all' }}
+
+jobs:
+  # Not named `merge-window`: a check run with that name would satisfy the required check even while the status is pending.
+  stamp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      HOLIDAYS: ${{ vars.MERGE_WINDOW_HOLIDAYS }}
+      CLOSE_FROM: '0830'
+      OPEN_FROM: '1730'
+      EVENT: ${{ github.event_name }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Set the merge-window status
+        run: |
+          day=$(TZ=Europe/Athens date +%u) hm=$(TZ=Europe/Athens date +%H%M) today=$(TZ=Europe/Athens date +%F)
+          state=success desc='Merging is open'
+          if [ "$day" -le 5 ] && [ "$hm" -ge "$CLOSE_FROM" ] && [ "$hm" -lt "$OPEN_FROM" ] \
+             && ! echo ",${HOLIDAYS// /}," | grep -q ",$today,"; then
+            state=pending desc='Closed until 17:30 (Athens). Use auto-merge to queue this PR.'
+          fi
+          if [ "$EVENT" = pull_request ]; then shas=$HEAD_SHA
+          else shas=$(gh pr list -R "$GITHUB_REPOSITORY" --base main --state open --json headRefOid -q '.[].headRefOid'); fi
+          for sha in $shas; do
+            gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$sha" -f state="$state" -f context=merge-window -f description="$desc" > /dev/null
+          done
+          echo "$today $hm (weekday $day): $state on $(echo $shas | wc -w) PR head(s)"

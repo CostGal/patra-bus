@@ -55,6 +55,7 @@ const SHELL = [
   'css/install.css',
   'css/report.css',
   'css/welcome.css',
+  'css/setup.css',
   'js/app.js',
   'js/ui.js',
   'js/map.js',
@@ -94,6 +95,7 @@ const SHELL = [
   'js/i18n-en-install.js',
   'js/i18n-en-report.js',
   'js/i18n-en-welcome.js',
+  'js/i18n-en-setup.js',
   'js/places.js',
   'js/routines.js',
   'js/onboard.js',
@@ -103,6 +105,7 @@ const SHELL = [
   'js/report.js',
   'js/report-view.js',
   'js/welcome.js',
+  'js/setup.js',
   'data/stops.json',
   'data/lines.json',
   // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.

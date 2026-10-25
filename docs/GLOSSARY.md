@@ -3,6 +3,10 @@
 Technical words used in this project, in plain language. Add new terms in alphabetical order.
 "My words:" is for you: rewrite the entry in your own words. If you can't, that term goes to [LEARNING.md](LEARNING.md).
 
+**ADR** (architecture decision record): a one-page note of one decision: what we chose, why, and what it changes, like the minutes of a meeting about a single question.
+Where it shows up in Telematica: proposed in Amarildo's Moovit handoff (`/docs/decisions/`); not adopted yet, a finding of TEL-135.
+My words:
+
 **Alarm** (Durable Object alarm): a wake-up call a program sets for itself, like an alarm clock that starts the code at an exact time.
 Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
 My words:
@@ -19,6 +23,14 @@ My words:
 Where it shows up in Telematica: the Worker gets the citybus token from their web page and keeps it in KV (`getToken` in `worker/src/index.js`). It must never be in the browser or in git.
 My words:
 
+**Auto-merge**: a switch on a pull request that says "merge this by yourself as soon as every required check is green", like leaving a letter at the post office to be sent the moment it opens.
+Where it shows up in Telematica: inside the merge window Kostas turns it on instead of pressing Merge, and the PR merges by itself at 17:30 (TEL-182).
+My words:
+
+**Benchmark**: the same small task, timed and counted on every app, like timing two runners on the same track.
+Where it shows up in Telematica: TEL-135 runs 12 tasks (e.g. "next bus at stop 1011") on Moovit, Google Maps and our app; results in Notion.
+My words:
+
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
 Where it shows up in Telematica: each city's area in `web/js/cities.js`; `inArea()` in `geo.js` checks a point against it, e.g. to drop a live bus position that lands outside the city (`api.js`); `cityAt()` in `web/js/city-detect.js` uses the boxes to tell which city the user is in (TEL-142).
 My words:
@@ -31,8 +43,16 @@ My words:
 Where it shows up in Telematica: the Worker keeps each stop's live answer for 15 s; the phone keeps app files offline (`worker/src/index.js`, `web/sw.js`).
 My words:
 
+**Checkout**: a folder on your computer holding a working copy of the project files at one branch, like a photocopy of a book you can scribble on without touching the original. The command `git checkout` is the other meaning: it switches which branch that folder shows.
+Where it shows up in Telematica: `C:\dev\patra-bus` is the main checkout; each Claude task works in its own extra one (see Worktree).
+My words:
+
 **CI** (continuous integration): a robot that runs the tests automatically on every proposed change, like a spell-checker that runs before anything is published.
 Where it shows up in Telematica: GitHub Actions in `.github/workflows/` (tests, Lighthouse, Pages).
+My words:
+
+**Clean-room**: learning how a rival product works only by using it and reading public sources, never from its code or private data, like working out a recipe by tasting the dish instead of stealing the chef's notebook.
+Where it shows up in Telematica: the rule for all competitor research (TEL-135): no Moovit code, images, keys, endpoints or data in our app or repo.
 My words:
 
 **Cliff** (in vesting): a starting hurdle: if you leave before it, you keep nothing; after it, a first chunk unlocks at once, like a gym deal that only starts counting after the first full year.
@@ -87,12 +107,20 @@ My words:
 Where it shows up in Telematica: it serves the `web/` folder at costgal.github.io/patra-bus (`.github/workflows/pages.yml`).
 My words:
 
+**GITHUB_TOKEN**: a temporary key GitHub hands to each Action run, which opens only what the workflow's `permissions:` list allows, like a one-day visitor pass limited to certain rooms.
+Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` uses it (permission `issues: write`) to comment on the watch issue; nothing is stored.
+My words:
+
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
 Where it shows up in Telematica: `#/stop/1011`, `#/plan`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
 
 **Headless browser**: a real browser that runs without a visible window, so a script can open pages and take screenshots, like a robot using the browser for you.
 Where it shows up in Telematica: Playwright runs Chromium this way for the smoke tests and for `npm run shots`.
+My words:
+
+**Health check**: a small address a service answers with "I'm alive, and this is my state", like a nurse who takes your pulse before the doctor comes in.
+Where it shows up in Telematica: `GET /health` of the Worker (`worker/src/index.js`) returns `ok`, the time and `tokenExp` per city.
 My words:
 
 **Honeypot**: a hidden form field that humans never fill but spam robots do, like a bowl of candy that only thieves reach for.
@@ -139,6 +167,10 @@ My words:
 Where it shows up in Telematica: `web/js/map.js`, with the library stored in `web/vendor/maplibre-gl/`.
 My words:
 
+**Merge window**: the hours when merging into `main` is allowed; outside them a required check stays yellow and the Merge button is locked, like a shop that only takes deliveries after closing time.
+Where it shows up in Telematica: closed on weekdays 08:30–17:30 Athens time, holidays in the repo variable `MERGE_WINDOW_HOLIDAYS` (`.github/workflows/merge-window.yml`, TEL-182).
+My words:
+
 **Migration** (Durable Object migration): a note in `worker/wrangler.toml` telling Cloudflare that a new kind of Durable Object now exists, like registering a new shelf in a warehouse before you put boxes on it.
 Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `worker/wrangler.toml` (`v3` adds `Counters`, TEL-193).
 My words:
@@ -149,6 +181,10 @@ My words:
 
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
 Where it shows up in Telematica: walking time to a stop (`web/js/walk.js`), via the FOSSGIS server.
+My words:
+
+**Parity matrix** (feature matrix): a table with features down the side and "them vs us" across, like the spec sheets of two phones side by side.
+Where it shows up in Telematica: TEL-135 compares 40+ Moovit features with ours and marks each one Learn, Beat or Skip (in Notion).
 My words:
 
 **Playwright**: a tool that opens a real browser by itself and clicks through the app, like a robot tester.
@@ -179,6 +215,14 @@ My words:
 Where it shows up in Telematica: 15 s minimum between live requests per stop; per-IP limits on reminders and reports (`worker/src/index.js`).
 My words:
 
+**Required check**: a test or status that must be green on a pull request before GitHub lets anyone merge it, like a signature a form needs before it is accepted.
+Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
+My words:
+
+**Scheduled workflow** (cron): a GitHub Action that starts by itself on a timetable, like an alarm clock that rings every 30 minutes. It only runs from the `main` branch.
+Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` (`schedule:` with `cron: '7,37 5-17 * * *'`).
+My words:
+
 **Secret** (Cloudflare secret): a private value stored on the server and hidden from the code in git, like a safe's combination.
 Where it shows up in Telematica: `VAPID_PRIVATE_KEY`, `NOTION_TOKEN`, `NOTION_DB_ID`; locally in `worker/.dev.vars` (ignored by git).
 My words:
@@ -195,8 +239,16 @@ My words:
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
 My words:
 
+**Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.
+Where it shows up in Telematica: Amarildo's Moovit teardown and the TEL-135 study (notes in Notion, never in the public repo).
+My words:
+
 **Toast**: a small message that slides in at the bottom of the screen for a few seconds and then disappears by itself, like a sticky note that falls off on its own.
 Where it shows up in Telematica: `toast()` in `web/js/ui.js`, e.g. "Back online" or the "Switch city?" offer (TEL-142).
+My words:
+
+**tokenExp**: the moment the saved citybus token stops working, like the expiry date printed on a visitor badge.
+Where it shows up in Telematica: `/health` returns it per city, read from the KV key `token/{city}`; it is `null` when no token is saved (`worker/src/index.js`).
 My words:
 
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
@@ -229,6 +281,10 @@ My words:
 
 **WebKit**: the browser engine inside Safari and every iPhone browser, like the engine block that all iPhone browsers share.
 Where it shows up in Telematica: `npm run shots` can render the app with WebKit to get closer to how it looks on an iPhone.
+My words:
+
+**Worktree**: a second checkout of the same repo in another folder, on its own branch, like a second desk with its own copy of the file while both desks share one archive.
+Where it shows up in Telematica: each Claude session works in its own worktree under `.claude/worktrees/`, so tasks never mix.
 My words:
 
 **Wrangler**: Cloudflare's command-line tool for running and deploying Workers, like the remote control for our Worker.
