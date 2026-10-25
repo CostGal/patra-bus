@@ -23,6 +23,10 @@ My words:
 Where it shows up in Telematica: the Worker gets the citybus token from their web page and keeps it in KV (`getToken` in `worker/src/index.js`). It must never be in the browser or in git.
 My words:
 
+**Authorization header**: a hidden line in a web request that carries a password or token, like an entry card you show at the door instead of writing it on the envelope.
+Where it shows up in Telematica: the private stats page sends `Authorization: Bearer <STATS_TOKEN>` to `/api/admin/counts` (`worker/src/admin.js`, TEL-195). The token never goes in the URL.
+My words:
+
 **Auto-merge**: a switch on a pull request that says "merge this by yourself as soon as every required check is green", like leaving a letter at the post office to be sent the moment it opens.
 Where it shows up in Telematica: inside the merge window Kostas turns it on instead of pressing Merge, and the PR merges by itself at 17:30 (TEL-182).
 My words:
