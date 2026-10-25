@@ -152,9 +152,11 @@ function watchMenu() {
   const write = (fn) => { obs.disconnect(); fn(); obs.observe(pop, opts); };
   const reset = () => write(() => { pop.style.removeProperty('clip-path'); pop.style.removeProperty('translate'); pop.style.removeProperty('--g-morph'); btn.style.removeProperty('--g-morph'); });
   const paint = () => {
+    // only a hidden menu goes back to plain: near 0 it stays the small circle over ☰ until app.js hides it, or the
+    // full menu would flash (its opacity is held by CSS)
+    if (pop.hidden) { reset(); return; }
     const v = parseFloat(pop.style.opacity);
-    if (pop.hidden || Number.isNaN(v) || v <= 0.001) { reset(); return; }
-    const t = Math.min(1, v);
+    const t = Number.isNaN(v) ? 0 : Math.max(0, Math.min(1, v));
     const cs = getComputedStyle(pop);
     const left = parseFloat(cs.left);
     const top = parseFloat(cs.top);

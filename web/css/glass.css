@@ -61,6 +61,10 @@ html.glass[data-theme="dark"] {
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
 }
 
+/* touch & hold is a gesture here: no text selection, no iOS callout or tap flash (form fields keep selection) */
+html.glass { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+html.glass :is(input, textarea, select, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
+
 /* ---------- glass: floating chrome ---------- */
 /* declared on each glass element, not on <html>: --gx/--gy/--g-hl-a are per element and var() resolves where declared */
 html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
@@ -115,17 +119,20 @@ html.glass-lens .sheet, html.glass-lens #menu-pop, html.glass-lens .su-card, htm
   -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
 }
 
-/* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring): the glass shell is
-   there from the first frame, the items fade in once it has room */
-html.glass-morph #menu-pop { opacity: 1 !important; transform: none !important; } /* the shape does the motion, not app.js's scale */
-/* it starts as the pressed ☰ circle (whiter, 72%) and clears to the menu's glass as it opens */
-html.glass-morph #menu-pop { --g-bg-lg: color-mix(in srgb, var(--g-card) calc(30% + (1 - var(--g-morph, 1)) * 42%), transparent); }
-/* the ☰ lines blur and fade out over the first part of the morph, and come back as it reverses */
-/* the ☰ keeps its pressed glass circle while the menu is open, so the menu reads as that circle grown; it fades as the
-   menu shrinks back into it */
-html.glass-morph #menu-btn { transition: background-color .3s ease-out; }
-html.glass-morph #menu-btn[aria-expanded="true"] { background-color: color-mix(in srgb, var(--g-card) 72%, transparent); }
-html.glass-morph #menu-btn .icon { filter: blur(calc(var(--g-morph, 0) * 6px)); opacity: calc(1 - var(--g-morph, 0) * 2.5); }
+/* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring, --g-morph = 0..1).
+   The glass starts clear over the pressed ☰ circle and its blur grows with the shape, so the ☰ lines blur out through
+   it; app.js's fade and scale are replaced by the shape (its shell only fades over the first sixth, to hide the rim). */
+html.glass-morph #menu-pop {
+  opacity: clamp(0, calc(var(--g-morph, 1) * 6), 1) !important; transform: none !important;
+  --g-bg-lg: color-mix(in srgb, var(--g-card) calc(var(--g-morph, 1) * 32%), transparent);
+  -webkit-backdrop-filter: blur(calc(var(--g-morph, 1) * 14px)) saturate(calc(1 + var(--g-morph, 1)));
+  backdrop-filter: blur(calc(var(--g-morph, 1) * 14px)) saturate(calc(1 + var(--g-morph, 1)));
+}
+/* the ☰ itself: its pressed glass circle hands over to the menu as it grows (and comes back as it shrinks into it);
+   its lines blur and fade out, and blur back in on close. Only while glass.js has a morph value on it */
+html.glass-morph #menu-btn { transition: background-color .25s ease-out; }
+html.glass-morph #menu-btn[style*="--g-morph"] { background-color: color-mix(in srgb, var(--g-card) calc((1 - var(--g-morph)) * 72%), transparent); }
+html.glass-morph #menu-btn .icon { filter: blur(calc(var(--g-morph, 0) * 16px)); opacity: calc(1 - var(--g-morph, 0) * 1.8); }
 html.glass-morph #menu-pop > * { opacity: clamp(0, calc((var(--g-morph, 1) - .5) / .5), 1); }
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */

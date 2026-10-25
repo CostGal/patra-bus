@@ -47,8 +47,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   headers in the sheet (stop line chips, planner head) have no band at rest; once the list scrolls under them a blur
   layer fades in behind them, feathered at the bottom (no edge, no line), like iOS bars. The line chips are small glass
   pills. **Menu:** morphs out of the ☰ button: pressed, ☰ is a whiter glass circle;
-  as the menu opens its lines blur out, the circle swells around the button, then opens into the panel (items fade in
-  late); closing runs the same path back into the button. Solid on purpose: toast (TEL-47
+  as the menu opens, its glass starts clear over that circle and its blur grows with it, so the lines blur out through
+  it; the circle swells around the button, then opens into the panel (items fade in late); closing runs the same path
+  back and the lines blur back in. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
   contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Not the default until the speed check (TEL-70) and a real-phone test.
 
