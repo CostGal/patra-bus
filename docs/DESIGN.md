@@ -56,6 +56,20 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Not the default until the speed check (TEL-70) and a real-phone test.
 
+### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
+- Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft
+  halo, not from more blur. Frosted, high-blur glass read as "not true glass".
+- **No ambient light**: a shine that moves by itself (on scroll/drag) is annoying. Light comes only from touch.
+- **Touch & hold is the signature**: every pressable thing grows a little (~10px, ≤8%), leans to the finger, turns more
+  opaque with light at the finger, and springs back with a small wobble. Round buttons press into a *whiter* circle.
+- **Morph from what you touched**: a popover grows out of its button (circle → swells → panel) and goes back the same way;
+  the button's icon blurs into its "close" meaning (☰ → ✕; ⋯ → ˄ where an ✕ would duplicate a nearby ✕).
+- Never let a closing popover flash: keep it on screen until its shape has shrunk back, then hide it.
+- **No bands**: sticky headers sit on the sheet; blur appears only when content scrolls under them, feathered, no line.
+- Selection is **one lens that moves** (filter chips), stretching over both chips on the way.
+- Web-app limits: no SVG refraction in Safari (blur only); long-press selects text unless `user-select`/`touch-callout`
+  are off; screenshots without the real map cannot show glass — judge on the phone (#103).
+
 ## 5. Typography
 - System font stack (`system-ui`), which already has optical sizing.
 - Size-specific tracking: big numbers/headlines `letter-spacing: -0.02em`, tight leading (1.05–1.15);
