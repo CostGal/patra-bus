@@ -71,6 +71,10 @@ My words:
 Where it shows up in Telematica: `ALLOWED_ORIGIN` in `worker/wrangler.toml` and `worker/src/origin.js` list the sites allowed to call our Worker.
 My words:
 
+**CRLF / LF** (line endings): the invisible mark at the end of each line of text. Windows writes two characters (`\r\n`, CRLF), Linux and macOS write one (`\n`, LF), like two keyboards that put a different hidden mark when you press Enter.
+Where it shows up in Telematica: git on Windows checks files out with CRLF, so a test that searches for text across two lines must ignore the `\r` (`read()` in `tests/setup.test.mjs`, TEL-194).
+My words:
+
 **Deduplication**: finding two entries that are really the same thing and keeping only one, like crossing out a name written twice on a guest list.
 Where it shows up in Telematica: a scheduled row that is the same bus as a live row is dropped, so only the live one shows (`dropScheduledDuplicates` in `web/js/arrivals.js`).
 My words:
