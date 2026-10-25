@@ -76,7 +76,9 @@ function place(el, e) {
 }
 function targetOf(e) {
   if (!(e.target instanceof Element)) return null;
-  const bar = e.target.closest('.searchbar'); // its input and buttons press the whole bar
+  const round = e.target.closest('.sb-btn'); // the bar's round buttons (☰, back) press on their own, as glass circles
+  if (round) return round;
+  const bar = e.target.closest('.searchbar'); // the rest of the bar (its input) presses the whole bar
   if (bar) return bar;
   const c = e.target.closest(CONTROL);
   if (c && !c.matches('.sheet-handle')) return c;
@@ -137,8 +139,8 @@ function watchScroll() {
 }
 
 // menu: morphs out of the ☰ button. app.js drives the popover with its spring and paints opacity = progress (0..1);
-// this follows that progress and turns it into a shape: a circle over the button that grows into the panel
-// (clip-path inset + round, and `translate`, which composes with app.js's own scale).
+// this follows that progress and turns it into a shape: the ☰ lines blur out, and a glass circle over the button grows
+// into the panel (clip-path inset + round, and `translate`); in reverse on close. app.js's scale is switched off in CSS.
 function watchMenu() {
   const pop = document.getElementById('menu-pop');
   const btn = document.getElementById('menu-btn');
@@ -148,11 +150,11 @@ function watchMenu() {
   let obs = null;
   // our own style writes would wake the observer again: stop listening while writing
   const write = (fn) => { obs.disconnect(); fn(); obs.observe(pop, opts); };
-  const reset = () => write(() => { pop.style.removeProperty('clip-path'); pop.style.removeProperty('translate'); pop.style.removeProperty('--g-morph'); });
+  const reset = () => write(() => { pop.style.removeProperty('clip-path'); pop.style.removeProperty('translate'); pop.style.removeProperty('--g-morph'); btn.style.removeProperty('--g-morph'); });
   const paint = () => {
     const v = parseFloat(pop.style.opacity);
     if (pop.hidden || Number.isNaN(v) || v <= 0.001) { reset(); return; }
-    const t = ease(Math.min(1, v));
+    const t = Math.min(1, v);
     const cs = getComputedStyle(pop);
     const left = parseFloat(cs.left);
     const top = parseFloat(cs.top);
@@ -160,11 +162,25 @@ function watchMenu() {
     const h = pop.offsetHeight;
     const b = btn.getBoundingClientRect();
     const r = parseFloat(cs.borderTopLeftRadius) || 16;
-    const k = 1 - t;
+    const clamp01 = (x) => Math.max(0, Math.min(1, x));
+    // phase 1 (first ~30%): the circle swells around the button's centre while the ☰ lines blur out
+    const d = b.width * (1 + 0.5 * ease(clamp01(t / 0.3)));
+    const cx = b.left + b.width / 2;
+    const cy = b.top + b.height / 2;
+    // phase 2 (from ~20%): that circle opens into the panel
+    const u = ease(clamp01((t - 0.2) / 0.8));
+    const lerp = (a, z) => a + (z - a) * u;
+    const x = lerp(cx - d / 2, left);
+    const y = lerp(cy - d / 2, top);
+    const bw = lerp(d, w);
+    const bh = lerp(d, h);
+    const rad = lerp(d / 2, r);
     write(() => {
-      pop.style.translate = `${((b.left - left) * k).toFixed(1)}px ${((b.top - top) * k).toFixed(1)}px`;
-      pop.style.clipPath = `inset(0 ${((w - b.width) * k).toFixed(1)}px ${((h - b.height) * k).toFixed(1)}px 0 round ${(b.width / 2 * k + r * t).toFixed(1)}px)`;
+      // the visible box is the pop's own top-left corner, moved onto the shape; the clip cuts it to the shape's size
+      pop.style.translate = `${(x - left).toFixed(1)}px ${(y - top).toFixed(1)}px`;
+      pop.style.clipPath = `inset(0 ${Math.max(0, w - bw).toFixed(1)}px ${Math.max(0, h - bh).toFixed(1)}px 0 round ${rad.toFixed(1)}px)`;
       pop.style.setProperty('--g-morph', t.toFixed(3));
+      btn.style.setProperty('--g-morph', t.toFixed(3)); // the ☰ lines blur out as the circle becomes the menu
     });
   };
   obs = new MutationObserver(paint);

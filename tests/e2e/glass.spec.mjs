@@ -31,8 +31,11 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   await page.click('#menu-btn');
   await expect(page.locator('#menu-pop')).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.getElementById('menu-pop').style.clipPath)).toMatch(/^inset\(0px round \d/);
+  // …and the ☰ lines have blurred out
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('#menu-btn .icon')).opacity)).toBe('0');
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu-pop')).toBeHidden();
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('#menu-btn .icon')).opacity)).toBe('1');
   // a press lights the glass up and grows it, release lets it go
   const fab = page.locator('#locate-btn');
   const box = await fab.boundingBox();

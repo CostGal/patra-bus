@@ -95,6 +95,8 @@ html.glass .g-press {
   --g-chip: color-mix(in srgb, var(--g-card) 75%, transparent);
 }
 html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
+/* the search bar's round buttons (☰, back): pressed, they become a whiter glass circle, still a little see-through */
+html.glass .sb-btn.g-press { background-color: color-mix(in srgb, var(--g-card) 72%, transparent); }
 /* controls that are not glass surfaces get the finger light as an image over their own colour */
 html.glass .g-press:not(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
   background-image: radial-gradient(circle 70px at var(--gx, 50%) var(--gy, 50%), var(--g-touch), transparent);
@@ -115,7 +117,15 @@ html.glass-lens .sheet, html.glass-lens #menu-pop, html.glass-lens .su-card, htm
 
 /* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring): the glass shell is
    there from the first frame, the items fade in once it has room */
-html.glass-morph #menu-pop { opacity: 1 !important; }
+html.glass-morph #menu-pop { opacity: 1 !important; transform: none !important; } /* the shape does the motion, not app.js's scale */
+/* it starts as the pressed ☰ circle (whiter, 72%) and clears to the menu's glass as it opens */
+html.glass-morph #menu-pop { --g-bg-lg: color-mix(in srgb, var(--g-card) calc(30% + (1 - var(--g-morph, 1)) * 42%), transparent); }
+/* the ☰ lines blur and fade out over the first part of the morph, and come back as it reverses */
+/* the ☰ keeps its pressed glass circle while the menu is open, so the menu reads as that circle grown; it fades as the
+   menu shrinks back into it */
+html.glass-morph #menu-btn { transition: background-color .3s ease-out; }
+html.glass-morph #menu-btn[aria-expanded="true"] { background-color: color-mix(in srgb, var(--g-card) 72%, transparent); }
+html.glass-morph #menu-btn .icon { filter: blur(calc(var(--g-morph, 0) * 6px)); opacity: calc(1 - var(--g-morph, 0) * 2.5); }
 html.glass-morph #menu-pop > * { opacity: clamp(0, calc((var(--g-morph, 1) - .5) / .5), 1); }
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
