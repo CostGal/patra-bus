@@ -27,6 +27,10 @@ class_name = "Routine"
 name = "STATS"
 class_name = "Stats"
 
+[[durable_objects.bindings]]
+name = "COUNTERS"
+class_name = "Counters"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Reminder"]
@@ -34,3 +38,7 @@ new_sqlite_classes = ["Reminder"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Routine", "Stats"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Counters"]

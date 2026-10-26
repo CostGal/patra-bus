@@ -3,6 +3,8 @@ import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
 import { RoutineBase, validateRoutine } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
+import { CountersBase, recordCount } from './counters.js';
+import { adminRoute } from './admin.js';
 import { corsOriginFor, isAllowedOrigin, isPatternOrigin } from './origin.js';
 import { MAX_REPORT_BYTES, ForwardError, forwardReport, takeDailySlot } from './report.js';
 import { validateReport, isHoneypot } from '../../web/js/report.js';
@@ -179,6 +181,8 @@ export class Routine extends RoutineBase {
 
 export class Stats extends StatsBase {}
 
+export class Counters extends CountersBase {}
+
 const PUSH_ID = /^[0-9a-f]{32}$/;
 
 // Best-effort abuse brake: per isolate, so not global, but it stops a single client hammering one edge.
@@ -290,7 +294,38 @@ async function reportRoute(request, env, cors) {
     console.error(`/api/report: ${err instanceof ForwardError ? err.message : 'forward failed'}`); // status only, never the content
     return json(cors, { error: 'forward_failed' }, 502, { 'Cache-Control': 'no-store' });
   }
+  await recordCount(env, 'feedback', v.value.diag?.city, now); // anonymous daily total, see counters.js
   return json(cors, { ok: true }, 200, { 'Cache-Control': 'no-store' });
+}
+
+// The only metrics the app may report; `feedback` and `push` are counted by the worker itself.
+export const APP_METRICS = ['open', 'install'];
+const MAX_COUNT_BYTES = 200;
+const COUNT_RATE_MAX = 20;
+const DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+// POST /api/count {metric, city}: +1 on today's anonymous counter (CLAUDE.md rule 4). Nothing else in the request is
+// read or kept. Previews and localhost get the same 204 without counting, so our own testing stays out of the numbers.
+async function countRoute(request, env, cors) {
+  if (request.method !== 'POST') return json(cors, { error: 'not_found' }, 404);
+  if (!originAllowed(env, request)) return json(cors, { error: 'forbidden' }, 403);
+  if (!/^application\/json\b/i.test(request.headers.get('Content-Type') || '')) return json(cors, { error: 'bad_request', field: 'content-type' }, 415);
+  if (rateLimited(`count:${request.headers.get('CF-Connecting-IP') || 'local'}`, Date.now(), COUNT_RATE_MAX)) {
+    return json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '600' });
+  }
+  const body = await request.text();
+  if (new TextEncoder().encode(body).length > MAX_COUNT_BYTES) return json(cors, { error: 'too_large' }, 413);
+  let raw;
+  try {
+    raw = JSON.parse(body);
+  } catch {
+    return json(cors, { error: 'bad_request', field: 'json' }, 400);
+  }
+  if (!APP_METRICS.includes(raw?.metric)) return json(cors, { error: 'bad_request', field: 'metric' }, 400);
+  if (!isCity(raw.city)) return json(cors, { error: 'bad_request', field: 'city' }, 400);
+  const origin = request.headers.get('Origin') || '';
+  if (!isPatternOrigin(env, origin) && !DEV_ORIGIN.test(origin)) await recordCount(env, raw.metric, raw.city);
+  return new Response(null, { status: 204, headers: headers(cors, { 'Cache-Control': 'no-store' }) });
 }
 
 export default {
@@ -312,6 +347,12 @@ export default {
     const { pathname } = new URL(request.url);
     try {
       if (pathname === '/api/report') return await reportRoute(request, env, cors);
+      if (pathname === '/api/count') return await countRoute(request, env, cors);
+      // Private stats: no CORS headers on purpose, so no other site can read the answer.
+      const admin = await adminRoute(request, env, {
+        limited: () => rateLimited(`admin:${request.headers.get('CF-Connecting-IP') || 'local'}`, Date.now(), REPORT_RATE_MAX),
+      });
+      if (admin) return admin;
       if (pathname.startsWith('/api/push/')) {
         const res = await pushRoute(request, env, cors, pathname);
         return res || json(cors, { error: 'not_found' }, 404);

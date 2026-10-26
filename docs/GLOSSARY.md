@@ -23,6 +23,10 @@ My words:
 Where it shows up in Telematica: the Worker gets the citybus token from their web page and keeps it in KV (`getToken` in `worker/src/index.js`). It must never be in the browser or in git.
 My words:
 
+**Authorization header**: a hidden line in a web request that carries a password or token, like an entry card you show at the door instead of writing it on the envelope.
+Where it shows up in Telematica: the private stats page sends `Authorization: Bearer <STATS_TOKEN>` to `/api/admin/counts` (`worker/src/admin.js`, TEL-195). The token never goes in the URL.
+My words:
+
 **Auto-merge**: a switch on a pull request that says "merge this by yourself as soon as every required check is green", like leaving a letter at the post office to be sent the moment it opens.
 Where it shows up in Telematica: inside the merge window Kostas turns it on instead of pressing Merge, and the PR merges by itself at 17:30 (TEL-182).
 My words:
@@ -71,6 +75,10 @@ My words:
 Where it shows up in Telematica: `ALLOWED_ORIGIN` in `worker/wrangler.toml` and `worker/src/origin.js` list the sites allowed to call our Worker.
 My words:
 
+**CRLF / LF** (line endings): the invisible mark at the end of each line of text. Windows writes two characters (`\r\n`, CRLF), Linux and macOS write one (`\n`, LF), like two keyboards that put a different hidden mark when you press Enter.
+Where it shows up in Telematica: git on Windows checks files out with CRLF, so a test that searches for text across two lines must ignore the `\r` (`read()` in `tests/setup.test.mjs`, TEL-194).
+My words:
+
 **Deduplication**: finding two entries that are really the same thing and keeping only one, like crossing out a name written twice on a guest list.
 Where it shows up in Telematica: a scheduled row that is the same bus as a live row is dropped, so only the live one shows (`dropScheduledDuplicates` in `web/js/arrivals.js`).
 My words:
@@ -97,6 +105,10 @@ My words:
 
 **Fixture**: saved sample data used in tests, like a photo of a situation you can replay anytime.
 Where it shows up in Telematica: recorded citybus.gr answers in `tests/e2e/fixtures/` and `web/fixtures/` so tests never use the network.
+My words:
+
+**Global Privacy Control (GPC)**: a setting some browsers have that tells every site "don't track me", like a "no junk mail" sticker on a letterbox.
+Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
 My words:
 
 **Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
@@ -179,6 +191,10 @@ My words:
 Where it shows up in Telematica: closed on weekdays 08:30–17:30 Athens time, holidays in the repo variable `MERGE_WINDOW_HOLIDAYS` (`.github/workflows/merge-window.yml`, TEL-182).
 My words:
 
+**Migration** (Durable Object migration): a note in `worker/wrangler.toml` telling Cloudflare that a new kind of Durable Object now exists, like registering a new shelf in a warehouse before you put boxes on it.
+Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `worker/wrangler.toml` (`v3` adds `Counters`, TEL-193).
+My words:
+
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Sprint» pane with your current TEL cards from Notion (`/sprint` refreshes it).
 My words:
@@ -257,6 +273,10 @@ My words:
 
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
+My words:
+
+**Upsert**: "update the row if it exists, otherwise create it", in one step, like a tally sheet where you add a stroke to a line or start the line if it is new.
+Where it shows up in Telematica: the `INSERT … ON CONFLICT … DO UPDATE` that adds 1 in `worker/src/counters.js` (TEL-193).
 My words:
 
 **Upstream**: the original source your program depends on, like the river above your mill.

@@ -21,7 +21,7 @@ test('defaults', () => {
   assert.deepEqual(s.getFavorites(), []);
   assert.deepEqual(s.getRecents('stop'), []);
   assert.deepEqual(s.getRecents('place'), []);
-  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el' });
+  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el', usageStats: true });
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
   assert.equal(s.isFavorite('1011'), false);
 });
@@ -125,7 +125,7 @@ test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   assert.equal(s.setSetting('walkSpeed', 'fast'), true);
   assert.equal(s.setSetting('bufferMin', '5'), true); // from a <select>
   assert.equal(s.setSetting('reminderMin', 3), true);
-  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3, lang: 'el' });
+  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3, lang: 'el', usageStats: true });
   assert.equal(s.setSetting('theme', 'blue'), false);
   assert.equal(s.setSetting('bufferMin', -1), false);
   assert.equal(s.setSetting('bufferMin', 2.5), false);
@@ -136,6 +136,24 @@ test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3 });
   s.resetSettings();
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
+});
+
+test('settings: the usage choice and markers are validated and survive a settings reset, not "delete all"', () => {
+  const { s } = make();
+  assert.equal(s.setSetting('usageStats', 'no'), false);
+  assert.equal(s.setSetting('usageDay', '26/10/2026'), false);
+  assert.equal(s.setSetting('usageInstall', 1), false);
+  assert.equal(s.setSetting('usageStats', false), true);
+  assert.equal(s.setSetting('usageDay', '2026-10-26'), true);
+  assert.equal(s.setSetting('usageInstall', true), true);
+  s.resetSettings();
+  const kept = s.getSettings();
+  assert.equal(kept.usageStats, false, 'a reset does not switch counting back on');
+  assert.equal(kept.usageDay, '2026-10-26');
+  assert.equal(kept.usageInstall, true);
+  s.clearAll();
+  assert.equal(s.getSettings().usageStats, true);
+  assert.equal(s.getSettings().usageInstall, undefined);
 });
 
 test('corrupt or foreign data falls back to defaults / is sanitised', () => {

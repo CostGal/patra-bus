@@ -92,3 +92,28 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 Purpose (every element earns its place), simplicity over minimalism (common path first, advanced one level deeper),
 familiarity (same thing looks and behaves the same everywhere), wayfinding (where am I, how do I get back),
 craft (deliberate spacing/timing values from tokens, nothing random).
+
+## 9. UI review: the numbered UI map (TEL-198)
+Every element has one **permanent ID**: a letter for the **area** of the app (not the screen) and a number. The same
+element keeps its ID on every screen and in every session, so feedback from one review still means the same thing in
+the next one. Registry: `scripts/ui-map.mjs`.
+
+| Letter | Area | Letter | Area |
+|---|---|---|---|
+| N | Search bar (top) | E | Home |
+| M | Map (locate, attribution, markers) | F | Favourites / stop lists |
+| P | Sheet and every view's header (☆ ⋯ ✕ ←) | L | Lines |
+| O | Menus and popovers (☰, ⋯, i) | R | Route planner |
+| S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
+| G | Settings and guide | D | Dialogs and forms (setup, welcome, report) |
+
+- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--glass --map` etc. as for any sweep).
+  It boxes every element with its ID on its own set of screens (menus open, vehicle, search…) into `shots/ui-map/`,
+  plus `LEGEND.md`: the whole registry with the screens each ID appears on.
+- Feedback is one line per element: `ID — τώρα: … / θέλω: …` (one of many alike: `S2 (606)`), with a phone screenshot
+  where it helps. Everything else: «τα υπόλοιπα ΟΚ».
+- Per element check three things: **at rest** (legible, distinct), **touch & hold**, **tap** (does what you expect,
+  open/close motion).
+- **Never renumber or reuse an ID.** A new element takes the next free number of its area; a removed one stays in the
+  registry with `gone: true`. A red `?` box (listed at the end of `LEGEND.md`) is something pressable that is not in
+  the registry: add it in the same PR. An ID whose selector stops matching shows "—" in the legend: fix its selector.

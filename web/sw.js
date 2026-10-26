@@ -108,6 +108,7 @@ const SHELL = [
   'js/report-view.js',
   'js/welcome.js',
   'js/setup.js',
+  'js/usage.js',
   'data/stops.json',
   'data/lines.json',
   // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.

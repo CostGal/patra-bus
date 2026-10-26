@@ -6,7 +6,8 @@ import { PAIRS } from '../web/js/i18n-en-setup.js';
 import { EN } from '../web/js/i18n-en.js';
 import { DEFAULT_SETTINGS } from '../web/js/store.js';
 
-const read = (f) => readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
+// Windows checkouts have CRLF line endings; drop the \r so multi-line matches behave as on Linux CI.
+const read = (f) => readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 test('shouldSetup: once, only on a home-view boot; a preview always shows', () => {
   assert.equal(shouldSetup({ seen: false, bootHome: true }), true);
