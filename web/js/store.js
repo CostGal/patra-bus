@@ -13,7 +13,8 @@ const MAX_FAVS = 100;
 
 // lang defaults to 'el' (TEL-58, #33): the first-run setup (TEL-74, js/setup.js) stores the language the user picks,
 // pre-selected from the system language; 'el' only applies to whoever skips that step.
-export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el' });
+// usageStats: anonymous daily counts are on unless the user switches them off (CLAUDE.md rule 4, js/usage.js).
+export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el', usageStats: true });
 const intIn = (lo, hi) => (v) => Number.isInteger(v) && v >= lo && v <= hi;
 const VALID = {
   theme: (v) => ['auto', 'light', 'dark'].includes(v),
@@ -27,9 +28,13 @@ const VALID = {
   welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
   legendSeen: (v) => typeof v === 'boolean', // unused since TEL-65 removed the stop-view legend (the first-run setup explains LIVE / ΠΡΟΓΡ. now); kept so stored flags still validate
   setupDone: (v) => typeof v === 'boolean', // absent = the first-run setup (language, city, LIVE / ΠΡΟΓΡ.) was not shown yet
+  usageStats: (v) => typeof v === 'boolean',
+  usageDay: (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v), // Athens day of the last "open" sent; stays on the device
+  usageInstall: (v) => typeof v === 'boolean', // true once the "install" count was sent from this device
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
-const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen', 'setupDone'];
+// The usage choice and markers survive too: a reset must not switch counting back on or count this device again.
+const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen', 'setupDone', 'usageStats', 'usageDay', 'usageInstall'];
 const NUMERIC = new Set(['bufferMin', 'reminderMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };

@@ -234,7 +234,12 @@ function build(container, ctx, keep) {
     wipeBtn.textContent = t('Διαγραφή όλων των δεδομένων');
     say(t('Τα δεδομένα της εφαρμογής διαγράφηκαν από αυτή τη συσκευή'));
   } }, t('Διαγραφή όλων των δεδομένων'));
-  const data = sec('data', t('Δεδομένα'), freshness,
+  // Anonymous daily counts (CLAUDE.md rule 4, js/usage.js): the switch the rule promises.
+  const idUsage = id('usage');
+  const usageRow = row(idUsage, t('Ανώνυμα στατιστικά χρήσης'),
+    t('Μία φορά την ημέρα στέλνεται μόνο ότι άνοιξε η εφαρμογή και σε ποια πόλη. Χωρίς id, τοποθεσία ή στοιχεία σου.'),
+    segmented('usageStats', idUsage, [[true, t('Ναι')], [false, t('Όχι')]]));
+  const data = sec('data', t('Δεδομένα'), freshness, usageRow,
     h('div', { class: 'set-line' }, h('div', { class: 'set-actions' }, clearRecentsBtn, wipeBtn),
       ...info(t('Η διαγραφή αφορά αγαπημένα, πρόσφατα, ρυθμίσεις και υπενθυμίσεις αυτής της συσκευής.'))));
 
@@ -250,7 +255,7 @@ function build(container, ctx, keep) {
       h('span', { class: 'ex-chip ex-chip-sched' }, t('ΠΡΟΓΡ.')),
       h('p', { class: 'set-p' }, t('Δεν υπάρχει θέση οχήματος. Πρόκειται για την προγραμματισμένη ώρα, και το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'))),
     h('p', { class: 'ex-note', role: 'note' }, t('Ανεπίσημη εφαρμογή· δεν σχετίζεται με τον φορέα που εκτελεί τα δρομολόγια. Τα δεδομένα προέρχονται από το {host} και μπορεί να έχουν λάθη ή καθυστερήσεις. Μην βασίζεσαι σε αυτά για κρίσιμες μετακινήσεις.', { host: dataSource()[0] })),
-    h('p', { class: 'set-p' }, t('Η τοποθεσία σου μένει στη συσκευή. Όταν ζητάς διαδρομή ή ψάχνεις τόπο, στέλνονται στις υπηρεσίες χαρτών (OSRM, Photon) μόνο οι συντεταγμένες και το κείμενο που χρειάζονται. Δεν υπάρχουν λογαριασμοί ούτε αναλυτικά στοιχεία χρήσης.')),
+    h('p', { class: 'set-p' }, t('Η τοποθεσία σου μένει στη συσκευή. Όταν ζητάς διαδρομή ή ψάχνεις τόπο, στέλνονται στις υπηρεσίες χαρτών (OSRM, Photon) μόνο οι συντεταγμένες και το κείμενο που χρειάζονται. Δεν υπάρχουν λογαριασμοί. Μετράμε μόνο ανώνυμα πόσες συσκευές ανοίγουν την εφαρμογή κάθε μέρα (κλείνει από τα Δεδομένα).')),
     h('h3', { class: 'set-sub' }, t('Πηγές και άδειες')),
     h('ul', { class: 'set-list' }, [...LINKS, dataSource()].map(([name, href, what]) => h('li', { class: 'set-item' },
       h('a', { class: 'set-link', href, target: '_blank', rel: 'noopener noreferrer' }, name), h('span', { class: 'ex-sub' }, t(what))))));
