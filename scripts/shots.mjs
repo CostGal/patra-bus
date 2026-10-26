@@ -1,5 +1,7 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
 // Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
+//      --annotate: numbered UI map for UI reviews (TEL-198): every element boxed with its permanent ID from scripts/ui-map.mjs,
+//      -> shots/ui-map/ + LEGEND.md; its own screens (menus open, vehicle…), default iPhone 15 · el · light
 // Uses the ?demo mode and the same network mocks as the smoke tests (nothing reaches citybus.gr or any third party), so
 // it checks LAYOUT only: the map tiles are blocked (the map area stays empty), fonts are the computer's (not SF/Roboto), and touch feel, push, install, GPS,
 // speed and sunlight still need a real phone (CLAUDE.md rule 9).
@@ -9,6 +11,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, firefox, devices } from '@playwright/test';
 import { mockNetwork } from '../tests/e2e/mock.mjs';
+import { UI, UI_SCREENS, annotate, legend } from './ui-map.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = fileURLToPath(new URL('../shots/', import.meta.url));
@@ -35,14 +38,16 @@ const SCREENS = [
 
 const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => { const [k, ...v] = a.slice(2).split('='); return [k, v.join('=') || 'true']; }));
 const list = (v, all) => (v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : all);
-const wantDevices = list(args.device, DEFAULT_DEVICES);
-const wantLangs = list(args.lang, ['el', 'en']);
-const wantThemes = list(args.theme, ['light', 'dark']);
-const wantScreens = list(args.screen, SCREENS.map((s) => s.id));
-const screens = SCREENS.filter((s) => wantScreens.includes(s.id));
+const ANNOTATE = Boolean(args.annotate);
+const ALL_SCREENS = ANNOTATE ? UI_SCREENS : SCREENS;
+const wantDevices = list(args.device, ANNOTATE ? ['iPhone 15'] : DEFAULT_DEVICES);
+const wantLangs = list(args.lang, ANNOTATE ? ['el'] : ['el', 'en']);
+const wantThemes = list(args.theme, ANNOTATE ? ['light'] : ['light', 'dark']);
+const wantScreens = list(args.screen, ALL_SCREENS.map((s) => s.id));
+const screens = ALL_SCREENS.filter((s) => wantScreens.includes(s.id));
 const bad = [...wantDevices.filter((d) => !devices[d]).map((d) => `device "${d}"`), ...wantLangs.filter((l) => !['el', 'en'].includes(l)).map((l) => `lang "${l}"`),
-  ...wantThemes.filter((t) => !['light', 'dark'].includes(t)).map((t) => `theme "${t}"`), ...wantScreens.filter((s) => !SCREENS.some((x) => x.id === s)).map((s) => `screen "${s}"`)];
-if (bad.length) { console.error(`Unknown: ${bad.join(', ')}\nDevices: ${Object.keys(devices).filter((d) => !/landscape/.test(d)).join(', ')}\nScreens: ${SCREENS.map((s) => s.id).join(', ')}`); process.exit(2); }
+  ...wantThemes.filter((t) => !['light', 'dark'].includes(t)).map((t) => `theme "${t}"`), ...wantScreens.filter((s) => !ALL_SCREENS.some((x) => x.id === s)).map((s) => `screen "${s}"`)];
+if (bad.length) { console.error(`Unknown: ${bad.join(', ')}\nDevices: ${Object.keys(devices).filter((d) => !/landscape/.test(d)).join(', ')}\nScreens: ${ALL_SCREENS.map((s) => s.id).join(', ')}`); process.exit(2); }
 
 const WEB = args.web ? resolve(String(args.web)) : `${ROOT}web`; // --web: serve another checkout's web/ (e.g. a git worktree of a PR branch)
 let server = null;
@@ -88,6 +93,14 @@ async function capture(context, base, screen, dir, summary) {
   await page.goto(base + screen.url);
   await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !/Φόρτωση…|Loading…/.test(c.textContent || ''); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
   await page.waitForTimeout(500);
+  if (ANNOTATE) {
+    if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
+    const { ids, unknown } = await page.evaluate(annotate, UI);
+    await shoot(page, `${dir}/${screen.id}.png`);
+    await page.close();
+    summary.push({ dir, screen: screen.id, files: [`${screen.id}.png`], problems, ids, unknown });
+    return;
+  }
   const files = [];
   const first = `${screen.id}.png`;
   await shoot(page, `${dir}/${first}`); files.push(first);
@@ -115,12 +128,13 @@ const base = args.base ? String(args.base).replace(/\/$/, '') : await startServe
 const notes = new Set();
 const summary = [];
 await rm(OUT, { recursive: true, force: true });
+const outDir = ANNOTATE ? `${OUT}ui-map/` : OUT;
 try {
   for (const device of wantDevices) {
     const { browser, engine } = await browserFor(device, notes);
     const { defaultBrowserType, ...desc } = devices[device];
     for (const lang of wantLangs) for (const theme of wantThemes) {
-      const dir = `${OUT}${device.replace(/\s+/g, '-')}/${lang}-${theme}`;
+      const dir = `${outDir}${device.replace(/\s+/g, '-')}/${lang}-${theme}`;
       await mkdir(dir, { recursive: true });
       const context = await browser.newContext({ ...desc, locale: lang === 'el' ? 'el-GR' : 'en-GB', timezoneId: 'Europe/Athens', colorScheme: theme, reducedMotion: 'reduce', serviceWorkers: 'block' });
       await context.addInitScript(seed(lang));
@@ -136,6 +150,15 @@ try {
 }
 
 const rel = (p) => p.replace(OUT, '');
+if (ANNOTATE) {
+  const one = summary.every((s) => s.dir === summary[0]?.dir);
+  const results = summary.map((s) => ({ screen: one ? s.screen : `${rel(s.dir).replace('ui-map/', '')}/${s.screen}`, file: `${rel(s.dir).replace('ui-map/', '')}/${s.screen}.png`, ids: s.ids, unknown: s.unknown }));
+  const flagged = summary.filter((s) => s.problems.length);
+  const meta = `Base: ${base}/ · ${new Date().toISOString()} · ${wantDevices.join(', ')} · ${wantLangs.join(', ')} · ${wantThemes.join(', ')}${[...notes].map((n) => `\n\n> **Note:** ${n}`).join('')}${flagged.map((s) => `\n\n> **Problem** \`${rel(s.dir)}/${s.screen}\`: ${s.problems.join('; ')}`).join('')}`;
+  await writeFile(`${outDir}LEGEND.md`, legend(results, meta));
+  console.log(`\n${summary.length} annotated screens -> shots/ui-map/ (see shots/ui-map/LEGEND.md); ${summary.reduce((n, s) => n + s.unknown.length, 0)} elements not in the registry`);
+  process.exit(0);
+}
 const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', 'Layout only (demo data, map tiles blocked). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as `device-test` issues.', ''];
 for (const n of notes) lines.push(`> **Note:** ${n}`, '');
 const flagged = summary.filter((s) => s.problems.length);
