@@ -103,6 +103,10 @@ My words:
 Where it shows up in Telematica: recorded citybus.gr answers in `tests/e2e/fixtures/` and `web/fixtures/` so tests never use the network.
 My words:
 
+**Global Privacy Control (GPC)**: a setting some browsers have that tells every site "don't track me", like a "no junk mail" sticker on a letterbox.
+Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
+My words:
+
 **Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
 Where it shows up in Telematica: the temporary founders' arrangement between Kostas, Fanis and Amarildo until a lawyer writes a real agreement (TEL-1).
 My words:

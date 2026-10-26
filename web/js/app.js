@@ -930,6 +930,8 @@ async function boot() {
   // One-time thank-you for the testers, only when opened as an installed app (or with ?welcome to preview). Never blocks boot.
   // After the first-run setup, when both apply (first launch of the installed app).
   Promise.resolve(setupClosed).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
+  // Anonymous daily open/install count (CLAUDE.md rule 4): off the boot path, silent on failure.
+  import('./usage.js').then((m) => m.reportUsage()).catch(() => {});
 
   if ('serviceWorker' in navigator) {
     const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});
