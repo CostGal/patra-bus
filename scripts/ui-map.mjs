@@ -84,6 +84,7 @@ export const UI = [
   { id: 'V1', name: 'Ετικέτα LIVE (όχημα)', sel: '.ex-chip-live' },
   { id: 'V2', name: 'Θα κατέβω σε…', sel: '.ob-open' },
   { id: 'V3', name: 'Προηγούμενες στάσεις', sel: '.bv-toggle' },
+  { id: 'V4', name: 'Στάση της διαδρομής (όχημα)', sel: 'a.bv-link', all: true },
 
   { id: 'G1', name: 'Ενότητα ρυθμίσεων', sel: '.set-lang', all: true },
   { id: 'G2', name: 'Επιλογή (segmented)', sel: '.ex-seg-btn', all: true },
@@ -116,7 +117,7 @@ export const UI_SCREENS = [
   { id: 'lines', url: '/?demo#/lines' },
   { id: 'line', url: '/?demo#/line/606' },
   { id: 'vehicle', url: '/?demo#/stop/1011', act: (p) => p.click('a.atile-live') },
-  { id: 'vehicle-more', url: '/?demo#/stop/1011', act: async (p) => { await p.click('a.atile-live'); await p.waitForTimeout(700); await p.click('.bv-head .btn.round[aria-expanded]'); } },
+  { id: 'vehicle-more', url: '/?demo#/stop/1011', act: async (p) => { await p.click('a.atile-live'); await p.waitForTimeout(700); await p.click('.bv-head .btn.round[aria-expanded]'); await p.click('#sheet-handle'); await p.waitForTimeout(600); await p.evaluate(() => document.querySelector('.ob-more')?.scrollIntoView({ block: 'center' })); } },
   { id: 'favorites', url: '/?demo#/favorites', act: async (p) => { // one favourite, so the list is not empty
     await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('patra-bus:v2')); s.favorites = [{ code: '1011', city: 'patra' }]; localStorage.setItem('patra-bus:v2', JSON.stringify(s)); });
     await p.reload(); await p.waitForTimeout(800);
@@ -133,7 +134,13 @@ export function annotate(ui) {
   const vw = innerWidth, vh = innerHeight;
   const visible = (el) => {
     if (el.closest('[hidden]')) return null;
-    const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    const cs = getComputedStyle(el);
+    let r = el.getBoundingClientRect();
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { // clip to scrolling parents (sheet body)
+      if (getComputedStyle(a).overflowY === 'visible') continue;
+      const c = a.getBoundingClientRect(), top = Math.max(r.top, c.top), left = Math.max(r.left, c.left);
+      r = new DOMRect(left, top, Math.min(r.right, c.right) - left, Math.min(r.bottom, c.bottom) - top);
+    }
     if (r.width < 6 || r.height < 6 || cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity < 0.1) return null;
     if (r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) return null;
     const hit = document.elementFromPoint(Math.min(vw - 1, Math.max(0, r.left + r.width / 2)), Math.min(vh - 1, Math.max(0, r.top + r.height / 2)));
@@ -165,9 +172,13 @@ export function annotate(ui) {
   layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647';
   const COLORS = { N: '#4363d8', M: '#3cb44b', P: '#911eb4', O: '#f58231', S: '#008080', E: '#9a6324', F: '#800000', L: '#000075', R: '#808000', V: '#e6194b', G: '#469990', D: '#f032e6' };
   const tags = [];
-  const place = (x, y, w) => { // nudge a label down until it does not cover another label
-    for (let i = 0; i < 12 && tags.some((t) => x < t.x + t.w && t.x < x + w && y < t.y + 15 && t.y < y + 15); i++) y += 15;
-    tags.push({ x, y, w }); return y;
+  const clash = (x, y, w) => tags.some((t) => x < t.x + t.w && t.x < x + w && y < t.y + 15 && t.y < y + 15);
+  const place = (r, w, big) => { // first free corner of the box (outside, then inside), so a label stays on its box
+    const L = r.left - 2, R = r.right - w + 2, T = r.top - 8, B = r.bottom - 7;
+    const spots = big ? [[L, r.top + 2], [R, r.top + 2], [L, B - 8]] : [[L, T], [R, T], [L, r.top + 2], [R, r.top + 2], [L, B], [R, B]];
+    const fit = spots.map(([x, y]) => [Math.max(0, Math.min(vw - w, x)), Math.max(0, Math.min(vh - 15, y))]);
+    const [x, y] = fit.find(([x, y]) => !clash(x, y, w)) || fit[0];
+    tags.push({ x, y, w }); return [x, y];
   };
   // big boxes first, so the small ones (and their labels) are drawn on top
   for (const it of [...found, ...unknown].sort((a, b) => b.r.width * b.r.height - a.r.width * a.r.height)) {
@@ -176,8 +187,7 @@ export function annotate(ui) {
     const box = document.createElement('div');
     box.style.cssText = `position:absolute;left:${it.r.left}px;top:${it.r.top}px;width:${it.r.width}px;height:${it.r.height}px;outline:2px ${big ? 'dashed' : 'solid'} ${c};outline-offset:-1px;border-radius:4px`;
     layer.append(box);
-    const w = 8 + it.id.length * 7, x = Math.max(0, Math.min(vw - w, it.r.left - 2));
-    const y = place(x, big ? Math.max(0, it.r.top + 2) : Math.max(0, it.r.top - 8), w);
+    const w = 8 + it.id.length * 7, [x, y] = place(it.r, w, big);
     const tag = document.createElement('div'); tag.textContent = it.id;
     tag.style.cssText = `position:absolute;left:${x}px;top:${y}px;background:${c};color:#fff;font:700 10px/14px system-ui,sans-serif;padding:0 3px;border-radius:7px;box-shadow:0 0 0 1px #fff`;
     layer.append(tag);
