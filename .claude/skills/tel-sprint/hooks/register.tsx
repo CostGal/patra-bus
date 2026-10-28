@@ -1,16 +1,19 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Card, Sprint } from '../types'
+import type { Block, Card } from '../types'
 
-// Βάσεις του Notion (Telematica): Sprints και Tasks. Μόνο ανάγνωση.
-const SPRINTS = 'collection://3f82429c-7223-8005-bc25-000bf5983bd0'
+// Βάσεις του Notion (Telematica): Blocks και Code Tasks. Μόνο ανάγνωση.
+const BLOCKS = 'collection://6f2b0107-6723-4fe4-b05d-a9d242fe884c'
 const TASKS = 'collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2'
 // Ο server του Notion: «Notion» στο cloud, ένα id ανά χρήστη τοπικά. Τον βρίσκουμε από τα εργαλεία του session.
 const SERVERS = ['Notion', 'claude.ai Notion']
 const NOTION_TOOL = /^mcp__(.+)__notion-query-data-sources$/
 const STATUSES = ['In progress', 'In review', 'Not started']
 const EVERY_MS = 5 * 60_000
+// Κολλημένο = In progress ή In review πάνω από 7 μέρες από το Started on (το formula του Notion δεν διαβάζεται με SQL).
+const STUCK_STATUSES = ['In progress', 'In review']
+const STUCK_MS = 7 * 24 * 3600_000
 
 // Τα χρώματα του Notion στο dark mode: σκούρο φόντο, ανοιχτό κείμενο. Διαβάζονται και σε ανοιχτό φόντο.
 const TAG = {
@@ -28,13 +31,12 @@ const GROUP: Record<string, { tone: Tone; dot: string }> = {
   'Not started': { tone: 'gray', dot: '#9B9B9B' },
 }
 const AREA: Record<string, Tone> = { App: 'blue', Worker: 'orange', Design: 'pink', Business: 'green' }
-const WHO: Record<string, Tone> = { Dev: 'blue', Claude: 'orange' }
 const DONE_COLOR = '#4DAB7A'
 const TRACK_COLOR = '#3A3A3A'
 const CARD_BORDER = '#3A3A3A'
 
 const PANE = 'tel-sprint'
-const sprint = atom({ plugin: 'tel-sprint', key: 'sprint' } as const, { cards: [] })
+const block = atom({ plugin: 'tel-sprint', key: 'block' } as const, { cards: [] })
 
 /** Ένας τρόπος να καλέσουμε ένα εργαλείο του Notion· `run` δίνει το κείμενο της απάντησης. */
 export type Way = { name: string; run: (tool: string, args: Record<string, unknown>) => Promise<string> }
@@ -68,37 +70,37 @@ export function notionLink(url: string): string {
   return `https://www.notion.so/${id.replace(/-/g, '')}`
 }
 
-type Row = Omit<Card, 'area' | 'who' | 'due' | 'pr'> & {
-  area: string | null; who: string | null; due: string | null; pr: string | null
+type Row = Omit<Card, 'area' | 'pr' | 'stuck'> & {
+  area: string | null; pr: string | null; started: string | null
 }
 
-/** Το τρέχον sprint και οι κάρτες του συνδεδεμένου χρήστη: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος. */
-export async function loadSprint(ways: Way[]): Promise<Omit<Sprint, 'error' | 'updatedAt'>> {
+/** Κολλημένο: ανοιχτή κάρτα (In progress / In review) που ξεκίνησε πριν από πάνω από 7 μέρες. */
+export function isStuck(status: string, started: string | null | undefined, now: number): boolean {
+  if (!started || !STUCK_STATUSES.includes(status)) return false
+  const t = Date.parse(started)
+  return Number.isFinite(t) && now - t > STUCK_MS
+}
+
+/** Το τρέχον block (Κατάσταση = Τρέχον) και οι κάρτες του συνδεδεμένου χρήστη: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος. */
+export async function loadBlock(ways: Way[], now: number): Promise<Omit<Block, 'error' | 'updatedAt'>> {
   const self = await notion(ways, 'notion-get-self', {})
   const userId: string = self.user.id
-  const sprints = await notion(ways, 'notion-query-data-sources', sql([SPRINTS],
-    `SELECT url, "Sprint name" AS name, "date:Dates:start" AS start, "date:Dates:end" AS end
-     FROM "${SPRINTS}" WHERE "Sprint status" = 'Current'`))
-  const current = sprints.results[0] as { url: string; name?: string; start?: string; end?: string } | undefined
+  const blocks = await notion(ways, 'notion-query-data-sources', sql([BLOCKS],
+    `SELECT url, "Block" AS name FROM "${BLOCKS}" WHERE "Κατάσταση" = 'Τρέχον'`))
+  const current = blocks.results[0] as { url: string; name?: string } | undefined
   if (!current) return { cards: [], done: 0 }
-  const sprintId = current.url.split('/').pop()!.replace(/-/g, '')
+  const blockId = current.url.split('/').pop()!.replace(/-/g, '')
   const tasks = await notion(ways, 'notion-query-data-sources', sql([TASKS],
     `SELECT "userDefined:ID" AS id, "Task" AS title, "Task status" AS status, url,
-       "Area" AS area, "Who does this" AS who, "date:Due:start" AS due, "PR" AS pr
-     FROM "${TASKS}" WHERE "Sprint" LIKE ? AND "Owner" LIKE ?`,
-    [`%${sprintId}%`, `%${userId}%`]))
+       "Area" AS area, "PR" AS pr, "date:Started on:start" AS started
+     FROM "${TASKS}" WHERE "Block" LIKE ? AND "Owner" LIKE ?`,
+    [`%${blockId}%`, `%${userId}%`]))
   const rows = tasks.results as Row[]
   const cards = rows.filter(r => r.status !== 'Done').map((r): Card => ({
     id: r.id, title: r.title, status: r.status, url: notionLink(r.url),
-    area: r.area || undefined, who: r.who || undefined, due: r.due || undefined, pr: r.pr || undefined,
+    area: r.area || undefined, pr: r.pr || undefined, stuck: isStuck(r.status, r.started, now) || undefined,
   })).sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || a.id - b.id)
-  return {
-    cards,
-    done: rows.length - cards.length,
-    name: current.name || undefined,
-    start: current.start || undefined,
-    end: current.end || undefined,
-  }
+  return { cards, done: rows.length - cards.length, name: current.name || undefined }
 }
 
 let timer: { cancel: () => void } | undefined
@@ -138,35 +140,30 @@ function notionWays($: EngineInterface, found: string[]): Way[] {
   return [...direct, ...asTool]
 }
 
-async function refresh($: EngineInterface): Promise<Sprint> {
-  let next: Sprint
+async function refresh($: EngineInterface): Promise<Block> {
+  let next: Block
   try {
     const ways = notionWays($, await notionServers($))
-    next = { ...(await loadSprint(ways)), updatedAt: await $.clock.now() }
+    const now = await $.clock.now()
+    next = { ...(await loadBlock(ways, now)), updatedAt: now }
   } catch (err) {
-    const prev = await read($, sprint)
+    const prev = await read($, block)
     next = { ...prev, error: err instanceof Error ? err.message : String(err) }
   }
-  await update($, sprint, () => next)
+  await update($, block, () => next)
   return next
 }
 
-/** Η λίστα ως κείμενο, για την απάντηση του /sprint (και όπου δεν φαίνεται το pane). */
+/** Η λίστα ως κείμενο, για την απάντηση του /block (και όπου δεν φαίνεται το pane). */
 export function listText(cards: Card[]): string {
-  const lines = [`Sprint: ${cards.length} κάρτες`]
+  const lines = [`Block: ${cards.length} κάρτες`]
   for (const status of STATUSES) {
     const group = cards.filter(c => c.status === status)
     if (group.length === 0) continue
     lines.push(`${status} (${group.length})`)
-    for (const c of group) lines.push(`  TEL-${c.id} · ${c.title}`)
+    for (const c of group) lines.push(`  TEL-${c.id} · ${c.title}${c.stuck ? ' · Κολλημένο' : ''}`)
   }
   return lines.join('\n')
-}
-
-/** `2026-10-13` → `13/10`. */
-function shortDate(iso: string): string {
-  const [, m, d] = iso.slice(0, 10).split('-')
-  return `${Number(d)}/${Number(m)}`
 }
 
 /** Μπάρα προόδου για το desktop: γκρι βάση, πράσινο το μέρος που είναι Done. */
@@ -193,21 +190,25 @@ export function githubLabel(url: string): string {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'sprint', description: 'Οι κάρτες TEL του τρέχοντος sprint σου (Notion)' })
-    void $.ui.open({ id: PANE, title: 'Sprint' })
+    await $.command.register({ name: 'block', description: 'Οι κάρτες TEL του τρέχοντος block σου (Notion)' })
+    await $.command.register({ name: 'sprint', description: 'Alias του /block' })
+    void $.ui.open({ id: PANE, title: 'Block' })
     void refresh($)
     timer?.cancel()
     timer = $.clock.every(EVERY_MS, () => void refresh($))
     return next(e)
   })
 
-  on('command.run', { command: 'sprint' }, async $ => {
-    const { isPlaced } = await $.ui.open({ id: PANE, title: 'Sprint' })
-    const s = await refresh($)
-    if (s.error) return { text: `Sprint: δεν διαβάστηκε το Notion (${s.error}).` }
-    const where = isPlaced ? '' : '\n(Το pane δεν εμφανίζεται σε αυτό το session.)'
-    return { text: listText(s.cards) + where }
-  })
+  // Το /sprint μένει ως alias του /block.
+  for (const command of ['block', 'sprint']) {
+    on('command.run', { command }, async $ => {
+      const { isPlaced } = await $.ui.open({ id: PANE, title: 'Block' })
+      const s = await refresh($)
+      if (s.error) return { text: `Block: δεν διαβάστηκε το Notion (${s.error}).` }
+      const where = isPlaced ? '' : '\n(Το pane δεν εμφανίζεται σε αυτό το session.)'
+      return { text: listText(s.cards) + where }
+    })
+  }
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const els = $.ui.resolve(e)
@@ -216,7 +217,7 @@ export const register: Register = on => {
     // εκεί μένουν απλές χρωματιστές ετικέτες και μπάρα με χαρακτήρες.
     const gui = e.surface !== 'terminal'
     const Svg = gui && 'Svg' in els ? els.Svg : undefined
-    const s = await read($, sprint)
+    const s = await read($, block)
     const loaded = s.updatedAt !== undefined
     const time = loaded
       ? new Date(s.updatedAt!).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })
@@ -224,7 +225,6 @@ export const register: Register = on => {
     const done = s.done ?? 0
     const total = done + s.cards.length
     const pct = total > 0 ? Math.round((done / total) * 100) : 0
-    const dates = [s.start, s.end].filter(Boolean).map(d => shortDate(d!)).join(' – ')
 
     // Pill: στο desktop Box με στρογγυλό περίγραμμα στο χρώμα του φόντου· στο terminal Text με φόντο.
     const pill = (key: string, tone: Tone, label: string, href?: string) => {
@@ -246,7 +246,6 @@ export const register: Register = on => {
         {s.name && (
           <Box flexDirection="column">
             <Text bold>{s.name}</Text>
-            {dates && <Text dimColor>{dates}</Text>}
             <Box flexDirection="row" gap={1} alignItems="center">
               {Svg
                 ? <Svg source={progressSvg(done, total)} alt={`${done}/${total} done`} width={200} height={10} />
@@ -257,7 +256,7 @@ export const register: Register = on => {
         )}
         {s.error && <Text color="red">Notion: {s.error}</Text>}
         {!s.error && !loaded && <Text dimColor>Φόρτωση…</Text>}
-        {loaded && s.cards.length === 0 && <Text dimColor>Καμία ανοιχτή κάρτα στο τρέχον sprint.</Text>}
+        {loaded && s.cards.length === 0 && <Text dimColor>Καμία ανοιχτή κάρτα στο τρέχον block.</Text>}
         {STATUSES.map(status => {
           const group = s.cards.filter(c => c.status === status)
           if (group.length === 0) return null
@@ -280,8 +279,7 @@ export const register: Register = on => {
               {group.map(c => {
                 const tags = [
                   c.area && pill('area', AREA[c.area] ?? 'gray', c.area),
-                  c.who && pill('who', WHO[c.who] ?? 'gray', c.who),
-                  c.due && pill('due', 'gray', `Due ${shortDate(c.due)}`),
+                  c.stuck && pill('stuck', 'orange', 'Κολλημένο'),
                   c.pr && pill('pr', 'gray', githubLabel(c.pr), c.pr),
                 ].filter(Boolean)
                 return (
