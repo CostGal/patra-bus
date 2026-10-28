@@ -1,0 +1,17 @@
+# Copy to worker/.dev.vars (gitignored) for `npm run dev:worker`. Never commit real values.
+# Every line is optional: without it the worker still runs and only that feature answers 503.
+# These are YOUR local values, never the production ones. Staging secrets live only in Cloudflare (see CONTRIBUTING.md).
+
+# Push reminders: a local key pair. Generate one with the command in CONTRIBUTING.md («Push τοπικά»).
+# Locally the public key also goes here, because the one in wrangler.toml belongs to production.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+# Allows push subscriptions from http://localhost (local testing only).
+DEV_ALLOW_LOCAL_PUSH=1
+
+# Problem reports: a Notion integration token and a TEST database id (never the production database).
+NOTION_TOKEN=
+NOTION_DB_ID=
+
+# Private /stats page: any long random string you choose, e.g. `node -e "console.log(crypto.randomUUID())"`.
+STATS_TOKEN=

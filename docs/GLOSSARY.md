@@ -107,6 +107,10 @@ My words:
 Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
 My words:
 
+**GitHub Environment**: a named target (`staging`, `production`) in the repo settings that holds its own secrets and can require a named person to approve before a job uses them, like a locked door with its own key and a guard who must nod.
+Where it shows up in Telematica: `.github/workflows/worker-deploy.yml`; `production` waits for CostGal's approval, `staging` does not.
+My words:
+
 **Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
 Where it shows up in Telematica: the temporary founders' arrangement between Kostas, Fanis and Amarildo until a lawyer writes a real agreement (TEL-1).
 My words:
@@ -249,6 +253,10 @@ My words:
 
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
+My words:
+
+**Staging**: a full copy of the server that only the team uses, with its own data and keys, where a change is tried before real users get it, like a dress rehearsal on the real stage before opening night.
+Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging.
 My words:
 
 **Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.

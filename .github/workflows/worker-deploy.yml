@@ -1,0 +1,63 @@
+name: Worker deploy
+
+# The only way the API worker gets deployed (nobody deploys from their own computer).
+# - staging: anyone with write access, from any branch: Actions → Worker deploy → Run workflow → pick the branch,
+#   target "staging". Goes to the separate worker "patra-bus-staging" (own KV, Durable Objects and secrets).
+# - production: only from main. Runs by itself after a merge that touches the worker (or by hand on main), then waits
+#   in the GitHub Environment "production" until CostGal approves it.
+# Secrets live in the two GitHub Environments, never in the repo: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+# Worker secrets (VAPID, Notion, STATS_TOKEN) stay in Cloudflare; `wrangler deploy` does not change them.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      # Shared modules the worker imports (keep in sync with the imports in worker/src/).
+      - 'web/js/arrivals.js'
+      - 'web/js/cities.js'
+      - 'web/js/notif-link.js'
+      - 'web/js/report.js'
+      - 'web/js/route.js'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Where to deploy (production only works from main and needs approval)'
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+
+# One deploy per target at a time; a newer one waits instead of cancelling a deploy halfway.
+concurrency:
+  group: worker-deploy-${{ github.event_name == 'push' && 'production' || inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Production is refused off main before it can even ask for approval.
+    if: github.event_name == 'push' || inputs.target == 'staging' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: ${{ github.event_name == 'push' && 'production' || inputs.target }}
+      url: ${{ (github.event_name == 'push' || inputs.target == 'production') && 'https://patra-bus.patra-bus.workers.dev/health' || 'https://patra-bus-staging.patra-bus.workers.dev/health' }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TARGET: ${{ github.event_name == 'push' && 'production' || inputs.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Deploy
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::No CLOUDFLARE_API_TOKEN in the '$TARGET' environment"; exit 1; fi
+          if [ "$TARGET" = production ]; then
+            npx wrangler deploy --config worker/wrangler.toml
+          else
+            npx wrangler deploy --config worker/wrangler.toml --env staging
+          fi
