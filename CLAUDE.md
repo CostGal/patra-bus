@@ -18,7 +18,7 @@
 | Ποιος (GitHub) | Τομέας | Deploy |
 |---|---|---|
 | **Kostas** (`CostGal`) | `web/` (frontend), review και merge όλων των PR, κάτοχος των secrets του production | εγκρίνει το production |
-| **Amarildo** | `worker/`, `scripts/` δεδομένων (`fetch-static`, `build-routes`, `record-fixtures`), νέα features | staging ελεύθερα, **ποτέ** production |
+| **Amarildo** (`ksainis2002-coder`) | `worker/`, `scripts/` δεδομένων (`fetch-static`, `build-routes`, `record-fixtures`), νέα features | staging ελεύθερα, **ποτέ** production |
 | **Fanis** (`fanistsob2001`) | `.github/`, `tests/e2e/` υποδομή, `.claude/` (skills, mods), feedback και μετρήσεις | staging ελεύθερα, **ποτέ** production |
 
 Κοινά για όλους (και για τον Claude): branch ανά κάρτα `<όνομα>/TEL-<id>-<slug>` (π.χ. `amarildo/TEL-210-stats-cache`)·
