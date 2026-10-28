@@ -1,0 +1,4 @@
+# Ο Kostas (CostGal) κάνει review και merge σε όλα. Το GitHub τον ζητά αυτόματα ως reviewer σε κάθε PR.
+# Γίνεται υποχρεωτικό μόνο όταν το ruleset του main έχει «Require review from Code Owners».
+# Kostas (CostGal) reviews and merges everything; GitHub requests his review on every PR automatically.
+*  @CostGal
