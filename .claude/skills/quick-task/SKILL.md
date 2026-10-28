@@ -1,6 +1,6 @@
 ---
 name: quick-task
-description: Γρήγορο task του Telematica (patra-bus) χωρίς υπάρχουσα κάρτα. Φτιάχνει νέα κάρτα TEL στο τρέχον sprint (In progress) και συνεχίζει όπως το /task. Χρήση όταν ο χρήστης γράψει /quick-task <σύντομη περιγραφή>.
+description: Γρήγορο task του Telematica (patra-bus) χωρίς υπάρχουσα κάρτα. Φτιάχνει νέα κάρτα TEL στο τρέχον Block (In progress) και συνεχίζει όπως το /task. Χρήση όταν ο χρήστης γράψει /quick-task <σύντομη περιγραφή>.
 ---
 
 Περιγραφή: $ARGUMENTS
@@ -10,14 +10,14 @@ description: Γρήγορο task του Telematica (patra-bus) χωρίς υπά
 
 - Αν δεν δόθηκε περιγραφή: ρώτα τι είναι η δουλειά, σε μία πρόταση, και σταμάτα.
 - Αν μοιάζει μεγάλο (> ~3 αρχεία ή δύο θέματα): πες το **πριν** φτιάξεις κάρτα και πρότεινε `/plan-week`.
-- Ψάξε πρώτα για ανοιχτή κάρτα με ίδιο θέμα (βάση Tasks, `Task status` ≠ Done). Αν υπάρχει, δείξ' την και ρώτα αν
+- Ψάξε πρώτα για ανοιχτή κάρτα με ίδιο θέμα (βάση Code Tasks, `Task status` ≠ Done). Αν υπάρχει, δείξ' την και ρώτα αν
   δουλεύουμε αυτήν (`/task TEL-<id>`) αντί για νέα.
-- Τρέχον sprint: βάση Sprints `collection://3f82429c-7223-8005-bc25-000bf5983bd0`, `"Sprint status" = 'Current'`.
+- Τρέχον block: βάση Blocks `collection://6f2b0107-6723-4fe4-b05d-a9d242fe884c`, `"Κατάσταση" = 'Τρέχον'`.
   Αν δεν υπάρχει ακριβώς ένα, μη φτιάξεις κάρτα· ρώτα τον Kostas.
-- Νέα κάρτα στη βάση Tasks (`collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2`): `Task` = τίτλος που ξεκινά με
+- Νέα κάρτα στη βάση Code Tasks (`collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2`): `Task` = τίτλος που ξεκινά με
   ρήμα, Project = Telematica (`https://app.notion.com/p/515a54a507ec4922a7aa1386664028be`), `Owner` = Kostas,
-  `Sprint` = το τρέχον, `Task status` = In progress, `Who does this` = Claude, `Area` αν είναι προφανές, και μία-δύο
-  γραμμές στο σώμα. Διάβασε πίσω το `ID` και γράψε «Κάρτα TEL-<id> στο <sprint>» με το link.
+  `Block` = το τρέχον, `Task status` = In progress, `Agent-ready` = Agent-ready, `Area` αν είναι προφανές, και μία-δύο
+  γραμμές στο σώμα. Διάβασε πίσω το `ID` και γράψε «Κάρτα TEL-<id> στο <block>» με το link.
 - Από εκεί και πέρα **ακριβώς όπως το `/task TEL-<id>`**: 3 γραμμές, σχέδιο, και **περίμενε έγκριση πριν γράψεις κώδικα**.
   Branch `claude/TEL-<id>-<slug>`. Το σχέδιο γράφεται ολόκληρο στο τελευταίο μήνυμα του turn, χωρίς κουτί `wrap_up` με
   ερώτηση (βλ. «Πώς δείχνω ό,τι θέλει έγκριση» στο `docs/WORKFLOW.md`).
