@@ -144,9 +144,11 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
   words what changed, why, and how it could break. Write those 3 lines in the commit/PR.
 - Update docs/ARCHITECTURE.md whenever how the parts connect changes.
 - New technical terms go in docs/GLOSSARY.md.
-- Sessions follow **docs/WORKFLOW.md**: one list (Notion Tasks), `/plan-week` for the weekly planning, `/task TEL-<id>`
-  for one task per session; every step the user does is given one at a time and Claude waits for confirmation.
-- The mod `.claude/skills/tel-sprint/` opens a pane «Sprint» in Claude Code with the connected Notion user's open cards
-  of the current sprint (read-only, through the Notion connector, every 5′ and on `/sprint`). In a local Claude desktop
+- Sessions follow **docs/WORKFLOW.md**: one list (Notion Code Tasks, grouped in Blocks, no sprints), `/plan-week` as the
+  helper for the weekly, `/task TEL-<id>` for one task per session; every step the user does is given one at a time and
+  Claude waits for confirmation.
+- The mod `.claude/skills/tel-sprint/` opens a pane «Block» in Claude Code with the connected Notion user's open cards
+  of the current Block (Κατάσταση = Τρέχον; read-only, through the Notion connector, every 5′ and on `/block`, with
+  `/sprint` kept as an alias). It also marks the Κολλημένα (In progress / In review for more than 7 days). In a local Claude desktop
   session the connector is a server named by an id per user; in auto mode each user allows its two read tools once in
   `.claude/settings.local.json` (gitignored): `mcp__<id>__notion-get-self`, `mcp__<id>__notion-query-data-sources`.

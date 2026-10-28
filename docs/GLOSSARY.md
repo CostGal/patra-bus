@@ -7,6 +7,10 @@ Technical words used in this project, in plain language. Add new terms in alphab
 Where it shows up in Telematica: proposed in Amarildo's Moovit handoff (`/docs/decisions/`); not adopted yet, a finding of TEL-135.
 My words:
 
+**Agent-ready**: a mark on a Notion card saying "Claude can do this one on its own"; the other choice, «Θέλει άνθρωπο», means a person has to decide or act. Like a sticker on a box: "anyone can carry this" or "needs two hands and a key".
+Where it shows up in Telematica: the `Agent-ready` select on Code Tasks (it replaces `Who does this`: Claude → Agent-ready, Dev → Θέλει άνθρωπο, renamed in Notion after the TEL-201 merge); `/quick-task` sets it (TEL-201).
+My words:
+
 **Alarm** (Durable Object alarm): a wake-up call a program sets for itself, like an alarm clock that starts the code at an exact time.
 Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
 My words:
@@ -33,6 +37,10 @@ My words:
 
 **Benchmark**: the same small task, timed and counted on every app, like timing two runners on the same track.
 Where it shows up in Telematica: TEL-135 runs 12 tasks (e.g. "next bus at stop 1011") on Moovit, Google Maps and our app; results in Notion.
+My words:
+
+**Block**: a group of cards that share one goal, with no dates, like a shelf in a wardrobe: you put together what belongs together and you don't ask "by when".
+Where it shows up in Telematica: the Blocks database in Notion (e.g. «B0 · Θεμέλια»); the one with Κατάσταση = Τρέχον is the current one, and the `/block` pane, `/quick-task` and `/plan-week` all read it (TEL-201). It replaced two-week sprints on 2026-10-28.
 My words:
 
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
@@ -155,6 +163,10 @@ My words:
 Where it shows up in Telematica: the citybus token is a JWT valid 48 h; the Worker reads its expiry (`jwtExp` in `worker/src/index.js`).
 My words:
 
+**Κολλημένο** (stuck): a card that has been In progress or In review for more than 7 days, like a loaf you forgot in the oven.
+Where it shows up in Telematica: a formula in Notion; the `/block` pane and `/plan-week` compute it themselves from `Started on`, because the formula can't be read with SQL (`isStuck` in `.claude/skills/tel-sprint/hooks/register.tsx`, TEL-201).
+My words:
+
 **KV** (key-value store): a giant list of labels and values, like a coat-check: hand over a label, get your coat back.
 Where it shows up in Telematica: Cloudflare KV holds the citybus tokens and the daily report counter (`worker/wrangler.toml`).
 My words:
@@ -188,7 +200,7 @@ Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `wor
 My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
-Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Sprint» pane with your current TEL cards from Notion (`/sprint` refreshes it).
+Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Block from Notion (`/block` refreshes it; `/sprint` is kept as an alias).
 My words:
 
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
