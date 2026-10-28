@@ -67,6 +67,10 @@ My words:
 Where it shows up in Telematica: the `patra-bus` Worker in `worker/` is the go-between for the app and citybus.gr.
 My words:
 
+**CODEOWNERS**: a file that says who must look at changes to which folders; GitHub asks that person to review every matching pull request, like a name on a door saying who signs off on the room.
+Where it shows up in Telematica: `.github/CODEOWNERS` (`* @CostGal`).
+My words:
+
 **Copyleft**: a kind of license (GPL, AGPL) that lets anyone use your code but requires their own work built on it to be shared openly too, like a recipe you may cook from only if you publish your own recipe as well.
 Where it shows up in Telematica: not used; it is one of the options compared in the founders' proposal (TEL-1).
 My words:
@@ -231,12 +235,20 @@ My words:
 Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
 My words:
 
+**Ruleset** (branch protection): rules GitHub enforces on a branch, such as "only through a pull request" or "needs one approval", like house rules pinned at the entrance.
+Where it shows up in Telematica: `main` needs a PR, the `test` and `merge-window` checks and Kostas's approval (he merges his own PRs through the ruleset's PR-only bypass); no force push, no direct push.
+My words:
+
 **Scheduled workflow** (cron): a GitHub Action that starts by itself on a timetable, like an alarm clock that rings every 30 minutes. It only runs from the `main` branch.
 Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` (`schedule:` with `cron: '7,37 5-17 * * *'`).
 My words:
 
 **Secret** (Cloudflare secret): a private value stored on the server and hidden from the code in git, like a safe's combination.
 Where it shows up in Telematica: `VAPID_PRIVATE_KEY`, `NOTION_TOKEN`, `NOTION_DB_ID`; locally in `worker/.dev.vars` (ignored by git).
+My words:
+
+**Secret scan** (gitleaks): a robot that reads every commit looking for passwords and keys, like a security guard checking every bag at the exit, including old ones.
+Where it shows up in Telematica: the `test` job in `.github/workflows/test.yml`, allowlist in `.gitleaks.toml`.
 My words:
 
 **Service worker**: a helper script the browser runs in the background for a site, like a doorman who answers for you when you're out.

@@ -103,4 +103,5 @@ planάρουμε τόσο μπροστά. Σε αυτό το session δεν γρ
 - Χωρίς ερώτηση (αναφέρει το αποτέλεσμα): διάβασμα κώδικα και docs, τεστ, `npm run shots`, commits και push στο δικό
   του branch, draft PR, διορθώσεις CI στο δικό του PR, κάρτες Notion όπως στην ενότητα 1.
 - Πάντα με έγκριση: το σχέδιο πριν τον κώδικα, κλείσιμο ή αλλαγή issues, αλλαγές εκτός του task.
-- Ποτέ: merge, push στο `main`, deploy του worker (μόνο ο Kostas), secrets σε αρχεία.
+- Ποτέ: merge, push στο `main`, deploy του worker σε production ή από τον υπολογιστή (production μόνο από το Action
+  «Worker deploy» με έγκριση του Kostas· staging επιτρέπεται από το ίδιο Action), secrets σε αρχεία.
