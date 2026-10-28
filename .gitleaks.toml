@@ -1,0 +1,11 @@
+# gitleaks (CI, job `test`): the default rules plus an allowlist for public test vectors that look like keys.
+# Add a value here only if it is public on purpose (an RFC example, a published test key), never a real secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public Web Push test vectors (RFC 8291 §5) and a published example VAPID key, used in tests/"
+regexes = [
+  '''BTBZMqHH6r4Tts7J_aSIgg''',
+  '''BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U''',
+]
