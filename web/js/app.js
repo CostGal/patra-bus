@@ -202,7 +202,12 @@ const toastHost = $('toasts');
 let attribEl = null;
 const chipsEl = $('chips');
 const searchbarEl = $('searchbar');
-function onSnap({ visible, desktop }) {
+// What the map re-centres on between low and mid: home = the user's location (if the map has it), a stop or a pin =
+// that point (route() sets it); other views keep the map still.
+let focusPt = null;
+let lastSnap = null;
+let routeSnap = false; // the snap comes from route(), which moves the map itself
+function onSnap({ state, visible, desktop }) {
   if (!map) return;
   if (desktop) {
     map.setPadding({ top: 72, bottom: 0, left: sheet.el.offsetWidth, right: 0 });
@@ -210,6 +215,12 @@ function onSnap({ visible, desktop }) {
     const top = Math.max(menuBtn.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
     map.setPadding({ top, bottom: Math.min(visible, innerHeight * 0.6), left: 0, right: 0 });
   }
+  // As in Apple Maps (Kostas, TEL-222): between low and mid the map glides to centre its focus in the part left above
+  // the sheet. Only once the sheet is let go (this fires when its target is chosen), never to or from full.
+  const from = lastSnap;
+  lastSnap = state;
+  const lowMid = (from === 'peek' && state === 'half') || (from === 'half' && state === 'peek');
+  if (!desktop && lowMid && !routeSnap && (currentHead === '' || focusPt)) map.recenter(focusPt);
 }
 function onMove({ lift, opacity }) {
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
@@ -785,7 +796,10 @@ async function route() {
   paintChips();
   document.title = title();
 
+  focusPt = null;
+  routeSnap = true;
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted });
+  routeSnap = false;
   nextSnap = null;
 
   const mount = async (loader, build) => {
@@ -812,6 +826,7 @@ async function route() {
       noteStop(stop);
       map.highlightStop(stop.code);
       map.flyTo(stop, 17);
+      focusPt = stop;
       await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code }));
       break;
     }
@@ -861,6 +876,7 @@ async function route() {
       document.title = `${pinName()} · ${title()}`;
       view = mountPin(content, ctx, p);
       map.flyTo(p, 17);
+      focusPt = p;
       break;
     }
     default:

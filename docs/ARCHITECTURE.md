@@ -439,8 +439,10 @@ to `full`; a close by the user (back, Escape, tap outside) snaps it back to the 
 is not up focuses a hidden `.kb-proxy` input at the top first (the keyboard must open inside the tap), and hands the focus
 to the field 320 ms later, once the sheet is up: focusing it low would make iOS pan the page above the keyboard. A
 `visualViewport` listener undoes any pan left while searching and writes `--kb` (keyboard height) for the results' bottom padding. The map's top padding
-is measured from the ☰ and the chips (which share its row). The map never moves with the sheet: `map.setPadding()` only stores the padding for the next
-fit or fly. One spring per move
+is measured from the ☰ and the chips (which share its row). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
+fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
+`app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
+(Apple Maps). One spring per move
 (`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`
 while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
 touch strip (`::after`); its pill is the iOS grabber, 36 × 5 px, 8 px from the top. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
