@@ -42,3 +42,41 @@ new_sqlite_classes = ["Routine", "Stats"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["Counters"]
+
+# --- Staging (TEL setup-safe-collab) -------------------------------------------------------------------------------
+# A separate worker "patra-bus-staging" with its own KV, Durable Objects and secrets: nothing here touches production
+# or its users. Deployed only by the GitHub Action "Worker deploy" (target: staging), from any branch.
+# URL: https://patra-bus-staging.patra-bus.workers.dev
+# KV has no id on purpose: wrangler creates the namespace on the first deploy and reuses it after that.
+# Durable Objects and vars are not inherited from the top level, so every binding is listed again. VAPID_PUBLIC_KEY is
+# a secret here (own key pair), so wrangler's warning that it is missing from env.staging.vars is expected.
+# Secrets (set once by Kostas, never in the repo), all optional: without them that feature answers 503.
+#   npx wrangler secret put VAPID_PUBLIC_KEY  --env staging --config worker/wrangler.toml   (staging-only key pair,
+#   npx wrangler secret put VAPID_PRIVATE_KEY --env staging --config worker/wrangler.toml    see CONTRIBUTING.md)
+#   npx wrangler secret put STATS_TOKEN       --env staging --config worker/wrangler.toml
+#   NOTION_TOKEN / NOTION_DB_ID only with a separate test database, never the production one.
+[env.staging]
+name = "patra-bus-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "KV"
+
+[env.staging.vars]
+ALLOWED_ORIGIN = "http://localhost:8080,https://patra-bus-dev.patra-bus.workers.dev,https://*-patra-bus-dev.patra-bus.workers.dev"
+VAPID_SUBJECT = "https://github.com/CostGal/patra-bus"
+
+[[env.staging.durable_objects.bindings]]
+name = "REMINDERS"
+class_name = "Reminder"
+
+[[env.staging.durable_objects.bindings]]
+name = "ROUTINES"
+class_name = "Routine"
+
+[[env.staging.durable_objects.bindings]]
+name = "STATS"
+class_name = "Stats"
+
+[[env.staging.durable_objects.bindings]]
+name = "COUNTERS"
+class_name = "Counters"

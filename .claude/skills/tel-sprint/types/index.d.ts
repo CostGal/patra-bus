@@ -1,20 +1,18 @@
-/** Μία κάρτα της βάσης Tasks· τα προαιρετικά λείπουν όταν το πεδίο είναι κενό στο Notion. */
+/** Μία κάρτα της βάσης Code Tasks· τα προαιρετικά λείπουν όταν το πεδίο είναι κενό στο Notion. */
 export type Card = {
   id: number
   title: string
   status: string
   url: string
   area?: string
-  who?: string
-  due?: string
   pr?: string
+  /** In progress / In review πάνω από 7 μέρες από το Started on. */
+  stuck?: boolean
 }
-/** Το τρέχον sprint: όνομα, ημερομηνίες, οι ανοιχτές κάρτες και πόσες είναι ήδη Done. */
-export type Sprint = {
+/** Το τρέχον block (Κατάσταση = Τρέχον): όνομα, οι ανοιχτές κάρτες και πόσες είναι ήδη Done. */
+export type Block = {
   cards: Card[]
   name?: string
-  start?: string
-  end?: string
   done?: number
   error?: string
   updatedAt?: number
@@ -22,6 +20,6 @@ export type Sprint = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'tel-sprint': { sprint: Sprint }
+    'tel-sprint': { block: Block }
   }
 }

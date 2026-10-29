@@ -12,6 +12,21 @@
 - **Τρίτοι, χωρίς κλειδί**: χάρτης MapLibre GL (vendored) + OpenFreeMap, περπάτημα OSRM (FOSSGIS), αναζήτηση τόπων Photon (komoot).
 - Συμβόλαια modules και ownership: `docs/ARCHITECTURE.md`· κίνηση: `docs/DESIGN.md`· πόλεις: `docs/MULTI-CITY.md`.
 
+## Ομάδα και τομείς
+Τρία άτομα, ο καθένας με Claude Code desktop. Δουλεύεις **μόνο στον τομέα του ατόμου που σε τρέχει**· αν η αλλαγή
+χρειάζεται αρχείο άλλου τομέα, το λες και ρωτάς πριν το αγγίξεις (ή προτείνεις ξεχωριστή κάρτα).
+| Ποιος (GitHub) | Τομέας | Deploy |
+|---|---|---|
+| **Kostas** (`CostGal`) | `web/` (frontend), review και merge όλων των PR, κάτοχος των secrets του production | εγκρίνει το production |
+| **Amarildo** (`ksainis2002-coder`) | `worker/`, `scripts/` δεδομένων (`fetch-static`, `build-routes`, `record-fixtures`), νέα features | staging ελεύθερα, **ποτέ** production |
+| **Fanis** (`fanistsob2001`) | `.github/`, `tests/e2e/` υποδομή, `.claude/` (skills, mods), feedback και μετρήσεις | staging ελεύθερα, **ποτέ** production |
+
+Κοινά για όλους (και για τον Claude): branch ανά κάρτα `<όνομα>/TEL-<id>-<slug>` (π.χ. `amarildo/TEL-210-stats-cache`)·
+**άνοιξε PR, μην κάνεις ποτέ merge** (μόνο ο Kostas)· **ποτέ deploy σε production** (μόνο το Action «Worker deploy» από
+το `main`, με έγκριση του Kostas)· **ποτέ `wrangler deploy` από τον υπολογιστή σου**, ούτε για staging (staging = Actions →
+Worker deploy → staging)· **ποτέ secrets σε αρχεία** (ούτε σε `.dev.vars.example`, PR, issue ή σχόλιο). Ο Kostas είναι
+code owner σε όλα (`.github/CODEOWNERS`). Στήσιμο από την αρχή: **`CONTRIBUTING.md`**.
+
 ## Αυστηροί κανόνες
 1. **Ποτέ push στο `main`.** Μόνο μέσω PR· το `main` είναι protected και μόνο ο Kostas κάνει merge.
 2. Branch ανά εργασία: `<όνομα>/TEL-<id>-<slug>` (π.χ. `kostas/TEL-12-repo-workflow`), μέσα στο repo, όχι fork.
@@ -33,7 +48,7 @@ npm run test:unit        # node --test tests/*.test.mjs
 npm run test:e2e         # Playwright smoke tests (tests/e2e/)· πρώτη φορά: npx playwright install chromium
 npm run record-fixtures  # ξαναγράφει τα fixtures των smoke tests από το citybus.gr (βλ. Smoke tests)
 npm run dev:worker       # wrangler dev --local στο :8787 (local KV)
-npx wrangler deploy --config worker/wrangler.toml   # deploy του worker στο Cloudflare
+# deploy του worker: ΜΟΝΟ από GitHub → Actions → «Worker deploy» (staging από κάθε branch· production από main με έγκριση Kostas)
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
 npm run shots            # screenshots (?demo, mocks) για συσκευές × light/dark × EL/EN στο shots/ + SUMMARY.md· `-- --device= --lang= --theme= --screen= --base=<preview URL> --web=<web/ άλλου checkout> --chromium=<path> --glass (?glass) --map (αφήνει μόνο το OpenFreeMap, για να φαίνεται ο χάρτης πίσω από το glass)`· ~6′ για όλα, μόνο layout (όχι αφή/push/GPS/απόδοση)
 npm run shots -- --annotate   # αριθμημένος χάρτης UI για reviews (TEL-198): κάθε στοιχείο με μόνιμο ID ανά περιοχή (`scripts/ui-map.mjs`) → shots/ui-map/ + LEGEND.md· κανόνες στο docs/DESIGN.md §9
@@ -45,7 +60,7 @@ npm run shots -- --annotate   # αριθμημένος χάρτης UI για re
 - Repo (public): https://github.com/CostGal/patra-bus
 - Site: https://costgal.github.io/patra-bus/. Το `.github/workflows/pages.yml` ανεβάζει **μόνο** το `web/` σε κάθε push στο `main`.
 - Το site είναι σε subpath (`/patra-bus/`), οπότε όλα τα paths στο `web/` μένουν **σχετικά** (`./data/…`, `sw.js`, `start_url: "./"`).
-- Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`: tokens (`token/{city}`) και ο ημερήσιος μετρητής αναφορών (`report-day/{date}`). Το deploy είναι **χειροκίνητο**: το push στο `main` ανεβάζει μόνο το Pages.
+- Worker: https://patra-bus.patra-bus.workers.dev (λογαριασμός Cloudflare του kostas.galanis31, `wrangler login`). KV namespace `patra-bus-token`: tokens (`token/{city}`) και ο ημερήσιος μετρητής αναφορών (`report-day/{date}`). Deploy μόνο από το Action «Worker deploy» (`.github/workflows/worker-deploy.yml`): μετά από merge που αγγίζει τον worker περιμένει έγκριση του CostGal στο GitHub Environment `production`. Staging: worker `patra-bus-staging` (`[env.staging]`, δικό του KV/DO/secrets), https://patra-bus-staging.patra-bus.workers.dev.
 - `ALLOWED_ORIGIN` στο `worker/wrangler.toml`: λίστα με κόμμα (`https://costgal.github.io,http://localhost:8080,https://patra-bus-dev.patra-bus.workers.dev,https://*-patra-bus-dev.patra-bus.workers.dev`, τα δύο τελευταία = Cloudflare site και previews). Origin της λίστας επιστρέφεται ως έχει, οτιδήποτε άλλο παίρνει το πρώτο. Αυτό σταματά μόνο browsers σε άλλα sites, όχι scripts.
 
 ## Branches & previews
@@ -54,7 +69,7 @@ npm run shots -- --annotate   # αριθμημένος χάρτης UI για re
 - Κάθε εργασία σε δικό της branch `<όνομα>/TEL-<id>-<slug>` (π.χ. `kostas/TEL-12-repo-workflow`, μέσα στο repo, όχι fork), ανοίγει PR. Πριν ανοίξεις PR κάνε merge το `main` στο branch σου.
 - Κάθε PR παίρνει preview από το Cloudflare Workers Builds (project `patra-bus-dev`, `wrangler.jsonc` στη ρίζα, στατικά αρχεία από το `web/`· **δεν** είναι ο API worker `patra-bus`). Ο worker δέχεται αυτά τα origins μέσω του `https://*-patra-bus-dev.patra-bus.workers.dev` στο `ALLOWED_ORIGIN` (`worker/src/origin.js`: το `*` μέσα στο πρώτο label, μόνο για αυτό το project). Οι αναφορές από previews μπαίνουν στο Notion με πρόθεμα `[preview]`.
 - **Μην ανεβάζεις χειροκίνητα το `CACHE` στο `web/sw.js`**: το `scripts/stamp-cache.mjs` το βάζει από το commit κατά το deploy (Pages workflow και build command του Cloudflare). Το committed αρχείο μένει όπως είναι. Νέα αρχεία του `web/` μπαίνουν ακόμα στη λίστα SHELL.
-- Ο worker ανεβαίνει χειροκίνητα και είναι κοινός σε όλους (previews και παραγωγή): αλλαγές σε αυτόν ελέγχονται τοπικά με `npm run dev:worker` και τις ανεβάζει μόνο ο Kostas μετά το merge.
+- Ο production worker είναι κοινός σε όλους (previews και παραγωγή). Αλλαγές στον worker: πρώτα τοπικά (`npm run dev:worker`), μετά στο staging (Actions → Worker deploy → staging, από το branch σου)· στο production πάνε μόνο μετά το merge, με έγκριση του Kostas στο Action.
 - Σύγκρουση ownership: δες `docs/ARCHITECTURE.md`. Ένα αρχείο CSS και i18n ανά feature (`css/report.css`, `i18n-en-report.js`) ώστε να μη συγκρούονται οι designers.
 
 ## Δομή (v2)
@@ -144,9 +159,11 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
   words what changed, why, and how it could break. Write those 3 lines in the commit/PR.
 - Update docs/ARCHITECTURE.md whenever how the parts connect changes.
 - New technical terms go in docs/GLOSSARY.md.
-- Sessions follow **docs/WORKFLOW.md**: one list (Notion Tasks), `/plan-week` for the weekly planning, `/task TEL-<id>`
-  for one task per session; every step the user does is given one at a time and Claude waits for confirmation.
-- The mod `.claude/skills/tel-sprint/` opens a pane «Sprint» in Claude Code with the connected Notion user's open cards
-  of the current sprint (read-only, through the Notion connector, every 5′ and on `/sprint`). In a local Claude desktop
+- Sessions follow **docs/WORKFLOW.md**: one list (Notion Code Tasks, grouped in Blocks, no sprints), `/plan-week` as the
+  helper for the weekly, `/task TEL-<id>` for one task per session; every step the user does is given one at a time and
+  Claude waits for confirmation.
+- The mod `.claude/skills/tel-sprint/` opens a pane «Block» in Claude Code with the connected Notion user's open cards
+  of the current Block (Κατάσταση = Τρέχον; read-only, through the Notion connector, every 5′ and on `/block`, with
+  `/sprint` kept as an alias). It also marks the Κολλημένα (In progress / In review for more than 7 days). In a local Claude desktop
   session the connector is a server named by an id per user; in auto mode each user allows its two read tools once in
   `.claude/settings.local.json` (gitignored): `mcp__<id>__notion-get-self`, `mcp__<id>__notion-query-data-sources`.

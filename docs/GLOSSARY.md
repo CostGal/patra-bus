@@ -7,6 +7,10 @@ Technical words used in this project, in plain language. Add new terms in alphab
 Where it shows up in Telematica: proposed in Amarildo's Moovit handoff (`/docs/decisions/`); not adopted yet, a finding of TEL-135.
 My words:
 
+**Agent-ready**: a mark on a Notion card saying "Claude can do this one on its own"; the other choice, «Θέλει άνθρωπο», means a person has to decide or act. Like a sticker on a box: "anyone can carry this" or "needs two hands and a key".
+Where it shows up in Telematica: the `Agent-ready` select on Code Tasks (it replaces `Who does this`: Claude → Agent-ready, Dev → Θέλει άνθρωπο, renamed in Notion after the TEL-201 merge); `/quick-task` sets it (TEL-201).
+My words:
+
 **Alarm** (Durable Object alarm): a wake-up call a program sets for itself, like an alarm clock that starts the code at an exact time.
 Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
 My words:
@@ -33,6 +37,10 @@ My words:
 
 **Benchmark**: the same small task, timed and counted on every app, like timing two runners on the same track.
 Where it shows up in Telematica: TEL-135 runs 12 tasks (e.g. "next bus at stop 1011") on Moovit, Google Maps and our app; results in Notion.
+My words:
+
+**Block**: a group of cards that share one goal, with no dates, like a shelf in a wardrobe: you put together what belongs together and you don't ask "by when".
+Where it shows up in Telematica: the Blocks database in Notion (e.g. «B0 · Θεμέλια»); the one with Κατάσταση = Τρέχον is the current one, and the `/block` pane, `/quick-task` and `/plan-week` all read it (TEL-201). It replaced two-week sprints on 2026-10-28.
 My words:
 
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
@@ -65,6 +73,10 @@ My words:
 
 **Cloudflare Worker**: a small program that runs on Cloudflare's computers around the world, so we don't need our own server; like a shop clerk who works at the counter for us.
 Where it shows up in Telematica: the `patra-bus` Worker in `worker/` is the go-between for the app and citybus.gr.
+My words:
+
+**CODEOWNERS**: a file that says who must look at changes to which folders; GitHub asks that person to review every matching pull request, like a name on a door saying who signs off on the room.
+Where it shows up in Telematica: `.github/CODEOWNERS` (`* @CostGal`).
 My words:
 
 **Copyleft**: a kind of license (GPL, AGPL) that lets anyone use your code but requires their own work built on it to be shared openly too, like a recipe you may cook from only if you publish your own recipe as well.
@@ -113,6 +125,10 @@ My words:
 
 **Global Privacy Control (GPC)**: a setting some browsers have that tells every site "don't track me", like a "no junk mail" sticker on a letterbox.
 Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
+My words:
+
+**GitHub Environment**: a named target (`staging`, `production`) in the repo settings that holds its own secrets and can require a named person to approve before a job uses them, like a locked door with its own key and a guard who must nod.
+Where it shows up in Telematica: `.github/workflows/worker-deploy.yml`; `production` waits for CostGal's approval, `staging` does not.
 My words:
 
 **Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
@@ -167,6 +183,10 @@ My words:
 Where it shows up in Telematica: the citybus token is a JWT valid 48 h; the Worker reads its expiry (`jwtExp` in `worker/src/index.js`).
 My words:
 
+**Κολλημένο** (stuck): a card that has been In progress or In review for more than 7 days, like a loaf you forgot in the oven.
+Where it shows up in Telematica: a formula in Notion; the `/block` pane and `/plan-week` compute it themselves from `Started on`, because the formula can't be read with SQL (`isStuck` in `.claude/skills/tel-sprint/hooks/register.tsx`, TEL-201).
+My words:
+
 **KV** (key-value store): a giant list of labels and values, like a coat-check: hand over a label, get your coat back.
 Where it shows up in Telematica: Cloudflare KV holds the citybus tokens and the daily report counter (`worker/wrangler.toml`).
 My words:
@@ -200,7 +220,7 @@ Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `wor
 My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
-Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Sprint» pane with your current TEL cards from Notion (`/sprint` refreshes it).
+Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Block from Notion (`/block` refreshes it; `/sprint` is kept as an alias).
 My words:
 
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
@@ -243,12 +263,20 @@ My words:
 Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
 My words:
 
+**Ruleset** (branch protection): rules GitHub enforces on a branch, such as "only through a pull request" or "needs one approval", like house rules pinned at the entrance.
+Where it shows up in Telematica: `main` needs a PR, the `test` and `merge-window` checks and Kostas's approval (he merges his own PRs through the ruleset's PR-only bypass); no force push, no direct push.
+My words:
+
 **Scheduled workflow** (cron): a GitHub Action that starts by itself on a timetable, like an alarm clock that rings every 30 minutes. It only runs from the `main` branch.
 Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` (`schedule:` with `cron: '7,37 5-17 * * *'`).
 My words:
 
 **Secret** (Cloudflare secret): a private value stored on the server and hidden from the code in git, like a safe's combination.
 Where it shows up in Telematica: `VAPID_PRIVATE_KEY`, `NOTION_TOKEN`, `NOTION_DB_ID`; locally in `worker/.dev.vars` (ignored by git).
+My words:
+
+**Secret scan** (gitleaks): a robot that reads every commit looking for passwords and keys, like a security guard checking every bag at the exit, including old ones.
+Where it shows up in Telematica: the `test` job in `.github/workflows/test.yml`, allowlist in `.gitleaks.toml`.
 My words:
 
 **Service worker**: a helper script the browser runs in the background for a site, like a doorman who answers for you when you're out.
@@ -261,6 +289,10 @@ My words:
 
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
+My words:
+
+**Staging**: a full copy of the server that only the team uses, with its own data and keys, where a change is tried before real users get it, like a dress rehearsal on the real stage before opening night.
+Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging.
 My words:
 
 **Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.
