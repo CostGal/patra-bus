@@ -182,10 +182,18 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   expect(await flick('full', 160, 40)).toBe('half');
   expect(await flick('full', 240, 0)).toBe('peek');
   expect(await flick('peek', -240, 0)).toBe('full');
-  // peek is tight: the handle and the stop's first row only
+  // peek is tight: the handle, the stop's header and its line pills (TEL-224), nothing more
+  await expect(page.locator('.stopv-chipbar')).toBeVisible();
   await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
-  const tight = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return innerHeight - r.top; });
-  expect(tight).toBeLessThan(140);
+  await page.waitForTimeout(150);
+  const low = await page.evaluate(() => {
+    const s = document.getElementById('sheet').getBoundingClientRect();
+    const bar = document.querySelector('.stopv-chipbar').getBoundingClientRect();
+    return { shown: innerHeight - s.top, below: innerHeight - bar.bottom };
+  });
+  expect(low.below).toBeGreaterThan(0); // the pills are on screen
+  expect(low.below).toBeLessThan(40); // and low ends right under them
+  expect(low.shown).toBeLessThan(200);
 });
 
 test('search in the sheet: ☰ alone at the top, search home only, open = up, closed = back where it was', async ({ page }) => {
