@@ -88,7 +88,7 @@ a { color: var(--primary); }
 /* ---------- ☰ and the search (TEL-223) ---------- */
 /* ☰ alone at the top left, a round floating button (material §4) */
 .menu-fab {
-  position: fixed; z-index: 50; top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px);
+  position: fixed; z-index: 50; transform: translateZ(0); /* its own layer: iOS sends taps on a fixed button over a scroller to the scroller */ top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px);
   color: var(--foreground); background: var(--material-bg); box-shadow: var(--shadow-1);
   backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
 }
@@ -237,7 +237,7 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 .sheet-handle:hover .sheet-pill { background: var(--muted-foreground); }
 .sheet-handle:focus-visible { outline-offset: -4px; }
 .sheet-body {
-  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; outline: none; -webkit-overflow-scrolling: touch;
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; outline: none;
   padding-bottom: var(--safe-bottom);
 }
 .sheet[data-state="peek"] .sheet-body, .sheet[data-state="half"] .sheet-body { overflow-y: hidden; touch-action: pan-x; }

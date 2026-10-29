@@ -518,8 +518,9 @@ $('searchbar').addEventListener('click', (e) => { if (!e.target.closest('button'
 // The keyboard and the sheet (iOS): focusing the field while the sheet is low makes Safari pan the whole page to keep
 // the field above the keyboard, and the pan stays once the sheet has gone up (Kostas, TEL-223). So a tap on the field
 // while the sheet is not up opens the keyboard on a hidden field at the top (it must open inside the tap), takes the
-// sheet up, then hands the focus to the real field, which is at the top by then. Any pan left over is undone, and
-// --kb (the keyboard's height) keeps the last results above the keyboard.
+// sheet up, then hands the focus to the real field, which is at the top by then, so Safari has nothing to pan.
+// --kb (the keyboard's height) keeps the last results above the keyboard. No window.scrollTo() here: scrolling the page
+// while the keyboard is open shifts where iOS thinks fixed elements are, and taps on ✕ and ☰ then miss (Kostas, TEL-223).
 const kbProxy = h('input', { class: 'kb-proxy', type: 'text', tabindex: '-1', 'aria-hidden': 'true' });
 document.body.append(kbProxy);
 let kbHandoff = 0;
@@ -540,7 +541,6 @@ if (vv) {
   const onViewport = () => {
     const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
     document.documentElement.style.setProperty('--kb', `${kb}px`);
-    if (searchOpen && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
   };
   vv.addEventListener('resize', onViewport);
   vv.addEventListener('scroll', onViewport);
@@ -551,7 +551,8 @@ menuBtn.addEventListener('click', () => {
   if (menuPop.hidden) menuPopover.open();
   else menuPopover.close(true);
 });
-$('search-close').addEventListener('click', () => closeSearch(true, true));
+// a tap closes the keyboard with the search; from the keyboard (Enter/Space, detail 0) the focus goes to ☰
+$('search-close').addEventListener('click', (e) => closeSearch(e.detail === 0, true));
 // Keyboard focus leaving the search for another control closes it: the full-screen panel would hide that control
 // (WCAG 2.4.11). A blur with nowhere to go (touch scroll of the results) keeps it open.
 for (const el of [$('searchbar'), searchPanel]) {

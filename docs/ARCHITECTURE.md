@@ -444,7 +444,9 @@ down into the search row (its `top` follows `--sheet-t`, which `sheet.js` also w
 recent searches, then up to 4 stops within 800 m of the device's last fix (`nearestStops`, on the device only). A touch tap on the field while the sheet
 is not up focuses a hidden `.kb-proxy` input at the top first (the keyboard must open inside the tap), and hands the focus
 to the field 320 ms later, once the sheet is up: focusing it low would make iOS pan the page above the keyboard. A
-`visualViewport` listener undoes any pan left while searching and writes `--kb` (keyboard height) for the results' bottom padding. The map's top padding
+`visualViewport` listener writes `--kb` (keyboard height) for the results' bottom padding; it never scrolls the page (with the
+keyboard open, a programmatic scroll shifts iOS's hit-testing of fixed elements and taps miss). `.menu-fab` has its own
+layer (`translateZ(0)`), or iOS hands taps on it to the sheet's scroller underneath at full. The map's top padding
 is measured from the ☰ and the chips (which share its row). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
 `app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
