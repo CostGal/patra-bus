@@ -175,10 +175,11 @@ html.glass .sheet-handle::before {
 html.glass .sheet-handle:active::before, html.glass .sheet.dragging .sheet-handle::before { opacity: 1; scale: 1 1; }
 html.glass .sheet-handle:active .sheet-pill, html.glass .sheet.dragging .sheet-pill { width: 56px; height: 6px; background: var(--muted-foreground); }
 /* the two extra stops behave like `half`: the sheet drags, its list does not scroll until full */
-/* the content is cut to the card too (it would otherwise show in the margin under it, over the home bar) */
+/* the content is cut to the card too, at the bottom and at the sides (it would otherwise show in the margin around it:
+   over the home bar, or a scrolling row of line chips running past the card's edge) */
 html.glass .sheet-body {
-  clip-path: inset(0 0 calc(var(--sheet-y, 0px) + max(var(--g-sheet-m), var(--safe-bottom)) * (1 - var(--u))) 0
-    round 0 0 calc(var(--g-sheet-r) * (1 - var(--u))) calc(var(--g-sheet-r) * (1 - var(--u))));
+  clip-path: inset(0 calc(var(--g-sheet-m) * (1 - var(--u))) calc(var(--sheet-y, 0px) + max(var(--g-sheet-m), var(--safe-bottom)) * (1 - var(--u)))
+    calc(var(--g-sheet-m) * (1 - var(--u))) round 0 0 calc(var(--g-sheet-r) * (1 - var(--u))) calc(var(--g-sheet-r) * (1 - var(--u))));
 }
 /* a tight grabber (Kostas: minimal room around it); the finger still gets a 30 px strip, half of it over the map */
 html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8px; }

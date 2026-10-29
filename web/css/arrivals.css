@@ -35,6 +35,15 @@
 .stopv-chipbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 12px; background: linear-gradient(var(--card), transparent); pointer-events: none; }
 .stopv-chips { display: flex; gap: var(--space-2); overflow-x: auto; padding: 2px var(--space-4); scrollbar-width: none; }
 .stopv-chips::-webkit-scrollbar { display: none; }
+/* more chips than fit: the row fades out at the edge it can still scroll to, instead of cutting a chip in half
+   (scroll-driven: no fade when everything fits; without support, a fixed fade on the right) */
+.stopv-chips { --chips-fl: 0px; --chips-fr: 28px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--chips-fl), #000 calc(100% - var(--chips-fr)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--chips-fl), #000 calc(100% - var(--chips-fr)), transparent); }
+@property --chips-fl { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --chips-fr { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@supports (animation-timeline: scroll(x)) {
+  .stopv-chips { --chips-fr: 0px; animation: chips-edge linear both; animation-timeline: scroll(self x); }
+}
+@keyframes chips-edge { 0% { --chips-fl: 0px; --chips-fr: 28px; } 10% { --chips-fl: 28px; } 90% { --chips-fr: 28px; } 100% { --chips-fl: 28px; --chips-fr: 0px; } }
 .stopv-chipbar[hidden], .stopv-banner[hidden] { display: none; }
 .stopv-chip { --hit: -3px 0; display: inline-flex; flex: none; align-items: center; min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--foreground); font: inherit; font-weight: 600; cursor: pointer; }
 .stopv-chip .badge { font-size: .85rem; min-width: 2.4em; padding: .15em .45em; }
