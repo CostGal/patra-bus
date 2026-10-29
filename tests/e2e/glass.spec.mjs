@@ -226,13 +226,12 @@ test('search in the sheet: ☰ alone at the top, search home only, open = up, cl
   // the ✕ next to the field closes the search (TEL-223 B); the ☰ joins the search row at full and stays the menu
   await page.locator('#search-input').click();
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
-  await page.waitForTimeout(500);
-  const row = await page.evaluate(() => {
+  const row = () => page.evaluate(() => {
     const m = document.getElementById('menu-btn').getBoundingClientRect(); const f = document.querySelector('.sb-field').getBoundingClientRect();
     return { dy: Math.abs((m.top + m.bottom) / 2 - (f.top + f.bottom) / 2), gap: f.left - m.right };
   });
-  expect(row.dy).toBeLessThan(3); // ☰ centred on the field
-  expect(row.gap).toBeGreaterThan(0); // and to its left, not over it
+  await expect.poll(async () => (await row()).dy, { timeout: 3000 }).toBeLessThan(3); // ☰ centred on the field, once the sheet is up
+  expect((await row()).gap).toBeGreaterThan(0); // and to its left, not over it
   await page.locator('#search-close').click();
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
   await expect(page.locator('#search-panel')).toBeHidden();
