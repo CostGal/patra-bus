@@ -100,11 +100,11 @@ Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device li
 My words:
 
 **Snap point (stop)**: a position a sheet likes to rest at, like the notches of a dimmer switch. A drag ends at the nearest one.
-Where it shows up in Telematica: the bottom sheet has three (peek, half, full); with `?glass` it has five (`web/js/sheet.js`, TEL-83).
+Where it shows up in Telematica: the bottom sheet has three (peek, half, full); with glass it has five (`web/js/sheet.js`, TEL-83).
 My words:
 
 **Displacement map**: a picture whose colours tell a filter how far to shift each pixel of what lies behind, like looking through the thick rim of a glass. Browsers can use one inside `backdrop-filter` only in Chrome-based browsers, not Safari.
-Where it shows up in Telematica: the lens bend at the edges of the glass prototype (`?glass`, `web/js/glass.js`, TEL-83).
+Where it shows up in Telematica: the lens bend at the edges of the glass UI (`web/js/glass.js`, TEL-83).
 My words:
 
 **Durable Object**: a small box of memory on Cloudflare that has an ID and can wake itself up later, like a labelled locker with its own alarm clock.
@@ -148,7 +148,7 @@ Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` uses it 
 My words:
 
 **Glassmorphism** (backdrop blur): a see-through panel that blurs whatever lies behind it, like frosted glass in front of the map. The blur costs work from the phone's graphics chip, more so on cheap Android phones.
-Where it shows up in Telematica: the floating search bar and bottom sheet (`.material` in `app.css`); the fuller look is tested with `?glass` (TEL-83, `css/glass.css`).
+Where it shows up in Telematica: the floating search bar and bottom sheet (`.material` in `app.css`); the fuller glass look is in `css/glass.css` (TEL-83).
 My words:
 
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.

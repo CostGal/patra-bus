@@ -7,7 +7,7 @@
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
 import { t, N_, onLangChange } from './i18n.js';
 import { createSpringLoop, rubberband, project } from './motion.js';
-const GLASS = document.documentElement.classList.contains('glass'); // ?glass prototype (TEL-83, css/glass.css)
+const GLASS = document.documentElement.classList.contains('glass'); // glass UI (TEL-83, css/glass.css; html.glass is set in index.html)
 // Glass: five stops instead of three (low and high sit half way between their neighbours). The extra two reuse the
 // closest labels until the prototype is decided; css/glass.css treats them like `half` (no inner scrolling).
 const STATES = GLASS ? ['peek', 'low', 'half', 'high', 'full'] : ['peek', 'half', 'full'];

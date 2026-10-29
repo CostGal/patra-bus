@@ -1,6 +1,6 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
 // Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
-//      --glass: add ?glass (glass prototype, TEL-83) · --map: let OpenFreeMap through so the map is drawn behind the chrome
+//      --map: let OpenFreeMap through so the map is drawn behind the chrome
 //      (tiles only: no location, no user data; every other third party stays blocked)
 //      --annotate: numbered UI map for UI reviews (TEL-198): every element boxed with its permanent ID from scripts/ui-map.mjs,
 //      -> shots/ui-map/ + LEGEND.md; its own screens (menus open, vehicle…), default iPhone 15 · el · light
@@ -88,13 +88,12 @@ const scrollerInfo = () => {
 
 async function shoot(page, file) { await page.screenshot({ path: file }); }
 
-const screenUrl = (url) => (args.glass ? url.replace('/?', '/?glass&') : url);
 
 async function capture(context, base, screen, dir, summary) {
   const page = await context.newPage();
   const problems = [];
   page.on('pageerror', (e) => problems.push(`error: ${e.message}`));
-  await page.goto(base + screenUrl(screen.url));
+  await page.goto(base + screen.url);
   await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !/Φόρτωση…|Loading…/.test(c.textContent || ''); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
   await page.waitForTimeout(args.map ? 2500 : 500); // --map: give the tiles time to draw
   if (ANNOTATE) {
@@ -160,12 +159,12 @@ if (ANNOTATE) {
   const one = summary.every((s) => s.dir === summary[0]?.dir);
   const results = summary.map((s) => ({ screen: one ? s.screen : `${rel(s.dir).replace('ui-map/', '')}/${s.screen}`, file: `${rel(s.dir).replace('ui-map/', '')}/${s.screen}.png`, ids: s.ids, unknown: s.unknown }));
   const flagged = summary.filter((s) => s.problems.length);
-  const meta = `Base: ${base}/ · ${new Date().toISOString()} · ${wantDevices.join(', ')} · ${wantLangs.join(', ')} · ${wantThemes.join(', ')}${args.glass ? ' · ?glass' : ''}${args.map ? ' · map tiles from OpenFreeMap' : ''}${[...notes].map((n) => `\n\n> **Note:** ${n}`).join('')}${flagged.map((s) => `\n\n> **Problem** \`${rel(s.dir)}/${s.screen}\`: ${s.problems.join('; ')}`).join('')}`;
+  const meta = `Base: ${base}/ · ${new Date().toISOString()} · ${wantDevices.join(', ')} · ${wantLangs.join(', ')} · ${wantThemes.join(', ')}${args.map ? ' · map tiles from OpenFreeMap' : ''}${[...notes].map((n) => `\n\n> **Note:** ${n}`).join('')}${flagged.map((s) => `\n\n> **Problem** \`${rel(s.dir)}/${s.screen}\`: ${s.problems.join('; ')}`).join('')}`;
   await writeFile(`${outDir}LEGEND.md`, legend(results, meta));
   console.log(`\n${summary.length} annotated screens -> shots/ui-map/ (see shots/ui-map/LEGEND.md); ${summary.reduce((n, s) => n + s.unknown.length, 0)} elements not in the registry`);
   process.exit(0);
 }
-const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', `Layout only (demo data, ${args.map ? 'map tiles from OpenFreeMap' : 'map tiles blocked'}${args.glass ? ', glass prototype ?glass' : ''}). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as \`device-test\` issues.`, ''];
+const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', `Layout only (demo data, ${args.map ? 'map tiles from OpenFreeMap' : 'map tiles blocked'}). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as \`device-test\` issues.`, ''];
 for (const n of notes) lines.push(`> **Note:** ${n}`, '');
 const flagged = summary.filter((s) => s.problems.length);
 lines.push(`## Problems found by the script (${flagged.length})`, '');

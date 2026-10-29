@@ -1,20 +1,14 @@
-// TEL-83: the glass prototype only turns on with ?glass (css/glass.css + js/glass.js), keeps LIVE and scheduled apart,
+// TEL-83: the glass UI (css/glass.css + js/glass.js) is on for everyone, keeps LIVE and scheduled apart,
 // and falls back to solid, static surfaces with prefers-contrast: more (reduced transparency has no Playwright
 // emulation; it shares the same variables and the same early return in js/glass.js).
 import { test, expect } from './mock.mjs';
 
 const sheetFilter = (page) => page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backdropFilter);
 
-test('glass: off by default, on with ?glass', async ({ page }) => {
-  await page.goto('/?demo#/stop/1011');
-  await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.classList.contains('glass'))).toBe(false);
-  expect(await sheetFilter(page)).toContain('blur(20px)');
-  expect(await page.evaluate(() => !!document.querySelector('script[src="js/glass.js"]') || document.documentElement.classList.contains('glass-lens'))).toBe(false);
-
+test('glass: on by default', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/?glass&demo#/stop/1011');
+  await page.goto('/?demo#/stop/1011');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.classList.contains('glass'))).toBe(true);
   // Chromium: refraction filter in front of the blur
@@ -53,6 +47,7 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   await page.locator('.stopv-chip').first().click();
   // a press lights the glass up and grows it, release lets it go
   const fab = page.locator('#locate-btn');
+  const restBg = await fab.evaluate((el) => getComputedStyle(el).backgroundColor);
   const box = await fab.boundingBox();
   await page.mouse.move(box.x + 10, box.y + 10);
   await page.mouse.down();
@@ -60,7 +55,9 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   // touch & hold: it grows (Web Animations on `scale`)
   await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
   // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
-  expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgba?\(2\d?, 10\d, 2\d\d|color\(srgb 0\.0?\d+ 0\.[34]\d+ 0\.8/);
+  // (the browser may report the blue in any colour space, so check the white icon on it and that the fill changed)
+  expect(await fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+  expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBg);
   await page.mouse.move(5, 300);
   await page.mouse.up();
   await expect(fab).not.toHaveClass(/g-press/);
@@ -80,7 +77,7 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
 
 test('glass: solid surfaces with prefers-contrast: more', async ({ page }) => {
   await page.emulateMedia({ contrast: 'more' });
-  await page.goto('/?glass&demo#/stop/1011');
+  await page.goto('/?demo#/stop/1011');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
   expect(await sheetFilter(page)).toBe('none');
   await expect(page.locator('html.glass-lens')).toHaveCount(0);
@@ -89,7 +86,7 @@ test('glass: solid surfaces with prefers-contrast: more', async ({ page }) => {
 });
 
 test('glass: no shine under the finger; round buttons pop out unclipped; rows get a highlight, not grey', async ({ page }) => {
-  await page.goto('/?glass&demo#/lines');
+  await page.goto('/?demo#/lines');
   await expect(page.locator('.lines-row').first()).toBeVisible();
   // a pressed round button grows a lot and stays inside the sheet's scroller (the sheet leaves room above its first row)
   const back = page.locator('#sheet .ex-head > .btn.round');
@@ -108,7 +105,7 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
   await page.mouse.up();
 
   // a list row does not grow and does not turn grey: a soft highlight fades in behind it instead
-  await page.goto('/?glass&demo#/lines');
+  await page.goto('/?demo#/lines');
   const row = page.locator('a.lines-row').first();
   await expect(row).toBeVisible();
   const r = await row.boundingBox();
@@ -121,7 +118,7 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
   await page.mouse.up();
 });
 
-test('glass: the sheet has five stops, the normal app three', async ({ page }) => {
+test('glass: the sheet has five stops', async ({ page }) => {
   const visited = async (url, taps) => {
     await page.goto(url);
     await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
@@ -133,6 +130,5 @@ test('glass: the sheet has five stops, the normal app three', async ({ page }) =
     }
     return [...seen].sort();
   };
-  expect(await visited('/?glass&demo#/stop/1011', 7)).toEqual(['full', 'half', 'high', 'low', 'peek']);
-  expect(await visited('/?demo#/stop/1011', 4)).toEqual(['full', 'half', 'peek']);
+  expect(await visited('/?demo#/stop/1011', 7)).toEqual(['full', 'half', 'high', 'low', 'peek']);
 });

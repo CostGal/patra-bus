@@ -1,4 +1,4 @@
-// Glass prototype (TEL-83): the light effects behind css/glass.css. Loaded only with ?glass (index.html), never by app.js.
+// Glass UI (TEL-83): the effects behind css/glass.css. Loaded by index.html for everyone, never by app.js.
 // - refraction: on Chromium (the only engine with SVG filters in backdrop-filter) it adds two displacement filters,
 //   #g-lens (chips, buttons, search bar) and #g-lens-lg (sheet, menu, dialogs), and sets html.glass-lens;
 // - touch, like Apple's glass: the control under the finger gets .g-press (CSS: more opaque), grows, leans towards the
@@ -6,7 +6,7 @@
 //   transforms are untouched). Round buttons grow most and pop out above their neighbours; full-width list rows do
 //   not grow, a soft highlight fades in behind them instead. No light under the finger: it looked unauthentic;
 // - the locate button: pressed it fills with the app's blue, and a tap sends out a ring;
-// - the sheet handle (js/sheet.js has five stops with ?glass): a tick on the handle each time a drag passes a stop;
+// - the sheet handle (js/sheet.js has five stops with glass): a tick on the handle each time a drag passes a stop;
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
 // - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕;
 // - the stop's ⋯ menu and the map's i morph the same way (⋯ → ˄), with their own timing;

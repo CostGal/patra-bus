@@ -36,7 +36,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
-- Glass prototype (TEL-83, `?glass` only, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
+- Glass UI (TEL-83, on for everyone since 2026-10-29, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
   **glass** = floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and
   welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
   clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
@@ -57,7 +57,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   to the stop's close ✕) and the map's i grows into the attribution pill and back; the selected line chip is one glass
   lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
   contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
-  static; reduced motion: light only, no growing or moving. Not the default until the speed check (TEL-70) and a real-phone test.
+  static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
 
 ### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
 - Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft
@@ -116,7 +116,7 @@ the next one. Registry: `scripts/ui-map.mjs`.
 | S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
 | G | Settings and guide | D | Dialogs and forms (setup, welcome, report) |
 
-- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--glass --map` etc. as for any sweep).
+- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--map` etc. as for any sweep).
   It boxes every element with its ID on its own set of screens (menus open, vehicle, search…) into `shots/ui-map/`,
   plus `LEGEND.md`: the whole registry with the screens each ID appears on.
 - Feedback is one line per element: `ID — τώρα: … / θέλω: …` (one of many alike: `S2 (606)`), with a phone screenshot

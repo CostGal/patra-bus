@@ -413,8 +413,8 @@ instead of a divider line under sticky chrome). `@media (prefers-reduced-transpa
 `(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
 
 **Glass prototype (TEL-83): `web/css/glass.css` + `web/js/glass.js`.** The CSS loads always and is active only under
-`html.glass`, which the inline script in `index.html` sets before first paint when the URL has `?glass` (never stored;
-hash navigation keeps the query); the same script then loads `js/glass.js` as a module (app.js never imports it).
+`html.glass`, which `index.html` sets in its markup (glass is on for everyone since 2026-10-29); `index.html` also loads
+`js/glass.js` as a module (app.js never imports it).
 All rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
 surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables.
 `glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
@@ -425,7 +425,7 @@ untouched; ~16 px for round buttons, ~10 px for the rest; never the sheet, menu,
 rows, which get a CSS highlight instead), leans it via `translate` while held, and springs it back on pointerup/cancel.
 No finger light (removed in review 2). Round buttons get `z-index` while pressed and `.sheet-content` gets
 `--g-headroom` (18 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
-The locate button gets `.g-ping` on click (a ring). With `?glass` `sheet.js` has five stops (`peek, low, half, high, full`;
+The locate button gets `.g-ping` on click (a ring). With glass `sheet.js` has five stops (`peek, low, half, high, full`;
 `low`/`high` reuse the nearest aria labels and act like `half` in CSS), an underdamped settle, and dispatches `sheet:stop`
 on the sheet while a drag passes a stop, which `glass.js` turns into a tick on the handle's pill. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
 sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
@@ -441,7 +441,7 @@ at the end (a WeakSet marks its own changes). ⋯ gets a stacked ˄ (`.g-morph-b
 `.stopv-chipbar` (outside the row the view rebuilds) placed on `.stopv-chip.on` after every rebuild, animated from the
 chip that was selected at pointerdown, and kept in place on horizontal scroll. Does nothing with reduced transparency or more contrast; with
 reduced motion nothing grows, moves or ticks (no `scale`/`translate`/ping). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
-`npm run shots -- --glass --map`. Rules in DESIGN.md §4.
+`npm run shots -- --map`. Rules in DESIGN.md §4.
 
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`
 Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; see the map below):

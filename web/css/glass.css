@@ -1,6 +1,5 @@
-/* Glass prototype (TEL-83), "true glass" pass after Kostas's review: closer to Apple's Liquid Glass.
-   Only active with ?glass in the URL (index.html adds html.glass before first paint and loads js/glass.js), so testers
-   see nothing until a decision is made after the speed check (TEL-70). DESIGN.md §4, pushed further:
+/* Glass UI (TEL-83), "true glass" pass after Kostas's reviews: closer to Apple's Liquid Glass. On for everyone since
+   2026-10-29 (index.html has html.glass in its markup and loads js/glass.js). DESIGN.md §4, pushed further:
    - floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and welcome
      dialogs) = glass: very see-through, light blur (clear, not frosted), bright rim and a static top sheen;
    - touch: everything you can press reacts like Apple's glass (js/glass.js puts .g-press on it): it grows (round
