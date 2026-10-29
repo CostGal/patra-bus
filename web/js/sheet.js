@@ -7,12 +7,17 @@
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
 import { t, N_, onLangChange } from './i18n.js';
 import { createSpringLoop, rubberband, project } from './motion.js';
-const STATES = ['peek', 'half', 'full'];
+const GLASS = document.documentElement.classList.contains('glass'); // ?glass prototype (TEL-83, css/glass.css)
+// Glass: five stops instead of three (low and high sit half way between their neighbours). The extra two reuse the
+// closest labels until the prototype is decided; css/glass.css treats them like `half` (no inner scrolling).
+const STATES = GLASS ? ['peek', 'low', 'half', 'high', 'full'] : ['peek', 'half', 'full'];
 const PEEK_PX = 152; // handle + a header row
-const LABEL = { peek: N_('κλειστός'), half: N_('μισός'), full: N_('πλήρης') };
+const HEADROOM = GLASS ? 18 : 0; // glass: room above the first row, so a pressed round button can grow without being clipped
+const LABEL = { peek: N_('κλειστός'), low: N_('μισός'), half: N_('μισός'), high: N_('πλήρης'), full: N_('πλήρης') };
 const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point (docs/DESIGN.md §2)
 const MOMENTUM = { damping: 0.8, response: 0.3 }; // spring after a flick (release velocity)
-const SETTLE = { damping: 1, response: 0.35 }; // spring for a snap with no preceding gesture
+// spring for a snap with no preceding gesture; glass lets it overshoot a little and settle ("set" feels alive)
+const SETTLE = GLASS ? { damping: 0.74, response: 0.42 } : { damping: 1, response: 0.35 };
 
 export function createSheet(root, { onSnap, onMove } = {}) {
   const handle = root.querySelector('.sheet-handle');
@@ -28,26 +33,37 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let state = root.dataset.state || 'half';
   let fixed = false; // no map: behave as a plain page
   let H = 0; // sheet height in px
-  let SZ = { peek: 0, half: 0, full: 0 };
+  let SZ = { peek: 0, low: 0, half: 0, high: 0, full: 0 };
   let y = 0; // current translateY in px
   let dragging = false;
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
-  let peekPx = PEEK_PX; // the home card sets this to its own height (setPeek)
+  let peekPx = PEEK_PX + HEADROOM; // the home card sets this to its own height (setPeek)
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
   function measure() {
     H = root.offsetHeight;
     const peek = Math.min(peekPx + probe.offsetHeight, H);
-    SZ = { peek, half: Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100)), full: H };
+    const half = Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100));
+    SZ = { peek, low: Math.round((peek + half) / 2), half, high: Math.round((half + H) / 2), full: H };
   }
   const yFor = (s) => H - SZ[s];
+
+  // glass: tell the handle when a drag passes a stop (it gives a small "tick", css/glass.css)
+  let lastStop = 0;
+  function tick(v) {
+    if (!dragging) return;
+    const near = STATES.findIndex((s) => Math.abs(yFor(s) - v) < 6);
+    if (near >= 0 && near !== lastStop) { lastStop = near; root.dispatchEvent(new CustomEvent('sheet:stop')); }
+    else if (near < 0) lastStop = -1;
+  }
 
   function setY(v) {
     y = v;
     root.style.setProperty('--sheet-y', `${v}px`);
     const vis = H - v;
+    if (GLASS) tick(v);
     // floating UI (FABs, toast, attribution) rides on the sheet up to the half point, then fades out
     const lift = Math.min(vis, SZ.half);
     const opacity = vis <= SZ.half ? 1 : Math.max(0, 1 - (vis - SZ.half) / Math.max(1, (SZ.full - SZ.half) * 0.35));
@@ -116,6 +132,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     dragging = true;
     spring.stop(); // interrupt any in-flight snap; the drag takes over the live y from here
     startY = y;
+    lastStop = STATES.indexOf(state);
     pointerStart = clientY;
     samples = [{ t: performance.now(), y: clientY }];
     root.classList.add('dragging');
@@ -187,7 +204,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
     const i = STATES.indexOf(state) + (e.key === 'ArrowUp' ? 1 : -1);
-    snap(STATES[Math.max(0, Math.min(2, i))]);
+    snap(STATES[Math.max(0, Math.min(STATES.length - 1, i))]);
   });
 
   // Body gestures (touch only): drag the sheet when it is not full, or when full and scrolled to the top.
@@ -255,7 +272,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     scrollToTop() { body.scrollTop = 0; },
     // Peek height = handle + the single home card; null restores the default.
     setPeek(px) {
-      const next = px == null ? PEEK_PX : Math.max(96, Math.min(Math.round(px), Math.round(innerHeight * 0.45)));
+      const next = px == null ? PEEK_PX + HEADROOM : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
       if (next === peekPx) return;
       peekPx = next;
       if (!dragging) moveTo(state, { animate: false });

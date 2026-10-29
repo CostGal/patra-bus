@@ -59,9 +59,13 @@ test('glass: off by default, on with ?glass', async ({ page }) => {
   await expect(fab).toHaveClass(/g-press/);
   // touch & hold: it grows (Web Animations on `scale`)
   await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
+  // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
+  expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).toMatch(/^rgba?\(2\d?, 10\d, 2\d\d|color\(srgb 0\.0?\d+ 0\.[34]\d+ 0\.8/);
   await page.mouse.move(5, 300);
   await page.mouse.up();
   await expect(fab).not.toHaveClass(/g-press/);
+  await fab.click();
+  await expect(fab).toHaveClass(/g-ping/);
   expect(errors).toEqual([]);
   // tiles inside the sheet are tinted, never a second blur
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv .atile')).backdropFilter)).toBe('none');
@@ -82,4 +86,53 @@ test('glass: solid surfaces with prefers-contrast: more', async ({ page }) => {
   await expect(page.locator('html.glass-lens')).toHaveCount(0);
   const bg = await page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backgroundColor);
   expect(bg).not.toMatch(/rgba\(.*, 0\.\d+\)|color\(srgb .* \/ 0\.\d+\)/);
+});
+
+test('glass: no shine under the finger; round buttons pop out unclipped; rows get a highlight, not grey', async ({ page }) => {
+  await page.goto('/?glass&demo#/lines');
+  await expect(page.locator('.lines-row').first()).toBeVisible();
+  // a pressed round button grows a lot and stays inside the sheet's scroller (the sheet leaves room above its first row)
+  const back = page.locator('#sheet .ex-head > .btn.round');
+  const box = await back.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y - 30, { steps: 4 });
+  await expect.poll(() => back.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.2);
+  const fits = await page.evaluate(() => document.querySelector('#sheet .ex-head > .btn.round').getBoundingClientRect().top - document.getElementById('sheet-body').getBoundingClientRect().top);
+  expect(fits).toBeGreaterThanOrEqual(0);
+  // no light under the finger: no gradient image, no finger position variables
+  expect(await back.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe('none');
+  expect(await back.evaluate((el) => el.style.getPropertyValue('--gx'))).toBe('');
+  // pressed above its neighbours
+  expect(await back.evaluate((el) => parseInt(getComputedStyle(el).zIndex, 10))).toBeGreaterThan(1);
+  await page.mouse.up();
+
+  // a list row does not grow and does not turn grey: a soft highlight fades in behind it instead
+  await page.goto('/?glass&demo#/lines');
+  const row = page.locator('a.lines-row').first();
+  await expect(row).toBeVisible();
+  const r = await row.boundingBox();
+  await page.mouse.move(r.x + 100, r.y + r.height / 2);
+  await page.mouse.down();
+  await expect(row).toHaveClass(/g-press/);
+  await expect.poll(() => row.evaluate((el) => getComputedStyle(el, '::before').opacity)).toBe('1');
+  expect(await row.evaluate((el) => getComputedStyle(el).scale)).toBe('none');
+  expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+  await page.mouse.up();
+});
+
+test('glass: the sheet has five stops, the normal app three', async ({ page }) => {
+  const visited = async (url, taps) => {
+    await page.goto(url);
+    await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
+    const seen = new Set();
+    for (let i = 0; i < taps; i++) {
+      await page.locator('#sheet-handle').dispatchEvent('click'); // a tap walks the stops (the sheet may still be settling)
+      await page.waitForTimeout(150);
+      seen.add(await page.evaluate(() => document.getElementById('sheet').dataset.state));
+    }
+    return [...seen].sort();
+  };
+  expect(await visited('/?glass&demo#/stop/1011', 7)).toEqual(['full', 'half', 'high', 'low', 'peek']);
+  expect(await visited('/?demo#/stop/1011', 4)).toEqual(['full', 'half', 'peek']);
 });

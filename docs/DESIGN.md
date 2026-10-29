@@ -39,9 +39,12 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Glass prototype (TEL-83, `?glass` only, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
   **glass** = floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and
   welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
-  clear, bright top edge + rim, a static top sheen (no ambient shine: light comes only from touch), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
-  (~10 px, ≤ 8%, instead of §1's .97 shrink), leans a few px towards the finger, turns more opaque and lifts with a
-  light at the finger, then springs back with a small wobble. Legibility comes
+  clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
+  (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
+  towards the finger and turns more opaque, then springs back with a small wobble. **Full-width list rows** (stops, lines,
+  place suggestions) neither grow nor turn grey: a soft glass highlight fades in behind them and out again. The locate
+  button fills with the app's blue while held and sends out a ring on a tap. **Sheet:** five stops (peek, low, half, high,
+  full) with a settle that overshoots a little; its handle widens inside a small glass capsule and ticks at each stop. Legibility comes
   from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
   (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
   headers in the sheet (stop line chips, planner head) have no band at rest; once the list scrolls under them a blur
@@ -59,9 +62,15 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 ### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
 - Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft
   halo, not from more blur. Frosted, high-blur glass read as "not true glass".
-- **No ambient light**: a shine that moves by itself (on scroll/drag) is annoying. Light comes only from touch.
+- **No shine at all**: a shine that moves by itself (on scroll/drag) is annoying, and a light that follows the finger
+  looked unauthentic too (review 2). Feedback is shape and opacity, never a gradient.
 - **Touch & hold is the signature**: every pressable thing grows a little (~10px, ≤8%), leans to the finger, turns more
-  opaque with light at the finger, and springs back with a small wobble. Round buttons press into a *whiter* circle.
+  opaque, and springs back with a small wobble. Round buttons press into a *whiter* circle, grow the most (~16px) and sit
+  above their neighbours: the sheet leaves ~18px above its first row so the scroller never cuts them.
+- **Full-width rows are not buttons you grow**: growing makes them overflow sideways, and the iOS `:hover` after a tap
+  left the whole row grey. A rounded highlight inside the row fades in and out instead.
+- **A tap needs an answer you can see**: the locate button fills blue while held and rings out on the tap.
+- **A sheet that stays where you put it**: five stops, and a handle that reacts (capsule, wider pill, tick at each stop).
 - **Morph from what you touched**: a popover grows out of its button (circle → swells → panel) and goes back the same way;
   the button's icon blurs into its "close" meaning (☰ → ✕; ⋯ → ˄ where an ✕ would duplicate a nearby ✕).
 - Never let a closing popover flash: keep it on screen until its shape has shrunk back, then hide it.

@@ -418,11 +418,16 @@ hash navigation keeps the query); the same script then loads `js/glass.js` as a 
 All rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
 surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables.
 `glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
-`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; on pointerdown puts `.g-press` and `--gx`/`--gy` on the
+`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; on pointerdown puts `.g-press` on the
 control under the finger (`button, a[href], [role=button], summary, label, .atile-link`; its round `.sb-btn` buttons on
 their own; the whole `.searchbar` for its input; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
-untouched; never the sheet, menu, dialogs or sheet handle), leans it via `translate` while held, and springs it back on
-pointerup/cancel; `.g-hover` on glass surfaces for a mouse. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
+untouched; ~16 px for round buttons, ~10 px for the rest; never the sheet, menu, dialogs, sheet handle or full-width list
+rows, which get a CSS highlight instead), leans it via `translate` while held, and springs it back on pointerup/cancel.
+No finger light (removed in review 2). Round buttons get `z-index` while pressed and `.sheet-content` gets
+`--g-headroom` (18 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
+The locate button gets `.g-ping` on click (a ring). With `?glass` `sheet.js` has five stops (`peek, low, half, high, full`;
+`low`/`high` reuse the nearest aria labels and act like `half` in CSS), an underdamped settle, and dispatches `sheet:stop`
+on the sheet while a drag passes a stop, which `glass.js` turns into a tick on the handle's pill. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
 sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
 opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
 in two phases (a circle swelling around the ☰
@@ -435,7 +440,7 @@ open it plays circle → panel, on close it puts the popover back on screen, pla
 at the end (a WeakSet marks its own changes). ⋯ gets a stacked ˄ (`.g-morph-btn`, `.g-open`). Chips: a `.g-lens` in
 `.stopv-chipbar` (outside the row the view rebuilds) placed on `.stopv-chip.on` after every rebuild, animated from the
 chip that was selected at pointerdown, and kept in place on horizontal scroll. Does nothing with reduced transparency or more contrast; with
-reduced motion it keeps only the light (no `scale`/`translate`). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
+reduced motion nothing grows, moves or ticks (no `scale`/`translate`/ping). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
 `npm run shots -- --glass --map`. Rules in DESIGN.md §4.
 
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`

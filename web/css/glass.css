@@ -3,9 +3,10 @@
    see nothing until a decision is made after the speed check (TEL-70). DESIGN.md §4, pushed further:
    - floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and welcome
      dialogs) = glass: very see-through, light blur (clear, not frosted), bright rim and a static top sheen;
-   - touch: everything you can press reacts like Apple's glass (js/glass.js puts .g-press on it, with --gx/--gy):
-     it grows a little and follows the finger (Web Animations on `scale`/`translate`), turns more opaque and lights up
-     under the finger, and springs back with a small wobble on release. No ambient shine: light comes only from touch;
+   - touch: everything you can press reacts like Apple's glass (js/glass.js puts .g-press on it): it grows (round
+     buttons the most, and pop out above their neighbours) and follows the finger (Web Animations on `scale`/`translate`),
+     turns more opaque, and springs back with a small wobble on release. Full-width list rows get a soft highlight
+     instead of growing. No shine anywhere (not ambient, not under the finger: both looked unauthentic);
    - refraction: on Chromium only (html.glass-lens, set by js/glass.js), the backdrop bends at the edges like a lens
      (SVG displacement filters #g-lens / #g-lens-lg). Safari cannot use SVG filters in backdrop-filter: blur only;
    - everything inside the sheet = tinted (translucent --card, no blur of its own), except the sticky headers, which
@@ -13,9 +14,6 @@
    - stays solid on purpose: the toast (TEL-47: 4.5:1 for the action over a bright map), the full-screen search panel
      (a page of text, sits over the sheet), the stop menu (popover over the sheet), map marker labels (one blur each).
    Reduced transparency and more contrast fall back to solid, static surfaces through the --g-* variables at the bottom. */
-
-/* animatable, so the finger highlight fades in and out */
-@property --g-hl-a { syntax: '<number>'; inherits: false; initial-value: 0; }
 
 html.glass {
   --g-card: var(--card); /* solid card colour of the theme, kept before the sheet overrides --card */
@@ -30,14 +28,14 @@ html.glass {
   --g-chip-on: color-mix(in srgb, var(--primary) 16%, transparent);
   --g-edge: rgba(255, 255, 255, .95);
   --g-rim: rgba(255, 255, 255, .45);
-  --g-touch: rgba(255, 255, 255, .55); /* the highlight under the finger */
+  --g-row: rgba(255, 255, 255, .6); /* the highlight behind a pressed list row */
   --g-pressed: rgba(255, 255, 255, .75); /* a pressed round button: a whiter glass circle, still a little see-through */
   --g-halo: color-mix(in srgb, var(--g-card) 85%, transparent); /* soft glow behind text on glass, for legibility */
   --g-line: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .14);
   --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .2);
-  --g-fx: 1; /* 0 switches the finger highlight off (fallbacks) */
-  /* layers, top to bottom: finger highlight (--g-hl, per element, below), top sheen */
+  --g-headroom: 18px; /* room above the first row of the sheet for a pressed round button (js/sheet.js adds it to the peek height) */
+  /* layers, top to bottom: top sheen, then the glass colour */
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .4), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 90px);
 }
@@ -46,7 +44,7 @@ html.glass {
     --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
     --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 26%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
     --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
-    --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-touch: rgba(255, 255, 255, .22); --g-pressed: rgba(255, 255, 255, .22);
+    --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-row: rgba(255, 255, 255, .12); --g-pressed: rgba(255, 255, 255, .22);
     --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
     --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
     --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
@@ -56,7 +54,7 @@ html.glass[data-theme="dark"] {
   --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
   --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 26%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
   --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
-  --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-touch: rgba(255, 255, 255, .22); --g-pressed: rgba(255, 255, 255, .22);
+  --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-row: rgba(255, 255, 255, .12); --g-pressed: rgba(255, 255, 255, .22);
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
@@ -67,33 +65,28 @@ html.glass { -webkit-user-select: none; user-select: none; -webkit-touch-callout
 html.glass :is(input, textarea, select, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
 
 /* ---------- glass: floating chrome ---------- */
-/* declared on each glass element, not on <html>: --gx/--gy/--g-hl-a are per element and var() resolves where declared */
-html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
-  --g-hl: radial-gradient(circle 90px at var(--gx, 50%) var(--gy, 0%), color-mix(in srgb, var(--g-touch) calc(var(--g-hl-a) * var(--g-fx) * 100%), transparent), transparent);
-}
 html.glass .searchbar, html.glass .fab, html.glass .chip {
-  background: var(--g-hl), var(--g-sheen), var(--g-bg);
+  background: var(--g-sheen), var(--g-bg);
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
-  transition: --g-hl-a .35s ease-out;
+  transition: background-color .15s ease-out;
 }
-html.glass .fab { transition: --g-hl-a .35s ease-out, background .15s, color .15s, transform .1s; }
+html.glass .fab { transition: background-color .15s, color .15s, transform .1s; }
 html.glass .searchbar:focus-within { box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow), 0 0 0 2px var(--ring); }
-html.glass .fab:hover { background: var(--g-hl), var(--g-sheen), color-mix(in srgb, var(--muted) 45%, transparent); }
+html.glass .fab:hover { background: var(--g-sheen), color-mix(in srgb, var(--muted) 45%, transparent); }
 
 html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-card {
-  background: var(--g-hl), var(--g-sheen), var(--g-bg-lg);
+  background: var(--g-sheen), var(--g-bg-lg);
   -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
-  transition: --g-hl-a .35s ease-out;
+  transition: background-color .15s ease-out;
 }
 /* the sheet is tall: its sheen stays at the top edge */
-html.glass .sheet { background: var(--g-hl), var(--g-sheen-lg), var(--g-bg-lg); border-bottom: 0; }
+html.glass .sheet { background: var(--g-sheen-lg), var(--g-bg-lg); border-bottom: 0; }
 @media (min-width: 900px) { html.glass .sheet { border-top: 0; border-left: 0; } }
 /* touch & hold (js/glass.js: .g-press on the control under the finger, or on the glass surface if it is not a control):
-   the light comes on under the finger and the glass turns more opaque; js/glass.js also grows it and springs it back */
+   the glass turns more opaque; js/glass.js also grows it and springs it back */
 html.glass .g-press {
-  --g-hl-a: 1;
   --g-bg: color-mix(in srgb, var(--g-card) 62%, transparent);
   --g-bg-lg: color-mix(in srgb, var(--g-card) 50%, transparent);
   --card: color-mix(in srgb, var(--g-card) 82%, transparent); /* tiles, buttons and chips inside the sheet */
@@ -102,13 +95,55 @@ html.glass .g-press {
 html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
 /* round buttons (☰, back, ☆, ⋯, ✕, the map's i): pressed, they become a whiter glass circle, still a little see-through */
 html.glass :is(.sb-btn, .btn.round, .maplibregl-ctrl-attrib-button).g-press { background-color: var(--g-pressed); }
-/* controls that are not glass surfaces get the finger light as an image over their own colour */
+/* controls that are not glass surfaces are lifted off the sheet by a shadow */
 html.glass .g-press:not(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
-  background-image: radial-gradient(circle 70px at var(--gx, 50%) var(--gy, 50%), var(--g-touch), transparent);
-  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16); /* lifted off the sheet */
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
 }
 html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(--g-card) 65%, transparent); } /* mouse: tinted, not solid grey */
-html.glass .g-hover { --g-hl-a: .5; }
+
+/* round buttons pop out: above their neighbours (a positioned layer), and the sheet leaves room above its first row so
+   the grown circle is not cut by the scroller (js/sheet.js adds the same room to the peek height) */
+/* (:where keeps this at zero specificity, so a button that is already absolute or fixed stays so) */
+:where(html.glass) :where(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button) { position: relative; }
+html.glass :is(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button).g-press { z-index: 8; }
+html.glass .sheet-content { padding-top: var(--g-headroom); }
+
+/* list rows (stops, lines, place suggestions): no grey and no growing. A soft glass highlight, a little inside the row's
+   edges, fades in on press and out on release */
+html.glass :is(.stop-row, .lines-row, .pl-sug) { position: relative; isolation: isolate; }
+html.glass :is(.stop-row, .lines-row, .pl-sug):hover { background: transparent; } /* iOS keeps :hover after a tap */
+html.glass :is(.stop-row, .lines-row, .pl-sug)::before {
+  content: ''; position: absolute; z-index: -1; inset: 3px 8px; border-radius: 16px; pointer-events: none;
+  background: var(--g-row); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim);
+  opacity: 0; transition: opacity .3s ease-out;
+}
+html.glass :is(.stop-row, .lines-row, .pl-sug).g-press { box-shadow: none; }
+html.glass :is(.stop-row, .lines-row, .pl-sug).g-press::before { opacity: 1; transition-duration: .12s; }
+
+/* the locate button: held, it fills with the app's blue; a tap sends out a ring (js/glass.js: .g-ping) */
+html.glass .fab.g-press {
+  --g-bg: color-mix(in srgb, var(--primary) 90%, transparent); --g-sheen: none;
+  background: var(--g-bg); /* also over .fab:hover, which iOS keeps after a tap */
+  color: var(--primary-foreground); border-color: transparent;
+}
+html.glass .fab.g-ping::after {
+  content: ''; position: absolute; inset: -1px; border-radius: 50%; border: 3px solid var(--primary); pointer-events: none;
+  animation: g-ping .6s ease-out;
+}
+@keyframes g-ping { from { transform: scale(1); opacity: .85; } to { transform: scale(2.1); opacity: 0; } }
+
+/* the sheet handle: a more reactive pill. Held or dragged it widens, thickens and darkens inside a small glass capsule;
+   js/glass.js ticks it each time a drag passes one of the five stops (js/sheet.js) */
+html.glass .sheet-pill { position: relative; z-index: 1; transition: width .28s cubic-bezier(.34, 1.56, .64, 1), height .28s cubic-bezier(.34, 1.56, .64, 1), background .15s; }
+html.glass .sheet-handle::before {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 92px; height: 32px; margin: -16px 0 0 -46px; border-radius: 16px; pointer-events: none;
+  background: var(--g-row); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim);
+  opacity: 0; scale: .7 .7; transition: opacity .2s ease-out, scale .28s cubic-bezier(.34, 1.56, .64, 1);
+}
+html.glass .sheet-handle:active::before, html.glass .sheet.dragging .sheet-handle::before { opacity: 1; scale: 1 1; }
+html.glass .sheet-handle:active .sheet-pill, html.glass .sheet.dragging .sheet-pill { width: 56px; height: 6px; background: var(--muted-foreground); }
+/* the two extra stops behave like `half`: the sheet drags, its list does not scroll until full */
+html.glass .sheet[data-state="low"] .sheet-body, html.glass .sheet[data-state="high"] .sheet-body { overflow-y: hidden; touch-action: pan-x; }
 /* the shrink-on-press of DESIGN §1 gives way to the grow of the glass (js/glass.js animates `scale`) */
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
 
@@ -180,6 +215,10 @@ html.glass-fx .g-lens {
   box-shadow: inset 0 1px 0 var(--g-edge), 0 2px 10px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 html.glass-fx .g-lens[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.glass .fab.g-ping::after { animation: none; }
+  html.glass .sheet-pill, html.glass .sheet-handle::before { transition: none; }
+}
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
 html.glass .sheet-content h2, html.glass .pop-head, html.glass .pop-city-sub { font-weight: var(--weight-semibold); }
@@ -217,13 +256,13 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 @media (prefers-reduced-transparency: reduce) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);
     --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
-    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-fx: 0; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
   }
 }
 @media (prefers-contrast: more) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);
     --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
-    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-fx: 0; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
     --g-line: 1px solid var(--border);
   }
 }

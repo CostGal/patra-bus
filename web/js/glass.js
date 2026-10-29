@@ -1,15 +1,18 @@
 // Glass prototype (TEL-83): the light effects behind css/glass.css. Loaded only with ?glass (index.html), never by app.js.
 // - refraction: on Chromium (the only engine with SVG filters in backdrop-filter) it adds two displacement filters,
 //   #g-lens (chips, buttons, search bar) and #g-lens-lg (sheet, menu, dialogs), and sets html.glass-lens;
-// - touch, like Apple's glass: the control under the finger gets .g-press with --gx/--gy (CSS: more opaque, light at
-//   the finger), grows a little, leans towards the finger and springs back with a wobble (Web Animations on the
-//   `scale`/`translate` properties, so the elements' own transforms are untouched); .g-hover for a mouse.
+// - touch, like Apple's glass: the control under the finger gets .g-press (CSS: more opaque), grows, leans towards the
+//   finger and springs back with a wobble (Web Animations on the `scale`/`translate` properties, so the elements' own
+//   transforms are untouched). Round buttons grow most and pop out above their neighbours; full-width list rows do
+//   not grow, a soft highlight fades in behind them instead. No light under the finger: it looked unauthentic;
+// - the locate button: pressed it fills with the app's blue, and a tap sends out a ring;
+// - the sheet handle (js/sheet.js has five stops with ?glass): a tick on the handle each time a drag passes a stop;
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
 // - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕;
 // - the stop's ⋯ menu and the map's i morph the same way (⋯ → ˄), with their own timing;
 // - line filter chips: a glass lens slides from the selected chip to the next.
 // Nothing is stored or sent. Reduced transparency / more contrast: no lens and no effects (CSS is solid then);
-// reduced motion: light only, no growing or moving.
+// reduced motion: no growing, moving or ticking (the press itself still turns the glass more opaque).
 const root = document.documentElement;
 const mq = (q) => matchMedia(q).matches;
 const solid = mq('(prefers-reduced-transparency: reduce)') || mq('(prefers-contrast: more)');
@@ -62,22 +65,18 @@ function addLens() {
   root.classList.add('glass-lens');
 }
 
-// touch: the control under the finger (or the glass surface, if the finger is not on a control) gets .g-press and
-// --gx/--gy for the light; controls also grow a little, lean towards the finger and spring back with a wobble.
+// touch: the control under the finger (or the glass surface, if the finger is not on a control) gets .g-press;
+// controls also grow, lean towards the finger and spring back with a wobble.
 const SURFACE = '.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
-const NO_GROW = '.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle';
+const ROW = '.stop-row, .lines-row, .pl-sug'; // full-width list rows: a highlight, no growing
+const ROUND = '.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button'; // round buttons grow the most
+const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, ${ROW}`;
 const SPRING = 'cubic-bezier(.34, 1.56, .64, 1)'; // overshoots a little: the "liquid" settle
 const clamp = (v, m) => Math.max(-m, Math.min(m, v));
 let pressed = null;
-let hovered = null;
 let origin = null;
 
-function place(el, e) {
-  const r = el.getBoundingClientRect();
-  el.style.setProperty('--gx', `${(((e.clientX - r.left) / r.width) * 100).toFixed(1)}%`);
-  el.style.setProperty('--gy', `${(((e.clientY - r.top) / r.height) * 100).toFixed(1)}%`);
-}
 function targetOf(e) {
   if (!(e.target instanceof Element)) return null;
   const round = e.target.closest('.sb-btn'); // the bar's round buttons (☰, back) press on their own, as glass circles
@@ -89,14 +88,16 @@ function targetOf(e) {
   return e.target.closest(SURFACE);
 }
 const canGrow = (el) => !still && !el.matches(NO_GROW);
-const growth = (el) => 1 + Math.min(0.08, 10 / Math.max(el.getBoundingClientRect().width, 1)); // ~10 px wider, at most 8%
+const growth = (el) => {
+  const w = Math.max(el.getBoundingClientRect().width, 1);
+  return el.matches(ROUND) ? 1 + Math.min(0.28, 16 / w) : 1 + Math.min(0.08, 10 / w); // round: ~16 px wider; others ~10 px, at most 8%
+};
 const now = (el, prop, rest) => { const v = getComputedStyle(el)[prop]; return v && v !== 'none' ? v : rest; };
 
 function onDown(e) {
   const el = targetOf(e);
   if (!el) return;
   release();
-  place(el, e);
   pressed = el;
   origin = { x: e.clientX, y: e.clientY };
   el.classList.add('g-press');
@@ -105,20 +106,9 @@ function onDown(e) {
   el.glassAnim = el.animate([{ scale: now(el, 'scale', '1') }, { scale: String(growth(el)) }], { duration: 380, easing: SPRING, fill: 'forwards' });
 }
 function onMove(e) {
-  if (pressed) {
-    place(pressed, e);
-    // lean towards the finger, a few px at most, as if the glass were soft
-    if (canGrow(pressed)) pressed.style.translate = `${clamp((e.clientX - origin.x) * 0.15, 5).toFixed(1)}px ${clamp((e.clientY - origin.y) * 0.15, 5).toFixed(1)}px`;
-    return;
-  }
-  if (e.pointerType !== 'mouse') return;
-  const el = e.target instanceof Element ? e.target.closest(SURFACE) : null;
-  if (el !== hovered) {
-    hovered?.classList.remove('g-hover');
-    hovered = el;
-    el?.classList.add('g-hover');
-  }
-  if (el) place(el, e);
+  if (!pressed) return;
+  // lean towards the finger, a few px at most, as if the glass were soft
+  if (canGrow(pressed)) pressed.style.translate = `${clamp((e.clientX - origin.x) * 0.15, 5).toFixed(1)}px ${clamp((e.clientY - origin.y) * 0.15, 5).toFixed(1)}px`;
 }
 function release() {
   const el = pressed;
@@ -343,6 +333,28 @@ function watchChips() {
   }, { capture: true, passive: true });
 }
 
+// the locate button: a tap sends out a ring, so there is no doubt it was pressed (the fill shows while it is held)
+function watchLocate() {
+  const btn = document.getElementById('locate-btn');
+  if (!btn || still) return;
+  btn.addEventListener('click', () => {
+    btn.classList.remove('g-ping');
+    void btn.offsetWidth; // restart the animation on a quick second tap
+    btn.classList.add('g-ping');
+  });
+  btn.addEventListener('animationend', (e) => { if (e.animationName === 'g-ping') btn.classList.remove('g-ping'); });
+}
+
+// the sheet handle: a drag passing one of the five stops makes the pill tick (js/sheet.js sends sheet:stop)
+function watchHandle() {
+  const sheet = document.querySelector('.sheet');
+  const pill = sheet?.querySelector('.sheet-pill');
+  if (!pill || still) return;
+  sheet.addEventListener('sheet:stop', () => {
+    pill.animate([{ scale: '1 1' }, { scale: '1.35 1.9', offset: 0.35 }, { scale: '1 1' }], { duration: 220, easing: 'ease-out' });
+  });
+}
+
 function start() {
   if (solid) return;
   if (navigator.userAgentData) addLens(); // Chromium only (Chrome, Edge, Samsung Internet)
@@ -351,6 +363,8 @@ function start() {
   document.addEventListener('pointerup', release, { passive: true });
   document.addEventListener('pointercancel', release, { passive: true });
   watchScroll();
+  watchLocate();
+  watchHandle();
   addCloseIcon();
   watchChips();
   root.classList.add('glass-fx');
