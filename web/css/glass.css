@@ -38,6 +38,8 @@ html.glass {
      half (a1), and the solid colours of full (no glass there) */
   --g-sheet-m: 8px; --g-sheet-r: 28px; --g-sheet-a0: 3%; --g-sheet-a1: 55%;
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
+  /* the search field's grey fill and the 0.5 px list hairlines (TEL-223, Apple Maps; estimates, not published values) */
+  --sb-fill: rgba(118, 118, 128, .14); --g-hair: rgba(60, 60, 67, .18);
   /* layers, top to bottom: top sheen, then the glass colour */
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .4), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 90px);
@@ -51,7 +53,7 @@ html.glass {
     --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
     --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
     --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
-    --g-up: #1c1c1e; --g-up-card: #2c2c2e; --g-sheen-c: rgba(255, 255, 255, .08);
+    --g-up: #1c1c1e; --g-up-card: #2c2c2e; --g-sheen-c: rgba(255, 255, 255, .08); --sb-fill: rgba(118, 118, 128, .28); --g-hair: rgba(84, 84, 88, .45);
   }
 }
 html.glass[data-theme="dark"] {
@@ -62,7 +64,7 @@ html.glass[data-theme="dark"] {
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
-  --g-up: #1c1c1e; --g-up-card: #2c2c2e; --g-sheen-c: rgba(255, 255, 255, .08);
+  --g-up: #1c1c1e; --g-up-card: #2c2c2e; --g-sheen-c: rgba(255, 255, 255, .08); --sb-fill: rgba(118, 118, 128, .28); --g-hair: rgba(84, 84, 88, .45);
 }
 
 /* touch & hold is a gesture here: no text selection, no iOS callout or tap flash (form fields keep selection) */
@@ -70,14 +72,13 @@ html.glass { -webkit-user-select: none; user-select: none; -webkit-touch-callout
 html.glass :is(input, textarea, select, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
 
 /* ---------- glass: floating chrome ---------- */
-html.glass .searchbar, html.glass .fab, html.glass .chip {
+html.glass .menu-fab, html.glass .fab, html.glass .chip {
   background: var(--g-sheen), var(--g-bg);
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
   transition: background-color .15s ease-out;
 }
 html.glass .fab { transition: background-color .15s, color .15s, transform .1s; }
-html.glass .searchbar:focus-within { box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow), 0 0 0 2px var(--ring); }
 html.glass .fab:hover { background: var(--g-sheen), color-mix(in srgb, var(--muted) 45%, transparent); }
 
 html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-card {
@@ -117,11 +118,11 @@ html.glass .g-press {
   --card: color-mix(in srgb, var(--g-card) 82%, transparent); /* tiles, buttons and chips inside the sheet */
   --g-chip: color-mix(in srgb, var(--g-card) 75%, transparent);
 }
-html.glass :is(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
+html.glass :is(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
 /* round buttons (☰, back, ☆, ⋯, ✕, the map's i): pressed, they become a whiter glass circle, still a little see-through */
 html.glass :is(.sb-btn, .btn.round, .maplibregl-ctrl-attrib-button).g-press { background-color: var(--g-pressed); }
 /* controls that are not glass surfaces are lifted off the sheet by a shadow */
-html.glass .g-press:not(.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
+html.glass .g-press:not(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
 }
 html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(--g-card) 65%, transparent); } /* mouse: tinted, not solid grey */
@@ -132,6 +133,12 @@ html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(-
 :where(html.glass) :where(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button) { position: relative; }
 html.glass :is(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button).g-press { z-index: 8; }
 html.glass .sheet-content { padding-top: var(--g-headroom); }
+
+/* the search in the sheet (TEL-223): the same headroom above it; behind it, the sheet's own colour once it is up (it is
+   sticky over the scrolling results there), nothing at low and mid; a grey field and 0.5 px hairlines, as in Apple Maps */
+html.glass .sheet-search { padding-top: var(--g-headroom); background: color-mix(in srgb, var(--g-up) calc(var(--u) * 100%), transparent); }
+html.glass .sb-field { background: var(--sb-fill); }
+html.glass .sr + .sr::before { background: var(--g-hair); }
 
 /* list rows (stops, lines, place suggestions): no grey and no growing. A soft glass highlight, a little inside the row's
    edges, fades in on press and out on release */
@@ -184,7 +191,7 @@ html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; righ
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
 
 /* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
-html.glass-lens .searchbar, html.glass-lens .fab, html.glass-lens .chip {
+html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip {
   -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
 }
 html.glass-lens .sheet::before, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
@@ -258,7 +265,7 @@ html.glass-fx .g-lens[hidden] { display: none; }
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
 html.glass .sheet-content h2, html.glass .pop-head, html.glass .pop-city-sub { font-weight: var(--weight-semibold); }
-html.glass .searchbar, html.glass .chip, html.glass #menu-pop, html.glass .sheet-content > h1, html.glass .sheet-content > h2,
+html.glass .chip, html.glass #menu-pop, html.glass .sheet-content > h1, html.glass .sheet-content > h2,
 html.glass .stopv-head, html.glass .pl-head { text-shadow: 0 0 6px var(--g-halo), 0 0 2px var(--g-halo); }
 
 /* ---------- inside the sheet ---------- */

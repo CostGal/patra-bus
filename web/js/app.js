@@ -207,7 +207,7 @@ function onSnap({ visible, desktop }) {
   if (desktop) {
     map.setPadding({ top: 72, bottom: 0, left: sheet.el.offsetWidth, right: 0 });
   } else {
-    const top = Math.max(searchbarEl.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
+    const top = Math.max(menuBtn.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
     map.setPadding({ top, bottom: Math.min(visible, innerHeight * 0.6), left: 0, right: 0 });
   }
 }
@@ -337,10 +337,14 @@ let rows = [];
 let placeTimer = 0;
 let placeCtl = null;
 let places = { q: '', loading: false, results: [], failed: false };
+let sheetBefore = null; // where the sheet was when the search opened (it goes up while the search is open)
 
 function openSearch() {
   if (searchOpen) return;
   searchOpen = true;
+  appEl.classList.add('searching');
+  sheetBefore = sheet.state;
+  if (sheetBefore !== 'full') sheet.snap('full');
   searchPanel.hidden = false;
   searchInput.setAttribute('aria-expanded', 'true');
   menuPopover.close(false);
@@ -350,9 +354,13 @@ function openSearch() {
   menuBtn.removeAttribute('aria-expanded');
   renderSearch();
 }
-function closeSearch(focusMenu = false) {
+// restore: the user closed it (back, Escape, a tap outside), so the sheet goes back to where it was
+function closeSearch(focusMenu = false, restore = false) {
   if (!searchOpen) return;
   searchOpen = false;
+  appEl.classList.remove('searching');
+  if (restore && sheetBefore && sheetBefore !== 'full' && sheet.state === 'full') sheet.snap(sheetBefore);
+  sheetBefore = null;
   clearTimeout(placeTimer);
   placeCtl?.abort();
   places = { q: '', loading: false, results: [], failed: false };
@@ -483,7 +491,7 @@ searchInput.addEventListener('keydown', (e) => {
     (rows[activeIdx] || rows[0])?.choose();
   } else if (e.key === 'Escape') {
     e.preventDefault();
-    closeSearch(true);
+    closeSearch(true, true);
   }
 });
 searchClear.addEventListener('click', () => {
@@ -497,7 +505,7 @@ searchClear.addEventListener('click', () => {
 });
 $('searchbar').addEventListener('click', (e) => { if (!e.target.closest('button')) searchInput.focus(); });
 menuBtn.addEventListener('click', () => {
-  if (searchOpen) closeSearch(true);
+  if (searchOpen) closeSearch(true, true);
   else if (menuPop.hidden) menuPopover.open();
   else menuPopover.close(true);
 });
@@ -506,12 +514,13 @@ menuBtn.addEventListener('click', () => {
 for (const el of [$('searchbar'), searchPanel]) {
   el.addEventListener('focusout', (e) => {
     const to = e.relatedTarget;
-    if (searchOpen && to && !to.closest('#searchbar, #search-panel')) closeSearch();
+    if (searchOpen && to && !to.closest('#searchbar, #search-panel, #menu-btn')) closeSearch(false, true);
   });
 }
-searchPanel.addEventListener('scroll', () => { if (document.activeElement === searchInput && matchMedia('(pointer: coarse)').matches) searchInput.blur(); }, { passive: true });
+// the results scroll with the sheet: scrolling them puts the keyboard away
+$('sheet-body').addEventListener('scroll', () => { if (searchOpen && document.activeElement === searchInput && matchMedia('(pointer: coarse)').matches) searchInput.blur(); }, { passive: true });
 document.addEventListener('pointerdown', (e) => {
-  if (searchOpen && !e.target.closest('#searchbar, #search-panel')) closeSearch();
+  if (searchOpen && !e.target.closest('#searchbar, #search-panel, #menu-btn, #sheet-handle')) closeSearch(false, true);
 }, true);
 
 // ---------------------------------------------------------------- views owned by the shell
@@ -523,10 +532,6 @@ function mountHome(container, c) {
   const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
   const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
   container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
-  // The peek sheet is exactly as tall as the one visible card (plus the hint while it is shown).
-  const ro = new ResizeObserver(() => { const hh = card.offsetHeight; if (hh) sheet.setPeek(44 + hh + (hint.hidden ? 0 : hint.offsetHeight + 8) + 8); });
-  ro.observe(card);
-  ro.observe(hint);
   const views = {};
   const offs = [];
   let dead = false;
@@ -630,8 +635,6 @@ function mountHome(container, c) {
       dead = true;
       clearTimeout(hintTimer);
       mo.disconnect();
-      ro.disconnect();
-      sheet.setPeek(null);
       Object.values(hideTimers).forEach((id) => id && clearTimeout(id));
       offs.forEach((f) => f?.());
       Object.values(views).forEach((v) => v?.destroy?.());
@@ -679,7 +682,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -738,6 +741,8 @@ async function route() {
   const head = parts[0] || '';
   const arg = parts[1];
   currentHead = SNAP[head] != null ? head : '';
+  // the search is home's first row (TEL-223); the other views put their own header there, with a ✕ back home
+  searchbarEl.hidden = currentHead !== '';
   if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' || currentHead === 'line' ? String(arg) : '' };
   if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
@@ -896,7 +901,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

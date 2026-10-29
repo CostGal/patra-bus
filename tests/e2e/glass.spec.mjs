@@ -182,3 +182,40 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   const tight = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return innerHeight - r.top; });
   expect(tight).toBeLessThan(140);
 });
+
+test('search in the sheet: ☰ alone at the top, search home only, open = up, closed = back where it was', async ({ page }) => {
+  await page.goto('/?demo&debug#/');
+  const bar = page.locator('#searchbar');
+  await expect(bar).toBeVisible();
+  // the ☰ is not part of the search: a round button of its own, above the sheet
+  expect(await page.evaluate(() => !document.getElementById('menu-btn').closest('#sheet') && !!document.getElementById('searchbar').closest('#sheet'))).toBe(true);
+  // home opens at half; low shows the search and nothing below it
+  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('half');
+  await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
+  await page.waitForTimeout(100);
+  const low = await page.evaluate(() => {
+    const s = document.getElementById('sheet').getBoundingClientRect(); const b = document.getElementById('searchbar').getBoundingClientRect();
+    return { below: innerHeight - b.bottom, sheetTop: s.top, barTop: b.top };
+  });
+  expect(low.barTop).toBeGreaterThan(low.sheetTop);
+  expect(low.below).toBeLessThan(40);
+  // tap the search: the sheet goes up and the view gives way to the results; Escape puts it back at low
+  await page.locator('#search-input').click();
+  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
+  await expect(page.locator('#search-panel')).toBeVisible();
+  await expect(page.locator('#sheet-content')).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
+  await expect(page.locator('#sheet-content')).toBeVisible();
+  // the ☰ is the way back while searching: it closes the search, it does not open the menu
+  await page.locator('#search-input').click();
+  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
+  await page.locator('#menu-btn').click();
+  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
+  await expect(page.locator('#search-panel')).toBeHidden();
+  await expect(page.locator('#menu-pop')).toBeHidden();
+  // another view puts its own header in the search's place
+  await page.goto('/?demo&debug#/stop/1011');
+  await expect(page.locator('.stopv-head')).toBeVisible();
+  await expect(bar).toBeHidden();
+});

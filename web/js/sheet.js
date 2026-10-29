@@ -47,15 +47,15 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let dragging = false;
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
-  let peekPx = null; // null = handle + the view's first row; the home card sets its own height (setPeek)
+  let peekPx = null; // null = handle + the view's first row (setPeek overrides it)
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
-  // peek: the handle and the view's first row (its header), tight; the home card sets its own height
+  // peek: the handle and the view's first row (its header, or home's search above the content), tight
   function firstRow() {
-    const head = content.querySelector(HEAD);
+    const head = body.querySelector('.sheet-search:not([hidden])') || content.querySelector(HEAD);
     if (!head) return 96;
-    return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - content.getBoundingClientRect().top) + 10;
+    return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop) + 10;
   }
   function measure() {
     H = root.offsetHeight;
@@ -297,7 +297,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       moveTo(state, { animate: false });
     },
     scrollToTop() { body.scrollTop = 0; },
-    // Peek height = handle + the single home card; null restores the default.
+    // A fixed peek height instead of the handle + first row; null restores the default.
     setPeek(px) {
       const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
       if (next === peekPx) return;

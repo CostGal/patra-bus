@@ -37,7 +37,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
 - Glass UI (TEL-83, on for everyone since 2026-10-29, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
-  **glass** = floating chrome over the map (search bar, chips, locate FAB, sheet / side panel, menu popover, setup and
+  **glass** = floating chrome over the map (☰, chips, locate FAB, sheet / side panel, menu popover, setup and
   welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
   clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
   (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
@@ -48,6 +48,11 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   more opaque; up = whole screen, edge to edge and to the bottom, solid (light grey with white cards; dark grey in dark
   mode), no glass. Moves: low→mid a hint of bounce, mid→low a little more, mid↔up no bounce (it darkens and fills).
   The grabber is tight; held, it widens inside a small glass capsule and ticks at each state.
+  **Search** (TEL-223): ☰ stands alone at the top left, a round glass button; the search is home's first row in the
+  sheet (a grey capsule, no glass of its own, no microphone), so low on home = grabber + search. Tapping it takes the
+  sheet up and shows the results there, in place of the view, on the solid up colour (0.5 px hairlines between rows);
+  closing it (☰ as back, Escape, a tap outside) puts the sheet back where it was. Other views put their own header in
+  the search's place, with a ✕ back home.
   Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
   stays still while the sheet moves: only a touch on the map moves the map. Legibility comes
   from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
@@ -61,7 +66,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   the map's i) presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
   to the stop's close ✕) and the map's i grows into the attribution pill and back; the selected line chip is one glass
   lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
-  contrast), full-screen search panel, stop menu, map marker labels. Reduced transparency / more contrast: solid and
+  contrast), search results (on the solid up sheet), stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
 
 ### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)

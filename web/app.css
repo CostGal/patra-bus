@@ -62,17 +62,17 @@ a { color: var(--primary); }
 .fade-edge-bottom { mask-image: linear-gradient(to top, transparent, #000 var(--space-6)); -webkit-mask-image: linear-gradient(to top, transparent, #000 var(--space-6)); }
 
 @media (prefers-reduced-transparency: reduce) {
-  .material, .material-lg, .searchbar, .fab, .sheet { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .material, .material-lg, .menu-fab, .fab, .sheet { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; }
   .toast { background: var(--inverse); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 @media (prefers-contrast: more) {
-  .material, .material-lg, .searchbar, .fab, .sheet { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--border); }
+  .material, .material-lg, .menu-fab, .fab, .sheet { background: var(--card); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--border); }
   .toast { background: var(--inverse); backdrop-filter: none; -webkit-backdrop-filter: none; border: 1px solid var(--inverse-foreground); }
 }
 
 /* ---------- layout ---------- */
 .app {
-  --top-inset: calc(var(--safe-top) + 68px); /* below the search bar */
+  --top-inset: calc(var(--safe-top) + 68px); /* below the ☰ row */
   --panel-w: 408px;
   --chips-h: 0px; /* contextual saved-place chips under the search bar (.has-chips) */
   --offline-h: 0px;
@@ -82,26 +82,36 @@ a { color: var(--primary); }
 .map .maplibregl-canvas { outline: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .maplibregl-ctrl-attrib { font-size: 11px; }
 .map .maplibregl-canvas:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; } /* it takes keyboard focus (arrow keys pan) */
-.has-chips { --chips-h: 48px; }
+.has-chips { --chips-h: 0px; } /* the chips share the ☰'s row (TEL-223) */
 .is-offline { --offline-h: 44px; }
 .maplibregl-ctrl-bottom-right { transition: transform .3s var(--ease); }
 html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 
-/* ---------- search bar ---------- */
-.searchbar {
-  position: fixed; z-index: 50; top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px); right: calc(var(--safe-right) + 12px);
-  height: 52px; display: flex; align-items: center; border-radius: var(--radius-full);
+/* ---------- ☰ and the search (TEL-223) ---------- */
+/* ☰ alone at the top left, a round floating button (material §4) */
+.menu-fab {
+  position: fixed; z-index: 50; top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px);
+  color: var(--foreground); background: var(--material-bg); box-shadow: var(--shadow-1);
+  backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
 }
-.searchbar { background: var(--material-bg); backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); border-top: 1px solid var(--material-edge); box-shadow: var(--shadow-1); } /* material (§4): floating chrome */
-.searchbar:focus-within { box-shadow: var(--shadow-1), 0 0 0 2px var(--ring); }
+/* the search: home's first row in the sheet, sticky while the sheet scrolls */
+.sheet-search { position: sticky; top: 0; z-index: 3; padding: var(--space-2) var(--space-4) var(--space-1); background: var(--background); }
+.sheet-search[hidden] { display: none; }
+/* the field: a grey capsule on the sheet (Apple Maps), no glass of its own */
+.sb-field {
+  height: 44px; display: flex; align-items: center; border-radius: var(--radius-full);
+  background: var(--muted); cursor: text;
+}
+.sb-field:focus-within { box-shadow: 0 0 0 2px var(--ring); }
+.sb-field::before { content: ''; flex: none; width: 14px; } /* room before the text, where the ☰ used to be */
 .sb-btn {
   flex: none; width: 48px; height: 48px; border: 0; border-radius: 50%; background: none; color: var(--muted-foreground);
   display: grid; place-items: center; padding: 0; cursor: pointer;
 }
 .sb-btn:hover { background: var(--muted); }
-.sb-btn:first-child { margin-left: 2px; }
+.sb-field .sb-btn { width: 44px; height: 44px; }
 .sb-input {
-  flex: 1; min-width: 0; height: 48px; border: 0; background: none; color: var(--foreground); font-size: var(--text-base); padding: 0 var(--space-4) 0 var(--space-1); outline: none;
+  flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--foreground); font-size: var(--text-base); padding: 0 var(--space-4) 0 var(--space-1); outline: none;
   -webkit-appearance: none; appearance: none; text-overflow: ellipsis;
 }
 .sb-input::placeholder { color: var(--muted-foreground); opacity: 1; }
@@ -111,17 +121,18 @@ html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
   font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: .05em;
 }
 
-/* search results: full-screen on phones, dropdown card in the side panel layout */
-.search-panel {
-  position: fixed; z-index: 45; inset: 0; background: var(--background); overflow-y: auto; overscroll-behavior: contain;
-  padding: calc(var(--top-inset) + 4px) 0 calc(16px + var(--safe-bottom));
-}
+/* search results: in the sheet under the search, in place of the view (the sheet is up while the search is open) */
+.search-panel { padding: 0 0 calc(16px + var(--safe-bottom)); }
+.searching #sheet-content, .searching #map-note { display: none; }
 .search-list { max-width: 640px; margin: 0 auto; }
 .sr-head { padding: var(--space-4) 20px var(--space-2); font-size: var(--text-sm); font-weight: 500; color: var(--muted-foreground); }
 .sr {
   display: flex; align-items: center; gap: 14px; min-height: 56px; padding: var(--space-2) var(--space-5); cursor: pointer; color: var(--foreground); text-decoration: none;
 }
 .sr:hover, .sr[aria-selected="true"] { background: var(--muted); }
+/* 0.5 px hairlines between results, from the text on (Apple lists, TEL-223; 74 px = padding + icon + gap) */
+.sr { position: relative; }
+.sr + .sr::before { content: ''; position: absolute; top: 0; left: 74px; right: 0; height: .5px; background: var(--border); }
 .sr-ico { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--muted); color: var(--muted-foreground); }
 .sr-ico .icon { --icon: 20px; }
 .sr-main { flex: 1; min-width: 0; }
@@ -130,8 +141,8 @@ html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 .sr-msg { padding: 14px var(--space-5); color: var(--muted-foreground); font-size: 14px; }
 
 /* ---------- chips: saved places only (max 3), home screen only ---------- */
-.chips {
-  position: fixed; z-index: 15; top: calc(var(--safe-top) + 68px); left: 0; right: 0; height: 44px; padding: 2px calc(var(--safe-right) + 12px) 4px calc(var(--safe-left) + 12px);
+.chips { /* in the ☰'s row, to its right */
+  position: fixed; z-index: 15; top: calc(var(--safe-top) + 10px); left: calc(var(--safe-left) + 68px); right: 0; height: 44px; padding: 2px calc(var(--safe-right) + 12px) 4px 0;
   display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; pointer-events: none; transition: opacity .2s;
 }
 .chips::-webkit-scrollbar { display: none; }
@@ -241,10 +252,10 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 .no-map .chips { opacity: 1 !important; visibility: visible !important; }
 
 @media (min-width: 900px) {
-  .searchbar { left: 16px; right: auto; width: calc(var(--panel-w) - 32px); top: 16px; }
-  #menu-pop { top: 76px; left: 16px; }
+  .menu-fab { top: 10px; left: 16px; } /* centred on the search beside it at home (44 px field under 12 px of headroom) */
+  #menu-pop { top: 68px; left: 16px; }
   .sheet {
-    top: 0; bottom: 0; right: auto; width: var(--panel-w); padding-top: 80px; border-radius: 0; transform: none; will-change: auto;
+    top: 0; bottom: 0; right: auto; width: var(--panel-w); padding-top: 68px; border-radius: 0; transform: none; will-change: auto;
     box-shadow: var(--shadow-2);
   }
   .sheet-handle { display: none; }
@@ -257,10 +268,9 @@ html.sheet-dragging .fabs-bottom { transition: none; }
   .no-map.is-offline .sheet, .no-map.has-chips .sheet { top: 0; }
   [data-sheet="full"] .chips { opacity: 1; visibility: visible; }
   .fabs-bottom { bottom: 40px; right: 16px; transform: none !important; opacity: 1 !important; }
-  .search-panel {
-    inset: auto; left: 16px; top: 76px; width: calc(var(--panel-w) - 32px); max-height: calc(100% - 100px); padding: 6px 0;
-    border-radius: var(--radius); background: var(--popover); box-shadow: var(--shadow-2);
-  }
+  /* home: the search moves up into the ☰'s row, to its right */
+  .app:has(.sheet-search:not([hidden])) .sheet { padding-top: 0; }
+  .sheet-search { padding: 14px var(--space-4) var(--space-1) 72px; }
   .no-map .sheet { top: 0; border-radius: 0; }
   .maplibregl-ctrl-bottom-right { transform: none !important; }
 }

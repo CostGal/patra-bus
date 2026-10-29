@@ -19,8 +19,8 @@ export const AREAS = {
 };
 
 export const UI = [
-  { id: 'N1', name: 'Μπάρα αναζήτησης', sel: '#searchbar' },
-  { id: 'N2', name: '☰ Μενού / πίσω / κλείσιμο αναζήτησης', sel: '#menu-btn' },
+  { id: 'N1', name: 'Αναζήτηση (στο φύλλο, μόνο αρχική)', sel: '#searchbar' },
+  { id: 'N2', name: '☰ Μενού (μόνο του πάνω αριστερά) / πίσω από την αναζήτηση', sel: '#menu-btn' },
   { id: 'N3', name: 'Πεδίο αναζήτησης', sel: '#search-input' },
   { id: 'N4', name: '✕ Καθαρισμός αναζήτησης', sel: '#search-clear' },
   { id: 'N5', name: 'Επικεφαλίδα αποτελεσμάτων', sel: '.sr-head', all: true },

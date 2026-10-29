@@ -410,7 +410,7 @@ small-chip vs big-surface blur+shadow weight — never nested on each other), `.
 keyframe), `.press` (JS-opt-in `:active`-style scale(.97) for non-native-button elements — native buttons already
 get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-edge-top`/`.fade-edge-bottom` (mask
 instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
-`(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
+`(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.menu-fab`/`.fab`/`.sheet`/`.toast` to solid.
 
 **Glass prototype (TEL-83): `web/css/glass.css` + `web/js/glass.js`.** The CSS loads always and is active only under
 `html.glass`, which `index.html` sets in its markup (glass is on for everyone since 2026-10-29); `index.html` also loads
@@ -420,19 +420,23 @@ surface there turns tinted without touching module CSS. The fallbacks only reset
 `glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
 `#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; on pointerdown puts `.g-press` on the
 control under the finger (`button, a[href], [role=button], summary, label, .atile-link`; its round `.sb-btn` buttons on
-their own; the whole `.searchbar` for its input; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
+their own; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
 untouched; ~16 px for round buttons, ~10 px for the rest; never the sheet, menu, dialogs, sheet handle or full-width list
 rows, which get a CSS highlight instead), leans it via `translate` while held, and springs it back on pointerup/cancel.
 No finger light (removed in review 2). Round buttons get `z-index` while pressed and `.sheet-content` gets
 `--g-headroom` (12 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
 The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
 Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head, .pl-head` in the content,
-unless `setPeek()` gives a height), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+or home's `.sheet-search`, unless `setPeek()` gives a height), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
 full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
 floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
 bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
 nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves one state, two (up <-> low) when it is fast
-(`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. The map never moves with the sheet: `map.setPadding()` only stores the padding for the next
+(`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. **Search (TEL-223):** `#menu-btn` (`.menu-fab`) is a fixed round button at the top left, outside the sheet; `#searchbar`
+(`.sheet-search`, sticky) and `#search-panel` are the first children of `#sheet-body`. `app.js` shows the search on home
+only (`route()`); opening it adds `.searching` to `#app` (CSS hides `#sheet-content` and `#map-note`) and snaps the sheet
+to `full`; a close by the user (back, Escape, tap outside) snaps it back to the state it had. The map's top padding
+is measured from the ☰ and the chips (which share its row). The map never moves with the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. One spring per move
 (`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`
 while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
