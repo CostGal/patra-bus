@@ -186,7 +186,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     // Where the flick would carry the sheet, then the nearest state, with half (the default) pulling harder: it wins
     // unless another state is clearly closer. A flick moves one state from where the drag started, two (full <-> peek)
     // when it is fast or the finger itself passed half (Kostas, TEL-222: easy by accident before, hard on purpose after).
-    const proj = y + project(v);
+    // the flick's landing point, kept between full and peek: past them it would only make far states look farther,
+    // and half's pull would then win the fastest flicks (a fast flick down from full landed on half)
+    const proj = Math.max(yFor('full'), Math.min(yFor('peek'), y + project(v)));
     const from = STATES.indexOf(dragFrom);
     const passed = STATES.filter((s) => (yFor(s) - startY) * (y - yFor(s)) > 0).length; // states the finger crossed
     let best = state;
