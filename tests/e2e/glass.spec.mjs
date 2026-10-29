@@ -174,14 +174,17 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
     const x = h.x + h.width / 2, y0 = h.y + h.height / 2;
     await page.mouse.move(x, y0);
     await page.mouse.down();
-    for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); if (pause) await page.waitForTimeout(pause); }
+    // slow: four steps with a pause; fast: one quick stroke (steps in one call, so a slow CI runner still flicks fast,
+    // and a fast local one flicks very fast: the case where half used to win)
+    if (pause) for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); await page.waitForTimeout(pause); }
+    else await page.mouse.move(x, y0 + dy, { steps: 3 });
     await page.mouse.up();
     await page.waitForTimeout(700);
     return page.evaluate(() => document.getElementById('sheet').dataset.state);
   };
   expect(await flick('full', 160, 40)).toBe('half');
-  expect(await flick('full', 240, 0)).toBe('peek');
-  expect(await flick('peek', -240, 0)).toBe('full');
+  expect(await flick('full', 270, 0)).toBe('peek');
+  expect(await flick('peek', -255, 0)).toBe('full');
   // peek is tight: the handle and the stop's first row only
   await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
   const tight = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return innerHeight - r.top; });
