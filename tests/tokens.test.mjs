@@ -102,7 +102,7 @@ test('stylesheets only use tokens that exist', () => {
   const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
     'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css'];
   const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--panel-w',
-    '--top-inset', '--chips-h', '--offline-h']);
+    '--top-inset', '--chips-h', '--offline-h', '--chips-fl', '--chips-fr']);
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     for (const m of src.matchAll(/var\((--[\w-]+)/g)) {
