@@ -38,7 +38,7 @@ function fallbackApi(reason) {
     available: false, reason, ready: Promise.resolve(),
     setStops: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
     setOverlay: noop, clearOverlay: noop, setMarkers: noop, clearMarkers: noop, flyTo: noop, fitTo: noop,
-    setPadding: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
+    setPadding: noop, recenter: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
   };
 }
 
@@ -618,6 +618,14 @@ export function createMap(container, opts = {}) {
       if (!pts.length) return;
       lastFit = { pts, o };
       doFit();
+    },
+    // Glides the point (default: the user's location, if known) to the centre of the part of the map left clear, at the
+    // same zoom: the sheet moving between low and mid (app.js)
+    recenter(p) {
+      const to = p || userItem.cur;
+      if (!okPoint(to)) return;
+      lastFit = null;
+      map.easeTo({ center: ll(to), padding: safePadding(), duration: 450, essential: false });
     },
     setPadding(p) {
       pad = { top: 0, bottom: 0, left: 0, right: 0, ...p };

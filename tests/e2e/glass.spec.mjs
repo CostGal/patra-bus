@@ -155,12 +155,17 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   expect(full.radiusBottom).toBe(0);
   expect(Math.abs(full.cardBottom - full.screen)).toBeLessThan(2);
   expect(full.bg).not.toMatch(/\/ 0\.\d|, 0\.\d+\)$/);
-  // the map stays still when the sheet moves (only a touch on the map moves it)
-  const center = () => page.evaluate(() => { const m = window.__app.map._map; return m ? m.getCenter().toArray().map((v) => v.toFixed(6)).join() : 'no map'; });
-  const before = await center();
-  for (const st of ['full', 'peek', 'half']) await page.evaluate((x) => window.__app.sheet.snap(x), st);
-  await page.waitForTimeout(600);
-  expect(await center()).toBe(before);
+  // the map stays still when the sheet goes to or from full; between low and mid it glides the stop to the centre of
+  // the part left above the sheet (Apple Maps). The map has no style here (no network), so watch the call itself.
+  await page.evaluate(() => {
+    window.__recenter = [];
+    const api = window.__app.map;
+    const orig = api.recenter;
+    api.recenter = (p) => { window.__recenter.push(p ? p.code || 'point' : 'user'); orig(p); };
+  });
+  await page.evaluate(() => window.__app.sheet.snap('full', { animate: false }));
+  for (const st of ['half', 'peek', 'half', 'full']) { await page.evaluate((x) => window.__app.sheet.snap(x), st); await page.waitForTimeout(100); }
+  expect(await page.evaluate(() => window.__recenter)).toEqual(['1011', '1011']);
   // from full: an easy flick down stops at half; a fast one goes on to peek, and a fast one up from peek reaches full
   const flick = async (from, dy, pause) => {
     await page.evaluate((st) => window.__app.sheet.snap(st, { animate: false }), from);

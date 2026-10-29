@@ -49,7 +49,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   mode), no glass. Moves: low→mid a hint of bounce, mid→low a little more, mid↔up no bounce (it darkens and fills).
   The grabber is tight; held, it widens inside a small glass capsule and ticks at each state.
   Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
-  stays still while the sheet moves: only a touch on the map moves the map. Legibility comes
+  stays still while the sheet moves; once the sheet is let go between low and mid, the map glides its focus (the stop,
+  or your location on home) to the centre of the part left above the sheet, as in Apple Maps. Legibility comes
   from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
   (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
   headers in the sheet (stop line chips, planner head) have no band at rest; once the list scrolls under them a blur
