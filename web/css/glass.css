@@ -288,8 +288,25 @@ html.glass .stopv-chipbar::before, html.glass .pl-head::before {
 }
 html.glass .g-scrolled :is(.stopv-chipbar, .pl-head)::before { opacity: 1; }
 /* the chips themselves: small glass pills instead of solid buttons */
-html.glass .stopv-chip { background: var(--g-chip); border-color: color-mix(in srgb, var(--foreground) 10%, transparent); box-shadow: inset 0 1px 0 var(--g-edge); }
-html.glass .stopv-chip.on { background: var(--g-chip-on); border-color: color-mix(in srgb, var(--primary) 65%, transparent); }
+/* TEL-224: at low they are flat coloured pills (the line badges alone: no chip around them, no "All", not pressable);
+   towards mid they grow into the filter chips, with the sheet (--l: 0 at low, 1 from mid). The chips keep their size,
+   so the row does not jump; only "All" folds away */
+html.glass .stopv-chip {
+  background: color-mix(in srgb, var(--g-chip) calc(var(--l, 1) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--foreground) calc(var(--l, 1) * 10%), transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--g-edge) calc(var(--l, 1) * 100%), transparent);
+}
+html.glass .stopv-chip.on {
+  background: color-mix(in srgb, var(--g-chip-on) calc(var(--l, 1) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--primary) calc(var(--l, 1) * 65%), transparent);
+}
+html.glass .stopv-chip[data-key="*"] {
+  max-width: calc(var(--l, 1) * 10em); opacity: var(--l, 1); white-space: nowrap; /* no overflow clip: it would cut the 44 px hit area */
+  padding-inline: calc(var(--l, 1) * var(--space-3)); margin-right: calc((var(--l, 1) - 1) * var(--space-2));
+  border-width: calc(var(--l, 1) * 1px);
+}
+html.glass .stopv-chipbar > .g-lens { opacity: var(--l, 1); }
+[data-sheet="peek"] .stopv-chip { pointer-events: none; }
 /* dots on a line drawing must hide the line behind them */
 html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 

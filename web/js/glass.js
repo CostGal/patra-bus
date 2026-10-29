@@ -329,6 +329,10 @@ function watchChips() {
     const bar = e.target instanceof Element && e.target.classList.contains('stopv-chips') && e.target.closest('.stopv-chipbar');
     if (bar) place(bar, false);
   }, { capture: true, passive: true });
+  // the chips change shape with the sheet (flat pills at low, TEL-224): once it comes to rest, the lens follows them
+  document.getElementById('sheet')?.addEventListener('sheet:settle', () => {
+    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden])')) place(bar, false);
+  });
 }
 
 // the locate button: a tap sends out a ring, so there is no doubt it was pressed (the fill shows while it is held)

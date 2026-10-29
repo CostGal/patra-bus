@@ -173,7 +173,8 @@ export function mountStop(container, ctx, { code }) {
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
-  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
+  // also low's last row (TEL-224, js/sheet.js): there the chips are flat coloured pills, see css/glass.css
+  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true, 'data-peek-end': '' }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));

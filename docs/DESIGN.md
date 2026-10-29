@@ -53,6 +53,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   sheet up and shows the results there, in place of the view, on the solid up colour (0.5 px hairlines between rows);
   closing it (☰ as back, Escape, a tap outside) puts the sheet back where it was. Other views put their own header in
   the search's place, with a ✕ back home.
+  **Low on a stop** (TEL-224): the name (at most two lines), and the lines arriving as flat coloured pills (the badges
+  alone); dragging up, the pills grow into the filter chips with the sheet ("All" unfolds in front), and back.
   Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
   stays still while the sheet moves; once the sheet is let go between low and mid, the map glides its focus (the stop,
   or your location on home) to the centre of the part left above the sheet, as in Apple Maps. Legibility comes

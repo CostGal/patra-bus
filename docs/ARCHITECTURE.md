@@ -427,7 +427,8 @@ No finger light (removed in review 2). Round buttons get `z-index` while pressed
 `--g-headroom` (12 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
 The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
 Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head, .pl-head` in the content,
-or home's `.sheet-search`, unless `setPeek()` gives a height), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+or home's `.sheet-search`; a view can end low further down with `[data-peek-end]`, as the stop's line chips do, TEL-224;
+unless `setPeek()` gives a height; a ResizeObserver on the content keeps low in step as that row appears), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
 full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
 floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
 bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
@@ -443,7 +444,7 @@ is measured from the ☰ and the chips (which share its row). The map does not f
 fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
 `app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
 (Apple Maps). One spring per move
-(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`
+(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:settle` when it comes to rest (`glass.js` re-places the chip lens then) and `sheet:stop`
 while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
 touch strip (`::after`); its pill is the iOS grabber, 36 × 5 px, 8 px from the top. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
 sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the

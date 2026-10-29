@@ -51,9 +51,11 @@ export function createSheet(root, { onSnap, onMove } = {}) {
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
-  // peek: the handle and the view's first row (its header, or home's search above the content), tight
+  // peek: the handle and the view's first row (its header, or home's search above the content), tight; a view can carry
+  // low further down by marking the row that ends it with [data-peek-end] (the stop's line pills, TEL-224)
   function firstRow() {
-    const head = body.querySelector('.sheet-search:not([hidden])') || content.querySelector(HEAD);
+    const head = body.querySelector('.sheet-search:not([hidden])') || content.querySelector('[data-peek-end]:not([hidden])')
+      || content.querySelector(HEAD);
     if (!head) return 96;
     return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop) + 10;
   }
@@ -88,7 +90,16 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   }
 
   // Drives --sheet-y with the spring while not dragging; the pointer sets it directly during a drag.
-  const spring = createSpringLoop({ get: () => y, set: setY });
+  // sheet:settle when the sheet comes to rest (glass.js re-places what it measured while the content was morphing)
+  const settled = () => root.dispatchEvent(new CustomEvent('sheet:settle'));
+  const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
+  // the content changes height (the stop's line pills appear once its arrivals load): low follows it
+  new ResizeObserver(() => {
+    if (dragging || inert() || peekPx != null || !H) return;
+    const before = SZ.peek;
+    measure();
+    if (SZ.peek !== before && state === 'peek') moveTo('peek');
+  }).observe(content);
 
   // prefers-reduced-motion: bypass physics entirely, a short opacity cross-fade on the content instead
   // (docs/DESIGN.md §7). Position itself jumps straight to the target.
@@ -119,6 +130,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (!animate) {
       spring.stop();
       setY(targetY);
+      settled();
     } else if (reduceMQ.matches) {
       spring.stop();
       reducedMotionTo(targetY);
