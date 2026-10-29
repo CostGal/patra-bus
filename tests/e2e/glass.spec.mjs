@@ -56,7 +56,7 @@ test('glass: on by default', async ({ page }) => {
   await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
   // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
   // (the browser may report the blue in any colour space, so check the white icon on it and that the fill changed)
-  expect(await fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+  await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)'); // after its .15s transition
   expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBg);
   await page.mouse.move(5, 300);
   await page.mouse.up();
