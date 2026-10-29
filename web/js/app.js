@@ -551,8 +551,22 @@ menuBtn.addEventListener('click', () => {
   if (menuPop.hidden) menuPopover.open();
   else menuPopover.close(true);
 });
-// a tap closes the keyboard with the search; from the keyboard (Enter/Space, detail 0) the focus goes to ☰
-$('search-close').addEventListener('click', (e) => closeSearch(e.detail === 0, true));
+// a tap closes the keyboard with the search; from the keyboard (Enter/Space, detail 0) the focus goes to ☰.
+// Touch closes on touchend itself, not on the click iOS makes from it: with the keyboard open that click could be lost
+// (Kostas, TEL-223: the ✕ did nothing on the iPhone), and preventDefault() there also stops the click, so it runs once.
+const searchCloseBtn = $('search-close');
+searchCloseBtn.addEventListener('pointerdown', (e) => e.preventDefault()); // keep the field focused until we close
+let closeTap = null; // where the finger went down on ✕: a drag that starts there is not a tap
+searchCloseBtn.addEventListener('touchstart', (e) => { const p = e.touches[0]; closeTap = e.touches.length === 1 ? { x: p.clientX, y: p.clientY } : null; }, { passive: true });
+searchCloseBtn.addEventListener('touchend', (e) => {
+  const p = e.changedTouches[0];
+  const tap = closeTap && p && Math.hypot(p.clientX - closeTap.x, p.clientY - closeTap.y) < 10;
+  closeTap = null;
+  if (!tap) return;
+  if (e.cancelable) e.preventDefault();
+  closeSearch(false, true);
+});
+searchCloseBtn.addEventListener('click', (e) => closeSearch(e.detail === 0, true));
 // Keyboard focus leaving the search for another control closes it: the full-screen panel would hide that control
 // (WCAG 2.4.11). A blur with nowhere to go (touch scroll of the results) keeps it open.
 for (const el of [$('searchbar'), searchPanel]) {

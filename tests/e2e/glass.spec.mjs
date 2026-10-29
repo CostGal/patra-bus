@@ -279,3 +279,17 @@ test.describe('search near me', () => {
     await expect(page.locator('#search-list')).toContainText('Κοντινές στάσεις');
   });
 });
+
+test.describe('touch close', () => {
+  test.use({ hasTouch: true });
+  test('search in the sheet: a tap on ✕ closes the search with the keyboard up', async ({ page }) => {
+    await page.goto('/?demo&debug#/');
+    await expect(page.locator('#searchbar')).toBeVisible();
+    await page.locator('#search-input').tap();
+    await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    await page.locator('#search-close').tap();
+    await expect(page.locator('#search-panel')).toBeHidden();
+    await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('half');
+    expect(await page.evaluate(() => document.activeElement.id)).not.toBe('search-input');
+  });
+});
