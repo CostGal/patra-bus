@@ -82,7 +82,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     tick(v);
     // 0 at peek, 1 at half, 2 at full (css/glass.css draws the sheet's shape and colour from it)
     const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
-    root.style.setProperty('--sheet-t', Math.max(0, Math.min(2, tt)).toFixed(3));
+    const st = Math.max(0, Math.min(2, tt)).toFixed(3);
+    root.style.setProperty('--sheet-t', st);
+    docEl.style.setProperty('--sheet-t', st); // for chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
     // floating UI (FABs, toast, attribution) rides on the sheet up to the half point, then fades out
     const lift = Math.min(vis, SZ.half);
     const opacity = vis <= SZ.half ? 1 : Math.max(0, 1 - (vis - SZ.half) / Math.max(1, (SZ.full - SZ.half) * 0.35));
@@ -122,6 +124,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (inert()) {
       root.style.removeProperty('--sheet-y');
       root.style.setProperty('--sheet-t', fixed ? '2' : '1'); // plain page = the full look; side panel = the half look
+      docEl.style.setProperty('--sheet-t', '1');
       onMove?.({ visible: 0, lift: 0, opacity: 1 });
       onSnap?.({ state, visible: 0, desktop: isDesktop() });
       return;

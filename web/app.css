@@ -94,7 +94,6 @@ a { color: var(--primary); }
 }
 /* the search: home's first row in the sheet, sticky while the sheet scrolls */
 .sheet-search { position: sticky; top: 0; z-index: 3; padding: var(--space-2) var(--space-4) var(--space-1); background: var(--background); }
-.sheet-search[hidden] { display: none; }
 /* the field: a grey capsule on the sheet (Apple Maps), no glass of its own */
 .sb-field {
   height: 44px; display: flex; align-items: center; border-radius: var(--radius-full);
@@ -108,6 +107,12 @@ a { color: var(--primary); }
 }
 .sb-btn:hover { background: var(--muted); }
 .sb-field .sb-btn { width: 44px; height: 44px; }
+/* while searching, a ✕ to the right of the field closes the search (TEL-223); the field's own ✕ only clears the text */
+.sheet-search { display: flex; align-items: center; gap: var(--space-2); }
+.sheet-search[hidden] { display: none; }
+.sb-field { flex: 1; min-width: 0; }
+.search-close { display: none; flex: none; width: 44px; height: 44px; background: var(--muted); color: var(--foreground); }
+.searching .search-close { display: grid; }
 .sb-input {
   flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--foreground); font-size: var(--text-base); padding: 0 var(--space-4) 0 var(--space-1); outline: none;
   -webkit-appearance: none; appearance: none; text-overflow: ellipsis;
@@ -272,6 +277,14 @@ html.sheet-dragging .fabs-bottom { transition: none; }
   .app:has(.sheet-search:not([hidden])) .sheet { padding-top: 0; }
   .sheet-search { padding: 14px var(--space-4) var(--space-1) 72px; }
   .no-map .sheet { top: 0; border-radius: 0; }
+}
+
+/* home on a phone: up reaches the top, and the ☰ slides down into the search row as the sheet gets there (TEL-223;
+   20 px = from its resting place to the row's centre: grabber 18 + headroom 12 + half the field 22, less half of ☰ 24 +
+   its 8 px margin); css/glass.css makes room for it at the row's start */
+@media (max-width: 899px) {
+  .app:not(.no-map):has(.sheet-search:not([hidden])) .sheet { top: var(--safe-top); }
+  .app:has(.sheet-search:not([hidden])) .menu-fab { top: calc(var(--safe-top) + 8px + clamp(0, var(--sheet-t, 1) - 1, 1) * 20px); }
 }
 
 /* ---------- toast ---------- */

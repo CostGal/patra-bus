@@ -220,13 +220,25 @@ test('search in the sheet: ☰ alone at the top, search home only, open = up, cl
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
   await expect(page.locator('#sheet-content')).toBeVisible();
-  // the ☰ is the way back while searching: it closes the search, it does not open the menu
+  // the ✕ next to the field closes the search (TEL-223 B); the ☰ joins the search row at full and stays the menu
   await page.locator('#search-input').click();
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
-  await page.locator('#menu-btn').click();
+  await page.waitForTimeout(500);
+  const row = await page.evaluate(() => {
+    const m = document.getElementById('menu-btn').getBoundingClientRect(); const f = document.querySelector('.sb-field').getBoundingClientRect();
+    return { dy: Math.abs((m.top + m.bottom) / 2 - (f.top + f.bottom) / 2), gap: f.left - m.right };
+  });
+  expect(row.dy).toBeLessThan(3); // ☰ centred on the field
+  expect(row.gap).toBeGreaterThan(0); // and to its left, not over it
+  await page.locator('#search-close').click();
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
   await expect(page.locator('#search-panel')).toBeHidden();
-  await expect(page.locator('#menu-pop')).toBeHidden();
+  await expect(page.locator('#search-close')).toBeHidden();
+  await page.locator('#search-input').click();
+  await page.locator('#menu-btn').click();
+  await expect(page.locator('#search-panel')).toBeHidden();
+  await expect(page.locator('#menu-pop')).toBeVisible();
+  await page.keyboard.press('Escape');
   // another view puts its own header in the search's place
   await page.goto('/?demo&debug#/stop/1011');
   await expect(page.locator('.stopv-head')).toBeVisible();
@@ -255,4 +267,15 @@ test('map buttons: the attribution (i) sits in the column of map buttons, above 
   const order = await page.evaluate(() => [...document.getElementById('fabs-bottom').children].map((e) => e.id || e.className.split(' ').find((c) => c.startsWith('maplibregl-ctrl-')) || e.className));
   expect(order[0]).toBe('maplibregl-ctrl-attrib');
   expect(order.at(-1)).toBe('locate-btn');
+});
+
+test.describe('search near me', () => {
+  test.use({ permissions: ['geolocation'], geolocation: { latitude: 38.2466, longitude: 21.7346 } });
+  test('search in the sheet: the empty field lists the nearby stops (computed on the device)', async ({ page }) => {
+    await page.goto('/?demo#/');
+    await expect(page.locator('#searchbar')).toBeVisible();
+    await page.waitForTimeout(500); // the first fix (permission already granted: no prompt)
+    await page.locator('#search-input').click();
+    await expect(page.locator('#search-list')).toContainText('Κοντινές στάσεις');
+  });
 });

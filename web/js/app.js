@@ -356,10 +356,6 @@ function openSearch() {
   searchPanel.hidden = false;
   searchInput.setAttribute('aria-expanded', 'true');
   menuPopover.close(false);
-  menuBtn.replaceChildren(icon('back'));
-  menuBtn.setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
-  menuBtn.removeAttribute('aria-haspopup');
-  menuBtn.removeAttribute('aria-expanded');
   renderSearch();
 }
 // restore: the user closed it (back, Escape, a tap outside), so the sheet goes back to where it was
@@ -379,10 +375,6 @@ function closeSearch(focusMenu = false, restore = false) {
   searchInput.setAttribute('aria-expanded', 'false');
   searchInput.removeAttribute('aria-activedescendant');
   searchClear.hidden = true;
-  menuBtn.replaceChildren(icon('menu'));
-  menuBtn.setAttribute('aria-label', t('Μενού'));
-  menuBtn.setAttribute('aria-haspopup', 'true');
-  menuBtn.setAttribute('aria-expanded', 'false');
   sayStatus('');
   if (focusMenu) menuBtn.focus(); else searchInput.blur();
 }
@@ -427,6 +419,14 @@ function renderSearch(keepActive = false) {
         ...rp.map((p) => srRow(`sr-${n++}`, 'history', p.name, p.subtitle, () => choosePlace(p))));
     } else {
       out.push(msg(t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
+    }
+    // nearby stops, when the device already knows where it is (computed here: the location never leaves the device)
+    const fix = locationService.current;
+    const recent = new Set(rs.map((s) => s.code));
+    const near = fix && inArea(fix) ? nearestStops(data.stops, fix, { limit: 4, maxMeters: 800 }).filter((x) => !recent.has(x.stop.code)) : [];
+    if (near.length) {
+      out.push(srHead(t('Κοντινές στάσεις')), ...near.map(({ stop: s, meters }) =>
+        srRow(`sr-${n++}`, 'bus', s.displayName, [fmtDist(meters), ...lineBadges(s, 4)], () => chooseStop(s))));
     }
     // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
     out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
@@ -545,11 +545,13 @@ if (vv) {
   vv.addEventListener('resize', onViewport);
   vv.addEventListener('scroll', onViewport);
 }
+// ☰ stays the menu while searching (the search closes with its own ✕): it ends the search, then opens the menu
 menuBtn.addEventListener('click', () => {
-  if (searchOpen) closeSearch(true, true);
-  else if (menuPop.hidden) menuPopover.open();
+  if (searchOpen) closeSearch(false, true);
+  if (menuPop.hidden) menuPopover.open();
   else menuPopover.close(true);
 });
+$('search-close').addEventListener('click', () => closeSearch(true, true));
 // Keyboard focus leaving the search for another control closes it: the full-screen panel would hide that control
 // (WCAG 2.4.11). A blur with nowhere to go (touch scroll of the results) keeps it open.
 for (const el of [$('searchbar'), searchPanel]) {
@@ -923,7 +925,8 @@ function localizeChrome() {
   searchInput.setAttribute('aria-label', t('Αναζήτηση στάσης ή τόπου'));
   searchClear.setAttribute('aria-label', t('Καθαρισμός αναζήτησης'));
   searchList.setAttribute('aria-label', t('Αποτελέσματα αναζήτησης'));
-  if (!searchOpen) menuBtn.setAttribute('aria-label', t('Μενού'));
+  menuBtn.setAttribute('aria-label', t('Μενού'));
+  $('search-close').setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
   northBtn.setAttribute('aria-label', t('Επαναφορά βορρά'));
   northBtn.title = t('Επαναφορά βορρά');
   chipsEl.setAttribute('aria-label', t('Αποθηκευμένα μέρη'));
@@ -936,6 +939,7 @@ function localizeChrome() {
 function buildChrome() {
   menuBtn.append(icon('menu'));
   searchClear.append(icon('close'));
+  $('search-close').append(icon('close'));
   northBtn.append(icon('compass'));
   locateBtn.append(icon('locate'));
   menuPopover = makePopover(menuBtn, menuPop);

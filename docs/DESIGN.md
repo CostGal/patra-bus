@@ -51,7 +51,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   **Search** (TEL-223): ☰ stands alone at the top left, a round glass button; the search is home's first row in the
   sheet (a grey capsule, no glass of its own, no microphone), so low on home = grabber + search. Tapping it takes the
   sheet up and shows the results there, in place of the view, on the solid up colour (0.5 px hairlines between rows);
-  closing it (☰ as back, Escape, a tap outside) puts the sheet back where it was. Other views put their own header in
+  closing it (the ✕ next to the field, Escape, a tap outside) puts the sheet back where it was. At up on home the sheet
+  reaches the top and the ☰ slides down into the search row, left of the field (TEL-223 B); an empty field shows recent
+  searches and the nearby stops. Other views put their own header in
   the search's place, with a ✕ back home.
   **Low on a stop** (TEL-224): the name (at most two lines), and the lines arriving as flat coloured pills (the badges
   alone); dragging up, the pills grow into the filter chips with the sheet ("All" unfolds in front), and back.

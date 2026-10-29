@@ -137,6 +137,8 @@ html.glass .sheet-content { padding-top: var(--g-headroom); }
 /* the search in the sheet (TEL-223): the same headroom above it; behind it, the sheet's own colour once it is up (it is
    sticky over the scrolling results there), nothing at low and mid; a grey field and 0.5 px hairlines, as in Apple Maps */
 html.glass .sheet-search { padding-top: var(--g-headroom); background: color-mix(in srgb, var(--g-up) calc(var(--u) * 100%), transparent); }
+/* phones: at full the row starts after the ☰, which comes down into it (app.css) */
+@media (max-width: 899px) { html.glass .sheet-search { padding-left: calc(var(--space-4) + var(--u) * 52px); } }
 html.glass .sb-field { background: var(--sb-fill); }
 html.glass .sr + .sr::before { background: var(--g-hair); }
 
