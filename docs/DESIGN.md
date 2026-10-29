@@ -43,8 +43,11 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
   towards the finger and turns more opaque, then springs back with a small wobble. **Full-width list rows** (stops, lines,
   place suggestions) neither grow nor turn grey: a soft glass highlight fades in behind them and out again. The locate
-  button fills with the app's blue while held and sends out a ring on a tap. **Sheet:** five stops (peek, low, half, high,
-  full) with a settle that overshoots a little; its handle widens inside a small glass capsule and ticks at each stop. Legibility comes
+  button fills with the app's blue while held and sends out a ring on a tap. **Sheet** (TEL-222, Apple Maps iOS 26): three states.
+  Low = a tight floating card (grabber + the view's first row), almost clear; mid (default) = the same card, larger,
+  more opaque; up = whole screen, edge to edge and to the bottom, solid (light grey with white cards; dark grey in dark
+  mode), no glass. Moves: low→mid a hint of bounce, mid→low a little more, mid↔up no bounce (it darkens and fills).
+  The grabber is tight; held, it widens inside a small glass capsule and ticks at each state. Legibility comes
   from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
   (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
   headers in the sheet (stop line chips, planner head) have no band at rest; once the list scrolls under them a blur
@@ -70,7 +73,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - **Full-width rows are not buttons you grow**: growing makes them overflow sideways, and the iOS `:hover` after a tap
   left the whole row grey. A rounded highlight inside the row fades in and out instead.
 - **A tap needs an answer you can see**: the locate button fills blue while held and rings out on the tap.
-- **A sheet that stays where you put it**: five stops, and a handle that reacts (capsule, wider pill, tick at each stop).
+- **A sheet like Apple Maps**: three states (five felt like too many in-between stops); a floating card that turns solid
+  and edge to edge at the top; a grabber with minimal room around it that reacts (capsule, wider pill, tick).
 - **Morph from what you touched**: a popover grows out of its button (circle → swells → panel) and goes back the same way;
   the button's icon blurs into its "close" meaning (☰ → ✕; ⋯ → ˄ where an ✕ would duplicate a nearby ✕).
 - Never let a closing popover flash: keep it on screen until its shape has shrunk back, then hide it.

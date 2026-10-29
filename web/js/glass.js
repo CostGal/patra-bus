@@ -6,7 +6,7 @@
 //   transforms are untouched). Round buttons grow most and pop out above their neighbours; full-width list rows do
 //   not grow, a soft highlight fades in behind them instead. No light under the finger: it looked unauthentic;
 // - the locate button: pressed it fills with the app's blue, and a tap sends out a ring;
-// - the sheet handle (js/sheet.js has five stops with glass): a tick on the handle each time a drag passes a stop;
+// - the sheet handle (js/sheet.js: three states): a tick on the handle each time a drag passes a stop;
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
 // - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕;
 // - the stop's ⋯ menu and the map's i morph the same way (⋯ → ˄), with their own timing;
@@ -345,7 +345,7 @@ function watchLocate() {
   btn.addEventListener('animationend', (e) => { if (e.animationName === 'g-ping') btn.classList.remove('g-ping'); });
 }
 
-// the sheet handle: a drag passing one of the five stops makes the pill tick (js/sheet.js sends sheet:stop)
+// the sheet handle: a drag passing one of the three states makes the pill tick (js/sheet.js sends sheet:stop)
 function watchHandle() {
   const sheet = document.querySelector('.sheet');
   const pill = sheet?.querySelector('.sheet-pill');

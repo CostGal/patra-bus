@@ -424,10 +424,16 @@ their own; the whole `.searchbar` for its input; else the glass surface), grows 
 untouched; ~16 px for round buttons, ~10 px for the rest; never the sheet, menu, dialogs, sheet handle or full-width list
 rows, which get a CSS highlight instead), leans it via `translate` while held, and springs it back on pointerup/cancel.
 No finger light (removed in review 2). Round buttons get `z-index` while pressed and `.sheet-content` gets
-`--g-headroom` (18 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
-The locate button gets `.g-ping` on click (a ring). With glass `sheet.js` has five stops (`peek, low, half, high, full`;
-`low`/`high` reuse the nearest aria labels and act like `half` in CSS), an underdamped settle, and dispatches `sheet:stop`
-on the sheet while a drag passes a stop, which `glass.js` turns into a tick on the handle's pill. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
+`--g-headroom` (12 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
+The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
+Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head, .pl-head` in the content,
+unless `setPeek()` gives a height), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
+floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
+bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. One spring per move
+(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`
+while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
+touch strip (`::after`). Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
 sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
 opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
 in two phases (a circle swelling around the ☰

@@ -3,7 +3,8 @@
 // emulation; it shares the same variables and the same early return in js/glass.js).
 import { test, expect } from './mock.mjs';
 
-const sheetFilter = (page) => page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backdropFilter);
+// the sheet's glass is the layer behind its content (TEL-222)
+const sheetFilter = (page) => page.evaluate(() => getComputedStyle(document.querySelector('.sheet'), '::before').backdropFilter);
 
 test('glass: on by default', async ({ page }) => {
   const errors = [];
@@ -81,7 +82,7 @@ test('glass: solid surfaces with prefers-contrast: more', async ({ page }) => {
   await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
   expect(await sheetFilter(page)).toBe('none');
   await expect(page.locator('html.glass-lens')).toHaveCount(0);
-  const bg = await page.evaluate(() => getComputedStyle(document.querySelector('.sheet')).backgroundColor);
+  const bg = await page.evaluate(() => getComputedStyle(document.querySelector('.sheet'), '::before').backgroundColor);
   expect(bg).not.toMatch(/rgba\(.*, 0\.\d+\)|color\(srgb .* \/ 0\.\d+\)/);
 });
 
@@ -118,17 +119,44 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
   await page.mouse.up();
 });
 
-test('glass: the sheet has five stops', async ({ page }) => {
-  const visited = async (url, taps) => {
-    await page.goto(url);
-    await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
-    const seen = new Set();
-    for (let i = 0; i < taps; i++) {
-      await page.locator('#sheet-handle').dispatchEvent('click'); // a tap walks the stops (the sheet may still be settling)
-      await page.waitForTimeout(150);
-      seen.add(await page.evaluate(() => document.getElementById('sheet').dataset.state));
-    }
-    return [...seen].sort();
+test('glass: the sheet has three states: a floating card at peek and half, solid and edge to edge at full', async ({ page }) => {
+  await page.goto('/?demo&debug#/stop/1011');
+  await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
+  const seen = new Set();
+  for (let i = 0; i < 4; i++) {
+    await page.locator('#sheet-handle').dispatchEvent('click'); // a tap walks the states
+    await page.waitForTimeout(150);
+    seen.add(await page.evaluate(() => document.getElementById('sheet').dataset.state));
+  }
+  expect([...seen].sort()).toEqual(['full', 'half', 'peek']);
+  // the card behind the content, once the sheet has settled in a state
+  const card = async (state) => {
+    await page.evaluate((s) => window.__app.sheet.snap(s, { animate: false }), state);
+    await page.waitForTimeout(100);
+    return page.evaluate(() => {
+      const sheet = document.getElementById('sheet');
+      const cs = getComputedStyle(sheet, '::before');
+      const r = sheet.getBoundingClientRect();
+      return { t: parseFloat(sheet.style.getPropertyValue('--sheet-t')), left: parseFloat(cs.left), radiusBottom: parseFloat(cs.borderBottomLeftRadius), cardBottom: r.top + r.height - parseFloat(cs.bottom), screen: innerHeight, bg: cs.backgroundColor };
+    });
   };
-  expect(await visited('/?demo#/stop/1011', 7)).toEqual(['full', 'half', 'high', 'low', 'peek']);
+  const peek = await card('peek');
+  const half = await card('half');
+  const full = await card('full');
+  expect([peek.t, half.t, full.t]).toEqual([0, 1, 2]);
+  // peek and half: a rounded card with a margin, ending above the bottom of the screen
+  for (const c of [peek, half]) {
+    expect(c.left).toBeGreaterThan(4);
+    expect(c.radiusBottom).toBeGreaterThan(10);
+    expect(c.cardBottom).toBeLessThan(c.screen - 4);
+  }
+  // full: edge to edge, to the bottom, square at the bottom, and solid (no see-through glass)
+  expect(full.left).toBe(0);
+  expect(full.radiusBottom).toBe(0);
+  expect(Math.abs(full.cardBottom - full.screen)).toBeLessThan(2);
+  expect(full.bg).not.toMatch(/\/ 0\.\d|, 0\.\d+\)$/);
+  // peek is tight: the handle and the stop's first row only
+  await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
+  const tight = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return innerHeight - r.top; });
+  expect(tight).toBeLessThan(140);
 });

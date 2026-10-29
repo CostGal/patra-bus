@@ -100,7 +100,7 @@ Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device li
 My words:
 
 **Snap point (stop)**: a position a sheet likes to rest at, like the notches of a dimmer switch. A drag ends at the nearest one.
-Where it shows up in Telematica: the bottom sheet has three (peek, half, full); with glass it has five (`web/js/sheet.js`, TEL-83).
+Where it shows up in Telematica: the bottom sheet has three: peek (low), half (mid) and full (up) (`web/js/sheet.js`, TEL-222). The bar you drag it by is the **grabber**.
 My words:
 
 **Displacement map**: a picture whose colours tell a filter how far to shift each pixel of what lies behind, like looking through the thick rim of a glass. Browsers can use one inside `backdrop-filter` only in Chrome-based browsers, not Safari.

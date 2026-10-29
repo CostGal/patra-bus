@@ -7,17 +7,24 @@
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
 import { t, N_, onLangChange } from './i18n.js';
 import { createSpringLoop, rubberband, project } from './motion.js';
-const GLASS = document.documentElement.classList.contains('glass'); // glass UI (TEL-83, css/glass.css; html.glass is set in index.html)
-// Glass: five stops instead of three (low and high sit half way between their neighbours). The extra two reuse the
-// closest labels until the prototype is decided; css/glass.css treats them like `half` (no inner scrolling).
-const STATES = GLASS ? ['peek', 'low', 'half', 'high', 'full'] : ['peek', 'half', 'full'];
-const PEEK_PX = 152; // handle + a header row
-const HEADROOM = GLASS ? 18 : 0; // glass: room above the first row, so a pressed round button can grow without being clipped
-const LABEL = { peek: N_('κλειστός'), low: N_('μισός'), half: N_('μισός'), high: N_('πλήρης'), full: N_('πλήρης') };
+// Three states, as in Apple Maps (TEL-222): peek = "low" (the view's first row only), half = "mid" (the default), full =
+// "up" (whole screen). css/glass.css draws them from --sheet-t: 0 at peek, 1 at half, 2 at full.
+const STATES = ['peek', 'half', 'full'];
+const HEADROOM = 12; // room above the first row, so a pressed round button can grow without being clipped (css/glass.css)
+const LABEL = { peek: N_('κλειστός'), half: N_('μισός'), full: N_('πλήρης') };
+// the view's first row, which is all the peek state shows
+const HEAD = '.stopv-head, .ex-head, .view-head, .pl-head';
 const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point (docs/DESIGN.md §2)
-const MOMENTUM = { damping: 0.8, response: 0.3 }; // spring after a flick (release velocity)
-// spring for a snap with no preceding gesture; glass lets it overshoot a little and settle ("set" feels alive)
-const SETTLE = GLASS ? { damping: 0.74, response: 0.42 } : { damping: 1, response: 0.35 };
+// One spring per move (Kostas, TEL-222): up from peek a hint of bounce, down to peek a little more, to and from full
+// none (it darkens and fills the screen instead). After a flick the same spring takes the release velocity.
+const SPRINGS = {
+  'peek>half': { damping: 0.86, response: 0.42 },
+  'half>peek': { damping: 0.72, response: 0.42 },
+  'half>full': { damping: 1, response: 0.38 },
+  'full>half': { damping: 1, response: 0.38 },
+};
+const SETTLE = { damping: 1, response: 0.35 };
+const springFor = (from, to) => SPRINGS[`${from}>${to}`] || SETTLE;
 
 export function createSheet(root, { onSnap, onMove } = {}) {
   const handle = root.querySelector('.sheet-handle');
@@ -33,20 +40,25 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let state = root.dataset.state || 'half';
   let fixed = false; // no map: behave as a plain page
   let H = 0; // sheet height in px
-  let SZ = { peek: 0, low: 0, half: 0, high: 0, full: 0 };
+  let SZ = { peek: 0, half: 0, full: 0 };
   let y = 0; // current translateY in px
   let dragging = false;
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
-  let peekPx = PEEK_PX + HEADROOM; // the home card sets this to its own height (setPeek)
+  let peekPx = null; // null = handle + the view's first row; the home card sets its own height (setPeek)
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
+  // peek: the handle and the view's first row (its header), tight; the home card sets its own height
+  function firstRow() {
+    const head = content.querySelector(HEAD);
+    if (!head) return 96;
+    return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - content.getBoundingClientRect().top) + 10;
+  }
   function measure() {
     H = root.offsetHeight;
-    const peek = Math.min(peekPx + probe.offsetHeight, H);
-    const half = Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100));
-    SZ = { peek, low: Math.round((peek + half) / 2), half, high: Math.round((half + H) / 2), full: H };
+    const peek = Math.min(Math.max(64, peekPx ?? firstRow()) + probe.offsetHeight, H);
+    SZ = { peek, half: Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100)), full: H };
   }
   const yFor = (s) => H - SZ[s];
 
@@ -63,7 +75,10 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     y = v;
     root.style.setProperty('--sheet-y', `${v}px`);
     const vis = H - v;
-    if (GLASS) tick(v);
+    tick(v);
+    // 0 at peek, 1 at half, 2 at full (css/glass.css draws the sheet's shape and colour from it)
+    const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
+    root.style.setProperty('--sheet-t', Math.max(0, Math.min(2, tt)).toFixed(3));
     // floating UI (FABs, toast, attribution) rides on the sheet up to the half point, then fades out
     const lift = Math.min(vis, SZ.half);
     const opacity = vis <= SZ.half ? 1 : Math.max(0, 1 - (vis - SZ.half) / Math.max(1, (SZ.full - SZ.half) * 0.35));
@@ -93,6 +108,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     measure();
     if (inert()) {
       root.style.removeProperty('--sheet-y');
+      root.style.setProperty('--sheet-t', fixed ? '2' : '1'); // plain page = the full look; side panel = the half look
       onMove?.({ visible: 0, lift: 0, opacity: 1 });
       onSnap?.({ state, visible: 0, desktop: isDesktop() });
       return;
@@ -114,8 +130,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   const paintLabel = () => handle.setAttribute('aria-label', t('Αλλαγή μεγέθους πίνακα (τώρα: {state})', { state: t(LABEL[state]) }));
   onLangChange(paintLabel);
 
-  function snap(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
+  function snap(to, { animate = true, velocity = 0, spring: cfg } = {}) {
     if (!STATES.includes(to)) return;
+    cfg ||= springFor(state, to);
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;
@@ -125,6 +142,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
 
   // ---- dragging ----
   let startY = 0;
+  let dragFrom = 'half';
   let pointerStart = 0;
   let samples = [];
   function dragBegin(clientY) {
@@ -133,6 +151,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     spring.stop(); // interrupt any in-flight snap; the drag takes over the live y from here
     startY = y;
     lastStop = STATES.indexOf(state);
+    dragFrom = state;
     pointerStart = clientY;
     samples = [{ t: performance.now(), y: clientY }];
     root.classList.add('dragging');
@@ -170,7 +189,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
-    snap(best, { velocity: v, spring: MOMENTUM });
+    snap(best, { velocity: v, spring: springFor(dragFrom, best) });
   }
 
   let handleMoved = false;
@@ -272,7 +291,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     scrollToTop() { body.scrollTop = 0; },
     // Peek height = handle + the single home card; null restores the default.
     setPeek(px) {
-      const next = px == null ? PEEK_PX + HEADROOM : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
+      const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
       if (next === peekPx) return;
       peekPx = next;
       if (!dragging) moveTo(state, { animate: false });

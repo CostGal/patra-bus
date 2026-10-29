@@ -33,7 +33,11 @@ html.glass {
   --g-line: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .14);
   --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .2);
-  --g-headroom: 18px; /* room above the first row of the sheet for a pressed round button (js/sheet.js adds it to the peek height) */
+  --g-headroom: 12px; /* room above the first row of the sheet for a pressed round button (js/sheet.js: HEADROOM) */
+  /* the sheet's three states (TEL-222): margin and corner of the floating card at peek/half, its tint at peek (a0) and
+     half (a1), and the solid colours of full (no glass there) */
+  --g-sheet-m: 8px; --g-sheet-r: 28px; --g-sheet-a0: 10%; --g-sheet-a1: 55%;
+  --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
   /* layers, top to bottom: top sheen, then the glass colour */
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .4), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 90px);
@@ -47,6 +51,7 @@ html.glass {
     --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
     --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
     --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
+    --g-up: #1c1c1e; --g-up-card: #2c2c2e; --g-sheen-c: rgba(255, 255, 255, .08);
   }
 }
 html.glass[data-theme="dark"] {
@@ -57,6 +62,7 @@ html.glass[data-theme="dark"] {
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
   --g-shadow: 0 6px 20px rgba(0, 0, 0, .45); --g-shadow-lg: 0 14px 44px rgba(0, 0, 0, .55);
+  --g-up: #1c1c1e; --g-up-card: #2c2c2e; --g-sheen-c: rgba(255, 255, 255, .08);
 }
 
 /* touch & hold is a gesture here: no text selection, no iOS callout or tap flash (form fields keep selection) */
@@ -81,7 +87,27 @@ html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-car
   transition: background-color .15s ease-out;
 }
 /* the sheet is tall: its sheen stays at the top edge */
-html.glass .sheet { background: var(--g-sheen-lg), var(--g-bg-lg); border-bottom: 0; }
+/* the sheet (TEL-222): three states drawn from --sheet-t (js/sheet.js: 0 at peek, 1 at half, 2 at full). The sheet box
+   stays full width and clear; its glass is a layer behind the content (::before) that floats as a rounded rectangle
+   with a margin at peek and half (almost clear at peek, more opaque at half), and towards full reaches the edges and
+   the bottom and turns solid: no glass there, light grey (dark grey in dark mode) with white (grey) cards */
+html.glass .sheet {
+  --u: clamp(0, var(--sheet-t, 1) - 1, 1); /* 0 up to half, 1 at full */
+  --l: clamp(0, var(--sheet-t, 1), 1); /* 0 at peek, 1 from half */
+  background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+html.glass .sheet::before {
+  content: ''; position: absolute; z-index: -1; top: 0; pointer-events: none;
+  left: calc(var(--g-sheet-m) * (1 - var(--u))); right: calc(var(--g-sheet-m) * (1 - var(--u)));
+  /* the sheet box runs on below the screen by --sheet-y: the card ends a margin above the screen's bottom */
+  bottom: calc(var(--sheet-y, 0px) + max(var(--g-sheet-m), var(--safe-bottom)) * (1 - var(--u)));
+  border-radius: var(--g-sheet-r) var(--g-sheet-r) calc(var(--g-sheet-r) * (1 - var(--u))) calc(var(--g-sheet-r) * (1 - var(--u)));
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--g-sheen-c) calc((1 - var(--u)) * 100%), transparent), transparent 90px),
+    color-mix(in srgb, var(--g-up) calc(var(--u) * 100%), color-mix(in srgb, var(--g-card) calc(var(--g-sheet-a0) + var(--l) * (var(--g-sheet-a1) - var(--g-sheet-a0))), transparent));
+  -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
+  border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
+}
 @media (min-width: 900px) { html.glass .sheet { border-top: 0; border-left: 0; } }
 /* touch & hold (js/glass.js: .g-press on the control under the finger, or on the glass surface if it is not a control):
    the glass turns more opaque; js/glass.js also grows it and springs it back */
@@ -132,7 +158,7 @@ html.glass .fab.g-ping::after {
 @keyframes g-ping { from { transform: scale(1); opacity: .85; } to { transform: scale(2.1); opacity: 0; } }
 
 /* the sheet handle: a more reactive pill. Held or dragged it widens, thickens and darkens inside a small glass capsule;
-   js/glass.js ticks it each time a drag passes one of the five stops (js/sheet.js) */
+   js/glass.js ticks it each time a drag passes one of the three states (js/sheet.js) */
 html.glass .sheet-pill { position: relative; z-index: 1; transition: width .28s cubic-bezier(.34, 1.56, .64, 1), height .28s cubic-bezier(.34, 1.56, .64, 1), background .15s; }
 html.glass .sheet-handle::before {
   content: ''; position: absolute; left: 50%; top: 50%; width: 92px; height: 32px; margin: -16px 0 0 -46px; border-radius: 16px; pointer-events: none;
@@ -142,7 +168,14 @@ html.glass .sheet-handle::before {
 html.glass .sheet-handle:active::before, html.glass .sheet.dragging .sheet-handle::before { opacity: 1; scale: 1 1; }
 html.glass .sheet-handle:active .sheet-pill, html.glass .sheet.dragging .sheet-pill { width: 56px; height: 6px; background: var(--muted-foreground); }
 /* the two extra stops behave like `half`: the sheet drags, its list does not scroll until full */
-html.glass .sheet[data-state="low"] .sheet-body, html.glass .sheet[data-state="high"] .sheet-body { overflow-y: hidden; touch-action: pan-x; }
+/* the content is cut to the card too (it would otherwise show in the margin under it, over the home bar) */
+html.glass .sheet-body {
+  clip-path: inset(0 0 calc(var(--sheet-y, 0px) + max(var(--g-sheet-m), var(--safe-bottom)) * (1 - var(--u))) 0
+    round 0 0 calc(var(--g-sheet-r) * (1 - var(--u))) calc(var(--g-sheet-r) * (1 - var(--u))));
+}
+/* a tight grabber (Kostas: minimal room around it); the finger still gets a 30 px strip, half of it over the map */
+html.glass .sheet-handle { height: 18px; }
+html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; right: 0; top: -12px; bottom: 0; }
 /* the shrink-on-press of DESIGN §1 gives way to the grow of the glass (js/glass.js animates `scale`) */
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
 
@@ -150,7 +183,7 @@ html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp
 html.glass-lens .searchbar, html.glass-lens .fab, html.glass-lens .chip {
   -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
 }
-html.glass-lens .sheet, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
+html.glass-lens .sheet::before, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
   -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
 }
 
@@ -225,7 +258,7 @@ html.glass .searchbar, html.glass .chip, html.glass #menu-pop, html.glass .sheet
 html.glass .stopv-head, html.glass .pl-head { text-shadow: 0 0 6px var(--g-halo), 0 0 2px var(--g-halo); }
 
 /* ---------- inside the sheet ---------- */
-html.glass .sheet { --card: var(--g-tint); }
+html.glass .sheet { --card: color-mix(in srgb, var(--g-up-card) calc(var(--u) * 100%), var(--g-tint)); }
 html.glass .sheet .material, html.glass .sheet .material-lg {
   background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 1px 0 var(--g-edge), var(--shadow-1);
 }
@@ -255,13 +288,13 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 @media (prefers-reduced-transparency: reduce) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);
     --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
-    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
   }
 }
 @media (prefers-contrast: more) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);
     --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
-    --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
     --g-line: 1px solid var(--border);
   }
 }
