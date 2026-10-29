@@ -36,7 +36,7 @@ html.glass {
   --g-headroom: 12px; /* room above the first row of the sheet for a pressed round button (js/sheet.js: HEADROOM) */
   /* the sheet's three states (TEL-222): margin and corner of the floating card at peek/half, its tint at peek (a0) and
      half (a1), and the solid colours of full (no glass there) */
-  --g-sheet-m: 8px; --g-sheet-r: 28px; --g-sheet-a0: 10%; --g-sheet-a1: 55%;
+  --g-sheet-m: 8px; --g-sheet-r: 28px; --g-sheet-a0: 3%; --g-sheet-a1: 55%;
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
   /* layers, top to bottom: top sheen, then the glass colour */
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .4), rgba(255, 255, 255, 0) 50%);

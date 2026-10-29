@@ -57,7 +57,7 @@ test('glass: on by default', async ({ page }) => {
   await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
   // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
   // (the browser may report the blue in any colour space, so check the white icon on it and that the fill changed)
-  expect(await fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+  await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)'); // after its .15s transition
   expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBg);
   await page.mouse.move(5, 300);
   await page.mouse.up();
@@ -155,6 +155,21 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   expect(full.radiusBottom).toBe(0);
   expect(Math.abs(full.cardBottom - full.screen)).toBeLessThan(2);
   expect(full.bg).not.toMatch(/\/ 0\.\d|, 0\.\d+\)$/);
+  // the map stays still when the sheet moves (only a touch on the map moves it)
+  const center = () => page.evaluate(() => { const m = window.__app.map._map; return m ? m.getCenter().toArray().map((v) => v.toFixed(6)).join() : 'no map'; });
+  const before = await center();
+  for (const st of ['full', 'peek', 'half']) await page.evaluate((x) => window.__app.sheet.snap(x), st);
+  await page.waitForTimeout(600);
+  expect(await center()).toBe(before);
+  // a quick flick down from full stops at half, not at peek
+  await page.evaluate(() => window.__app.sheet.snap('full', { animate: false }));
+  await page.waitForTimeout(100);
+  const h = await page.locator('#sheet-handle').boundingBox();
+  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 4; i++) { await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 + i * 40); await page.waitForTimeout(8); }
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('half');
   // peek is tight: the handle and the stop's first row only
   await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
   const tight = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return innerHeight - r.top; });

@@ -620,11 +620,9 @@ export function createMap(container, opts = {}) {
       doFit();
     },
     setPadding(p) {
-      const prev = pad;
       pad = { top: 0, bottom: 0, left: 0, right: 0, ...p };
-      // the sheet moved after a fit (e.g. peek -> half): fit again so every point stays in the visible area
-      if (lastFit && ['top', 'bottom', 'left', 'right'].some((k) => Math.abs(pad[k] - prev[k]) > 4)) { doFit(); return; }
-      if (tracking() && userItem.cur && !map.isMoving()) map.easeTo({ center: ll(userItem.cur), padding: pad, duration: 300, essential: false });
+      // Kept for the next fit or fly only: the map stays still when the sheet moves (Kostas, TEL-222: only a touch on
+      // the map moves the map)
     },
 
     setTheme(t) {

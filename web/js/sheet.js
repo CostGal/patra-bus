@@ -24,6 +24,7 @@ const SPRINGS = {
   'full>half': { damping: 1, response: 0.38 },
 };
 const SETTLE = { damping: 1, response: 0.35 };
+const HALF_PULL = 0.6; // distances to half count 60%: half is where most releases end
 const springFor = (from, to) => SPRINGS[`${from}>${to}`] || SETTLE;
 
 export function createSheet(root, { onSnap, onMove } = {}) {
@@ -181,11 +182,17 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       const b = samples[samples.length - 1];
       v = ((b.y - a.y) / Math.max(16, b.t - a.t)) * 1000;
     }
+    // Where the flick would carry the sheet, then the nearest state, with half (the default) pulling harder: it wins
+    // unless another state is clearly closer. A flick moves one state at most from where the drag started; going
+    // further (full -> peek) needs the finger itself to pass half (Kostas, TEL-222: full -> peek was too easy).
     const proj = y + project(v);
+    const from = STATES.indexOf(dragFrom);
+    const passed = STATES.filter((s) => (yFor(s) - startY) * (y - yFor(s)) > 0).length; // states the finger crossed
     let best = state;
     let bd = Infinity;
-    for (const s of STATES) {
-      const d = Math.abs(yFor(s) - proj);
+    for (const [i, s] of STATES.entries()) {
+      if (Math.abs(i - from) > 1 + passed) continue;
+      const d = Math.abs(yFor(s) - proj) * (s === 'half' ? HALF_PULL : 1);
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
