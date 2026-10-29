@@ -291,5 +291,15 @@ test.describe('touch close', () => {
     await expect(page.locator('#search-panel')).toBeHidden();
     await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('half');
     expect(await page.evaluate(() => document.activeElement.id)).not.toBe('search-input');
+    // and a tap on ☰ with the keyboard up ends the search and opens the menu
+    await page.locator('#search-input').tap();
+    await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    await page.locator('#menu-btn').tap();
+    await expect(page.locator('#search-panel')).toBeHidden();
+    await expect(page.locator('#menu-pop')).toBeVisible();
+    // a second tap closes it
+    await page.waitForTimeout(400);
+    await page.locator('#menu-btn').tap();
+    await expect(page.locator('#menu-pop')).toBeHidden();
   });
 });
