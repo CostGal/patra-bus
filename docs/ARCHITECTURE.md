@@ -435,7 +435,10 @@ nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves on
 (`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. **Search (TEL-223):** `#menu-btn` (`.menu-fab`) is a fixed round button at the top left, outside the sheet; `#searchbar`
 (`.sheet-search`, sticky) and `#search-panel` are the first children of `#sheet-body`. `app.js` shows the search on home
 only (`route()`); opening it adds `.searching` to `#app` (CSS hides `#sheet-content` and `#map-note`) and snaps the sheet
-to `full`; a close by the user (back, Escape, tap outside) snaps it back to the state it had. The map's top padding
+to `full`; a close by the user (back, Escape, tap outside) snaps it back to the state it had. A touch tap on the field while the sheet
+is not up focuses a hidden `.kb-proxy` input at the top first (the keyboard must open inside the tap), and hands the focus
+to the field 320 ms later, once the sheet is up: focusing it low would make iOS pan the page above the keyboard. A
+`visualViewport` listener undoes any pan left while searching and writes `--kb` (keyboard height) for the results' bottom padding. The map's top padding
 is measured from the ☰ and the chips (which share its row). The map never moves with the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. One spring per move
 (`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`

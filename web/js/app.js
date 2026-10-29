@@ -358,6 +358,8 @@ function openSearch() {
 function closeSearch(focusMenu = false, restore = false) {
   if (!searchOpen) return;
   searchOpen = false;
+  clearTimeout(kbHandoff);
+  if (document.activeElement === kbProxy) kbProxy.blur();
   appEl.classList.remove('searching');
   if (restore && sheetBefore && sheetBefore !== 'full' && sheet.state === 'full') sheet.snap(sheetBefore);
   sheetBefore = null;
@@ -504,6 +506,37 @@ searchClear.addEventListener('click', () => {
   searchInput.focus();
 });
 $('searchbar').addEventListener('click', (e) => { if (!e.target.closest('button')) searchInput.focus(); });
+
+// The keyboard and the sheet (iOS): focusing the field while the sheet is low makes Safari pan the whole page to keep
+// the field above the keyboard, and the pan stays once the sheet has gone up (Kostas, TEL-223). So a tap on the field
+// while the sheet is not up opens the keyboard on a hidden field at the top (it must open inside the tap), takes the
+// sheet up, then hands the focus to the real field, which is at the top by then. Any pan left over is undone, and
+// --kb (the keyboard's height) keeps the last results above the keyboard.
+const kbProxy = h('input', { class: 'kb-proxy', type: 'text', tabindex: '-1', 'aria-hidden': 'true' });
+document.body.append(kbProxy);
+let kbHandoff = 0;
+let tapY = null;
+searchInput.addEventListener('touchstart', (e) => { tapY = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive: true });
+searchInput.addEventListener('touchmove', (e) => { if (tapY != null && Math.abs(e.touches[0].clientY - tapY) > 6) tapY = null; }, { passive: true });
+searchInput.addEventListener('touchend', (e) => {
+  const tap = tapY != null;
+  tapY = null;
+  if (!tap || searchOpen || document.activeElement === searchInput || sheet.state === 'full' || desktopMQ.matches) return;
+  e.preventDefault(); // no native focus, so no pan
+  kbProxy.focus({ preventScroll: true });
+  openSearch();
+  kbHandoff = setTimeout(() => searchInput.focus({ preventScroll: true }), 320); // the sheet's up spring has settled
+});
+const vv = window.visualViewport;
+if (vv) {
+  const onViewport = () => {
+    const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty('--kb', `${kb}px`);
+    if (searchOpen && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
+  };
+  vv.addEventListener('resize', onViewport);
+  vv.addEventListener('scroll', onViewport);
+}
 menuBtn.addEventListener('click', () => {
   if (searchOpen) closeSearch(true, true);
   else if (menuPop.hidden) menuPopover.open();

@@ -327,6 +327,10 @@ My words:
 Where it shows up in Telematica: it links a bus across stops and views (`#/bus/…`, onboard alerts) and decides whether a live and a scheduled row are the same bus (`web/js/arrivals.js`).
 My words:
 
+**Visual viewport**: the part of the page you actually see; when the phone keyboard opens it shrinks, and iOS may slide it to keep the field you type in visible, like a window blind that comes down over the bottom of the window.
+Where it shows up in Telematica: `app.js` (search in the sheet: `--kb` and undoing the pan, TEL-223).
+My words:
+
 **Vesting**: earning your share of a company step by step over time, instead of owning it all on day one, like getting the office key a month at a time.
 Where it shows up in Telematica: the founders' proposal (TEL-1) suggests 4 years with a 12-month cliff for Fanis and Amarildo.
 My words:

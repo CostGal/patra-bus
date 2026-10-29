@@ -122,7 +122,9 @@ html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 }
 
 /* search results: in the sheet under the search, in place of the view (the sheet is up while the search is open) */
-.search-panel { padding: 0 0 calc(16px + var(--safe-bottom)); }
+.search-panel { padding: 0 0 calc(16px + max(var(--safe-bottom), var(--kb, 0px))); } /* --kb: the keyboard (app.js) */
+/* app.js: a hidden field at the top that opens the keyboard while the sheet goes up (16 px: no zoom on iOS) */
+.kb-proxy { position: fixed; top: 0; left: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; font-size: 16px; pointer-events: none; }
 .searching #sheet-content, .searching #map-note { display: none; }
 .search-list { max-width: 640px; margin: 0 auto; }
 .sr-head { padding: var(--space-4) 20px var(--space-2); font-size: var(--text-sm); font-weight: 500; color: var(--muted-foreground); }

@@ -219,3 +219,19 @@ test('search in the sheet: ☰ alone at the top, search home only, open = up, cl
   await expect(page.locator('.stopv-head')).toBeVisible();
   await expect(bar).toBeHidden();
 });
+
+test.describe('touch', () => {
+  test.use({ hasTouch: true });
+  test('search in the sheet: a tap at low opens the keyboard at the top, then the real field once the sheet is up', async ({ page }) => {
+    await page.goto('/?demo&debug#/');
+    await expect(page.locator('#searchbar')).toBeVisible();
+    await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
+    await page.waitForTimeout(100);
+    await page.locator('#search-input').tap();
+    // the keyboard opens on the hidden field at the top while the sheet goes up (no pan on iOS)
+    expect(await page.evaluate(() => document.activeElement.className)).toBe('kb-proxy');
+    await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
+    await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    await expect(page.locator('#search-panel')).toBeVisible();
+  });
+});
