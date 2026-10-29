@@ -28,7 +28,7 @@ export const busHash = (v, stop) => cityHash(`#/bus/${encodeURIComponent(v.vehic
 const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`);
 
 export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null, stale = false } = {}) {
-  const live = !!v.live;
+  const live = false;
   const aged = live && stale; // TEL-52: its position is older than STALE_MS, so it must not read as LIVE any more
   const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
     : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
