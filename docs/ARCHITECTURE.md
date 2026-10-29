@@ -431,8 +431,8 @@ unless `setPeek()` gives a height), `half` = mid (default), `full` = up. It writ
 full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
 floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
 bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
-nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves one state at most unless the finger itself
-passed the middle one. The map never moves with the sheet: `map.setPadding()` only stores the padding for the next
+nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves one state, two (up <-> low) when it is fast
+(`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. The map never moves with the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. One spring per move
 (`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`
 while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px

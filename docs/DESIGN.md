@@ -48,7 +48,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   more opaque; up = whole screen, edge to edge and to the bottom, solid (light grey with white cards; dark grey in dark
   mode), no glass. Moves: low→mid a hint of bounce, mid→low a little more, mid↔up no bounce (it darkens and fills).
   The grabber is tight; held, it widens inside a small glass capsule and ticks at each state.
-  Mid is where most releases land (a flick moves one state at most, so up → low takes a deliberate drag), and the map
+  Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
   stays still while the sheet moves: only a touch on the map moves the map. Legibility comes
   from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
   (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky

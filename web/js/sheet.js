@@ -25,6 +25,7 @@ const SPRINGS = {
 };
 const SETTLE = { damping: 1, response: 0.35 };
 const HALF_PULL = 0.85; // distances to half count 85%: half wins a close call, a clear flick still leaves it
+const FAST_FLICK = 1200; // px/s: a flick this fast may skip half (full <-> peek in one go)
 const springFor = (from, to) => SPRINGS[`${from}>${to}`] || SETTLE;
 
 export function createSheet(root, { onSnap, onMove } = {}) {
@@ -183,15 +184,15 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       v = ((b.y - a.y) / Math.max(16, b.t - a.t)) * 1000;
     }
     // Where the flick would carry the sheet, then the nearest state, with half (the default) pulling harder: it wins
-    // unless another state is clearly closer. A flick moves one state at most from where the drag started; going
-    // further (full -> peek) needs the finger itself to pass half (Kostas, TEL-222: full -> peek was too easy).
+    // unless another state is clearly closer. A flick moves one state from where the drag started, two (full <-> peek)
+    // when it is fast or the finger itself passed half (Kostas, TEL-222: easy by accident before, hard on purpose after).
     const proj = y + project(v);
     const from = STATES.indexOf(dragFrom);
     const passed = STATES.filter((s) => (yFor(s) - startY) * (y - yFor(s)) > 0).length; // states the finger crossed
     let best = state;
     let bd = Infinity;
     for (const [i, s] of STATES.entries()) {
-      if (Math.abs(i - from) > 1 + passed) continue;
+      if (Math.abs(i - from) > 1 + passed + (Math.abs(v) >= FAST_FLICK ? 1 : 0)) continue;
       const d = Math.abs(yFor(s) - proj) * (s === 'half' ? HALF_PULL : 1);
       if (d < bd) { bd = d; best = s; }
     }

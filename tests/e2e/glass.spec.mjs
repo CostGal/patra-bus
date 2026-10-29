@@ -161,15 +161,22 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   for (const st of ['full', 'peek', 'half']) await page.evaluate((x) => window.__app.sheet.snap(x), st);
   await page.waitForTimeout(600);
   expect(await center()).toBe(before);
-  // a quick flick down from full stops at half, not at peek
-  await page.evaluate(() => window.__app.sheet.snap('full', { animate: false }));
-  await page.waitForTimeout(100);
-  const h = await page.locator('#sheet-handle').boundingBox();
-  await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2);
-  await page.mouse.down();
-  for (let i = 1; i <= 4; i++) { await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2 + i * 40); await page.waitForTimeout(8); }
-  await page.mouse.up();
-  await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('half');
+  // from full: an easy flick down stops at half; a fast one goes on to peek, and a fast one up from peek reaches full
+  const flick = async (from, dy, pause) => {
+    await page.evaluate((st) => window.__app.sheet.snap(st, { animate: false }), from);
+    await page.waitForTimeout(100);
+    const h = await page.locator('#sheet-handle').boundingBox();
+    const x = h.x + h.width / 2, y0 = h.y + h.height / 2;
+    await page.mouse.move(x, y0);
+    await page.mouse.down();
+    for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); if (pause) await page.waitForTimeout(pause); }
+    await page.mouse.up();
+    await page.waitForTimeout(700);
+    return page.evaluate(() => document.getElementById('sheet').dataset.state);
+  };
+  expect(await flick('full', 160, 40)).toBe('half');
+  expect(await flick('full', 240, 0)).toBe('peek');
+  expect(await flick('peek', -240, 0)).toBe('full');
   // peek is tight: the handle and the stop's first row only
   await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
   const tight = await page.evaluate(() => { const r = document.getElementById('sheet').getBoundingClientRect(); return innerHeight - r.top; });
