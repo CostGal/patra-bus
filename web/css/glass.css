@@ -174,7 +174,11 @@ html.glass .sheet-body {
     round 0 0 calc(var(--g-sheet-r) * (1 - var(--u))) calc(var(--g-sheet-r) * (1 - var(--u))));
 }
 /* a tight grabber (Kostas: minimal room around it); the finger still gets a 30 px strip, half of it over the map */
-html.glass .sheet-handle { height: 18px; }
+html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8px; }
+/* the iOS grabber: 36 x 5, 8 px from the top, a translucent grey */
+html.glass .sheet-pill { height: 5px; border-radius: 3px; background: rgba(60, 60, 67, .3); }
+@media (prefers-color-scheme: dark) { html.glass:not([data-theme="light"]) .sheet-pill { background: rgba(235, 235, 245, .3); } }
+html.glass[data-theme="dark"] .sheet-pill { background: rgba(235, 235, 245, .3); }
 html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; right: 0; top: -12px; bottom: 0; }
 /* the shrink-on-press of DESIGN §1 gives way to the grow of the glass (js/glass.js animates `scale`) */
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }

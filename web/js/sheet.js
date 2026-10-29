@@ -24,7 +24,7 @@ const SPRINGS = {
   'full>half': { damping: 1, response: 0.38 },
 };
 const SETTLE = { damping: 1, response: 0.35 };
-const HALF_PULL = 0.6; // distances to half count 60%: half is where most releases end
+const HALF_PULL = 0.85; // distances to half count 85%: half wins a close call, a clear flick still leaves it
 const springFor = (from, to) => SPRINGS[`${from}>${to}`] || SETTLE;
 
 export function createSheet(root, { onSnap, onMove } = {}) {
