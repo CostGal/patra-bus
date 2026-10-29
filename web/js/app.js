@@ -199,7 +199,6 @@ onChange(applyTheme);
 const fabsBottom = $('fabs-bottom');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
-let attribEl = null;
 const chipsEl = $('chips');
 const searchbarEl = $('searchbar');
 // What the map re-centres on between low and mid: home = the user's location (if the map has it), a stop or a pin =
@@ -227,8 +226,6 @@ function onMove({ lift, opacity }) {
   fabsBottom.style.opacity = String(opacity);
   fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
-  attribEl ||= appEl.querySelector('.maplibregl-ctrl-bottom-right');
-  if (attribEl) attribEl.style.transform = lift ? `translateY(${-lift}px)` : '';
 }
 
 // ---------------------------------------------------------------- locate FAB (idle -> centre -> follow -> compass)
@@ -950,7 +947,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: fabsBottom, avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

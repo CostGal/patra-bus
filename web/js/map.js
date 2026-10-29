@@ -89,15 +89,17 @@ export function createMap(container, opts = {}) {
     return fallbackApi('init');
   }
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+  const attribEl = container.querySelector('.maplibregl-ctrl-attrib');
+  // opts.attribInto: the shell's column of map buttons, where the (i) sits as one more round button (TEL-226); still
+  // on the map, always visible (CLAUDE.md rule 5)
+  if (attribEl && opts.attribInto) opts.attribInto.prepend(attribEl);
   // Attribution stays behind the (i) button: MapLibre opens compact mode on load, collapse it.
   const collapseAttrib = () => {
-    const el = container.querySelector('.maplibregl-ctrl-attrib');
-    el?.classList.remove('maplibregl-compact-show');
-    el?.removeAttribute('open');
+    attribEl?.classList.remove('maplibregl-compact-show');
+    attribEl?.removeAttribute('open');
   };
   collapseAttrib();
   map.once('load', collapseAttrib);
-  const attribEl = container.querySelector('.maplibregl-ctrl-attrib');
   if (attribEl) { // MapLibre re-opens it on style/resize events: keep it shut until the user opens it
     const guard = new MutationObserver(() => { if (attribEl.classList.contains('maplibregl-compact-show')) collapseAttrib(); });
     guard.observe(attribEl, { attributes: true, attributeFilter: ['class', 'open'] });

@@ -84,8 +84,6 @@ a { color: var(--primary); }
 .map .maplibregl-canvas:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; } /* it takes keyboard focus (arrow keys pan) */
 .has-chips { --chips-h: 0px; } /* the chips share the ☰'s row (TEL-223) */
 .is-offline { --offline-h: 44px; }
-.maplibregl-ctrl-bottom-right { transition: transform .3s var(--ease); }
-html.sheet-dragging .maplibregl-ctrl-bottom-right { transition: none; }
 
 /* ---------- ☰ and the search (TEL-223) ---------- */
 /* ☰ alone at the top left, a round floating button (material §4) */
@@ -274,10 +272,6 @@ html.sheet-dragging .fabs-bottom { transition: none; }
   .app:has(.sheet-search:not([hidden])) .sheet { padding-top: 0; }
   .sheet-search { padding: 14px var(--space-4) var(--space-1) 72px; }
   .no-map .sheet { top: 0; border-radius: 0; }
-  .maplibregl-ctrl-bottom-right { transform: none !important; }
-}
-@media (max-width: 899px) {
-  .maplibregl-ctrl-bottom-right { right: auto; left: 0; }
 }
 
 /* ---------- toast ---------- */
@@ -444,6 +438,17 @@ html.sheet-dragging .toast-host { transition: none; }
 .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) { background: transparent !important; box-shadow: none; }
 .maplibregl-ctrl-attrib-button { filter: none; width: 44px; height: 44px; background-size: 20px; background-repeat: no-repeat; background-position: center; opacity: .7; }
 .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 44px; min-width: 44px; }
+/* the (i) in the column of map buttons, above locate (TEL-226): a round button the size of the others, which opens
+   into the attribution pill to its left */
+.fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact {
+  margin: 0; min-width: 48px; min-height: 48px; max-width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));
+  border-radius: 24px; box-shadow: var(--shadow-1);
+}
+.fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+  box-sizing: border-box; width: 48px; height: 48px; padding: 0; background: var(--material-bg) !important; /* a circle, not MapLibre's pill */
+}
+.fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact-show { padding: 0 52px 0 14px; display: flex; align-items: center; }
+.fabs-bottom .maplibregl-ctrl-attrib-button { width: 48px; height: 48px; top: 0; right: 0; background-color: transparent; }
 :root[data-theme="dark"] .maplibregl-ctrl-attrib-button { filter: invert(1); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .maplibregl-ctrl-attrib-button { filter: invert(1); } }
 

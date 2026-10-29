@@ -240,3 +240,11 @@ test.describe('touch', () => {
     await expect(page.locator('#search-panel')).toBeVisible();
   });
 });
+
+test('map buttons: the attribution (i) sits in the column of map buttons, above locate', async ({ page }) => {
+  await page.goto('/?demo#/');
+  await expect(page.locator('#locate-btn')).toBeVisible();
+  const order = await page.evaluate(() => [...document.getElementById('fabs-bottom').children].map((e) => e.id || e.className.split(' ').find((c) => c.startsWith('maplibregl-ctrl-')) || e.className));
+  expect(order[0]).toBe('maplibregl-ctrl-attrib');
+  expect(order.at(-1)).toBe('locate-btn');
+});
