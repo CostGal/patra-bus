@@ -71,7 +71,7 @@ const SURFACE = '.fab, .chip, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
 const ROW = '.stop-row, .lines-row, .pl-sug'; // full-width list rows: a highlight, no growing
 const ROUND = '.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button'; // round buttons grow the most
-const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, ${ROW}`;
+const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, .map-capsule *, ${ROW}`; // capsule segments: a tint, no growing
 const SPRING = 'cubic-bezier(.34, 1.56, .64, 1)'; // overshoots a little: the "liquid" settle
 const clamp = (v, m) => Math.max(-m, Math.min(m, v));
 let pressed = null;

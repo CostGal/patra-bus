@@ -72,7 +72,7 @@ html.glass { -webkit-user-select: none; user-select: none; -webkit-touch-callout
 html.glass :is(input, textarea, select, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
 
 /* ---------- glass: floating chrome ---------- */
-html.glass .menu-fab, html.glass .fab, html.glass .chip {
+html.glass .menu-fab, html.glass .fab, html.glass .chip, html.glass .map-capsule {
   background: var(--g-sheen), var(--g-bg);
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
@@ -165,6 +165,14 @@ html.glass .fab.g-ping::after {
   animation: g-ping .6s ease-out;
 }
 @keyframes g-ping { from { transform: scale(1); opacity: .85; } to { transform: scale(2.1); opacity: 0; } }
+/* in the map capsule (TEL-226) the buttons are flat segments of its glass: no glass, rim or shadow of their own; held,
+   a segment darkens a little (locate still fills blue, in its own rounded segment); the line between them is a hairline */
+html.glass .map-capsule > .fab { background: transparent; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.glass .map-capsule:has(> .maplibregl-ctrl-attrib:not(.maplibregl-attrib-empty)) > .fab { box-shadow: inset 0 .5px 0 var(--g-hair); }
+html.glass .map-capsule > .fab.g-press { background: var(--g-bg); }
+html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press { background-color: var(--g-row); border-radius: 24px 24px 0 0; }
+html.glass-fx .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) { background: transparent !important; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.glass .map-capsule .fab.g-ping::after { border-radius: inherit; }
 
 /* the sheet handle: a more reactive pill. Held or dragged it widens, thickens and darkens inside a small glass capsule;
    js/glass.js ticks it each time a drag passes one of the three states (js/sheet.js) */
@@ -194,7 +202,7 @@ html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; righ
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
 
 /* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
-html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip {
+html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip, html.glass-lens .map-capsule {
   -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
 }
 html.glass-lens .sheet::before, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {

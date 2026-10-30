@@ -66,7 +66,10 @@
 
     <div class="fabs-bottom" id="fabs-bottom">
       <button type="button" class="fab fab-sm" id="north-btn" aria-label="Επαναφορά βορρά" hidden></button>
-      <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
+      <!-- the map buttons in one glass capsule (TEL-226): the map's (i) goes in above locate (map.js, attribInto) -->
+      <div class="map-capsule" id="map-capsule">
+        <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
+      </div>
     </div>
 
     <section class="sheet" id="sheet" aria-label="Πληροφορίες" data-state="half">

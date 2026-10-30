@@ -453,6 +453,15 @@ html.sheet-dragging .toast-host { transition: none; }
 .maplibregl-ctrl-attrib.maplibregl-compact { min-height: 44px; min-width: 44px; }
 /* the (i) in the column of map buttons, above locate (TEL-226): a round button the size of the others, which opens
    into the attribution pill to its left */
+/* the map buttons in one capsule (TEL-226): the capsule is the surface (css/glass.css), the buttons in it are flat
+   segments split by a 0.5 px line; the (i), open, leaves the capsule as a pill to its left and the capsule keeps its room */
+.map-capsule { position: relative; display: flex; flex-direction: column; width: 48px; border-radius: 24px; background: var(--material-bg); box-shadow: var(--shadow-1); }
+.map-capsule:has(.maplibregl-compact-show) { padding-top: 48px; }
+.map-capsule > .fab { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0 0 24px 24px; }
+.map-capsule > .fab:only-child, .map-capsule:has(> .maplibregl-attrib-empty) > .fab { border-radius: 24px; }
+.map-capsule:has(> .maplibregl-ctrl-attrib:not(.maplibregl-attrib-empty)) > .fab { box-shadow: inset 0 .5px 0 var(--border); }
+.map-capsule .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) { background: transparent !important; box-shadow: none; border-radius: 24px 24px 0 0; }
+.map-capsule .maplibregl-ctrl-attrib.maplibregl-compact-show { position: absolute; z-index: 1; top: 0; right: 0; width: max-content; } /* not the capsule's 48 px */
 .fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact {
   margin: 0; min-width: 48px; min-height: 48px; max-width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));
   border-radius: 24px; box-shadow: var(--shadow-1);

@@ -46,15 +46,16 @@ test('glass: on by default', async ({ page }) => {
   await expect(page.locator('.stopv-chip').nth(1)).toHaveClass(/\bon\b/);
   await expect.poll(lensOn).toBe(true);
   await page.locator('.stopv-chip').first().click();
-  // a press lights the glass up and grows it, release lets it go
+  // a press lights the button up, release lets it go
   const fab = page.locator('#locate-btn');
   const restBg = await fab.evaluate((el) => getComputedStyle(el).backgroundColor);
   const box = await fab.boundingBox();
   await page.mouse.move(box.x + 10, box.y + 10);
   await page.mouse.down();
   await expect(fab).toHaveClass(/g-press/);
-  // touch & hold: it grows (Web Animations on `scale`)
-  await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
+  // a segment of the map capsule (TEL-226): it does not grow out of the capsule
+  await page.waitForTimeout(200);
+  expect(await fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBe(1);
   // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
   // (the browser may report the blue in any colour space, so check the white icon on it and that the fill changed)
   await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)'); // after its .15s transition
@@ -263,12 +264,19 @@ test.describe('touch', () => {
   });
 });
 
-test('map buttons: the attribution (i) sits in the column of map buttons, above locate', async ({ page }) => {
+test('map buttons: one glass capsule, the attribution (i) above locate (TEL-226)', async ({ page }) => {
   await page.goto('/?demo#/');
   await expect(page.locator('#locate-btn')).toBeVisible();
-  const order = await page.evaluate(() => [...document.getElementById('fabs-bottom').children].map((e) => e.id || e.className.split(' ').find((c) => c.startsWith('maplibregl-ctrl-')) || e.className));
-  expect(order[0]).toBe('maplibregl-ctrl-attrib');
-  expect(order.at(-1)).toBe('locate-btn');
+  const order = await page.evaluate(() => [...document.getElementById('map-capsule').children].map((e) => e.id || e.className.split(' ').find((c) => c.startsWith('maplibregl-ctrl-')) || e.className));
+  expect(order).toEqual(['maplibregl-ctrl-attrib', 'locate-btn']);
+  const look = await page.evaluate(() => {
+    const cap = getComputedStyle(document.getElementById('map-capsule'));
+    const fab = getComputedStyle(document.getElementById('locate-btn'));
+    return { capBlur: cap.backdropFilter, fabBlur: fab.backdropFilter, width: document.getElementById('map-capsule').getBoundingClientRect().width };
+  });
+  expect(look.capBlur).toContain('blur('); // the capsule is the glass…
+  expect(look.fabBlur).toBe('none'); // …its buttons are flat segments of it
+  expect(look.width).toBe(48);
 });
 
 test.describe('search near me', () => {

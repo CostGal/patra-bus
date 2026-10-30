@@ -969,7 +969,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), attribInto: fabsBottom, avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-capsule'), avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');
