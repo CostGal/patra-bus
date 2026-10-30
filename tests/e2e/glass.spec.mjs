@@ -305,3 +305,20 @@ test.describe('touch close', () => {
     await expect(page.locator('#menu-pop')).toBeHidden();
   });
 });
+
+test('sheet mid fits the view: the first arrival whole, the second just started (TEL-224)', async ({ page }) => {
+  await page.goto('/?demo&debug#/stop/1011');
+  const items = page.locator('.stopv-list > li');
+  await expect(page.locator('.stopv .atile:not(.atile-skel)').nth(1)).toBeVisible();
+  await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    const cut = innerHeight - 8; // the floating card ends a margin above the screen's bottom
+    const [a, b] = [...document.querySelectorAll('.stopv-list > li')].map((li) => li.getBoundingClientRect());
+    return { firstWhole: a.bottom <= cut + 1, secondStarted: b.top < cut, secondCut: b.bottom > cut, share: (cut - b.top) / b.height };
+  });
+  expect(await items.count()).toBeGreaterThan(1);
+  expect(r.firstWhole).toBe(true);
+  expect(r.secondStarted).toBe(true);
+  expect(r.secondCut).toBe(true);
+});

@@ -590,7 +590,7 @@ function mountHome(container, c) {
   const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
   const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
   const more = h('div', { class: 'home-more', hidden: true });
-  const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
+  const card = h('div', { class: 'home-card', 'data-mid-end': '1' }, box.onboard, box.places, box.nearby); // mid ends under it (js/sheet.js)
   const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
   container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
   const views = {};

@@ -300,6 +300,11 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
+    // where mid ends (TEL-224, js/sheet.js): 20% into the second arrival, so a bit of it says the list goes on; with one
+    // arrival (or a message) right under it. The loading skeleton is marked the same way, so mid does not jump on load.
+    const rows = body.querySelectorAll('.stopv-list > li');
+    const midEnd = rows[1] || rows[0] || body.querySelector('.stopv-state');
+    if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.2' : '1';
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });

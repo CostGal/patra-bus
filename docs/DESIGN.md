@@ -57,6 +57,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   the search's place, with a ✕ back home.
   **Low on a stop** (TEL-224): the name (at most two lines), and the lines arriving as flat coloured pills (the badges
   alone); dragging up, the pills grow into the filter chips with the sheet ("All" unfolds in front), and back.
+  **Mid fits the view** (TEL-224): on a stop it ends 20% into the second arrival (the first whole, a glimpse of the
+  next says the list goes on); on home, under its card; 35–60% of the screen, and it follows as the content loads.
   Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
   stays still while the sheet moves; once the sheet is let go between low and mid, the map glides its focus (the stop,
   or your location on home) to the centre of the part left above the sheet, as in Apple Maps. Legibility comes

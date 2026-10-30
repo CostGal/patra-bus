@@ -59,10 +59,24 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (!head) return 96;
     return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop) + 10;
   }
+  // mid: half the screen, unless the view marks where it ends with [data-mid-end="<share of that element>"] (the stop:
+  // 20% into its second arrival; home: its card, TEL-224), kept between 35% and 60% of the screen
+  function midRow() {
+    const end = content.querySelector('[data-mid-end]');
+    if (!end || !end.offsetParent) return null;
+    const r = end.getBoundingClientRect();
+    const share = Math.max(0, Math.min(1, Number(end.dataset.midEnd) || 1));
+    return handle.offsetHeight + Math.round(r.top - body.getBoundingClientRect().top + body.scrollTop + r.height * share);
+  }
   function measure() {
     H = root.offsetHeight;
     const peek = Math.min(Math.max(64, peekPx ?? firstRow()) + probe.offsetHeight, H);
-    SZ = { peek, half: Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100)), full: H };
+    const mid = midRow();
+    const half = mid == null ? Math.round(innerHeight * 0.5)
+      // + the space under the floating card (its margin, or the home bar), where the content is cut (css/glass.css)
+      : Math.max(Math.round(innerHeight * 0.35), Math.min(Math.round(innerHeight * 0.6),
+        mid + Math.max(parseFloat(getComputedStyle(root).getPropertyValue('--g-sheet-m')) || 0, probe.offsetHeight)));
+    SZ = { peek, half: Math.max(peek + 40, Math.min(half, H - 100)), full: H };
   }
   const yFor = (s) => H - SZ[s];
 
@@ -95,12 +109,12 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   // sheet:settle when the sheet comes to rest (glass.js re-places what it measured while the content was morphing)
   const settled = () => root.dispatchEvent(new CustomEvent('sheet:settle'));
   const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
-  // the content changes height (the stop's line pills appear once its arrivals load): low follows it
+  // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
   new ResizeObserver(() => {
-    if (dragging || inert() || peekPx != null || !H) return;
-    const before = SZ.peek;
+    if (dragging || inert() || !H) return;
+    const before = SZ[state];
     measure();
-    if (SZ.peek !== before && state === 'peek') moveTo('peek');
+    if (SZ[state] !== before && state !== 'full') moveTo(state);
   }).observe(content);
 
   // prefers-reduced-motion: bypass physics entirely, a short opacity cross-fade on the content instead
