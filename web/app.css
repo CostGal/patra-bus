@@ -188,6 +188,7 @@ a { color: var(--primary); }
   position: fixed; z-index: 19; right: calc(var(--safe-right) + 12px); bottom: var(--space-4);
   display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);
   /* z 19, under the sheet (20): above mid the sheet slides over it instead of it fading in front (TEL-227) */
+  will-change: transform;
   /* (no transition on transform: app.js moves it with the sheet on every frame, so it stays glued at the same distance
      above the sheet, like the attribution line, TEL-227) */
 }
@@ -484,3 +485,13 @@ html.sheet-dragging .toast-host { transition: none; }
   .guide-hint.is-leaving { animation: guide-hint-out-reduced .12s linear both; }
 }
 @keyframes guide-hint-out-reduced { to { opacity: 0; } }
+
+/* TEL-227: as the installed app with a see-through status bar (index.html: black-translucent), iOS can make the
+   viewport the status bar's height shorter than the screen, so whatever is fixed to the bottom stopped short of it.
+   100vh is the whole screen there: the bottom edges move down by the difference (0 where there is none) */
+@media (display-mode: standalone) and (max-width: 899px) {
+  .app, .sheet { bottom: calc(100% - 100vh); }
+  .fabs-bottom { bottom: calc(var(--space-4) + 100% - 100vh); }
+  .toast-host { bottom: calc(16px + var(--safe-bottom) + 100% - 100vh); }
+  .map-attrib { bottom: calc(2px + 100% - 100vh); }
+}

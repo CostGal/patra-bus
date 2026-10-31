@@ -220,12 +220,17 @@ function onSnap({ state, visible, desktop }) {
   const from = lastSnap;
   lastSnap = state;
   const lowMid = (from === 'peek' && state === 'half') || (from === 'half' && state === 'peek');
-  if (!desktop && lowMid && !routeSnap && (currentHead === '' || focusPt)) map.recenter(focusPt);
+  // Search mode (home) centres on the user; location mode (a stop, a pin) on that point, and stops following the user,
+  // or the next GPS fix would pull the map back to them (TEL-227)
+  if (!desktop && lowMid && !routeSnap) {
+    if (focusPt) { if (locMode !== 'idle') setLocMode('idle'); map.recenter(focusPt); }
+    else if (currentHead === '') map.recenter(null);
+  }
 }
 function onMove({ visible, lift, opacity }) {
+  // the map buttons stay opaque: past mid the sheet slides over them (z-index, app.css). Fading a glass (backdrop-filter)
+  // layer drew it grey for a moment on iPhone (TEL-227)
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
-  fabsBottom.style.opacity = String(opacity);
-  fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
   mapAttrib.style.transform = visible ? `translateY(${-visible}px)` : ''; // glued to the sheet's edge, every frame, all the way up
   mapAttrib.style.opacity = String(opacity);
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';

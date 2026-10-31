@@ -195,7 +195,10 @@ learned building it, as rules:
   while up or held (`sheet.js` does not measure then) and must be put back on `sheet:leave-full`, before it measures.
 - A discrete layout jump (a title moving to its own row) hides in a short blur (0.18 s), as in Apple Maps.
 - Things floating over the map move with the sheet on every frame, no CSS transition on `transform` (the capsule and
-  the attribution line stay at the same distance above the sheet).
+  the attribution line stay at the same distance above the sheet). Never fade a glass (backdrop-filter) layer: iOS draws
+  it grey for a moment; the map capsule stays opaque and the sheet slides over it past mid (z-index).
+- Between low and mid the map glides to the focus: the user's location in search mode, the stop (or pin) in location
+  mode, where following the user stops (the next GPS fix would pull the map back).
 - Up from mid is quicker than the other moves (spring response 0.3).
 - As the installed app the map runs under the status bar (`apple-mobile-web-app-status-bar-style: black-translucent`,
   white status text, Kostas 2026-10-31): everything near the top keeps clear of it with `--safe-top`.
