@@ -39,7 +39,7 @@ html.glass {
   /* TEL-227: mid more see-through (55% → 26%) with a lighter blur of its own (10 px), as in Apple Maps */
   --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 3%; --g-sheet-a1: 26%;
   --g-blur-sheet: blur(10px) saturate(200%) brightness(1.04);
-  --g-circle: rgba(255, 255, 255, .41); --g-circle-shadow: rgba(0, 0, 0, .07); /* the card's round buttons (TEL-227) */
+  --g-circle: rgba(255, 255, 255, .41); --g-circle-shadow: rgba(0, 0, 0, .14); /* light: a little more shadow */ /* the card's round buttons (TEL-227) */
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
   /* the search field's grey fill and the 0.5 px list hairlines (TEL-223, Apple Maps; estimates, not published values) */
   --sb-fill: rgba(118, 118, 128, .14); --g-hair: rgba(60, 60, 67, .18);
@@ -205,6 +205,7 @@ html.glass .sheet-body {
 }
 /* a tight grabber (Kostas: minimal room around it); the finger still gets a 30 px strip, half of it over the map */
 html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8px; }
+html.glass .sheet:has(.stopv) .sheet-handle { height: 14px; } /* the stop's name 4 px closer to the grabber (TEL-227) */
 /* the iOS grabber: 36 x 5, 8 px from the top, a translucent grey */
 html.glass .sheet-pill { height: 5px; border-radius: 3px; background: rgba(60, 60, 67, .3); }
 @media (prefers-color-scheme: dark) { html.glass:not([data-theme="light"]) .sheet-pill { background: rgba(235, 235, 245, .3); } }
@@ -221,6 +222,8 @@ html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
   -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
 }
 html.glass-lens .sheet::before { -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); }
+/* TEL-227: the sheet's blur, 6 px at low growing to 7 px from mid (--l) */
+html.glass .sheet { --g-blur-sheet: blur(calc(6px + var(--l, 1) * 1px)) saturate(190%); }
 
 /* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring, --g-morph = 0..1).
    The glass starts clear over the pressed ☰ circle and its blur grows with the shape, so the ☰ lines blur out through
@@ -328,8 +331,10 @@ html.glass .stopv-chipbar > .g-lens { opacity: var(--l, 1); }
 html.glass .btn.round.g-circle {
   background-image: var(--g-sheen); background-color: var(--g-circle);
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 4px var(--g-circle-shadow);
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 5px var(--g-circle-shadow);
 }
+/* in the sheet: lighter blur, 5 px at low growing to 5.6 px from mid (--l) */
+html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: blur(calc(4.9px + var(--l, 1) * .7px)) saturate(180%); backdrop-filter: blur(calc(4.9px + var(--l, 1) * .7px)) saturate(180%); }
 html.glass .btn.round.g-circle.g-press { background-color: var(--g-pressed); }
 /* directions: tinted blue glass while the sheet floats, solid blue up (--u: 0 up to mid, 1 up) */
 html.glass .sheet .stopv-pill.primary {
@@ -388,4 +393,9 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
     --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-sheet: none; --g-circle: var(--muted); --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
     --g-line: 1px solid var(--border);
   }
+}
+/* TEL-227: the sheet and its round buttons set their own blur; solid there too */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  html.glass .sheet { --g-blur-sheet: none; }
+  html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }

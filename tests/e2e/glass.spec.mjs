@@ -14,7 +14,7 @@ test('glass: on by default', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.classList.contains('glass'))).toBe(true);
   // Chromium: refraction filter in front of the blur
   await expect(page.locator('html.glass-lens')).toHaveCount(1);
-  expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(10px\)/);
+  expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(/);
   // the sticky chip bar has no band at rest; its blur layer shows only once the list scrolls under it
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar')).backgroundImage)).toBe('none');
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar'), '::before').backdropFilter)).toContain('blur(');

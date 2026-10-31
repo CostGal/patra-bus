@@ -72,8 +72,10 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   badges slide down into their row, growing into the filter chips ("All" unfolds in front); they cross nothing. The
   stop's number is at the very bottom of the view, under the arrivals. Content in the floating card sits 16 px from its
   edge. No ⋯ for now (its two items are on screen; it comes back with an island of the stop card once it has its own
-  items). The sheet goes up from mid 25% quicker than before. **Glass, lighter** (TEL-227): the sheet at mid is 26%
-  tint with a 10 px blur; the floating controls 7 px, menus and dialogs 9 px.
+  items). The sheet goes up from mid 25% quicker than before. Header, chips, directions and cards share one inset (16 px
+  from the card's edge); on the stop the grabber area is 14 px (18 elsewhere), so the name sits close to it.
+  **Glass, lighter** (TEL-227): the sheet at mid is 26% tint, its blur 6 px at low growing to 7 px from mid; the card's
+  round buttons 4.9 → 5.6 px; the floating controls 7 px, menus and dialogs 9 px.
   **Mid fits the view** (TEL-224, TEL-227): on a stop it ends a third into the second arrival (the first whole, about
   30–35% of the next card says the list goes on, as in Apple Maps); on home, under its card; 35–60% of the screen, and
   it follows as the content loads.

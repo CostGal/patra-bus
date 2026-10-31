@@ -12,7 +12,10 @@
    nothing. The stop's number is at the very bottom (.stopv-code) */
 .stopv-head { display: flex; flex-direction: column; margin-bottom: -6px; } /* the chips 6 px under it, not 12 */
 /* the circles are centred on the name's first line */
-.stopv-top { display: grid; grid-template-columns: var(--control-h) minmax(0, 1fr) var(--control-h); align-items: start; gap: var(--space-1); margin: -17px -8px 0; }
+/* (no side margin: the circles' outer edges line up with the cards below) */
+.stopv-top { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: start; gap: var(--space-1); margin: -17px 0 0; }
+/* the circles sit 3 px lower than the name's centre would put them: higher, the sheet's top edge cut them */
+.stopv-top > .btn.round.g-circle { margin: 10px 0 -10px; } /* (not taller: the row keeps the name's height) */
 .stopv-titles { position: relative; min-width: 0; padding-top: 5px; text-align: center; }
 /* low ends here (js/sheet.js): the badges' line under the name (4 + 18 px) and 4 px more */
 .stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: 26px; pointer-events: none; }
@@ -29,7 +32,7 @@
 
 /* from mid, under the line chips: directions (wide) and ☆ */
 .stopv-acts { display: flex; align-items: center; gap: var(--space-2); }
-.stopv-acts > .stopv-star { margin: 3px; }
+.stopv-acts > .btn.round.g-circle { margin: 0; }
 .stopv-pill { position: relative; display: inline-flex; flex: 1 1 auto; min-width: 0; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 var(--space-3);
   border: 0; border-radius: var(--radius-full); background: var(--primary); color: var(--primary-foreground); font: inherit; font-size: .9375rem; font-weight: var(--weight-semibold); cursor: pointer; }
 .stopv-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
