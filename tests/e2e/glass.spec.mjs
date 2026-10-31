@@ -53,12 +53,10 @@ test('glass: on by default', async ({ page }) => {
   await page.mouse.move(box.x + 10, box.y + 10);
   await page.mouse.down();
   await expect(fab).toHaveClass(/g-press/);
-  // a segment of the map capsule (TEL-226): it does not grow out of the capsule
-  await page.waitForTimeout(200);
-  expect(await fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBe(1);
-  // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
-  // (the browser may report the blue in any colour space, so check the white icon on it and that the fill changed)
-  await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)'); // after its .15s transition
+  // a segment of the map capsule (TEL-226), held, pops out like ☰: it grows into a whiter glass circle, then sends out
+  // a ring on a tap
+  await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
+  await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('50%');
   expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBg);
   await page.mouse.move(5, 300);
   await page.mouse.up();

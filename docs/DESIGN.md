@@ -72,7 +72,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Same logic elsewhere: every round button (☆, ⋯, ✕,
   the map's i) presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
   to the stop's close ✕) and the map's i grows into the attribution pill and back (it shares one vertical glass capsule with locate, split by a
-  hairline: the buttons in it are flat segments that tint when held, locate still fills blue; TEL-226); the selected line chip is one glass
+  hairline: the buttons in it are flat segments that, held, pop out like ☰ into a whiter glass circle; closing the
+  pill has no shrink morph back into the capsule; TEL-226); the selected line chip is one glass
   lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
   contrast), search results (on the solid up sheet), stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
