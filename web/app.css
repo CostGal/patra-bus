@@ -485,15 +485,3 @@ html.sheet-dragging .toast-host { transition: none; }
   .guide-hint.is-leaving { animation: guide-hint-out-reduced .12s linear both; }
 }
 @keyframes guide-hint-out-reduced { to { opacity: 0; } }
-
-/* TEL-227: as the installed app with a see-through status bar (index.html: black-translucent), iOS can make the
-   viewport shorter than the screen by the status bar's height, so whatever is fixed to the bottom stopped short of it.
-   index.html measures that strip on the device (--vp-gap, 0 when there is none): the page and the fixed layers reach
-   down over it */
-@media (display-mode: standalone) and (max-width: 899px) {
-  html, body { height: calc(100% + var(--vp-gap, 0px)); }
-  .app, .sheet { bottom: calc(0px - var(--vp-gap, 0px)); }
-  .fabs-bottom { bottom: calc(var(--space-4) - var(--vp-gap, 0px)); }
-  .toast-host { bottom: calc(16px + var(--safe-bottom) - var(--vp-gap, 0px)); }
-  .map-attrib { bottom: calc(2px - var(--vp-gap, 0px)); }
-}

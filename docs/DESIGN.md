@@ -200,8 +200,10 @@ learned building it, as rules:
 - Between low and mid the map glides to the focus: the user's location in search mode, the stop (or pin) in location
   mode, where following the user stops (the next GPS fix would pull the map back).
 - Up from mid is quicker than the other moves (spring response 0.3).
-- As the installed app the map runs under the status bar (`apple-mobile-web-app-status-bar-style: black-translucent`,
-  white status text, Kostas 2026-10-31): everything near the top keeps clear of it with `--safe-top`.
+- The installed app keeps `apple-mobile-web-app-status-bar-style: default` (the map stops under the status bar). We
+  tried `black-translucent` (map under the status bar, as in Apple Maps): iOS then left an empty strip, the status
+  bar's height, at the bottom of the app, and neither `100vh` nor a measured gap filled it. Do not switch back without
+  a fix proven on a real iPhone.
 
 **Measuring in JS**
 - Measure with transitions off (`style.transition = 'none'`): with reduced motion app.css gives every change a 0.01 ms
