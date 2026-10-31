@@ -6,36 +6,37 @@
 .stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* ---- header (TEL-227: an Apple Maps place card) ---- */
-/* share · centred name and "Stop 1011 · <badges>" · close; the name is always one line, cut with "…", so the card is
-   the same height whatever the name */
-.stopv-head { display: flex; flex-direction: column; gap: 10px; }
+/* share · centred name and "Stop 1011 · <badges>" · close. The name is one line (22 px, shrunk to 18 px by
+   js/arrivals-view.js before it is cut with "…"), so low is the same height for every stop; at up, the large title */
+.stopv-head { display: flex; flex-direction: column; }
 .stopv-top { display: grid; grid-template-columns: var(--control-h) minmax(0, 1fr) var(--control-h); align-items: start; gap: var(--space-1); margin: -6px -8px 0; }
 .stopv-titles { min-width: 0; padding-top: 6px; text-align: center; }
-.stopv-name { margin: 0; overflow: hidden; font-size: var(--text-xl); line-height: 1.2; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.stopv-name { margin: 0; overflow: hidden; font-size: 1.375rem; line-height: 1.2; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+/* up (the sheet at rest there): 28 px, up to two lines; it grows in, and is back to one line at once on the way down */
+.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; font-size: 1.75rem; white-space: normal; overflow-wrap: anywhere; transition: font-size .25s ease-out; }
+@media (prefers-reduced-motion: reduce) { .stopv-head.is-up .stopv-name { transition: none; } }
 .stopv-sub { display: flex; justify-content: center; align-items: center; min-height: 22px; margin: 4px 0 0; color: var(--muted-foreground); font-size: .85rem; white-space: nowrap; }
 .stopv-code { overflow: hidden; text-overflow: ellipsis; }
 /* the slot where the line badges sit at low (css/glass.css opens it on the phone sheet); no badges, no dot */
 .stopv-slot { display: none; flex: none; overflow: hidden; height: 20px; align-items: center; }
 .stopv-dot { margin: 0 6px; }
-/* share and ✕: a visible 32 px circle inside the 44 px button, as in Apple Maps; the button keeps its size and tap area */
-.stopv-top > .btn.round { background: radial-gradient(circle, var(--muted) 15.5px, transparent 16px); }
-.stopv-top > .btn.round .icon { width: 18px; height: 18px; }
 
-/* the pill row: directions (primary, wide) and ☆. The row keeps the 40 px of mid at every state; at low the pills are
-   28 px (css/glass.css) and low ends at their bottom (.stopv-peek, js/sheet.js) */
-.stopv-acts { position: relative; display: flex; align-items: flex-start; gap: var(--space-2); height: 40px; }
-.stopv-peek { position: absolute; left: 0; top: 0; width: 1px; height: 28px; pointer-events: none; }
-.stopv-pill { position: relative; display: inline-flex; flex: 1 1 auto; min-width: 0; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 var(--space-3);
-  border: 0; border-radius: var(--radius-full); background: var(--muted); color: var(--primary); font: inherit; font-size: .9375rem; font-weight: var(--weight-semibold); cursor: pointer; }
-.stopv-pill::after { content: ''; position: absolute; inset: min(0px, calc((100% - 44px) / 2)) 0; } /* 44 px tap area at any height */
-.stopv-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stopv-pill .icon { width: 18px; height: 18px; }
-.stopv-pill .icon-walk { fill: currentColor; stroke: none; }
-.stopv-pill.primary { background: var(--primary); color: var(--primary-foreground); }
-.stopv-pill:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.stopv-star { flex: none; aspect-ratio: 1; padding: 0; }
+/* one round button for the whole card (share, ✕, ☆): a 38 px circle (glass in css/glass.css) with a 44 px tap area */
+.btn.round.g-circle { width: 38px; height: 38px; margin: 3px; background: var(--muted); color: var(--foreground); }
+.btn.round.g-circle::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; }
+.btn.round.g-circle .icon { width: 20px; height: 20px; stroke-width: 2.25; }
 .stopv-star.on { color: var(--warning); }
 .stopv-star.on .icon { fill: currentColor; }
+
+/* from mid, under the line chips: directions (wide) and ☆ */
+.stopv-acts { display: flex; align-items: center; gap: var(--space-2); }
+.stopv-acts > .stopv-star { margin: 3px; }
+.stopv-pill { position: relative; display: inline-flex; flex: 1 1 auto; min-width: 0; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-full); background: var(--primary); color: var(--primary-foreground); font: inherit; font-size: .9375rem; font-weight: var(--weight-semibold); cursor: pointer; }
+.stopv-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stopv-pill .icon { width: 20px; height: 20px; }
+.stopv-pill .icon-walk { fill: currentColor; stroke: none; }
+.stopv-pill:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 /* "⋯" menu: no longer on the stop (TEL-227); kept for the coming island of the stop card (☆ ⋯), see js/glass.js */
 .stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }

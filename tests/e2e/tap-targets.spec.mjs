@@ -4,7 +4,7 @@
 // footer, so a measure-then-probe across two round trips raced with it in CI.
 import { test, expect } from './mock.mjs';
 
-const CONTROLS = ['.stopv-refresh', '.stopv-chip', '.stopv-pill']; // .stopv-pill: TEL-227
+const CONTROLS = ['.stopv-refresh', '.stopv-chip'];
 
 for (const sel of CONTROLS) {
   test(`stop view: ${sel} can be tapped anywhere in a 44 px high area`, async ({ page }) => {

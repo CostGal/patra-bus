@@ -14,7 +14,7 @@ test('glass: on by default', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.classList.contains('glass'))).toBe(true);
   // Chromium: refraction filter in front of the blur
   await expect(page.locator('html.glass-lens')).toHaveCount(1);
-  expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(14px\)/);
+  expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(20px\)/);
   // the sticky chip bar has no band at rest; its blur layer shows only once the list scrolls under it
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar')).backgroundImage)).toBe('none');
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar'), '::before').backdropFilter)).toContain('blur(');
@@ -185,24 +185,31 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   const low = await page.evaluate(() => {
     const s = document.getElementById('sheet').getBoundingClientRect();
     const pill = document.querySelector('.stopv-pill.primary').getBoundingClientRect();
+    const sub = document.querySelector('.stopv-sub').getBoundingClientRect();
     const code = document.querySelector('.stopv-code').getBoundingClientRect();
     const name = document.querySelector('.stopv-name');
     const badge = document.querySelector('.stopv-chip:not([data-key="*"]) .badge').getBoundingClientRect();
-    return { shown: innerHeight - s.top, below: innerHeight - pill.bottom, pillH: pill.height, oneLine: name.scrollHeight <= name.clientHeight + 1,
+    return { shown: innerHeight - s.top, subBelow: innerHeight - sub.bottom, pillTop: pill.top - innerHeight, oneLine: name.scrollHeight <= name.clientHeight + 1,
       badgeOff: Math.abs((badge.top + badge.bottom) / 2 - (code.top + code.bottom) / 2), badgeGap: badge.left - code.right };
   });
-  expect(low.below).toBeGreaterThan(0); // the small pills are on screen
-  expect(low.below).toBeLessThan(40); // and low ends right under them
-  expect(low.pillH).toBeLessThan(32); // small at low (28 px), 40 px from mid
+  expect(low.subBelow).toBeGreaterThan(0); // the subtitle with the badges is on screen
+  expect(low.subBelow).toBeLessThan(30); // and low ends right under it
+  expect(low.pillTop).toBeGreaterThan(-12); // directions and ☆ are not shown at low (below the card's edge)
   expect(low.oneLine).toBe(true); // the name is one line, cut with "…": low is the same height for every stop
-  expect(low.shown).toBeLessThan(135); // 126 px (it was 168 here before TEL-227)
+  expect(low.shown).toBeLessThan(100); // ~93 px (it was 168 here before TEL-227)
   expect(low.badgeOff).toBeLessThan(3); // the line badges sit on the subtitle line...
   expect(low.badgeGap).toBeGreaterThan(8); // ...after "Στάση 1011 ·"
   expect(low.badgeGap).toBeLessThan(30);
   // and from mid they are the filter chips again, in their own row under the pills
   await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
   await page.waitForTimeout(150);
-  expect(await page.evaluate(() => document.querySelector('.stopv-chipbar').getBoundingClientRect().top - document.querySelector('.stopv-acts').getBoundingClientRect().bottom)).toBeGreaterThan(0);
+  // from mid the chips are right under the header and the directions row under them, so the badges cross nothing
+  expect(await page.evaluate(() => document.querySelector('.stopv-acts').getBoundingClientRect().top - document.querySelector('.stopv-chipbar').getBoundingClientRect().bottom)).toBeGreaterThan(0);
+  // up, at rest: the large title (28 px, up to two lines); back to one line as soon as the sheet leaves up
+  await page.evaluate(() => window.__app.sheet.snap('full'));
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('.stopv-name')).fontSize)).toBe('28px');
+  await page.evaluate(() => window.__app.sheet.snap('half'));
+  await expect.poll(() => page.evaluate(() => document.querySelector('.stopv-head').classList.contains('is-up'))).toBe(false);
 });
 
 test('search in the sheet: ☰ alone at the top, search home only, open = up, closed = back where it was', async ({ page }) => {

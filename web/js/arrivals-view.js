@@ -123,10 +123,11 @@ export function mountStop(container, ctx, { code }) {
 
   addRecent('stop', { code, name: stop.displayName });
 
-  // ---- header (TEL-227, an Apple Maps place card): share · centred name and "Stop 1011 · <line badges>" · close;
-  // under it the pill row: directions and ☆. The ⋯ menu is gone: its two items are on screen now ----
-  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
-  const star = h('button', { type: 'button', class: 'stopv-pill stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
+  // ---- header (TEL-227, an Apple Maps place card): share · centred name and "Stop 1011 · <line badges>" · close.
+  // Low is this header alone; from mid, under the line chips, the row of directions and ☆. The ⋯ menu is gone: its
+  // two items are on screen now. Every round button here is one glass circle (.g-circle) ----
+  const iconBtn = (name, label, onclick, cls = '') => h('button', { type: 'button', class: `btn round g-circle${cls}`, 'aria-label': label, title: label, onclick }, icon(name));
+  const star = iconBtn('star', '', () => { toggleFavorite(code); paintStar(); }, ' stopv-star');
   function paintStar() {
     const on = isFavorite(code);
     const label = on ? t('Αφαίρεση από τα αγαπημένα') : t('Προσθήκη στα αγαπημένα');
@@ -155,14 +156,29 @@ export function mountStop(container, ctx, { code }) {
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
       iconBtn('share', t('Κοινοποίηση'), share),
-      h('div', { class: 'stopv-titles' }, name, h('p', { class: 'stopv-sub' }, codeText, slot)),
-      iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))),
-    // the row keeps its mid height at every state (the pills grow inside it), so nothing below moves while they grow;
-    // low ends at the bottom of the small pills (the marker, js/sheet.js)
-    h('div', { class: 'stopv-acts' },
-      h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' }),
-      h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
-      star));
+      // low ends under the subtitle (js/sheet.js)
+      h('div', { class: 'stopv-titles' }, name, h('p', { class: 'stopv-sub', 'data-peek-end': '' }, codeText, slot)),
+      iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
+  const acts = h('div', { class: 'stopv-acts' },
+    h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
+    star);
+
+  // the name, as in Apple Maps: one line at low and mid, a little smaller (down to 18 px) before it is cut with "…";
+  // once the sheet rests up, the large title (28 px, up to two lines). It is one line again as soon as the sheet
+  // leaves up, before mid is measured, so the sheet never measures a two-line header
+  const sheetEl = document.getElementById('sheet');
+  const NAME_PX = 22, NAME_MIN = 18;
+  function fitName() {
+    if (dead) return;
+    name.style.fontSize = '';
+    if (head.classList.contains('is-up') || !name.clientWidth) return;
+    if (name.scrollWidth > name.clientWidth) name.style.fontSize = `${Math.max(NAME_MIN, Math.floor(NAME_PX * name.clientWidth / name.scrollWidth))}px`;
+  }
+  const setUp = (on) => { if (head.classList.contains('is-up') !== on) { head.classList.toggle('is-up', on); fitName(); } };
+  const onSettle = () => setUp(sheetEl?.dataset.state === 'full');
+  sheetEl?.addEventListener('sheet:settle', onSettle);
+  const stateMO = new MutationObserver(() => { if (sheetEl.dataset.state !== 'full') setUp(false); });
+  if (sheetEl) stateMO.observe(sheetEl, { attributes: true, attributeFilter: ['data-state'] });
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -178,7 +194,7 @@ export function mountStop(container, ctx, { code }) {
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
-  root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  root.append(head, banner, chipBar, acts, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
   // where the chips go at low (TEL-227): the slot gets the badges' width (as much of it as fits beside "Stop 1011", so
   // the line stays centred) and the first badge lands just after the dot. Measured with the slot at its low width and
   // the bar without its transform; css/glass.css moves the bar by (1 - --l) of it, so it travels with the sheet.
@@ -205,7 +221,7 @@ export function mountStop(container, ctx, { code }) {
     const end = start + shown + (want <= room ? pad + 8 : 0);
     chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(row.right - bar.left - end))}px`);
   }
-  const chipRO = new ResizeObserver(() => placeChips());
+  const chipRO = new ResizeObserver(() => { fitName(); placeChips(); });
   chipRO.observe(head);
   chipRO.observe(chipBar);
   let saidKind = '', sayTimer = 0;
@@ -424,6 +440,8 @@ export function mountStop(container, ctx, { code }) {
       document.removeEventListener('visibilitychange', onVisibility);
       unsubStore();
       chipRO.disconnect();
+      stateMO.disconnect();
+      sheetEl?.removeEventListener('sheet:settle', onSettle);
       poller.destroy();
       mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();
