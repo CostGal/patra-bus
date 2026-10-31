@@ -32,10 +32,73 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Floating chrome (search bar, bottom sheet, locate button, toasts) = translucent material:
   `background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`,
   a faint bright top edge, soft shadow; bigger surfaces = stronger blur + deeper shadow than small chips.
+- Concentric corners (TEL-225): a surface inside another has a smaller radius, one step (8 px) per level: sheet `--radius-sheet` 28 → cards/tiles in it `--radius-card` 20 → blocks inside a card `--radius-inner` 12. Buttons, chips, inputs and badges keep their own shape (pills stay pills).
 - Never stack translucent on translucent. Text on materials: slightly heavier weight, full-contrast colour.
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
+- Glass UI (TEL-83, on for everyone since 2026-10-29, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
+  **glass** = floating chrome over the map (☰, chips, locate FAB, sheet / side panel, menu popover, setup and
+  welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
+  clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
+  (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
+  towards the finger and turns more opaque, then springs back with a small wobble. **Full-width list rows** (stops, lines,
+  place suggestions) neither grow nor turn grey: a soft glass highlight fades in behind them and out again. The locate
+  button fills with the app's blue while held and sends out a ring on a tap. **Sheet** (TEL-222, Apple Maps iOS 26): three states.
+  Low = a tight floating card (grabber + the view's first row), almost clear; mid (default) = the same card, larger,
+  more opaque; up = whole screen, edge to edge and to the bottom, solid (light grey with white cards; dark grey in dark
+  mode), no glass. Moves: low→mid a hint of bounce, mid→low a little more, mid↔up no bounce (it darkens and fills).
+  The grabber is tight; held, it widens inside a small glass capsule and ticks at each state.
+  **Search** (TEL-223): ☰ stands alone at the top left, a round glass button; the search is home's first row in the
+  sheet (a grey capsule, no glass of its own, no microphone), so low on home = grabber + search. Tapping it takes the
+  sheet up and shows the results there, in place of the view, on the solid up colour (0.5 px hairlines between rows);
+  closing it (the ✕ next to the field, Escape, a tap outside) puts the sheet back where it was. At up on home the sheet
+  reaches the top and the ☰ slides down into the search row, left of the field (TEL-223 B); an empty field shows recent
+  searches and the nearby stops. Other views put their own header in
+  the search's place, with a ✕ back home.
+  **Low on a stop** (TEL-224): the name (at most two lines), and the lines arriving as flat coloured pills (the badges
+  alone); dragging up, the pills grow into the filter chips with the sheet ("All" unfolds in front), and back.
+  **Mid fits the view** (TEL-224): on a stop it ends 20% into the second arrival (the first whole, a glimpse of the
+  next says the list goes on); on home, under its card; 35–60% of the screen, and it follows as the content loads.
+  Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
+  stays still while the sheet moves; once the sheet is let go between low and mid, the map glides its focus (the stop,
+  or your location on home) to the centre of the part left above the sheet, as in Apple Maps. Legibility comes
+  from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
+  (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
+  headers in the sheet (stop line chips, planner head) have no band at rest; once the list scrolls under them a blur
+  layer fades in behind them, feathered at the bottom (no edge, no line), like iOS bars. The line chips are small glass
+  pills. **Menu:** morphs out of the ☰ button: pressed, ☰ is a whiter glass circle;
+  as the menu opens, its glass starts clear over that circle and its blur grows with it, so the ☰ lines blur out through
+  it and a ✕ blurs in where they were (the open menu's close button); the circle swells around the button, then opens into the panel (items fade in late); closing runs the same path
+  back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Same logic elsewhere: every round button (☆, ⋯, ✕)
+  presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
+  to the stop's close ✕); the map buttons sit in one vertical glass capsule (split by a hairline: the buttons in it are
+  flat segments that, held, pop out like ☰ into a whiter glass circle; TEL-226), and the map's attribution is no button
+  at all but one small line of text, always there, just above the sheet (like Apple's "Legal" in apps on Apple Maps); the selected line chip is one glass
+  lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
+  contrast), search results (on the solid up sheet), stop menu, map marker labels. Reduced transparency / more contrast: solid and
+  static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
+
+### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
+- Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft
+  halo, not from more blur. Frosted, high-blur glass read as "not true glass".
+- **No shine at all**: a shine that moves by itself (on scroll/drag) is annoying, and a light that follows the finger
+  looked unauthentic too (review 2). Feedback is shape and opacity, never a gradient.
+- **Touch & hold is the signature**: every pressable thing grows a little (~10px, ≤8%), leans to the finger, turns more
+  opaque, and springs back with a small wobble. Round buttons press into a *whiter* circle, grow the most (~16px) and sit
+  above their neighbours: the sheet leaves ~18px above its first row so the scroller never cuts them.
+- **Full-width rows are not buttons you grow**: growing makes them overflow sideways, and the iOS `:hover` after a tap
+  left the whole row grey. A rounded highlight inside the row fades in and out instead.
+- **A tap needs an answer you can see**: the locate button fills blue while held and rings out on the tap.
+- **A sheet like Apple Maps**: three states (five felt like too many in-between stops); a floating card that turns solid
+  and edge to edge at the top; a grabber with minimal room around it that reacts (capsule, wider pill, tick).
+- **Morph from what you touched**: a popover grows out of its button (circle → swells → panel) and goes back the same way;
+  the button's icon blurs into its "close" meaning (☰ → ✕; ⋯ → ˄ where an ✕ would duplicate a nearby ✕).
+- Never let a closing popover flash: keep it on screen until its shape has shrunk back, then hide it.
+- **No bands**: sticky headers sit on the sheet; blur appears only when content scrolls under them, feathered, no line.
+- Selection is **one lens that moves** (filter chips), stretching over both chips on the way.
+- Web-app limits: no SVG refraction in Safari (blur only); long-press selects text unless `user-select`/`touch-callout`
+  are off; screenshots without the real map cannot show glass — judge on the phone (#103).
 
 ## 5. Typography
 - System font stack (`system-ui`), which already has optical sizing.
@@ -74,7 +137,7 @@ the next one. Registry: `scripts/ui-map.mjs`.
 | S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
 | G | Settings and guide | D | Dialogs and forms (setup, welcome, report) |
 
-- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--glass --map` etc. as for any sweep).
+- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--map` etc. as for any sweep).
   It boxes every element with its ID on its own set of screens (menus open, vehicle, search…) into `shots/ui-map/`,
   plus `LEGEND.md`: the whole registry with the screens each ID appears on.
 - Feedback is one line per element: `ID — τώρα: … / θέλω: …` (one of many alike: `S2 (606)`), with a phone screenshot

@@ -198,7 +198,9 @@ type Ctx = {
 - `ui.js`: `h(tag, props, ...kids)` (props: `class`, `on*` listeners, attributes; `style` object allowed), `icon(name) → SVGElement`
   (names: search, back, close, locate, locate-fixed, compass, star, star-on, share, walk, bus, clock, live, route, layers, menu, swap, bell, settings, info, chevron),
   `toast(text, opts)`, `lineBadge(line|{code,color,textColor}) → HTMLElement`, `fmtClock(epochMs) → "HH:MM"`.
-- `map.js`: `createMap(container, { onStopClick(code), onMapClick({lat,lng}), onLongPress({lat,lng}) }) → MapApi`
+- `map.js`: `createMap(container, { onStopClick(code), onMapClick({lat,lng}), onLongPress({lat,lng}), attribInto }) → MapApi`
+  (`attribInto`: an element that takes MapLibre's attribution control, uncollapsed: app.js passes `#map-attrib`, one line of text
+  always shown at the left just above the sheet, moved with the sheet's edge like `#fabs-bottom`, TEL-226; CLAUDE.md rule 5)
 ```ts
 type MapApi = {
   ready: Promise<void>;
@@ -410,7 +412,63 @@ small-chip vs big-surface blur+shadow weight — never nested on each other), `.
 keyframe), `.press` (JS-opt-in `:active`-style scale(.97) for non-native-button elements — native buttons already
 get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-edge-top`/`.fade-edge-bottom` (mask
 instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
-`(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.searchbar`/`.fab`/`.sheet`/`.toast` to solid.
+`(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.menu-fab`/`.fab`/`.sheet`/`.toast` to solid.
+
+**Glass prototype (TEL-83): `web/css/glass.css` + `web/js/glass.js`.** The CSS loads always and is active only under
+`html.glass`, which `index.html` sets in its markup (glass is on for everyone since 2026-10-29); `index.html` also loads
+`js/glass.js` as a module (app.js never imports it).
+All rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
+surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables.
+`glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
+`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; on pointerdown puts `.g-press` on the
+control under the finger (`button, a[href], [role=button], summary, label, .atile-link`; its round `.sb-btn` buttons on
+their own; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
+untouched; ~16 px for round buttons, ~10 px for the rest; never the sheet, menu, dialogs, sheet handle or full-width list
+rows, which get a CSS highlight instead), leans it via `translate` while held, and springs it back on pointerup/cancel.
+No finger light (removed in review 2). Round buttons get `z-index` while pressed and `.sheet-content` gets
+`--g-headroom` (12 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
+The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
+Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head, .pl-head` in the content,
+or home's `.sheet-search`; a view can end low further down with `[data-peek-end]`, as the stop's line chips do, TEL-224;
+unless `setPeek()` gives a height; a ResizeObserver on the content keeps low in step as that row appears), `half` = mid (default: half the screen, or where the view marks `[data-mid-end="<share>"]`: the stop 20% into its second
+arrival, home under its card; kept to 35–60% of the screen, TEL-224), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
+floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
+bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
+nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves one state, two (up <-> low) when it is fast
+(`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. **Search (TEL-223):** `#menu-btn` (`.menu-fab`) is a fixed round button at the top left, outside the sheet; `#searchbar`
+(`.sheet-search`, sticky) and `#search-panel` are the first children of `#sheet-body`. `app.js` shows the search on home
+only (`route()`); opening it adds `.searching` to `#app` (CSS hides `#sheet-content` and `#map-note`) and snaps the sheet
+to `full`; a close by the user (the ✕ `#search-close` next to the field, Escape, tap outside; ☰ also ends it before opening
+the menu) snaps it back to the state it had. On phones, home's sheet reaches `--safe-top` at full and the ☰ slides
+down into the search row (its `top` follows `--sheet-t`, which `sheet.js` also writes on `<html>`). An empty field lists
+recent searches, then up to 4 stops within 800 m of the device's last fix (`nearestStops`, on the device only). A touch tap on the field while the sheet
+is not up focuses a hidden `.kb-proxy` input at the top first (the keyboard must open inside the tap), and hands the focus
+to the field 320 ms later, once the sheet is up: focusing it low would make iOS pan the page above the keyboard. A
+`visualViewport` listener writes `--kb` (keyboard height) for the results' bottom padding; it never scrolls the page (with the
+keyboard open, a programmatic scroll shifts iOS's hit-testing of fixed elements and taps miss). `.menu-fab` has its own
+layer (`translateZ(0)`), or iOS hands taps on it to the sheet's scroller underneath at full. The map's top padding
+is measured from the ☰ and the chips (which share its row). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
+fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
+`app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
+(Apple Maps). One spring per move
+(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:settle` when it comes to rest (`glass.js` re-places the chip lens then) and `sheet:stop`
+while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
+touch strip (`::after`); its pill is the iOS grabber, 36 × 5 px, 8 px from the top. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
+sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
+opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
+in two phases (a circle swelling around the ☰
+button's centre, then opening into the panel's box; also `--g-morph` on the button, which blurs its lines out) (disconnects while writing; adds `html.glass-morph`, which keeps the shell
+opaque and fades the items by `--g-morph`); not with reduced motion. Adds a ✕ (`icon('close')` from `ui.js`, class `.g-x`) to
+`#menu-btn` and puts it back whenever app.js redraws the button (☰ ↔ back); CSS crossfades ☰ → ✕ by `--g-morph`.
+Sets `html.glass-fx`. Other morphs, with their own timing (Web Animations on `clip-path`/`translate`/`opacity`): one
+MutationObserver on `hidden`/`class` catches the stop's `.stopv-menu` and MapLibre's `maplibregl-compact-show`; on
+open it plays circle → panel, on close it puts the popover back on screen, plays it back into its button and hides it
+at the end (a WeakSet marks its own changes). ⋯ gets a stacked ˄ (`.g-morph-btn`, `.g-open`). Chips: a `.g-lens` in
+`.stopv-chipbar` (outside the row the view rebuilds) placed on `.stopv-chip.on` after every rebuild, animated from the
+chip that was selected at pointerdown, and kept in place on horizontal scroll. Does nothing with reduced transparency or more contrast; with
+reduced motion nothing grows, moves or ticks (no `scale`/`translate`/ping). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
+`npm run shots -- --map`. Rules in DESIGN.md §4.
 
 ### CSS design tokens (shadcn-style): `web/css/tokens.css`
 Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; see the map below):
@@ -418,7 +476,7 @@ Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; s
    `--destructive`, `--border` (decorative hairlines), `--input` (control edge, ≥ 3:1), `--ring` (focus), plus the app's own status
    colours `--live/--live-foreground/--live-muted`, `--scheduled/--scheduled-border/--scheduled-muted`, `--warning/--warning-muted`.
    Each has a `*-foreground` partner where text sits on the fill.
-2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills), spacing
+2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills; the nesting levels `--radius-sheet/-card/-inner` (28/20/12) step down 8 px per level for concentric corners, TEL-225), spacing
    (`--space-1…8`, 4 px grid), type (`--text-2xs…3xl`, `--weight-*`, `--track-*/--lead-*`), controls (`--control-h` 44 px,
    `--control-h-sm`, `--disabled-opacity`), elevation (`--shadow-1/-2/-sheet`), motion (`--ease`, `--spring-ease`).
 
