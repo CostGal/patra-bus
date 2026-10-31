@@ -14,7 +14,7 @@ test('glass: on by default', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.classList.contains('glass'))).toBe(true);
   // Chromium: refraction filter in front of the blur
   await expect(page.locator('html.glass-lens')).toHaveCount(1);
-  expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(20px\)/);
+  expect(await sheetFilter(page)).toMatch(/^url\("#g-lens-lg"\) blur\(10px\)/);
   // the sticky chip bar has no band at rest; its blur layer shows only once the list scrolls under it
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar')).backgroundImage)).toBe('none');
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.stopv-chipbar'), '::before').backdropFilter)).toContain('blur(');
@@ -185,29 +185,38 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   const low = await page.evaluate(() => {
     const s = document.getElementById('sheet').getBoundingClientRect();
     const pill = document.querySelector('.stopv-pill.primary').getBoundingClientRect();
-    const sub = document.querySelector('.stopv-sub').getBoundingClientRect();
-    const name = document.querySelector('.stopv-name');
+    const nm = document.querySelector('.stopv-name');
+    const name = nm.getBoundingClientRect(), col = nm.parentElement.getBoundingClientRect();
     const badges = [...document.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')].map((b) => b.getBoundingClientRect());
     const first = badges[0], last = badges[badges.length - 1];
-    return { shown: innerHeight - s.top, subBelow: innerHeight - sub.bottom, pillTop: pill.top - innerHeight, oneLine: name.scrollHeight <= name.clientHeight + 1,
-      code: Number(getComputedStyle(document.querySelector('.stopv-code')).opacity),
-      badgeOff: Math.abs((first.top + first.bottom) / 2 - (sub.top + sub.bottom) / 2), centreOff: Math.abs((first.left + last.right) / 2 - (sub.left + sub.right) / 2) };
+    return { shown: innerHeight - s.top, below: innerHeight - first.bottom, pillTop: pill.top - innerHeight, oneLine: nm.scrollHeight <= nm.clientHeight + 1,
+      gapUnderName: first.top - name.bottom, centreOff: Math.abs((first.left + last.right) / 2 - (col.left + col.right) / 2) };
   });
-  expect(low.subBelow).toBeGreaterThan(0); // the line badges are on screen
-  expect(low.subBelow).toBeLessThan(30); // and low ends right under them
+  expect(low.below).toBeGreaterThan(0); // the line badges are on screen
+  expect(low.below).toBeLessThan(30); // and low ends right under them
   expect(low.pillTop).toBeGreaterThan(-12); // directions and ☆ are not shown at low (below the card's edge)
   expect(low.oneLine).toBe(true); // the name is one line: low is the same height for every stop
-  expect(low.shown).toBeLessThan(100); // ~90 px (it was 168 here before TEL-227)
-  expect(low.code).toBeLessThan(0.05); // no "Στάση 1011" at low
-  expect(low.badgeOff).toBeLessThan(3); // the badges sit on the line under the name...
+  expect(low.shown).toBeLessThan(95); // ~88 px (it was 168 here before TEL-227)
+  expect(low.gapUnderName).toBeGreaterThan(0); // the badges sit right under the name...
+  expect(low.gapUnderName).toBeLessThan(10);
   expect(low.centreOff).toBeLessThan(3); // ...centred
   // and from mid they are the filter chips again, in their own row under the pills
   await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
   await page.waitForTimeout(150);
-  // from mid the chips are right under the header and the directions row under them, so the badges cross nothing;
-  // "Στάση 1011" is back on the line under the name
-  expect(await page.evaluate(() => document.querySelector('.stopv-acts').getBoundingClientRect().top - document.querySelector('.stopv-chipbar').getBoundingClientRect().bottom)).toBeGreaterThan(0);
-  expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector('.stopv-code')).opacity))).toBe(1);
+  // from mid the chips are right under the name (and centred), the directions row under them, so the badges cross
+  // nothing; the stop's number is at the very bottom of the view
+  const mid = await page.evaluate(() => {
+    const r = (q) => document.querySelector(q).getBoundingClientRect();
+    const kids = [...document.querySelectorAll('.stopv-chip')].map((c) => c.getBoundingClientRect());
+    const bar = r('.stopv-chips');
+    return { underName: r('.stopv-chips').top - r('.stopv-name').bottom, actsBelow: r('.stopv-acts').top - r('.stopv-chipbar').bottom,
+      centreOff: Math.abs((kids[0].left + kids[kids.length - 1].right) / 2 - (bar.left + bar.right) / 2),
+      codeLast: document.querySelector('.stopv > .stopv-code').compareDocumentPosition(document.querySelector('.stopv-foot')) === Node.DOCUMENT_POSITION_PRECEDING };
+  });
+  expect(mid.underName).toBeLessThan(12);
+  expect(mid.actsBelow).toBeGreaterThan(0);
+  expect(mid.centreOff).toBeLessThan(3);
+  expect(mid.codeLast).toBe(true);
   // up: the name grows with the sheet (to 30 px, a little less when its longest word would not fit at 30) and may
   // take two lines; back to one line as soon as it leaves up
   await page.evaluate(() => window.__app.sheet.snap('full'));

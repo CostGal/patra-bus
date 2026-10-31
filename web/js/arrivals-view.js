@@ -148,15 +148,13 @@ export function mountStop(container, ctx, { code }) {
   }
   const directions = () => ctx.navigate(`#/plan?to=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&name=${encodeURIComponent(stop.displayName)}`);
 
-  // under the name: the line badges at low (the filter chips below, carried up and centred there: css/glass.css,
-  // placed by placeChips()); from mid "Stop 1011" fades in on the same line as they leave
-  const codeText = h('span', { class: 'stopv-code' }, t('Στάση {code}', { code }));
-  const sub = h('p', { class: 'stopv-sub' }, codeText);
+  // under the name at low: the line badges (the filter chips, carried up and centred there: css/glass.css, placed by
+  // placeChips()); from mid the chips are right under the name. The stop's number is at the very bottom (TEL-227)
   const name = h('h1', { class: 'stopv-name', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
       iconBtn('share', t('Κοινοποίηση'), share),
-      h('div', { class: 'stopv-titles' }, name, sub, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
+      h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
   const acts = h('div', { class: 'stopv-acts' },
     h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
@@ -202,10 +200,18 @@ export function mountStop(container, ctx, { code }) {
     if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
     name.style.transition = '';
   }
-  const setUp = (on) => { if (head.classList.contains('is-up') !== on) { head.classList.toggle('is-up', on); if (!on) fitName(); } };
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!on) fitName();
+    // the line break hides in a short blur, as in Apple Maps
+    if (!reduceMotion.matches) name.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
   const twoLines = () => {
     if (!(sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))) return false;
-    const u = Math.max(0, Math.min(1, (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) - 1));
+    // the growth is done in the first half of the way up (css/glass.css: min(1, 2 × --u))
+    const u = Math.max(0, Math.min(1, 2 * ((parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) - 1)));
     return u > 0 && nameW * (1 + u * (upN / nameN - 1)) > name.clientWidth - 2;
   };
   // sheet.js writes --sheet-t on every frame of a drag or a spring
@@ -213,6 +219,8 @@ export function mountStop(container, ctx, { code }) {
   if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
+  const onSettle = () => placeChips(); // at rest from mid, the chips' centring is measured again
+  sheetEl?.addEventListener('sheet:settle', onSettle);
   // a web font that arrives late changes the name's width, not the header's size (fonts.ready can resolve before the
   // name's font has even been asked for)
   document.fonts?.ready.then(fitName);
@@ -232,7 +240,8 @@ export function mountStop(container, ctx, { code }) {
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
-  root.append(head, banner, chipBar, acts, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  const codeLine = h('p', { class: 'stopv-code' }, t('Στάση {code}', { code }));
+  root.append(head, banner, chipBar, acts, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), codeLine, status);
   // where the chips go at low (TEL-227): centred on the line under the name, at 85% (LOW_SCALE), as many as fit.
   // Measured with the bar without its transform; css/glass.css moves and scales it by (1 - --l) of that, around the
   // first badge (--pk-ox), so it travels with the sheet.
@@ -241,10 +250,20 @@ export function mountStop(container, ctx, { code }) {
     if (dead || chipBar.hidden || !head.classList.contains('has-lines')) return;
     const badges = [...chips.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')];
     chipBar.style.transform = 'none';
-    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), line = sub.getBoundingClientRect();
+    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), nm = name.getBoundingClientRect();
+    const col = name.parentElement.getBoundingClientRect();
+    const line = { left: col.left, width: col.width, top: nm.bottom + 4, height: 18 }; // the badges' line at low
     const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1); // unscaled
+    // from mid the chips are centred (css/glass.css: --chips-c, extra left padding by --l): measured at rest from mid
+    const sheetT = parseFloat(sheetEl?.style.getPropertyValue('--sheet-t')) || 1;
+    const kids = [...chips.children];
+    if (sheetT >= 1 && !sheetEl?.classList.contains('dragging') && kids.length) {
+      const pr = parseFloat(getComputedStyle(chips).paddingRight) || 0;
+      const used = kids[kids.length - 1].getBoundingClientRect().right - kids[0].getBoundingClientRect().left;
+      chips.style.setProperty('--chips-c', `${Math.max(0, Math.floor((row.width - 2 * pr - used) / 2))}px`);
+    }
     chipBar.style.transform = '';
-    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
+    const pad = parseFloat(getComputedStyle(chips).paddingRight) || 0; // the left padding at low (no centring there)
     const shown = Math.min(want, line.width / LOW_SCALE);
     const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
     const target = line.left + (line.width - shown * LOW_SCALE) / 2;
@@ -477,6 +496,7 @@ export function mountStop(container, ctx, { code }) {
       chipRO.disconnect();
       tMO.disconnect();
       sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      sheetEl?.removeEventListener('sheet:settle', onSettle);
       document.fonts?.removeEventListener('loadingdone', fitName);
       poller.destroy();
       mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });

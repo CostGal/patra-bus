@@ -20,7 +20,7 @@ const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point 
 const SPRINGS = {
   'peek>half': { damping: 0.86, response: 0.42 },
   'half>peek': { damping: 0.72, response: 0.42 },
-  'half>full': { damping: 1, response: 0.38 },
+  'half>full': { damping: 1, response: 0.3 }, // TEL-227: 25% quicker up, as in Apple Maps
   'full>half': { damping: 1, response: 0.38 },
 };
 const SETTLE = { damping: 1, response: 0.35 };
