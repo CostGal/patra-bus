@@ -49,6 +49,22 @@
       var t = ((JSON.parse(localStorage.getItem('patra-bus:v2')) || {}).settings || {}).theme;
       if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
     } catch (e) { /* ignore */ }
+    // TEL-227: as the installed app with a see-through status bar, iOS (WebKit bug) can start the page under the
+    // status bar yet size the viewport as if it were not there, leaving a strip at the bottom. Measured on the device:
+    // the screen's height less the window's, in standalone mode only (0 everywhere else); app.css moves the fixed
+    // layers' bottom edges down by it.
+    (function () {
+      var mq = window.matchMedia && matchMedia('(display-mode: standalone)');
+      function gap() {
+        var landscape = innerWidth > innerHeight;
+        var full = landscape ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+        var g = mq && mq.matches ? Math.max(0, Math.min(80, full - innerHeight)) : 0;
+        document.documentElement.style.setProperty('--vp-gap', g + 'px');
+      }
+      gap();
+      addEventListener('resize', gap);
+      addEventListener('orientationchange', function () { setTimeout(gap, 300); });
+    })();
   </script>
   <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
   <script type="module" src="js/app.js"></script>
