@@ -172,6 +172,9 @@ html.glass .map-capsule > .fab { background: transparent; border: 0; box-shadow:
 html.glass .map-capsule:has(> .maplibregl-ctrl-attrib:not(.maplibregl-attrib-empty)) > .fab { box-shadow: inset 0 .5px 0 var(--g-hair); }
 html.glass .map-capsule > .fab.g-press { background: var(--g-pressed); color: var(--foreground); }
 html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press { background-color: var(--g-pressed); } /* not the shorthand: the i is its background image */
+/* once tapped, the (i) shows our own i (it turns into ✕ while open, as ☰ does): not MapLibre's image, not inverted */
+html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn { background-image: none !important; filter: none !important; opacity: 1; color: var(--muted-foreground); }
+html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn .icon { --icon: 22px; }
 html.glass .map-capsule > .fab.g-press, html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press {
   --g-sheen: none; border-radius: 50%;
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);

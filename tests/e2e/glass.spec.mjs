@@ -275,6 +275,16 @@ test('map buttons: one glass capsule, the attribution (i) above locate (TEL-226)
   expect(look.capBlur).toContain('blur('); // the capsule is the glass…
   expect(look.fabBlur).toBe('none'); // …its buttons are flat segments of it
   expect(look.width).toBe(48);
+  // the (i) works like ☰: our i turns into ✕ while the pill is open (MapLibre hides the (i) without attributions, which
+  // need the map's style: show it as if it had some)
+  const info = page.locator('#map-capsule .maplibregl-ctrl-attrib-button');
+  await expect(info).toHaveClass(/g-morph-btn/);
+  await expect(info.locator('.g-x')).toHaveCount(1);
+  await page.evaluate(() => { const a = document.querySelector('#map-capsule .maplibregl-ctrl-attrib'); a.classList.remove('maplibregl-attrib-empty'); a.classList.add('maplibregl-compact'); });
+  await info.click();
+  await expect(info).toHaveClass(/g-open/);
+  await info.click();
+  await expect(info).not.toHaveClass(/g-open/);
 });
 
 test.describe('search near me', () => {

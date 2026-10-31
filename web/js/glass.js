@@ -251,6 +251,19 @@ function watchPopovers() {
     const box = b?.closest('.maplibregl-ctrl-attrib');
     if (box && !box.classList.contains('maplibregl-compact-show')) attribFrom.set(box, b.getBoundingClientRect());
   }, { capture: true, passive: true });
+  // in the map capsule the (i) works like ☰ (Kostas, TEL-226): an i icon of ours (MapLibre's is a background image)
+  // that turns into ✕ while the pill is open, and the pill grows out of it and shrinks back into it. map.js moves the
+  // control into the capsule once the map is made, so wait for it there.
+  const setupInfo = () => {
+    const b = document.querySelector('.map-capsule .maplibregl-ctrl-attrib-button');
+    if (!b) return false;
+    if (!b.classList.contains('g-morph-btn')) { b.append(icon('info')); morphButton(b, 'close'); }
+    return true;
+  };
+  if (!setupInfo()) {
+    const mo = new MutationObserver(() => { if (setupInfo()) mo.disconnect(); });
+    mo.observe(document.getElementById('map-capsule') || document.body, { childList: true, subtree: true });
+  }
 
   new MutationObserver((recs) => {
     for (const r of recs) {
@@ -276,10 +289,10 @@ function watchPopovers() {
         const was = (r.oldValue || '').includes('maplibregl-compact-show');
         if (open === was) continue;
         const items = [...el.querySelectorAll('.maplibregl-ctrl-attrib-inner')];
+        el.querySelector('.maplibregl-ctrl-attrib-button.g-morph-btn')?.classList.toggle('g-open', open); // i ↔ ✕
         const from = attribFrom.get(el);
         if (!from) continue;
         if (open) morphOpen(el, from, items);
-        else if (el.closest('.map-capsule')) continue; // back into the capsule: no shrink morph (it showed as a stray band, Kostas)
         else {
           busy.add(el);
           el.classList.add('maplibregl-compact-show'); // keep the pill while it shrinks back into the i
