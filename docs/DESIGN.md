@@ -60,21 +60,25 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   mode* = something is picked (a stop, line, vehicle or route), the sheet starts with its header and a ✕. Each card says
   which cells (mode × low/mid/up) it changes.
   **Stop header** (location mode, TEL-227, an Apple Maps place card): share on the left, ✕ on the right, both the
-  card's one round button (`.g-circle`: a 38 px glass circle, light (41% white), a bright rim and a faint shadow, a bit
-  more in light mode, 44 px tap area, a 20 px icon in the text colour; the ☆ is the same button). **Low** = that row
-  alone: the name (17 px, one line; a long one shrinks down to 14 px, then "…") at the top and the line badges (85%,
-  centred) right under it, the two as tall as the buttons: 66 px with the grabber. **Mid**: the name centred on the
-  buttons, the line chips (24 px, centred, 44 px tap area) right under it, then directions (wide, tinted blue glass
-  with a shining outline while the sheet floats, solid up) and ☆. **Up**: the name on its own row under the buttons,
-  20 px (less if its longest word would not fit), up to two lines. From mid towards up the name grows as a transform,
-  done in the first half of the way, and halfway it moves to its own row at the same visual size, in a 0.18 s blur
-  (back on the way down before the sheet measures low and mid). Dragging up from low, the badges slide down into their
-  row, growing into the filter chips ("All" unfolds in front); they cross nothing. The stop's number is at the very
-  bottom of the view. Header, chips, directions and cards share one inset (16 px from the card's edge); on the stop the
-  grabber area is 14 px (18 elsewhere). No ⋯ for now (it comes back with an island of the stop card once it has its own
-  items). The sheet goes up from mid 25% quicker than before.
-  **Glass, lighter** (TEL-227): the sheet at mid is 26% tint, its blur 3.6 px at low growing to 4.2 px from mid; the
-  card's round buttons 3.4 → 3.9 px; the floating controls 7 px, menus and dialogs 9 px.
+  card's one round button (`.g-circle`, see "Glass target" below; the ☆ is the same button). **Low** = that row alone,
+  centred in the card (10 px above and below; the grabber, 48 × 3, 2 px from the card's top): the name (17 px, one
+  line; a long one shrinks down to 14 px, then "…") at the top and the line badges (85%, centred) right under it, the
+  two as tall as the buttons: 66 px. **Mid**: the name centred on the buttons, the line chips right under it (40 px,
+  growing to fill the row, so they keep the same inset as everything else; more than fit: they scroll), then
+  directions (wide, tinted blue glass with a shining outline while the sheet floats, solid up) and ☆. **Up**: the sheet
+  reaches the top of the screen and the ☰ fades out; the name has its own row under the buttons, 24 px (less if its
+  longest word would not fit), up to two lines, with the same gap to the chips as at mid. From mid towards up the name
+  grows as a transform, done in the first half of the way, and halfway it moves to its own row at the same visual
+  size, in a 0.18 s blur (back on the way down before the sheet measures low and mid). Dragging up from low, the badges
+  slide down into their row, growing into the filter chips ("All" unfolds in front); they cross nothing. The stop's
+  number is at the very bottom of the view. Header, chips, directions and cards share one inset (16 px from the card's
+  edge). No ⋯ for now (it comes back with an island of the stop card once it has its own items). The sheet goes up
+  from mid 25% quicker than before.
+  **Glass target (LOCKED by Kostas, 2026-10-31; the target for now, every other surface is to follow it):** the sheet at
+  mid 26% tint, at low 3%; its blur 3.6 px at low growing to 4.2 px from mid (saturate 190%). The card's round buttons
+  (`.g-circle`): 38 px, 41% white (dark: 10.5%), a bright top edge and rim, a faint shadow (light 14%, dark 25%), blur
+  3.4 px at low growing to 3.9 px from mid (saturate 180%). Elsewhere (not yet aligned to this target): the floating
+  controls 7 px, menus and dialogs 9 px.
   **Mid fits the view** (TEL-224, TEL-227): on a stop it ends a third into the second arrival (the first whole, about
   30–35% of the next card says the list goes on, as in Apple Maps); on home, under its card; 35–60% of the screen, and
   it follows as the content loads.

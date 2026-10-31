@@ -205,9 +205,10 @@ html.glass .sheet-body {
 }
 /* a tight grabber (Kostas: minimal room around it); the finger still gets a 30 px strip, half of it over the map */
 html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8px; }
-html.glass .sheet:has(.stopv) .sheet-handle { height: 14px; } /* the stop's name 4 px closer to the grabber (TEL-227) */
-/* the iOS grabber: 36 x 5, 8 px from the top, a translucent grey */
-html.glass .sheet-pill { height: 5px; border-radius: 3px; background: rgba(60, 60, 67, .3); }
+/* the stop (TEL-227): the grabber 2 px from the card's top, and the row under it centred in low (10 px above and below) */
+html.glass .sheet:has(.stopv) .sheet-handle { height: 6px; padding-top: 2px; }
+/* the grabber: 48 x 3 (TEL-227: wider and thinner than iOS's 36 x 5), a translucent grey */
+html.glass .sheet-pill { width: 48px; height: 3px; border-radius: 2px; background: rgba(60, 60, 67, .3); }
 @media (prefers-color-scheme: dark) { html.glass:not([data-theme="light"]) .sheet-pill { background: rgba(235, 235, 245, .3); } }
 html.glass[data-theme="dark"] .sheet-pill { background: rgba(235, 235, 245, .3); }
 html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; right: 0; top: -12px; bottom: 0; }
@@ -356,18 +357,14 @@ html.glass .sheet .stopv-pill.primary {
   html.glass .sheet .stopv-chips { padding-inline: 24px; }
   /* the name: at low at the top of the buttons' row (the badges under it), from mid centred on the buttons (moved by
      --l, a transform). Towards up it grows (a transform, done in the first half of the way) from its low/mid size
-     (17 px, or --name-n when js/arrivals-view.js shrank a long one) to its up size (20 px, or --name-up-n); at up it
+     (17 px, or --name-n when js/arrivals-view.js shrank a long one) to its up size (24 px, or --name-up-n); at up it
      is set at that size on its own row, drawn at the same visual size and growing to it */
   html.glass .sheet .stopv-name { font-size: var(--name-px, 17px); transform-origin: 50% 0;
-    transform: translateY(calc(var(--l, 1) * 9px)) scale(calc(1 + min(1, var(--u, 0) * 2) * (var(--name-up-n, 20) / var(--name-n, 17) - 1))); }
-  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 20) * 1px);
-    transform: scale(calc((var(--name-n, 17) + (var(--name-up-n, 20) - var(--name-n, 17)) * min(1, var(--u, 0) * 2)) / var(--name-up-n, 20))); }
-  /* the chips are 24 px from mid (their tap area stays 44 px) */
-  html.glass .sheet .stopv-chip { min-height: 24px; --hit: -10px 0; }
-  /* the scroller clips what overflows it, the tap areas too: 8 px more room above and below, taken back by margins */
-  html.glass .sheet .stopv-chips { padding-block: 10px; margin-block: -8px; }
-  /* from mid the chips are centred (js/arrivals-view.js measures the room, --chips-c) */
-  html.glass .sheet .stopv-chips { padding-left: calc(24px + var(--l, 1) * var(--chips-c, 0px)); }
+    transform: translateY(calc(var(--l, 1) * 9px)) scale(calc(1 + min(1, var(--u, 0) * 2) * (var(--name-up-n, 24) / var(--name-n, 17) - 1))); }
+  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 24) * 1px);
+    transform: scale(calc((var(--name-n, 17) + (var(--name-up-n, 24) - var(--name-n, 17)) * min(1, var(--u, 0) * 2)) / var(--name-up-n, 24))); }
+  /* from mid the chips grow to fill the row, so it keeps the same inset as everything else (more than fit: they scroll) */
+  html.glass .sheet .stopv-chip { flex-grow: var(--l, 1); justify-content: center; }
   html.glass .sheet .stopv-chipbar {
     transform-origin: var(--pk-ox, 0px) 50%;
     transform: translate(calc((1 - var(--l, 1)) * var(--pk-dx, 0px)), calc((1 - var(--l, 1)) * var(--pk-dy, 0px))) scale(calc(1 - (1 - var(--l, 1)) * .15));
@@ -405,4 +402,11 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   html.glass .sheet { --g-blur-sheet: none; }
   html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* TEL-227: up on the stop the sheet reaches the top, and the ☰ fades out as it gets there (it would sit on the share
+   button); not tappable while up */
+@media (max-width: 899px) {
+  .app:not(.no-map):has(.stopv) .sheet { top: var(--safe-top); }
+  .app:has(.stopv) .menu-fab { opacity: clamp(0, (1.8 - var(--sheet-t, 1)) / .3, 1); }
+  body[data-sheet="full"] .app:has(.stopv) .menu-fab { pointer-events: none; }
 }

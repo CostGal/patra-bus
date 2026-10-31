@@ -161,13 +161,13 @@ export function mountStop(container, ctx, { code }) {
     star);
 
   // the name, as in Apple Maps: one line at low and mid (17 px, shrunk down to 14 px before it is cut with "…"); at up
-  // its own row under the buttons, 20 px (less if its longest word would not fit), up to two lines. From mid towards up
+  // its own row under the buttons, 24 px (less if its longest word would not fit), up to two lines. From mid towards up
   // it grows with the sheet as a transform (css/glass.css, by --u: smooth on a phone, no new font size per frame), and
   // halfway up it moves to its own row at the same visual size, in a short blur. Only while the sheet is up or held: it
   // measures low and mid at neither, and on the way down it tells us first (sheet:leave-full), so it never measures the
   // up layout.
   const sheetEl = document.getElementById('sheet');
-  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 20, NAME_LH = 20; // NAME_LH: its line box at low and mid (css)
+  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24, NAME_LH = 20; // NAME_LH: its line box at low and mid (css)
   let nameN = NAME_PX, upN = NAME_UP; // its low/mid size, its up size
   let measureCtx = null;
   function fitName() {
@@ -215,7 +215,7 @@ export function mountStop(container, ctx, { code }) {
   if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
-  const onSettle = () => placeChips(); // at rest from mid, the chips' centring is measured again
+  const onSettle = () => placeChips(); // measured again at rest
   sheetEl?.addEventListener('sheet:settle', onSettle);
   // a web font that arrives late changes the name's width, not the header's size (fonts.ready can resolve before the
   // name's font has even been asked for)
@@ -250,16 +250,8 @@ export function mountStop(container, ctx, { code }) {
     const col = name.parentElement.getBoundingClientRect(); // (not the name: it moves with the sheet)
     const line = { left: col.left, width: col.width, top: col.top + NAME_LH, height: 18 }; // the badges' line at low
     const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1); // unscaled
-    // from mid the chips are centred (css/glass.css: --chips-c, extra left padding by --l): measured at rest from mid
-    const sheetT = parseFloat(sheetEl?.style.getPropertyValue('--sheet-t')) || 1;
-    const kids = [...chips.children];
-    if (sheetT >= 1 && !sheetEl?.classList.contains('dragging') && kids.length) {
-      const pr = parseFloat(getComputedStyle(chips).paddingRight) || 0;
-      const used = kids[kids.length - 1].getBoundingClientRect().right - kids[0].getBoundingClientRect().left;
-      chips.style.setProperty('--chips-c', `${Math.max(0, Math.floor((row.width - 2 * pr - used) / 2))}px`);
-    }
     chipBar.style.transform = '';
-    const pad = parseFloat(getComputedStyle(chips).paddingRight) || 0; // the left padding at low (no centring there)
+    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
     const shown = Math.min(want, line.width / LOW_SCALE);
     const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
     const target = line.left + (line.width - shown * LOW_SCALE) / 2;

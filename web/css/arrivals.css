@@ -15,12 +15,12 @@
 .stopv-top > .btn.round.g-circle { margin: 0; grid-row: 1; }
 .stopv-top > .btn.round.g-circle:last-child { grid-column: 3; } /* stays right when the name moves to its own row (up) */
 .stopv-titles { position: relative; min-width: 0; text-align: center; }
-/* low ends here (js/sheet.js): the badges' line under the name (18 px, to the buttons' bottom) */
-.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: 18px; pointer-events: none; }
+/* low ends here (js/sheet.js): the badges' line under the name (18 px, to the buttons' bottom), and 8 px more */
+.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: 26px; pointer-events: none; } /* + 8: as much room under the row as above it */
 .stopv-head .stopv-name { margin: 0; overflow: hidden; font-size: 1.0625rem; line-height: 20px; /* .stopv-head: over .sheet-content h1 */ font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
 /* up: the name on its own row under the buttons, up to two lines */
-.stopv-head.is-up .stopv-titles { grid-column: 1 / -1; grid-row: 2; padding-top: 6px; }
-.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 24px; white-space: normal; overflow-wrap: break-word; }
+.stopv-head.is-up .stopv-titles { grid-column: 1 / -1; grid-row: 2; padding-bottom: 9px; } /* the same gap to the chips as at mid */
+.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 29px; white-space: normal; overflow-wrap: break-word; }
 .stopv-code { margin: 0; color: var(--muted-foreground); font-size: .85rem; text-align: center; }
 
 /* one round button for the whole card (share, ✕, ☆): a 38 px circle (glass in css/glass.css) with a 44 px tap area */
