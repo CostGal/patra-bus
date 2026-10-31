@@ -260,7 +260,9 @@ export function mountStop(container, ctx, { code }) {
     chipBar.style.setProperty('--pk-dy', `${Math.round(line.top + line.height / 2 - (row.top + row.height / 2))}px`);
     // all fit: the scroller keeps its right padding too, so it has nothing to scroll and draws no edge fade
     const end = start + shown + (want <= shown ? pad + 8 : 0);
-    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(row.right - bar.left - end))}px`);
+    // (from the bar's width: the scroller's own right edge already moves with the cut at low)
+    const off = row.left - bar.left; // the scroller is wider than the bar by this much each side
+    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(bar.width - off - end))}px`);
   }
   const chipRO = new ResizeObserver(() => { fitName(); placeChips(); });
   chipRO.observe(head);

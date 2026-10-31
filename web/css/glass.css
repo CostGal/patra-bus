@@ -354,8 +354,11 @@ html.glass .sheet .stopv-pill.primary {
 @media (max-width: 899.98px) {
   /* more room at the sides of the floating card: 8 px more than the sheet's own 16 (16 px from the card's edge) */
   html.glass .sheet .stopv { padding-inline: 8px; }
-  html.glass .sheet .stopv-chipbar { margin-inline: -24px; }
-  html.glass .sheet .stopv-chips { padding-inline: 24px; }
+  /* the chips' row ends at the same inset as everything else, faded where more chips scroll (the scroller is 6 px wider
+     each side, taken back by margins, and 10 px taller, so a held chip grows without being cut, nor its tap area) */
+  html.glass .sheet .stopv-chipbar { margin-inline: 0; }
+  html.glass .sheet .stopv-chipbar::before { left: -24px; right: -24px; }
+  html.glass .sheet .stopv-chips { padding: 10px 6px; margin: -8px -6px; }
   /* the name: at low at the top of the buttons' row (the badges under it), from mid centred on the buttons (moved by
      --l, a transform). Towards up it grows (a transform, done in the first half of the way) from its low/mid size
      (17 px, or --name-n when js/arrivals-view.js shrank a long one) to its up size (24 px, or --name-up-n); at up it
@@ -412,4 +415,13 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
   .app:not(.no-map):has(.stopv) .sheet { top: var(--safe-top); }
   .app:has(.stopv) .menu-fab { opacity: clamp(0, (1.8 - var(--sheet-t, 1)) / .3, 1); }
   body[data-sheet="full"] .app:has(.stopv) .menu-fab { pointer-events: none; }
+}
+/* TEL-227: the ☰ and the map capsule wear the card's round-button glass (light tint, light blur, rim, faint shadow) */
+html.glass :is(.menu-fab, .map-capsule) {
+  background-image: var(--g-sheen); background-color: var(--g-circle);
+  -webkit-backdrop-filter: blur(3.9px) saturate(180%); backdrop-filter: blur(3.9px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 5px var(--g-circle-shadow);
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  html.glass :is(.menu-fab, .map-capsule) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }

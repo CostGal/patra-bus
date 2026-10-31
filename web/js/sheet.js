@@ -276,7 +276,8 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   // Body gestures (touch only): drag the sheet when it is not full, or when full and scrolled to the top.
   let t0 = null;
   body.addEventListener('touchstart', (e) => {
-    if (inert() || e.touches.length !== 1) { t0 = null; return; }
+    // a touch & hold on a button (not on a list row) is a press, never a drag of the sheet (TEL-227)
+    if (inert() || e.touches.length !== 1 || e.target.closest?.('button, [role="button"]')) { t0 = null; return; }
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, mode: 'undecided' };
   }, { passive: true });
   body.addEventListener('touchmove', (e) => {

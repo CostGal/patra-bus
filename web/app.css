@@ -185,8 +185,9 @@ a { color: var(--primary); }
 .fab-sm { width: 44px; height: 44px; }
 .fab-sm .icon { --icon: 20px; }
 .fabs-bottom {
-  position: fixed; z-index: 30; right: calc(var(--safe-right) + 12px); bottom: var(--space-4);
-  display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); transition: opacity .2s;
+  position: fixed; z-index: 19; right: calc(var(--safe-right) + 12px); bottom: var(--space-4);
+  display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);
+  /* z 19, under the sheet (20): above mid the sheet slides over it instead of it fading in front (TEL-227) */
   /* (no transition on transform: app.js moves it with the sheet on every frame, so it stays glued at the same distance
      above the sheet, like the attribution line, TEL-227) */
 }
