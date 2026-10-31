@@ -61,9 +61,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   which cells (mode × low/mid/up) it changes.
   **Stop header** (location mode, TEL-227, an Apple Maps place card): share on the left, ✕ on the right, both the
   card's one round button (`.g-circle`, see "Glass target" below; the ☆ is the same button). **Low** = that row alone,
-  centred in the card (10 px above and below; the grabber, 48 × 3, 2 px from the card's top): the name (17 px, one
+  centred in the card (10 px above and below; the grabber, 48 × 3, 5 px from the card's top, close over the row): the name (17 px, one
   line; a long one shrinks down to 14 px, then "…") at the top and the line badges (85%, centred) right under it, the
-  two as tall as the buttons: 66 px. **Mid**: the name centred on the buttons, the line chips right under it (40 px,
+  two as tall as the buttons: 66 px; with no badges the name is centred on the buttons. **Mid**: the name centred on the buttons, the line chips right under it (40 px,
   growing to fill the row, so they keep the same inset as everything else; more than fit: they scroll), then
   directions (wide, tinted blue glass with a shining outline while the sheet floats, solid up) and ☆. **Up**: the sheet
   reaches the top of the screen and the ☰ fades out; the name has its own row under the buttons, 24 px (less if its
@@ -169,3 +169,43 @@ the next one. Registry: `scripts/ui-map.mjs`.
 - **Never renumber or reuse an ID.** A new element takes the next free number of its area; a removed one stays in the
   registry with `gone: true`. A red `?` box (listed at the end of `LEGEND.md`) is something pressable that is not in
   the registry: add it in the same PR. An ID whose selector stops matching shows "—" in the legend: fix its selector.
+
+## 10. The stop card style (LOCKED, TEL-227, Kostas 2026-10-31)
+
+The stop card (location mode) is the reference for every other card and header: the next sessions follow it, and a
+change to it needs Kostas's decision. Its layout is in §4 ("Stop header"), its glass in §4 ("Glass target"). What we
+learned building it, as rules:
+
+**Look**
+- Apple Maps iOS 26 is the reference; compare against real screenshots, low / mid / up, before proposing.
+- One inset for everything in the card: 16 px from the card's edge (header circles, chips, buttons, cards).
+- One round button for the card (`.g-circle`): 38 px glass circle, 44 px tap area, 20 px icon in the text colour. Not a
+  `.btn` size: reset `min-height` (`.btn`'s 44 px made it an oval) and padding.
+- Titles are small and centred (17 px on the buttons' row at low and mid, 24 px on their own row at up); a long name
+  shrinks to a floor, then "…": a card never changes height with its name.
+- Low is one row, centred in the card, as tall as the buttons; buttons and actions appear from mid.
+- Chips fill their row from mid (same inset as the rest); at low they are the small badges under the name.
+- Glass is clear: a light tint and a light blur (§4 "Glass target"); light mode gets a little more shadow on buttons.
+
+**Motion**
+- Drag-linked change = a transform or opacity driven by `--l` / `--u` (from `--sheet-t`), never a font size or a
+  layout property per frame (it stutters on iPhone). Grow text with `scale`, keep its line box fixed.
+- Never change the sheet's measured layout (anything above `[data-peek-end]` / `[data-mid-end]`) as a function of
+  `--l`: `sheet.js` measures low and mid from the layout and would aim at a moving target. Layout may change only
+  while up or held (`sheet.js` does not measure then) and must be put back on `sheet:leave-full`, before it measures.
+- A discrete layout jump (a title moving to its own row) hides in a short blur (0.18 s), as in Apple Maps.
+- Things floating over the map move with the sheet on every frame, no CSS transition on `transform` (the capsule and
+  the attribution line stay at the same distance above the sheet).
+- Up from mid is quicker than the other moves (spring response 0.3).
+
+**Measuring in JS**
+- Measure with transitions off (`style.transition = 'none'`): with reduced motion app.css gives every change a 0.01 ms
+  transition and `getComputedStyle` returns the old value.
+- Measure again when a font finishes loading (`document.fonts` `loadingdone`); `fonts.ready` can resolve too early.
+- Measure transformed things from an untransformed ancestor (`getBoundingClientRect` includes transforms).
+- Specificity: `.sheet-content h1` sets font and line height; a view's title needs a two-class selector.
+- A scroller clips what overflows it, tap areas (`::after`) included.
+
+**Process**
+- Every visual change: low / mid / up × light / dark × EL / EN screenshots on a striped background (the map is blocked
+  in the cloud), the numbered UI map for names (`npm run shots -- --annotate`), then Kostas on his iPhone.

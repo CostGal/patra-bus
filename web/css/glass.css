@@ -205,8 +205,9 @@ html.glass .sheet-body {
 }
 /* a tight grabber (Kostas: minimal room around it); the finger still gets a 30 px strip, half of it over the map */
 html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8px; }
-/* the stop (TEL-227): the grabber 2 px from the card's top, and the row under it centred in low (10 px above and below) */
-html.glass .sheet:has(.stopv) .sheet-handle { height: 6px; padding-top: 2px; }
+/* the stop (TEL-227, locked): the grabber 5 px from the card's top; the row under it stays centred in low (10 px above
+   and below), so the grabber's area is 6 px and the grabber runs 2 px past it, close over the row */
+html.glass .sheet:has(.stopv) .sheet-handle { height: 6px; padding-top: 5px; overflow: visible; }
 /* the grabber: 48 x 3 (TEL-227: wider and thinner than iOS's 36 x 5), a translucent grey */
 html.glass .sheet-pill { width: 48px; height: 3px; border-radius: 2px; background: rgba(60, 60, 67, .3); }
 @media (prefers-color-scheme: dark) { html.glass:not([data-theme="light"]) .sheet-pill { background: rgba(235, 235, 245, .3); } }
@@ -361,6 +362,8 @@ html.glass .sheet .stopv-pill.primary {
      is set at that size on its own row, drawn at the same visual size and growing to it */
   html.glass .sheet .stopv-name { font-size: var(--name-px, 17px); transform-origin: 50% 0;
     transform: translateY(calc(var(--l, 1) * 9px)) scale(calc(1 + min(1, var(--u, 0) * 2) * (var(--name-up-n, 24) / var(--name-n, 17) - 1))); }
+  /* no badges (one line or none arriving): centred on the buttons at low too */
+  html.glass .sheet .stopv-head:not(.has-lines, .is-up) .stopv-name { transform: translateY(9px); }
   html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 24) * 1px);
     transform: scale(calc((var(--name-n, 17) + (var(--name-up-n, 24) - var(--name-n, 17)) * min(1, var(--u, 0) * 2)) / var(--name-up-n, 24))); }
   /* from mid the chips grow to fill the row, so it keeps the same inset as everything else (more than fit: they scroll) */
