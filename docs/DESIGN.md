@@ -63,10 +63,12 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   card's one round button (`.g-circle`: a 38 px glass circle with a bright rim and a small shadow, 44 px tap area, a
   20 px icon in the text colour; the ☆ is the same button), centred on the name's first line. The name is centred,
   26 px on one line at low and mid (a long one shrinks down to 20 px, then is cut with "…"), so low is the same height
-  for every stop; from mid towards up it grows with the sheet to 30 px, and past 60% of the way it may take two lines
-  (one line again below that point, and before the sheet measures low and mid on the way down). Its line box stays
-  34 px, so growing moves nothing. Under it, on one line: the line badges at low (85%, centred), "Stop 1011" from mid
-  (it fades in as they leave). **Low** = that header alone, 96 px with the grabber at any width. From mid, under the
+  for every stop; from mid towards up it grows with the sheet to 30 px (less if its longest word would not fit), as a
+  transform, so it stays smooth on a phone; it takes two lines as soon as one would no longer hold it, at the same
+  visual size (one line again on the way down, before the sheet measures low and mid). Its line box stays 34 px, so
+  growing moves nothing. Under it, on one line: the line badges at low (85%, centred), "Stop 1011" from mid (it fades
+  in as they leave). **Low** = that header alone, 98 px with the grabber at any width, with a little more room under
+  the badges than above the name. Content in the floating card sits 16 px from its edge. From mid, under the
   header: the line chips, then directions (wide, tinted blue glass while the sheet floats, solid up) and ☆. Dragging up,
   the badges leave the name's line and slide down into their row right under the header, growing into the filter chips
   ("All" unfolds in front); they cross nothing. No ⋯ for now (its two items are on screen; it comes back with an island

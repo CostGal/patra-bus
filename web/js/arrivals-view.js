@@ -151,38 +151,60 @@ export function mountStop(container, ctx, { code }) {
   // under the name: the line badges at low (the filter chips below, carried up and centred there: css/glass.css,
   // placed by placeChips()); from mid "Stop 1011" fades in on the same line as they leave
   const codeText = h('span', { class: 'stopv-code' }, t('Στάση {code}', { code }));
-  const sub = h('p', { class: 'stopv-sub', 'data-peek-end': '' }, codeText); // low ends under it (js/sheet.js)
+  const sub = h('p', { class: 'stopv-sub' }, codeText);
   const name = h('h1', { class: 'stopv-name', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
       iconBtn('share', t('Κοινοποίηση'), share),
-      h('div', { class: 'stopv-titles' }, name, sub),
+      h('div', { class: 'stopv-titles' }, name, sub, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
   const acts = h('div', { class: 'stopv-acts' },
     h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
     star);
 
-  // the name, as in Apple Maps: one line at low and mid (26 px, shrunk down to 20 px before it is cut with "…"); from
-  // mid towards up it grows with the sheet (css/glass.css, by --u) and, past 60% of the way, may take two lines. Below
-  // that point it is one line again, before the sheet measures mid, so the sheet never measures a two-line header.
-  // The line height stays 34 px, so growing moves nothing below it.
+  // the name, as in Apple Maps: one line at low and mid (26 px, shrunk down to 20 px before it is cut with "…"). From
+  // mid towards up it grows with the sheet to 30 px: a transform (css/glass.css, by --u), so it is smooth on a phone
+  // (no new font size on every frame). It takes two lines as soon as one would no longer hold it, at the same visual
+  // size, so only the line break shows. Two lines only while the sheet is up or held: it measures low and mid at
+  // neither, and on the way down it tells us first (sheet:leave-full), so it never measures a two-line header.
+  // The line box stays 34 px: growing moves nothing below it.
   const sheetEl = document.getElementById('sheet');
-  const NAME_PX = 26, NAME_MIN = 20, UP_AT = 1.6; // --sheet-t: 1 at mid, 2 at up
+  const NAME_PX = 26, NAME_MIN = 20, NAME_UP = 30;
+  let nameW = 0, nameN = NAME_PX, upN = NAME_UP; // its own width at its low/mid size, that size, its up size
+  let measureCtx = null;
   function fitName() {
     if (dead) return;
-    name.style.removeProperty('--name-px');
-    if (head.classList.contains('is-up') || !name.clientWidth) return;
-    if (name.scrollWidth > name.clientWidth + 1) {
-      const px = parseFloat(getComputedStyle(name).fontSize) || NAME_PX; // includes its growth towards up
-      // 2 px to spare: scrollWidth is rounded, and a fraction of a pixel over would still draw the "…"
-      name.style.setProperty('--name-px', `${Math.max(NAME_MIN, Math.floor(px * (name.clientWidth - 2) / name.scrollWidth - (px - NAME_PX)))}px`);
+    if (head.classList.contains('is-up')) return; // measured again once it is one line
+    for (const k of ['--name-px', '--name-n', '--name-up-n']) name.style.removeProperty(k);
+    const room = name.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
+    if (room <= 0) return;
+    const r = document.createRange();
+    r.selectNodeContents(name);
+    const scale = name.getBoundingClientRect().width / name.offsetWidth || 1; // the growth towards up, if any
+    let w = r.getBoundingClientRect().width / scale;
+    nameN = NAME_PX;
+    if (w > room) {
+      nameN = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
+      w = w * nameN / NAME_PX;
+      name.style.setProperty('--name-px', `${nameN}px`);
+      name.style.setProperty('--name-n', String(nameN));
     }
+    nameW = w;
+    // up: 30 px, unless its longest word would not fit on a line at that size (it would break inside the word)
+    measureCtx ||= document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(name);
+    measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
+    const longest = Math.max(...stop.displayName.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
+    upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * room / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
+    if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
   }
-  const setUp = (on) => { if (head.classList.contains('is-up') !== on) { head.classList.toggle('is-up', on); fitName(); } };
-  // sheet.js writes --sheet-t on every frame of a drag or a spring. Two lines only while the sheet is up or held (it
-  // measures neither then); on the way down it tells us first (sheet:leave-full), then measures low and mid
-  const twoLines = () => (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > UP_AT
-    && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'));
+  const setUp = (on) => { if (head.classList.contains('is-up') !== on) { head.classList.toggle('is-up', on); if (!on) fitName(); } };
+  const twoLines = () => {
+    if (!(sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))) return false;
+    const u = Math.max(0, Math.min(1, (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) - 1));
+    return u > 0 && nameW * (1 + u * (upN / nameN - 1)) > name.clientWidth - 2;
+  };
+  // sheet.js writes --sheet-t on every frame of a drag or a spring
   const tMO = new MutationObserver(() => setUp(twoLines()));
   if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
   const onLeaveUp = () => setUp(false);

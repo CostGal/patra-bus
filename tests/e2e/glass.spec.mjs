@@ -208,9 +208,10 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   // "Στάση 1011" is back on the line under the name
   expect(await page.evaluate(() => document.querySelector('.stopv-acts').getBoundingClientRect().top - document.querySelector('.stopv-chipbar').getBoundingClientRect().bottom)).toBeGreaterThan(0);
   expect(await page.evaluate(() => Number(getComputedStyle(document.querySelector('.stopv-code')).opacity))).toBe(1);
-  // up: the name grows with the sheet to 30 px and may take two lines; back to one line as soon as it leaves up
+  // up: the name grows with the sheet (to 30 px, a little less when its longest word would not fit at 30) and may
+  // take two lines; back to one line as soon as it leaves up
   await page.evaluate(() => window.__app.sheet.snap('full'));
-  await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('.stopv-name')).fontSize)).toBe('30px');
+  await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.stopv-name')).fontSize))).toBeGreaterThanOrEqual(28);
   expect(await page.evaluate(() => document.querySelector('.stopv-head').classList.contains('is-up'))).toBe(true);
   await page.evaluate(() => window.__app.sheet.snap('half'));
   await expect.poll(() => page.evaluate(() => document.querySelector('.stopv-head').classList.contains('is-up'))).toBe(false);

@@ -342,9 +342,17 @@ html.glass .sheet .stopv-pill.primary {
    badge --pk-ox) and how much of the row fits there (--pk-cut: the scroller is that much narrower, so its own edge
    fade cuts the row) */
 @media (max-width: 899.98px) {
-  /* the name grows with the sheet from mid to up (26 → 30 px; js/arrivals-view.js shrinks a long one at low and mid) */
-  html.glass .sheet .stopv-name { font-size: calc(var(--name-px, 26px) + var(--u, 0) * 4px); }
-  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(26px + var(--u, 0) * 4px); }
+  /* more room at the sides of the floating card: 8 px more than the sheet's own 16 (16 px from the card's edge) */
+  html.glass .sheet .stopv { padding-inline: 8px; }
+  html.glass .sheet .stopv-chipbar { margin-inline: -24px; }
+  html.glass .sheet .stopv-chips { padding-inline: 24px; }
+  /* the name grows with the sheet from mid to up as a transform (smooth on a phone): from its low/mid size (26 px, or
+     --name-n when js/arrivals-view.js shrank a long one) to its up size (30 px, or --name-up-n when 30 would break a
+     word). On two lines it is set at the up size and drawn at the same visual size, growing to it */
+  html.glass .sheet .stopv-name { font-size: var(--name-px, 26px); transform-origin: 50% 0;
+    transform: scale(calc(1 + var(--u, 0) * (var(--name-up-n, 30) / var(--name-n, 26) - 1))); }
+  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 30) * 1px);
+    transform: scale(calc((var(--name-n, 26) + (var(--name-up-n, 30) - var(--name-n, 26)) * var(--u, 0)) / var(--name-up-n, 30))); }
   /* "Stop 1011" fades in as the badges leave its line */
   html.glass .sheet .stopv-head.has-lines .stopv-code { opacity: var(--l, 1); }
   html.glass .sheet .stopv-chipbar {
