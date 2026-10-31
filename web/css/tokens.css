@@ -42,6 +42,11 @@
   --radius-md: calc(var(--radius) - 4px);   /* 8  — buttons-in-rows, inputs in rows, badges, menu items */
   --radius-lg: calc(var(--radius) + 8px);   /* 20 — sheets, hero cards */
   --radius-full: 999px;
+  /* concentric corners (TEL-225, iOS 26): each level in is one step (8px) smaller than the surface around it.
+     sheet 28 → cards/tiles in the sheet 20 → blocks inside a card 12. Buttons, chips, inputs and badges keep their own. */
+  --radius-sheet: 28px;
+  --radius-card: calc(var(--radius-sheet) - 8px);
+  --radius-inner: calc(var(--radius-card) - 8px);
 
   /* spacing: 4 px grid */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;

@@ -32,6 +32,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Floating chrome (search bar, bottom sheet, locate button, toasts) = translucent material:
   `background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`,
   a faint bright top edge, soft shadow; bigger surfaces = stronger blur + deeper shadow than small chips.
+- Concentric corners (TEL-225): a surface inside another has a smaller radius, one step (8 px) per level: sheet `--radius-sheet` 28 → cards/tiles in it `--radius-card` 20 → blocks inside a card `--radius-inner` 12. Buttons, chips, inputs and badges keep their own shape (pills stay pills).
 - Never stack translucent on translucent. Text on materials: slightly heavier weight, full-contrast colour.
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
@@ -69,9 +70,11 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   pills. **Menu:** morphs out of the ☰ button: pressed, ☰ is a whiter glass circle;
   as the menu opens, its glass starts clear over that circle and its blur grows with it, so the ☰ lines blur out through
   it and a ✕ blurs in where they were (the open menu's close button); the circle swells around the button, then opens into the panel (items fade in late); closing runs the same path
-  back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Same logic elsewhere: every round button (☆, ⋯, ✕,
-  the map's i) presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
-  to the stop's close ✕) and the map's i (a round button above locate, the same size, TEL-226) grows into the attribution pill and back; the selected line chip is one glass
+  back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Same logic elsewhere: every round button (☆, ⋯, ✕)
+  presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
+  to the stop's close ✕); the map buttons sit in one vertical glass capsule (split by a hairline: the buttons in it are
+  flat segments that, held, pop out like ☰ into a whiter glass circle; TEL-226), and the map's attribution is no button
+  at all but one small line of text, always there, just above the sheet (like Apple's "Legal" in apps on Apple Maps); the selected line chip is one glass
   lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
   contrast), search results (on the solid up sheet), stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
