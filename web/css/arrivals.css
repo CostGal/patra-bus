@@ -6,21 +6,21 @@
 .stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* ---- header (TEL-227: an Apple Maps place card) ---- */
-/* share · centred name · close; at low the line badges under the name, from mid the line chips right under it. The
-   name is one line (26 px, shrunk to 20 px by js/arrivals-view.js before it is cut with "…"), so low is the same height
-   for every stop; towards up it grows (css/glass.css) and may take two lines. Its line box stays 34 px: growing moves
-   nothing. The stop's number is at the very bottom (.stopv-code) */
+/* share · name · close on one 38 px row. At low the name sits at its top and the line badges right under it, so the
+   two are as tall as the buttons; at mid the name is centred on the buttons (css/glass.css moves it by --l); at up it
+   has its own row under them. 17 px on one line at low and mid (js/arrivals-view.js shrinks a long one down to 14 px
+   before it is cut with "…"), 20 px and up to two lines at up. The stop's number is at the very bottom (.stopv-code) */
 .stopv-head { display: flex; flex-direction: column; margin-bottom: -6px; } /* the chips 6 px under it, not 12 */
-/* the circles are centred on the name's first line */
-/* (no side margin: the circles' outer edges line up with the cards below) */
-.stopv-top { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: start; gap: var(--space-1); margin: -17px 0 0; }
-/* the circles sit 3 px lower than the name's centre would put them: higher, the sheet's top edge cut them */
-.stopv-top > .btn.round.g-circle { margin: 10px 0 -10px; } /* (not taller: the row keeps the name's height) */
-.stopv-titles { position: relative; min-width: 0; padding-top: 5px; text-align: center; }
-/* low ends here (js/sheet.js): the badges' line under the name (4 + 18 px) and 4 px more */
-.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: 26px; pointer-events: none; }
-.stopv-head .stopv-name { margin: 0; overflow: hidden; font-size: 1.625rem; line-height: 34px; /* .stopv-head: over .sheet-content h1 */ font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
-.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; }
+.stopv-top { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: start; gap: var(--space-1); margin: -8px 0 0; }
+.stopv-top > .btn.round.g-circle { margin: 0; grid-row: 1; }
+.stopv-top > .btn.round.g-circle:last-child { grid-column: 3; } /* stays right when the name moves to its own row (up) */
+.stopv-titles { position: relative; min-width: 0; text-align: center; }
+/* low ends here (js/sheet.js): the badges' line under the name (18 px, to the buttons' bottom) */
+.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: 18px; pointer-events: none; }
+.stopv-head .stopv-name { margin: 0; overflow: hidden; font-size: 1.0625rem; line-height: 20px; /* .stopv-head: over .sheet-content h1 */ font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+/* up: the name on its own row under the buttons, up to two lines */
+.stopv-head.is-up .stopv-titles { grid-column: 1 / -1; grid-row: 2; padding-top: 6px; }
+.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 24px; white-space: normal; overflow-wrap: break-word; }
 .stopv-code { margin: 0; color: var(--muted-foreground); font-size: .85rem; text-align: center; }
 
 /* one round button for the whole card (share, ✕, ☆): a 38 px circle (glass in css/glass.css) with a 44 px tap area */

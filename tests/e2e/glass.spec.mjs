@@ -196,7 +196,7 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   expect(low.below).toBeLessThan(30); // and low ends right under them
   expect(low.pillTop).toBeGreaterThan(-12); // directions and ☆ are not shown at low (below the card's edge)
   expect(low.oneLine).toBe(true); // the name is one line: low is the same height for every stop
-  expect(low.shown).toBeLessThan(95); // ~88 px (it was 168 here before TEL-227)
+  expect(low.shown).toBeLessThan(75); // ~66 px (it was 168 here before TEL-227)
   expect(low.gapUnderName).toBeGreaterThan(0); // the badges sit right under the name...
   expect(low.gapUnderName).toBeLessThan(10);
   expect(low.centreOff).toBeLessThan(3); // ...centred
@@ -213,14 +213,14 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
       centreOff: Math.abs((kids[0].left + kids[kids.length - 1].right) / 2 - (bar.left + bar.right) / 2),
       codeLast: document.querySelector('.stopv > .stopv-code').compareDocumentPosition(document.querySelector('.stopv-foot')) === Node.DOCUMENT_POSITION_PRECEDING };
   });
-  expect(mid.underName).toBeLessThan(12);
+  expect(mid.underName).toBeLessThan(20); // the name is centred on the buttons there
   expect(mid.actsBelow).toBeGreaterThan(0);
   expect(mid.centreOff).toBeLessThan(3);
   expect(mid.codeLast).toBe(true);
-  // up: the name grows with the sheet (to 30 px, a little less when its longest word would not fit at 30) and may
-  // take two lines; back to one line as soon as it leaves up
+  // up: the name grows with the sheet (to 20 px, a little less when its longest word would not fit) and moves to its
+  // own row under the buttons; back on the buttons' row as soon as the sheet leaves up
   await page.evaluate(() => window.__app.sheet.snap('full'));
-  await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.stopv-name')).fontSize))).toBeGreaterThanOrEqual(28);
+  await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.stopv-name')).fontSize))).toBeGreaterThanOrEqual(19);
   expect(await page.evaluate(() => document.querySelector('.stopv-head').classList.contains('is-up'))).toBe(true);
   await page.evaluate(() => window.__app.sheet.snap('half'));
   await expect.poll(() => page.evaluate(() => document.querySelector('.stopv-head').classList.contains('is-up'))).toBe(false);

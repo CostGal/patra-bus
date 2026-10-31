@@ -222,8 +222,8 @@ html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
   -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
 }
 html.glass-lens .sheet::before { -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); }
-/* TEL-227: the sheet's blur, 6 px at low growing to 7 px from mid (--l) */
-html.glass .sheet { --g-blur-sheet: blur(calc(6px + var(--l, 1) * 1px)) saturate(190%); }
+/* TEL-227: the sheet's blur, 3.6 px at low growing to 4.2 px from mid (--l) */
+html.glass .sheet { --g-blur-sheet: blur(calc(3.6px + var(--l, 1) * .6px)) saturate(190%); }
 
 /* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring, --g-morph = 0..1).
    The glass starts clear over the pressed ☰ circle and its blur grows with the shape, so the ☰ lines blur out through
@@ -333,13 +333,16 @@ html.glass .btn.round.g-circle {
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 5px var(--g-circle-shadow);
 }
-/* in the sheet: lighter blur, 5 px at low growing to 5.6 px from mid (--l) */
-html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: blur(calc(4.9px + var(--l, 1) * .7px)) saturate(180%); backdrop-filter: blur(calc(4.9px + var(--l, 1) * .7px)) saturate(180%); }
+/* in the sheet: lighter blur, 3.4 px at low growing to 3.9 px from mid (--l) */
+html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: blur(calc(3.4px + var(--l, 1) * .5px)) saturate(180%); backdrop-filter: blur(calc(3.4px + var(--l, 1) * .5px)) saturate(180%); }
 html.glass .btn.round.g-circle.g-press { background-color: var(--g-pressed); }
 /* directions: tinted blue glass while the sheet floats, solid blue up (--u: 0 up to mid, 1 up) */
 html.glass .sheet .stopv-pill.primary {
-  background-image: var(--g-sheen); background-color: color-mix(in srgb, var(--primary) calc(85% + var(--u, 1) * 15%), transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--g-edge) 60%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--g-rim) 70%, transparent);
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, calc(.32 * (1 - var(--u, 1)))), rgba(255, 255, 255, 0) 55%);
+  background-color: color-mix(in srgb, var(--primary) calc(74% + var(--u, 1) * 26%), transparent);
+  /* a shining outline: bright along the top, a light rim all round */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 -1px 0 rgba(255, 255, 255, .18), inset 0 0 0 1px rgba(255, 255, 255, .32), 0 2px 10px color-mix(in srgb, var(--primary) 30%, transparent);
+  -webkit-backdrop-filter: blur(3px) saturate(180%); backdrop-filter: blur(3px) saturate(180%);
 }
 /* TEL-227, phone sheet only: at low the line badges sit centred under the name, at 85%; towards mid (--l) the bar
    comes down into its own row right under the header, the badges spread and become the filter chips; the directions
@@ -351,14 +354,18 @@ html.glass .sheet .stopv-pill.primary {
   html.glass .sheet .stopv { padding-inline: 8px; }
   html.glass .sheet .stopv-chipbar { margin-inline: -24px; }
   html.glass .sheet .stopv-chips { padding-inline: 24px; }
-  /* the name grows with the sheet from mid to up as a transform (smooth on a phone), done in the first half of the
-     way: from its low/mid size (26 px, or --name-n when js/arrivals-view.js shrank a long one) to its up size (30 px,
-     or --name-up-n when 30 would break a word). On two lines it is set at the up size and drawn at the same visual
-     size, growing to it */
-  html.glass .sheet .stopv-name { font-size: var(--name-px, 26px); transform-origin: 50% 0;
-    transform: scale(calc(1 + min(1, var(--u, 0) * 2) * (var(--name-up-n, 30) / var(--name-n, 26) - 1))); }
-  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 30) * 1px);
-    transform: scale(calc((var(--name-n, 26) + (var(--name-up-n, 30) - var(--name-n, 26)) * min(1, var(--u, 0) * 2)) / var(--name-up-n, 30))); }
+  /* the name: at low at the top of the buttons' row (the badges under it), from mid centred on the buttons (moved by
+     --l, a transform). Towards up it grows (a transform, done in the first half of the way) from its low/mid size
+     (17 px, or --name-n when js/arrivals-view.js shrank a long one) to its up size (20 px, or --name-up-n); at up it
+     is set at that size on its own row, drawn at the same visual size and growing to it */
+  html.glass .sheet .stopv-name { font-size: var(--name-px, 17px); transform-origin: 50% 0;
+    transform: translateY(calc(var(--l, 1) * 9px)) scale(calc(1 + min(1, var(--u, 0) * 2) * (var(--name-up-n, 20) / var(--name-n, 17) - 1))); }
+  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 20) * 1px);
+    transform: scale(calc((var(--name-n, 17) + (var(--name-up-n, 20) - var(--name-n, 17)) * min(1, var(--u, 0) * 2)) / var(--name-up-n, 20))); }
+  /* the chips are 24 px from mid (their tap area stays 44 px) */
+  html.glass .sheet .stopv-chip { min-height: 24px; --hit: -10px 0; }
+  /* the scroller clips what overflows it, the tap areas too: 8 px more room above and below, taken back by margins */
+  html.glass .sheet .stopv-chips { padding-block: 10px; margin-block: -8px; }
   /* from mid the chips are centred (js/arrivals-view.js measures the room, --chips-c) */
   html.glass .sheet .stopv-chips { padding-left: calc(24px + var(--l, 1) * var(--chips-c, 0px)); }
   html.glass .sheet .stopv-chipbar {

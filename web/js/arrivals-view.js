@@ -160,15 +160,15 @@ export function mountStop(container, ctx, { code }) {
     h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
     star);
 
-  // the name, as in Apple Maps: one line at low and mid (26 px, shrunk down to 20 px before it is cut with "…"). From
-  // mid towards up it grows with the sheet to 30 px: a transform (css/glass.css, by --u), so it is smooth on a phone
-  // (no new font size on every frame). It takes two lines as soon as one would no longer hold it, at the same visual
-  // size, so only the line break shows. Two lines only while the sheet is up or held: it measures low and mid at
-  // neither, and on the way down it tells us first (sheet:leave-full), so it never measures a two-line header.
-  // The line box stays 34 px: growing moves nothing below it.
+  // the name, as in Apple Maps: one line at low and mid (17 px, shrunk down to 14 px before it is cut with "…"); at up
+  // its own row under the buttons, 20 px (less if its longest word would not fit), up to two lines. From mid towards up
+  // it grows with the sheet as a transform (css/glass.css, by --u: smooth on a phone, no new font size per frame), and
+  // halfway up it moves to its own row at the same visual size, in a short blur. Only while the sheet is up or held: it
+  // measures low and mid at neither, and on the way down it tells us first (sheet:leave-full), so it never measures the
+  // up layout.
   const sheetEl = document.getElementById('sheet');
-  const NAME_PX = 26, NAME_MIN = 20, NAME_UP = 30;
-  let nameW = 0, nameN = NAME_PX, upN = NAME_UP; // its own width at its low/mid size, that size, its up size
+  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 20, NAME_LH = 20; // NAME_LH: its line box at low and mid (css)
+  let nameN = NAME_PX, upN = NAME_UP; // its low/mid size, its up size
   let measureCtx = null;
   function fitName() {
     if (dead) return;
@@ -190,13 +190,13 @@ export function mountStop(container, ctx, { code }) {
       name.style.setProperty('--name-px', `${nameN}px`);
       name.style.setProperty('--name-n', String(nameN));
     }
-    nameW = w;
     // up: 30 px, unless its longest word would not fit on a line at that size (it would break inside the word)
     measureCtx ||= document.createElement('canvas').getContext('2d');
     const cs = getComputedStyle(name);
     measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
     const longest = Math.max(...stop.displayName.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
-    upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * room / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
+    const upRoom = head.clientWidth - 2; // up: the whole width of the card
+    upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * upRoom / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
     if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
     name.style.transition = '';
   }
@@ -205,17 +205,13 @@ export function mountStop(container, ctx, { code }) {
     if (head.classList.contains('is-up') === on) return;
     head.classList.toggle('is-up', on);
     if (!on) fitName();
-    // the line break hides in a short blur, as in Apple Maps
+    // the move to its own row hides in a short blur, as in Apple Maps
     if (!reduceMotion.matches) name.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
   };
-  const twoLines = () => {
-    if (!(sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))) return false;
-    // the growth is done in the first half of the way up (css/glass.css: min(1, 2 × --u))
-    const u = Math.max(0, Math.min(1, 2 * ((parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) - 1)));
-    return u > 0 && nameW * (1 + u * (upN / nameN - 1)) > name.clientWidth - 2;
-  };
+  const upRow = () => (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5; // halfway from mid to up
   // sheet.js writes --sheet-t on every frame of a drag or a spring
-  const tMO = new MutationObserver(() => setUp(twoLines()));
+  const tMO = new MutationObserver(() => setUp(upRow()));
   if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
@@ -250,9 +246,9 @@ export function mountStop(container, ctx, { code }) {
     if (dead || chipBar.hidden || !head.classList.contains('has-lines')) return;
     const badges = [...chips.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')];
     chipBar.style.transform = 'none';
-    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), nm = name.getBoundingClientRect();
-    const col = name.parentElement.getBoundingClientRect();
-    const line = { left: col.left, width: col.width, top: nm.bottom + 4, height: 18 }; // the badges' line at low
+    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect();
+    const col = name.parentElement.getBoundingClientRect(); // (not the name: it moves with the sheet)
+    const line = { left: col.left, width: col.width, top: col.top + NAME_LH, height: 18 }; // the badges' line at low
     const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1); // unscaled
     // from mid the chips are centred (css/glass.css: --chips-c, extra left padding by --l): measured at rest from mid
     const sheetT = parseFloat(sheetEl?.style.getPropertyValue('--sheet-t')) || 1;

@@ -60,22 +60,21 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   mode* = something is picked (a stop, line, vehicle or route), the sheet starts with its header and a ✕. Each card says
   which cells (mode × low/mid/up) it changes.
   **Stop header** (location mode, TEL-227, an Apple Maps place card): share on the left, ✕ on the right, both the
-  card's one round button (`.g-circle`: a 38 px glass circle, light (41% white, 7 px blur), a bright rim and a faint
-  shadow, 44 px tap area, a 20 px icon in the text colour; the ☆ is the same button), centred on the name's first line.
-  The name is centred, 26 px on one line at low and mid (a long one shrinks down to 20 px, then is cut with "…"), so low
-  is the same height for every stop; from mid towards up it grows with the sheet to 30 px (less if its longest word
-  would not fit), as a transform, done in the first half of the way; it takes two lines as soon as one would no longer
-  hold it, at the same visual size, the line break hidden in a 0.18 s blur (one line again on the way down, before the
-  sheet measures low and mid). Its line box stays 34 px, so growing moves nothing. **Low** = the name and, right under
-  it, the line badges (85%, centred): 88 px with the grabber at any width. From mid: the line chips right under the
-  name (centred), then directions (wide, tinted blue glass while the sheet floats, solid up) and ☆. Dragging up, the
-  badges slide down into their row, growing into the filter chips ("All" unfolds in front); they cross nothing. The
-  stop's number is at the very bottom of the view, under the arrivals. Content in the floating card sits 16 px from its
-  edge. No ⋯ for now (its two items are on screen; it comes back with an island of the stop card once it has its own
-  items). The sheet goes up from mid 25% quicker than before. Header, chips, directions and cards share one inset (16 px
-  from the card's edge); on the stop the grabber area is 14 px (18 elsewhere), so the name sits close to it.
-  **Glass, lighter** (TEL-227): the sheet at mid is 26% tint, its blur 6 px at low growing to 7 px from mid; the card's
-  round buttons 4.9 → 5.6 px; the floating controls 7 px, menus and dialogs 9 px.
+  card's one round button (`.g-circle`: a 38 px glass circle, light (41% white), a bright rim and a faint shadow, a bit
+  more in light mode, 44 px tap area, a 20 px icon in the text colour; the ☆ is the same button). **Low** = that row
+  alone: the name (17 px, one line; a long one shrinks down to 14 px, then "…") at the top and the line badges (85%,
+  centred) right under it, the two as tall as the buttons: 66 px with the grabber. **Mid**: the name centred on the
+  buttons, the line chips (24 px, centred, 44 px tap area) right under it, then directions (wide, tinted blue glass
+  with a shining outline while the sheet floats, solid up) and ☆. **Up**: the name on its own row under the buttons,
+  20 px (less if its longest word would not fit), up to two lines. From mid towards up the name grows as a transform,
+  done in the first half of the way, and halfway it moves to its own row at the same visual size, in a 0.18 s blur
+  (back on the way down before the sheet measures low and mid). Dragging up from low, the badges slide down into their
+  row, growing into the filter chips ("All" unfolds in front); they cross nothing. The stop's number is at the very
+  bottom of the view. Header, chips, directions and cards share one inset (16 px from the card's edge); on the stop the
+  grabber area is 14 px (18 elsewhere). No ⋯ for now (it comes back with an island of the stop card once it has its own
+  items). The sheet goes up from mid 25% quicker than before.
+  **Glass, lighter** (TEL-227): the sheet at mid is 26% tint, its blur 3.6 px at low growing to 4.2 px from mid; the
+  card's round buttons 3.4 → 3.9 px; the floating controls 7 px, menus and dialogs 9 px.
   **Mid fits the view** (TEL-224, TEL-227): on a stop it ends a third into the second arrival (the first whole, about
   30–35% of the next card says the list goes on, as in Apple Maps); on home, under its card; 35–60% of the screen, and
   it follows as the content loads.
