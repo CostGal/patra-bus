@@ -594,79 +594,34 @@ document.addEventListener('pointerdown', (e) => {
 }, true);
 
 // ---------------------------------------------------------------- views owned by the shell
-// Home = ONE contextual card: onboard trip > saved place > nearby next bus. Favourites/recents show only when the sheet is expanded (CSS).
+// Home (TEL-232, Apple Maps search mode): low = the search alone; mid = Places (round buttons), the first-run hint, then the
+// recents (the sheet ends 20% into the 2nd one: [data-mid-end]); up = the favourites with their next arrival live, and
+// my routines (js/home-view.js). The active onboard trip sits above Places while there is one.
 function mountHome(container, c) {
-  const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
-  const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
-  const more = h('div', { class: 'home-more', hidden: true });
-  const card = h('div', { class: 'home-card', 'data-mid-end': '1' }, box.onboard, box.places, box.nearby); // mid ends under it (js/sheet.js)
-  const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
-  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
-  const views = {};
+  const onboard = h('div', { class: 'home-onboard' });
+  const places = h('section', { class: 'home-section home-places' });
+  const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the places
+  const recents = h('div', { class: 'home-recents' });
+  const favs = h('div', { class: 'home-favs' });
+  const routines = h('div', { class: 'home-routines' });
+  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), onboard, places, hint, recents, favs, routines);
+  const views = [];
   const offs = [];
   let dead = false;
-  let nearbyBusy = false;
-  let nearbyFailed = false;
-  const LEAVE_MS = 180; // matches .home-slot's transition duration (css/nearby.css)
-  const hideTimers = {};
-  // Cross-fades which card is shown (DESIGN.md §3): the leaving slot fades/lifts out, then hides; the
-  // entering one shows right away (its own module adds "card-in" for its content's entrance animation).
-  const showTop = (top) => {
-    for (const k of Object.keys(box)) {
-      if (k === top) {
-        clearTimeout(hideTimers[k]); hideTimers[k] = null;
-        box[k].classList.remove('is-leaving');
-        box[k].hidden = false;
-      } else if (!box[k].hidden && !hideTimers[k]) {
-        box[k].classList.add('is-leaving');
-        hideTimers[k] = setTimeout(() => {
-          hideTimers[k] = null;
-          if (dead) return;
-          box[k].hidden = true;
-          box[k].classList.remove('is-leaving');
-        }, LEAVE_MS);
-      }
-    }
-  };
-  const load = (key, file, fn, after) => import(file).then((m) => {
-    if (dead) return;
-    views[key] = m[fn](box[key], c);
-    after?.(m);
-  });
+  const LEAVE_MS = 180;
+  const add = (p) => p.then((v) => { if (dead) v?.destroy?.(); else if (v) views.push(v); }).catch((err) => console.error('[home]', err));
+  add(import('./onboard.js').then((m) => m.mountOnboardCard(onboard, c)));
+  add(import('./home-view.js').then((m) => m.mountPlacesRow(places, c)));
+  add(import('./home-view.js').then((m) => m.mountFavoritesLive(favs, c, stopRow)));
+  add(import('./home-view.js').then((m) => m.mountRoutinesHome(routines, c)));
 
-  // The first card with content wins; nearby is mounted only when nothing above it renders (it polls live data).
-  const evaluate = () => {
-    if (dead) return;
-    const top = box.onboard.childElementCount ? 'onboard' : box.places.childElementCount ? 'places' : 'nearby';
-    showTop(top);
-    if (top === 'nearby') {
-      if (views.nearby || nearbyBusy || nearbyFailed) return;
-      nearbyBusy = true;
-      load('nearby', './nearby.js', 'mountNearby')
-        .catch((err) => { console.error(err); nearbyFailed = true; box.nearby.replaceChildren(msgEl(t('Δεν φορτώθηκε η ενότητα «κοντά σου».'))); })
-        .finally(() => { nearbyBusy = false; evaluate(); });
-    } else if (views.nearby) {
-      views.nearby.destroy?.();
-      views.nearby = null;
-      box.nearby.replaceChildren();
-    }
-  };
-  const mo = new MutationObserver(evaluate);
-  mo.observe(box.onboard, { childList: true });
-  mo.observe(box.places, { childList: true });
-  Promise.allSettled([
-    load('onboard', './onboard.js', 'mountOnboardCard', (m) => { if (m.onTripChange) offs.push(m.onTripChange(evaluate)); }),
-    load('places', './places.js', 'mountPlacesCard'),
-  ]).then((rs) => { rs.forEach((r) => r.status === 'rejected' && console.error('[home]', r.reason)); evaluate(); });
-
+  // Recents: stops, then places. The first row whole, the second one 20% into it, is where mid ends.
   const paint = () => {
-    const favs = getFavorites().map((code) => data.stopByCode.get(String(code))).filter(Boolean);
-    const rs = recentStops(5);
-    const rp = recentPlaces(3);
-    more.replaceChildren(...[
-      favs.length ? h('section', { class: 'home-section' }, h('h2', {}, t('Αγαπημένες στάσεις')), h('div', { class: 'list' }, favs.map((s) => stopRow(s)))) : null,
-      rs.length || rp.length ? h('section', { class: 'home-section' }, h('h2', {}, t('Πρόσφατα')), h('div', { class: 'list' }, rs.map((s) => stopRow(s)), rp.map(placeRow))) : null].filter(Boolean));
-    more.hidden = !more.childElementCount;
+    const rows = [...recentStops(5).map((s) => stopRow(s)), ...recentPlaces(3).map(placeRow)];
+    delete places.dataset.midEnd;
+    if (rows.length) rows[Math.min(1, rows.length - 1)].dataset.midEnd = rows.length > 1 ? '0.2' : '1';
+    else places.dataset.midEnd = '1'; // no recents: mid ends under the places
+    recents.replaceChildren(...(rows.length ? [h('section', { class: 'home-section' }, h('h2', {}, t('Πρόσφατα')), h('div', { class: 'list' }, rows))] : []));
   };
   paint();
   offs.push(onChange(paint));
@@ -704,10 +659,8 @@ function mountHome(container, c) {
     destroy() {
       dead = true;
       clearTimeout(hintTimer);
-      mo.disconnect();
-      Object.values(hideTimers).forEach((id) => id && clearTimeout(id));
       offs.forEach((f) => f?.());
-      Object.values(views).forEach((v) => v?.destroy?.());
+      views.forEach((v) => v?.destroy?.());
     },
   };
 }
@@ -876,7 +829,7 @@ async function route() {
       break;
     case 'settings':
       document.title = `${t('Ρυθμίσεις')} · ${title()}`;
-      await mount(() => import('./settings-view.js'), (m) => m.mountSettings(content, ctx));
+      await mount(() => import('./settings-view.js'), (m) => m.mountSettings(content, ctx, { section: params.section || undefined }));
       break;
     case 'report':
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;

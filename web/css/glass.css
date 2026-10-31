@@ -208,6 +208,13 @@ html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8
 /* the stop (TEL-227, locked): the grabber 5 px from the card's top; the row under it stays centred in low (10 px above
    and below), so the grabber's area is 6 px and the grabber runs 2 px past it, close over the row */
 html.glass .sheet:has(.stopv) .sheet-handle { height: 6px; padding-top: 5px; overflow: visible; }
+/* home low (TEL-232, Apple Maps): a thin card. The grabber 5 px from the top and close over the search (8 px under it), a
+   little more room under the search than above it (10 px); the search row is 44 px, so low is 70 px. On a phone only: the
+   side panel keeps its own padding. app.css moves the ☰'s end point with it (6 px, was 20). */
+@media (max-width: 899px) {
+  html.glass .sheet:has(.sheet-search:not([hidden])) .sheet-handle { height: 6px; padding-top: 5px; overflow: visible; }
+  html.glass .sheet-search { padding-top: 10px; padding-bottom: 8px; }
+}
 /* the grabber: 48 x 3 (TEL-227: wider and thinner than iOS's 36 x 5), a translucent grey */
 html.glass .sheet-pill { width: 48px; height: 3px; border-radius: 2px; background: rgba(60, 60, 67, .3); }
 @media (prefers-color-scheme: dark) { html.glass:not([data-theme="light"]) .sheet-pill { background: rgba(235, 235, 245, .3); } }

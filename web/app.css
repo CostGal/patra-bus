@@ -285,11 +285,11 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 }
 
 /* home on a phone: up reaches the top, and the ☰ slides down into the search row as the sheet gets there (TEL-223;
-   20 px = from its resting place to the row's centre: grabber 18 + headroom 12 + half the field 22, less half of ☰ 24 +
-   its 8 px margin); css/glass.css makes room for it at the row's start */
+   6 px = from its resting place to the row's centre: grabber 6 + headroom 10 + half the field 22, less half of ☰ 24 +
+   its 8 px margin; was 20 with the 18 px grabber area, TEL-232); css/glass.css makes room for it at the row's start */
 @media (max-width: 899px) {
   .app:not(.no-map):has(.sheet-search:not([hidden])) .sheet { top: var(--safe-top); }
-  .app:has(.sheet-search:not([hidden])) .menu-fab { top: calc(var(--safe-top) + 8px + clamp(0, var(--sheet-t, 1) - 1, 1) * 20px); }
+  .app:has(.sheet-search:not([hidden])) .menu-fab { top: calc(var(--safe-top) + 8px + clamp(0, var(--sheet-t, 1) - 1, 1) * 6px); }
 }
 
 /* ---------- toast ---------- */
@@ -383,16 +383,6 @@ html.sheet-dragging .toast-host { transition: none; }
 .home-section > h2 { margin: 0 0 var(--space-1); }
 .hint { padding: var(--space-2) 0; color: var(--muted-foreground); font-size: 14px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-
-/* home: ONE contextual card (onboard > place > nearby); favourites/recents only when the sheet is expanded.
-   .home-card stacks its slots in one grid cell so the outgoing and incoming card overlap during the
-   ~180ms cross-fade (js/app.js showTop()) instead of both taking block-flow space and doubling the height. */
-.home-card { position: relative; display: grid; }
-.home-slot { grid-area: 1 / 1; min-width: 0; }
-.home-more { display: none; margin-top: var(--space-2); }
-[data-sheet="full"] .home-more { display: block; }
-.home-more[hidden] { display: none; }
-@media (min-width: 900px) { .home-more { display: block; } }
 
 /* ---------- map markers (HTML) ---------- */
 .veh, .user-mk, .mk { pointer-events: none; }

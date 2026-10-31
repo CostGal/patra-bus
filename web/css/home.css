@@ -1,0 +1,22 @@
+/* The home in the sheet (TEL-232, owner: shell): Places, recents, favourites and routines. Rules: docs/DESIGN.md §4 and §10
+   (one 16 px inset comes from the sheet's content padding; the round buttons are the card style's 38 px glass circles). */
+.home-onboard:not(:empty) { margin-bottom: var(--space-3); }
+.home-places { margin-top: var(--space-2); } /* mid is capped at 60% of the screen: the 2nd recent must still peek in */
+.home-places > h2 { margin: 0 0 var(--space-1); }
+.hm-places { display: flex; gap: var(--space-3); overflow-x: auto; padding: 4px 2px 2px; margin: 0 -2px; scrollbar-width: none; }
+.hm-places::-webkit-scrollbar { display: none; }
+.hm-place { flex: none; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--foreground); text-decoration: none; }
+.hm-circle { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--muted); color: var(--primary); }
+.hm-circle .icon { --icon: 24px; }
+.hm-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); font-weight: var(--weight-medium, 500); }
+.hm-place.is-empty .hm-circle, .hm-place.is-add .hm-circle { color: var(--muted-foreground); }
+.hm-place.is-empty .hm-circle { background: transparent; box-shadow: inset 0 0 0 1.5px var(--border); }
+.hm-place.is-empty .hm-label, .hm-place.is-add .hm-label { color: var(--muted-foreground); }
+.hm-place:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: var(--radius-md); }
+.home-recents > .home-section { margin-top: var(--space-2); }
+/* favourites: the stop row, its next arrival under it */
+.hm-fav + .hm-fav { margin-top: var(--space-1); }
+.hm-arr { padding: 0 0 var(--space-2); }
+.hm-arr .atile { margin: 0; }
+.hm-note { display: block; padding: 0 var(--space-2); color: var(--muted-foreground); font-size: var(--text-sm); }
+.hm-note.is-err { color: var(--destructive, var(--muted-foreground)); }
