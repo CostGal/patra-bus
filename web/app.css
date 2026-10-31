@@ -453,9 +453,8 @@ html.sheet-dragging .toast-host { transition: none; }
    with the sheet's edge (app.js) and the sheet covers it at full (Settings lists the same credits) */
 .map-attrib {
   position: fixed; z-index: 29; left: calc(var(--safe-left) + 12px); right: calc(var(--safe-right) + 12px); bottom: 2px;
-  pointer-events: none; transition: transform .3s var(--ease), opacity .2s;
+  pointer-events: none; will-change: transform; /* no transition: it moves with the sheet frame by frame (app.js) */
 }
-html.sheet-dragging .map-attrib { transition: none; }
 .no-map .map-attrib { display: none; }
 .map-attrib .maplibregl-ctrl-attrib {
   margin: 0; padding: 0; background: none !important; pointer-events: auto; font-size: 10px; line-height: 16px;

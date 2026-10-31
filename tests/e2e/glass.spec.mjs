@@ -295,8 +295,15 @@ test('map buttons: one glass capsule; the attribution is a line of text above th
   const hb = await page.locator('#sheet-handle').boundingBox(); // mid → low: the line follows the sheet down
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
   await page.mouse.down();
-  await page.mouse.move(hb.x + hb.width / 2, hb.y + 300, { steps: 12 });
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 120, { steps: 6 });
+  const drag = await at(); // mid-drag, the same gap: glued to the edge, no lag
+  expect(drag.bottom).toBeGreaterThan(p.bottom + 60);
+  expect(Math.abs((drag.sheetTop - drag.bottom) - (p.sheetTop - p.bottom))).toBeLessThan(2);
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 300, { steps: 6 });
   await page.mouse.up();
+  await page.waitForTimeout(60); // the spring is still moving the sheet: the line moves with it
+  const spring = await at();
+  expect(Math.abs((spring.sheetTop - spring.bottom) - (p.sheetTop - p.bottom))).toBeLessThan(2);
   await page.waitForTimeout(700);
   const q = await at();
   expect(q.bottom).toBeGreaterThan(p.bottom + 40);

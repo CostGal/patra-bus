@@ -99,7 +99,8 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     const st = Math.max(0, Math.min(2, tt)).toFixed(3);
     root.style.setProperty('--sheet-t', st);
     docEl.style.setProperty('--sheet-t', st); // for chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
-    // floating UI (FABs, toast, attribution) rides on the sheet up to the half point, then fades out
+    // floating UI (FABs, toast) rides on the sheet up to the half point, then fades out (the attribution line stays
+    // glued to the sheet's edge all the way: app.js uses `visible` for it)
     const lift = Math.min(vis, SZ.half);
     const opacity = vis <= SZ.half ? 1 : Math.max(0, 1 - (vis - SZ.half) / Math.max(1, (SZ.full - SZ.half) * 0.35));
     onMove?.({ visible: vis, lift, opacity });

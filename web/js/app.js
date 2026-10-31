@@ -222,11 +222,11 @@ function onSnap({ state, visible, desktop }) {
   const lowMid = (from === 'peek' && state === 'half') || (from === 'half' && state === 'peek');
   if (!desktop && lowMid && !routeSnap && (currentHead === '' || focusPt)) map.recenter(focusPt);
 }
-function onMove({ lift, opacity }) {
+function onMove({ visible, lift, opacity }) {
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
   fabsBottom.style.opacity = String(opacity);
   fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
-  mapAttrib.style.transform = fabsBottom.style.transform; // rides on the sheet's edge, as the map buttons do
+  mapAttrib.style.transform = visible ? `translateY(${-visible}px)` : ''; // glued to the sheet's edge, every frame, all the way up
   mapAttrib.style.opacity = String(opacity);
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
