@@ -90,7 +90,7 @@
 
 /* ---- selected card: hero ---- */
 .pl-detail { display: flex; flex-direction: column; gap: 10px; padding: 0 var(--space-3) 14px; }
-.pl-hero { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4) 14px; border-radius: var(--radius-card); background: var(--primary-soft); color: var(--primary); }
+.pl-hero { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4) 14px; border-radius: var(--radius-inner); background: var(--primary-soft); color: var(--primary); }
 .pl-hero-lead { font-size: var(--text-base); font-weight: 700; color: var(--muted-foreground); }
 .pl-hero-big { font-size: clamp(2.1rem, 11vw, 3rem); font-weight: 800; line-height: 1.05; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .pl-hero.is-now { background: var(--live-muted); color: var(--live); }
