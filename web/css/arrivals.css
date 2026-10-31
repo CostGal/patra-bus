@@ -11,14 +11,14 @@
    has its own row under them. 17 px on one line at low and mid (js/arrivals-view.js shrinks a long one down to 14 px
    before it is cut with "…"), 20 px and up to two lines at up. The stop's number is at the very bottom (.stopv-code) */
 .stopv-head { display: flex; flex-direction: column; margin-bottom: -6px; } /* the chips 6 px under it, not 12 */
-.stopv-top { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: start; gap: var(--space-1); margin: -8px 0 0; }
+.stopv-top { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; align-items: start; gap: var(--space-1); margin: -5px 0 0; } /* 13 px from the card's top at low (locked) */
 .stopv-top > .btn.round.g-circle { margin: 0; grid-row: 1; }
 .stopv-top > .btn.round.g-circle:last-child { grid-column: 3; } /* stays right when the name moves to its own row (up) */
 .stopv-titles { position: relative; min-width: 0; text-align: center; }
 /* low ends here (js/sheet.js): the badges' line under the name (18 px, to the buttons' bottom), and 8 px more */
-/* + 8 px less the home bar: the card's bottom margin is max(8 px, home bar), and sheet.js adds the home bar to low, so
+/* 18 px of badges, + 3 + 8 px less the home bar: the card's bottom margin is max(8 px, home bar), and sheet.js adds the home bar to low, so
    this keeps the room under the row equal to the room above it, in a browser and as the installed app */
-.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: calc(18px + max(0px, 8px - env(safe-area-inset-bottom, 0px))); pointer-events: none; }
+.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: calc(21px + max(0px, 8px - env(safe-area-inset-bottom, 0px))); pointer-events: none; }
 .stopv-head .stopv-name { margin: 0; overflow: hidden; font-size: 1.0625rem; line-height: 20px; /* .stopv-head: over .sheet-content h1 */ font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
 /* up: the name on its own row under the buttons, up to two lines */
 /* no line badges (no arrivals, or one line): directions and ☆ a little lower, so low does not show their top edge */

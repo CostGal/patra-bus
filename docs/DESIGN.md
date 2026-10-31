@@ -61,9 +61,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   which cells (mode × low/mid/up) it changes.
   **Stop header** (location mode, TEL-227, an Apple Maps place card): share on the left, ✕ on the right, both the
   card's one round button (`.g-circle`, see "Glass target" below; the ☆ is the same button). **Low** = that row alone,
-  centred in the card (10 px above and below; the grabber, 48 × 3, 5 px from the card's top, close over the row): the name (17 px, one
+  centred in the card (13 px above and below; the grabber, 48 × 3, 5 px from the card's top, close over the row): the name (17 px, one
   line; a long one shrinks down to 14 px, then "…") at the top and the line badges (85%, centred) right under it, the
-  two as tall as the buttons: 66 px; with no badges the name is centred on the buttons. **Mid**: the name centred on the buttons, the line chips right under it (40 px,
+  two as tall as the buttons: 72 px; with no badges the name is centred on the buttons. **Mid**: the name centred on the buttons, the line chips right under it (40 px,
   growing to fill the row, so they keep the same inset as everything else; more than fit: they scroll), then
   directions (wide, tinted blue glass with a shining outline while the sheet floats, solid up) and ☆. **Up**: the sheet
   reaches the top of the screen and the ☰ fades out; the name has its own row under the buttons, 24 px (less if its
@@ -197,6 +197,8 @@ learned building it, as rules:
 - Things floating over the map move with the sheet on every frame, no CSS transition on `transform` (the capsule and
   the attribution line stay at the same distance above the sheet).
 - Up from mid is quicker than the other moves (spring response 0.3).
+- As the installed app the map runs under the status bar (`apple-mobile-web-app-status-bar-style: black-translucent`,
+  white status text, Kostas 2026-10-31): everything near the top keeps clear of it with `--safe-top`.
 
 **Measuring in JS**
 - Measure with transitions off (`style.transition = 'none'`): with reduced motion app.css gives every change a 0.01 ms
