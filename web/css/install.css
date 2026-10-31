@@ -1,7 +1,7 @@
 /* "Install as app" tutorial (js/install-guide.js). Solid card on purpose: it lives inside the translucent sheet,
    and a material on a material is forbidden (DESIGN.md §4). Colours/spacing only from tokens. */
 .install {
-  margin: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted);
+  margin: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted);
   color: var(--foreground); font-size: var(--text-base); line-height: var(--lead-body); letter-spacing: var(--track-body);
   animation: install-in .2s var(--spring-ease) both;
 }
@@ -22,7 +22,7 @@
 
 /* ---- numbered steps ---- */
 .install-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
-.install-step { display: flex; align-items: center; gap: var(--space-4); min-height: 52px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow-1); }
+.install-step { display: flex; align-items: center; gap: var(--space-4); min-height: 52px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius-inner); background: var(--card); box-shadow: var(--shadow-1); }
 .install-n {
   flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
   background: var(--primary-soft); color: var(--primary); font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums;

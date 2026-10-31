@@ -248,7 +248,7 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 .sheet-content h1 { font-size: var(--text-lg); line-height: var(--lead-title); letter-spacing: var(--track-title); font-weight: var(--weight-semibold); }
 .sheet-content h2 { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--muted-foreground); letter-spacing: var(--track-label); margin: var(--space-4) 0 var(--space-2); }
 
-.map-note { margin: var(--space-1) var(--space-4) var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--warning-muted); color: var(--warning); font-size: 14px; }
+.map-note { margin: var(--space-1) var(--space-4) var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--warning); font-size: 14px; }
 
 /* no map (WebGL/maplibre unavailable): the sheet is just the page below the chips */
 .no-map .map, .no-map .fabs-bottom { display: none; }
@@ -470,7 +470,7 @@ html.sheet-dragging .toast-host { transition: none; }
 
 /* first-run guide card / install hint under the home card (js/app.js mountHome). Surface: .material (§4); press: .press (§1);
    entrance: .card-in (css/nearby.css, opacity-only under reduced motion); leave: the same path back, fade + lift. */
-.guide-hint { display: flex; align-items: center; margin-top: var(--space-2); padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius); }
+.guide-hint { display: flex; align-items: center; margin-top: var(--space-2); padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius-card); }
 .guide-hint-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--foreground); font-weight: 600; font-size: var(--text-md); line-height: 1.25; text-decoration: none; }
 .guide-hint-go .icon { color: var(--primary); }
 .guide-hint-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; }

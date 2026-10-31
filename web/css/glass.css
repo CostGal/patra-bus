@@ -36,7 +36,7 @@ html.glass {
   --g-headroom: 12px; /* room above the first row of the sheet for a pressed round button (js/sheet.js: HEADROOM) */
   /* the sheet's three states (TEL-222): margin and corner of the floating card at peek/half, its tint at peek (a0) and
      half (a1), and the solid colours of full (no glass there) */
-  --g-sheet-m: 8px; --g-sheet-r: 28px; --g-sheet-a0: 3%; --g-sheet-a1: 55%;
+  --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 3%; --g-sheet-a1: 55%;
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
   /* the search field's grey fill and the 0.5 px list hairlines (TEL-223, Apple Maps; estimates, not published values) */
   --sb-fill: rgba(118, 118, 128, .14); --g-hair: rgba(60, 60, 67, .18);

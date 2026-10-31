@@ -79,6 +79,10 @@ My words:
 Where it shows up in Telematica: `.github/CODEOWNERS` (`* @CostGal`).
 My words:
 
+**Concentric corners**: rounded corners that nest like rings of a tree: anything sitting inside a rounded box gets a smaller roundness than the box, so the curves look parallel instead of bumping into each other.
+Where it shows up in Telematica: the sheet (28 px) → cards in it (20 px) → blocks inside a card (12 px), from the tokens `--radius-sheet/-card/-inner` in `web/css/tokens.css` (TEL-225).
+My words:
+
 **Copyleft**: a kind of license (GPL, AGPL) that lets anyone use your code but requires their own work built on it to be shared openly too, like a recipe you may cook from only if you publish your own recipe as well.
 Where it shows up in Telematica: not used; it is one of the options compared in the founders' proposal (TEL-1).
 My words:
