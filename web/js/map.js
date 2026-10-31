@@ -38,7 +38,7 @@ function fallbackApi(reason) {
     available: false, reason, ready: Promise.resolve(),
     setStops: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
     setOverlay: noop, clearOverlay: noop, setMarkers: noop, clearMarkers: noop, flyTo: noop, fitTo: noop,
-    setPadding: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
+    setPadding: noop, recenter: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
   };
 }
 
@@ -88,21 +88,11 @@ export function createMap(container, opts = {}) {
     console.warn('[map] init failed', err);
     return fallbackApi('init');
   }
-  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-  // Attribution stays behind the (i) button: MapLibre opens compact mode on load, collapse it.
-  const collapseAttrib = () => {
-    const el = container.querySelector('.maplibregl-ctrl-attrib');
-    el?.classList.remove('maplibregl-compact-show');
-    el?.removeAttribute('open');
-  };
-  collapseAttrib();
-  map.once('load', collapseAttrib);
+  // Attribution as one line of text that is always there (Kostas, TEL-226; like Apple's "Legal" and Google's logo in
+  // the apps that use their maps): no (i) to open. opts.attribInto: the shell's place for it, just above the sheet.
+  map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-left');
   const attribEl = container.querySelector('.maplibregl-ctrl-attrib');
-  if (attribEl) { // MapLibre re-opens it on style/resize events: keep it shut until the user opens it
-    const guard = new MutationObserver(() => { if (attribEl.classList.contains('maplibregl-compact-show')) collapseAttrib(); });
-    guard.observe(attribEl, { attributes: true, attributeFilter: ['class', 'open'] });
-    attribEl.addEventListener('click', () => guard.disconnect(), { once: true, capture: true });
-  }
+  if (attribEl && opts.attribInto) opts.attribInto.append(attribEl);
   const labelCanvas = () => map.getCanvas().setAttribute('aria-label', t('Χάρτης'));
   labelCanvas();
   onLangChange(labelCanvas); // the map outlives a language switch (only the views re-render)
@@ -619,12 +609,18 @@ export function createMap(container, opts = {}) {
       lastFit = { pts, o };
       doFit();
     },
+    // Glides the point (default: the user's location, if known) to the centre of the part of the map left clear, at the
+    // same zoom: the sheet moving between low and mid (app.js)
+    recenter(p) {
+      const to = p || userItem.cur;
+      if (!okPoint(to)) return;
+      lastFit = null;
+      map.easeTo({ center: ll(to), padding: safePadding(), duration: 450, essential: false });
+    },
     setPadding(p) {
-      const prev = pad;
       pad = { top: 0, bottom: 0, left: 0, right: 0, ...p };
-      // the sheet moved after a fit (e.g. peek -> half): fit again so every point stays in the visible area
-      if (lastFit && ['top', 'bottom', 'left', 'right'].some((k) => Math.abs(pad[k] - prev[k]) > 4)) { doFit(); return; }
-      if (tracking() && userItem.cur && !map.isMoving()) map.easeTo({ center: ll(userItem.cur), padding: pad, duration: 300, essential: false });
+      // Kept for the next fit or fly only: the map stays still when the sheet moves (Kostas, TEL-222: only a touch on
+      // the map moves the map)
     },
 
     setTheme(t) {

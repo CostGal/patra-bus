@@ -58,30 +58,39 @@
   <div id="app" class="app">
     <div id="map" class="map"></div>
 
-    <div class="searchbar" id="searchbar" role="search">
-      <button type="button" class="sb-btn" id="menu-btn" aria-label="Μενού" aria-haspopup="true" aria-expanded="false" aria-controls="menu-pop"></button>
-      <input id="search-input" class="sb-input" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off"
-             autocorrect="off" spellcheck="false" placeholder="Πού πάμε;" aria-label="Αναζήτηση στάσης ή τόπου"
-             role="combobox" aria-expanded="false" aria-controls="search-list" aria-autocomplete="list">
-      <span id="demo-tag" class="demo-tag" title="Δεδομένα επίδειξης" hidden>DEMO</span>
-      <button type="button" class="sb-btn" id="search-clear" aria-label="Καθαρισμός αναζήτησης" hidden></button>
-    </div>
+    <!-- ☰ alone at the top left (TEL-223); the search lives in the sheet -->
+    <button type="button" class="sb-btn menu-fab" id="menu-btn" aria-label="Μενού" aria-haspopup="true" aria-expanded="false" aria-controls="menu-pop"></button>
     <div class="pop" id="menu-pop" hidden></div>
 
     <nav class="chips" id="chips" aria-label="Αποθηκευμένα μέρη" hidden></nav>
 
-    <div class="search-panel" id="search-panel" hidden>
-      <div id="search-list" class="search-list" role="listbox" aria-label="Αποτελέσματα αναζήτησης"></div>
-    </div>
-
     <div class="fabs-bottom" id="fabs-bottom">
       <button type="button" class="fab fab-sm" id="north-btn" aria-label="Επαναφορά βορρά" hidden></button>
-      <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
+      <!-- the map buttons in one glass capsule (TEL-226) -->
+      <div class="map-capsule" id="map-capsule">
+        <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
+      </div>
     </div>
+    <!-- the map's attribution, one line just above the sheet (map.js, attribInto; CLAUDE.md rule 5) -->
+    <div class="map-attrib" id="map-attrib"></div>
 
     <section class="sheet" id="sheet" aria-label="Πληροφορίες" data-state="half">
       <button type="button" class="sheet-handle" id="sheet-handle"><span class="sheet-pill"></span></button>
       <div class="sheet-body" id="sheet-body" tabindex="-1">
+        <!-- home only (app.js): the search at the top of the sheet, its results below it while it is open -->
+        <div class="sheet-search" id="searchbar" role="search" hidden>
+          <div class="sb-field">
+            <input id="search-input" class="sb-input" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off"
+                   autocorrect="off" spellcheck="false" placeholder="Πού πάμε;" aria-label="Αναζήτηση στάσης ή τόπου"
+                   role="combobox" aria-expanded="false" aria-controls="search-list" aria-autocomplete="list">
+            <span id="demo-tag" class="demo-tag" title="Δεδομένα επίδειξης" hidden>DEMO</span>
+            <button type="button" class="sb-btn" id="search-clear" aria-label="Καθαρισμός αναζήτησης" hidden></button>
+          </div>
+          <button type="button" class="sb-btn search-close" id="search-close" aria-label="Κλείσιμο αναζήτησης"></button>
+        </div>
+        <div class="search-panel" id="search-panel" hidden>
+          <div id="search-list" class="search-list" role="listbox" aria-label="Αποτελέσματα αναζήτησης"></div>
+        </div>
         <p id="map-note" class="map-note" hidden></p>
         <div class="sheet-content" id="sheet-content">
           <p class="state-msg">Φόρτωση…</p>
