@@ -36,7 +36,7 @@ html.glass {
   --g-headroom: 12px; /* room above the first row of the sheet for a pressed round button (js/sheet.js: HEADROOM) */
   /* the sheet's three states (TEL-222): margin and corner of the floating card at peek/half, its tint at peek (a0) and
      half (a1), and the solid colours of full (no glass there) */
-  --g-sheet-m: 8px; --g-sheet-r: 28px; --g-sheet-a0: 3%; --g-sheet-a1: 55%;
+  --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 3%; --g-sheet-a1: 55%;
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
   /* the search field's grey fill and the 0.5 px list hairlines (TEL-223, Apple Maps; estimates, not published values) */
   --sb-fill: rgba(118, 118, 128, .14); --g-hair: rgba(60, 60, 67, .18);
@@ -72,7 +72,7 @@ html.glass { -webkit-user-select: none; user-select: none; -webkit-touch-callout
 html.glass :is(input, textarea, select, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
 
 /* ---------- glass: floating chrome ---------- */
-html.glass .menu-fab, html.glass .fab, html.glass .chip {
+html.glass .menu-fab, html.glass .fab, html.glass .chip, html.glass .map-capsule {
   background: var(--g-sheen), var(--g-bg);
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
@@ -119,8 +119,8 @@ html.glass .g-press {
   --g-chip: color-mix(in srgb, var(--g-card) 75%, transparent);
 }
 html.glass :is(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
-/* round buttons (☰, back, ☆, ⋯, ✕, the map's i): pressed, they become a whiter glass circle, still a little see-through */
-html.glass :is(.sb-btn, .btn.round, .maplibregl-ctrl-attrib-button).g-press { background-color: var(--g-pressed); }
+/* round buttons (☰, back, ☆, ⋯, ✕): pressed, they become a whiter glass circle, still a little see-through */
+html.glass :is(.sb-btn, .btn.round).g-press { background-color: var(--g-pressed); }
 /* controls that are not glass surfaces are lifted off the sheet by a shadow */
 html.glass .g-press:not(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
@@ -130,13 +130,16 @@ html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(-
 /* round buttons pop out: above their neighbours (a positioned layer), and the sheet leaves room above its first row so
    the grown circle is not cut by the scroller (js/sheet.js adds the same room to the peek height) */
 /* (:where keeps this at zero specificity, so a button that is already absolute or fixed stays so) */
-:where(html.glass) :where(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button) { position: relative; }
-html.glass :is(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button).g-press { z-index: 8; }
+:where(html.glass) :where(.btn.round, .sb-btn, .fab) { position: relative; }
+/* not the ☰: it is fixed above the sheet (z 50), and z 8 would drop it under the sheet while held */
+html.glass :is(.btn.round, .sb-btn, .fab).g-press:not(.menu-fab) { z-index: 8; }
 html.glass .sheet-content { padding-top: var(--g-headroom); }
 
 /* the search in the sheet (TEL-223): the same headroom above it; behind it, the sheet's own colour once it is up (it is
    sticky over the scrolling results there), nothing at low and mid; a grey field and 0.5 px hairlines, as in Apple Maps */
 html.glass .sheet-search { padding-top: var(--g-headroom); background: color-mix(in srgb, var(--g-up) calc(var(--u) * 100%), transparent); }
+/* phones: at full the row starts after the ☰, which comes down into it (app.css) */
+@media (max-width: 899px) { html.glass .sheet-search { padding-left: calc(var(--space-4) + var(--u) * 52px); } }
 html.glass .sb-field { background: var(--sb-fill); }
 html.glass .sr + .sr::before { background: var(--g-hair); }
 
@@ -163,6 +166,20 @@ html.glass .fab.g-ping::after {
   animation: g-ping .6s ease-out;
 }
 @keyframes g-ping { from { transform: scale(1); opacity: .85; } to { transform: scale(2.1); opacity: 0; } }
+/* in the map capsule (TEL-226) the buttons are flat segments of its glass: no glass, rim or shadow of their own, a
+   hairline between them. Held, each pops out like ☰ (Kostas): a whiter glass circle that grows above the capsule
+   (js/glass.js grows it; locate's blue fill is for loose buttons only) */
+html.glass .map-capsule > .fab { background: transparent; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; transition: border-radius .15s ease-out, background-color .15s; }
+html.glass .map-capsule > .fab + .fab { box-shadow: inset 0 .5px 0 var(--g-hair); }
+html.glass .map-capsule > .fab.g-press { background: var(--g-pressed); color: var(--foreground); }
+/* the segments fill the capsule inside its 1 px border (at 48 px they hung 1 px out and sat off centre) */
+html.glass .map-capsule > .fab { min-width: 0; width: 100%; height: 46px; }
+html.glass .map-capsule > .fab.g-press {
+  --g-sheen: none; border-radius: 50%;
+  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
+}
+html.glass .map-capsule .fab.g-ping::after { border-radius: inherit; }
 
 /* the sheet handle: a more reactive pill. Held or dragged it widens, thickens and darkens inside a small glass capsule;
    js/glass.js ticks it each time a drag passes one of the three states (js/sheet.js) */
@@ -192,7 +209,7 @@ html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; righ
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
 
 /* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
-html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip {
+html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip, html.glass-lens .map-capsule {
   -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
 }
 html.glass-lens .sheet::before, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
@@ -243,13 +260,6 @@ html.glass-fx .stopv-menu {
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
 }
 html.glass-fx .stopv-item:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
-/* the map's i: a glass circle that grows into the attribution pill (and back) */
-html.glass-fx .maplibregl-ctrl-attrib.maplibregl-compact {
-  background: var(--g-sheen), var(--g-bg) !important; -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  border: var(--g-line); border-radius: 22px; box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
-}
-html.glass-fx .maplibregl-ctrl-attrib-button { border-radius: 50%; }
-html.glass-fx .maplibregl-ctrl-attrib-button:focus:not(:focus-visible) { box-shadow: none; outline: none; }
 /* line filter chips: the selection is one glass lens that slides (and stretches) from chip to chip */
 html.glass-fx .stopv-chips { position: relative; z-index: 1; }
 html.glass-fx .stopv-chip.on { background: transparent; border-color: transparent; }

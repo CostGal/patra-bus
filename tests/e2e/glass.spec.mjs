@@ -46,18 +46,17 @@ test('glass: on by default', async ({ page }) => {
   await expect(page.locator('.stopv-chip').nth(1)).toHaveClass(/\bon\b/);
   await expect.poll(lensOn).toBe(true);
   await page.locator('.stopv-chip').first().click();
-  // a press lights the glass up and grows it, release lets it go
+  // a press lights the button up, release lets it go
   const fab = page.locator('#locate-btn');
   const restBg = await fab.evaluate((el) => getComputedStyle(el).backgroundColor);
   const box = await fab.boundingBox();
   await page.mouse.move(box.x + 10, box.y + 10);
   await page.mouse.down();
   await expect(fab).toHaveClass(/g-press/);
-  // touch & hold: it grows (Web Animations on `scale`)
+  // a segment of the map capsule (TEL-226), held, pops out like ☰: it grows into a whiter glass circle, then sends out
+  // a ring on a tap
   await expect.poll(() => fab.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.02);
-  // …and fills with the app's blue while held (even over :hover, which iOS keeps), then sends out a ring on a tap
-  // (the browser may report the blue in any colour space, so check the white icon on it and that the fill changed)
-  await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).color)).toBe('rgb(255, 255, 255)'); // after its .15s transition
+  await expect.poll(() => fab.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('50%');
   expect(await fab.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBg);
   await page.mouse.move(5, 300);
   await page.mouse.up();
@@ -223,13 +222,24 @@ test('search in the sheet: ☰ alone at the top, search home only, open = up, cl
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
   await expect(page.locator('#sheet-content')).toBeVisible();
-  // the ☰ is the way back while searching: it closes the search, it does not open the menu
+  // the ✕ next to the field closes the search (TEL-223 B); the ☰ joins the search row at full and stays the menu
   await page.locator('#search-input').click();
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
-  await page.locator('#menu-btn').click();
+  const row = () => page.evaluate(() => {
+    const m = document.getElementById('menu-btn').getBoundingClientRect(); const f = document.querySelector('.sb-field').getBoundingClientRect();
+    return { dy: Math.abs((m.top + m.bottom) / 2 - (f.top + f.bottom) / 2), gap: f.left - m.right };
+  });
+  await expect.poll(async () => (await row()).dy, { timeout: 3000 }).toBeLessThan(3); // ☰ centred on the field, once the sheet is up
+  expect((await row()).gap).toBeGreaterThan(0); // and to its left, not over it
+  await page.locator('#search-close').click();
   await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('peek');
   await expect(page.locator('#search-panel')).toBeHidden();
-  await expect(page.locator('#menu-pop')).toBeHidden();
+  await expect(page.locator('#search-close')).toBeHidden();
+  await page.locator('#search-input').click();
+  await page.locator('#menu-btn').click();
+  await expect(page.locator('#search-panel')).toBeHidden();
+  await expect(page.locator('#menu-pop')).toBeVisible();
+  await page.keyboard.press('Escape');
   // another view puts its own header in the search's place
   await page.goto('/?demo&debug#/stop/1011');
   await expect(page.locator('.stopv-head')).toBeVisible();
@@ -250,4 +260,104 @@ test.describe('touch', () => {
     await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
     await expect(page.locator('#search-panel')).toBeVisible();
   });
+});
+
+test('map buttons: one glass capsule; the attribution is a line of text above the sheet, not a button (TEL-226)', async ({ page }) => {
+  await page.goto('/?demo#/');
+  await expect(page.locator('#locate-btn')).toBeVisible();
+  const look = await page.evaluate(() => {
+    const cap = getComputedStyle(document.getElementById('map-capsule'));
+    const fab = getComputedStyle(document.getElementById('locate-btn'));
+    return { capBlur: cap.backdropFilter, fabBlur: fab.backdropFilter, width: document.getElementById('map-capsule').getBoundingClientRect().width };
+  });
+  expect(look.capBlur).toContain('blur('); // the capsule is the glass…
+  expect(look.fabBlur).toBe('none'); // …its buttons are flat segments of it
+  expect(look.width).toBe(48);
+  // the attribution: MapLibre's control, open (no (i) to tap), in #map-attrib (the style's credits need the network:
+  // stand in for them)
+  const attrib = page.locator('#map-attrib .maplibregl-ctrl-attrib');
+  await expect(attrib).toHaveCount(1);
+  await page.evaluate(() => { document.querySelector('#map-attrib .maplibregl-ctrl-attrib').classList.remove('maplibregl-attrib-empty'); document.querySelector('#map-attrib .maplibregl-ctrl-attrib-inner').innerHTML = '<a href="https://openfreemap.org">OpenFreeMap</a> © OpenMapTiles Data from OpenStreetMap'; });
+  await expect(page.locator('#map-attrib .maplibregl-ctrl-attrib-button')).toBeHidden();
+  await expect(page.locator('#map-attrib a')).toBeVisible();
+  // one line, at the left, just above the sheet's edge, and it rides with it
+  const at = async () => page.evaluate(() => {
+    const a = document.querySelector('#map-attrib .maplibregl-ctrl-attrib').getBoundingClientRect();
+    const card = [...document.querySelectorAll('#sheet, #sheet .sheet-body')].map((e) => e.getBoundingClientRect().top).filter((v) => v > 0);
+    return { left: a.left, height: a.height, bottom: a.bottom, sheetTop: Math.min(...card) };
+  });
+  await page.waitForTimeout(600);
+  let p = await at();
+  expect(p.left).toBeLessThan(20);
+  expect(p.height).toBeLessThanOrEqual(17);
+  expect(p.sheetTop - p.bottom).toBeGreaterThanOrEqual(0);
+  expect(p.sheetTop - p.bottom).toBeLessThan(16);
+  const hb = await page.locator('#sheet-handle').boundingBox(); // mid → low: the line follows the sheet down
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 120, { steps: 6 });
+  const drag = await at(); // mid-drag, the same gap: glued to the edge, no lag
+  expect(drag.bottom).toBeGreaterThan(p.bottom + 60);
+  expect(Math.abs((drag.sheetTop - drag.bottom) - (p.sheetTop - p.bottom))).toBeLessThan(2);
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 300, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(60); // the spring is still moving the sheet: the line moves with it
+  const spring = await at();
+  expect(Math.abs((spring.sheetTop - spring.bottom) - (p.sheetTop - p.bottom))).toBeLessThan(2);
+  await page.waitForTimeout(700);
+  const q = await at();
+  expect(q.bottom).toBeGreaterThan(p.bottom + 40);
+  expect(q.sheetTop - q.bottom).toBeLessThan(16);
+});
+
+test.describe('search near me', () => {
+  test.use({ permissions: ['geolocation'], geolocation: { latitude: 38.2466, longitude: 21.7346 } });
+  test('search in the sheet: the empty field lists the nearby stops (computed on the device)', async ({ page }) => {
+    await page.goto('/?demo#/');
+    await expect(page.locator('#searchbar')).toBeVisible();
+    await page.waitForTimeout(500); // the first fix (permission already granted: no prompt)
+    await page.locator('#search-input').click();
+    await expect(page.locator('#search-list')).toContainText('Κοντινές στάσεις');
+  });
+});
+
+test.describe('touch close', () => {
+  test.use({ hasTouch: true });
+  test('search in the sheet: a tap on ✕ closes the search with the keyboard up', async ({ page }) => {
+    await page.goto('/?demo&debug#/');
+    await expect(page.locator('#searchbar')).toBeVisible();
+    await page.locator('#search-input').tap();
+    await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    await page.locator('#search-close').tap();
+    await expect(page.locator('#search-panel')).toBeHidden();
+    await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('half');
+    expect(await page.evaluate(() => document.activeElement.id)).not.toBe('search-input');
+    // and a tap on ☰ with the keyboard up ends the search and opens the menu
+    await page.locator('#search-input').tap();
+    await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    await page.locator('#menu-btn').tap();
+    await expect(page.locator('#search-panel')).toBeHidden();
+    await expect(page.locator('#menu-pop')).toBeVisible();
+    // a second tap closes it
+    await page.waitForTimeout(400);
+    await page.locator('#menu-btn').tap();
+    await expect(page.locator('#menu-pop')).toBeHidden();
+  });
+});
+
+test('sheet mid fits the view: the first arrival whole, the second just started (TEL-224)', async ({ page }) => {
+  await page.goto('/?demo&debug#/stop/1011');
+  const items = page.locator('.stopv-list > li');
+  await expect(page.locator('.stopv .atile:not(.atile-skel)').nth(1)).toBeVisible();
+  await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    const cut = innerHeight - 8; // the floating card ends a margin above the screen's bottom
+    const [a, b] = [...document.querySelectorAll('.stopv-list > li')].map((li) => li.getBoundingClientRect());
+    return { firstWhole: a.bottom <= cut + 1, secondStarted: b.top < cut, secondCut: b.bottom > cut, share: (cut - b.top) / b.height };
+  });
+  expect(await items.count()).toBeGreaterThan(1);
+  expect(r.firstWhole).toBe(true);
+  expect(r.secondStarted).toBe(true);
+  expect(r.secondCut).toBe(true);
 });
