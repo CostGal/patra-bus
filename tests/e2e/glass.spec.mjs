@@ -32,13 +32,7 @@ test('glass: on by default', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu-pop')).toBeHidden();
   await expect.poll(icons).toBe('1 0');
-  // the stop's ⋯ menu morphs the same way: ⋯ turns into ˄ while open, and the menu is hidden only after it shrank back
-  await page.click('.stopv-more-btn');
-  await expect(page.locator('.stopv-menu')).toBeVisible();
-  await expect(page.locator('.stopv-more-btn')).toHaveClass(/g-open/);
-  await page.click('.stopv-more-btn');
-  await expect(page.locator('.stopv-more-btn')).not.toHaveClass(/g-open/);
-  await expect(page.locator('.stopv-menu')).toBeHidden();
+  // (the stop's ⋯ menu, which morphed the same way, left the stop header in TEL-227: its two items are on screen now)
   // line chips: one glass lens sits on the selected chip and follows the selection
   const lensOn = () => page.evaluate(() => { const l = document.querySelector('.g-lens').getBoundingClientRect(); const c = document.querySelector('.stopv-chip.on').getBoundingClientRect(); return Math.abs(l.left - c.left) < 2 && Math.abs(l.width - c.width) < 2; });
   await expect.poll(lensOn).toBe(true);
@@ -184,22 +178,27 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   expect(await flick('full', 160, 40)).toBe('half');
   expect(await flick('full', 270, 0)).toBe('peek');
   expect(await flick('peek', -255, 0)).toBe('full');
-  // peek is tight: the handle, the stop's header with its line badges in the subtitle, and the pill row (TEL-224/227)
+  // peek is tight: the handle, the stop's header with its line badges in the subtitle, and the small pills (TEL-224/227)
   await expect(page.locator('.stopv-chipbar')).toBeVisible();
   await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
   await page.waitForTimeout(150);
   const low = await page.evaluate(() => {
     const s = document.getElementById('sheet').getBoundingClientRect();
-    const acts = document.querySelector('.stopv-acts').getBoundingClientRect();
-    const sub = document.querySelector('.stopv-sub').getBoundingClientRect();
+    const pill = document.querySelector('.stopv-pill.primary').getBoundingClientRect();
+    const code = document.querySelector('.stopv-code').getBoundingClientRect();
+    const name = document.querySelector('.stopv-name');
     const badge = document.querySelector('.stopv-chip:not([data-key="*"]) .badge').getBoundingClientRect();
-    return { shown: innerHeight - s.top, below: innerHeight - acts.bottom, badgeOff: Math.abs((badge.top + badge.bottom) / 2 - (sub.top + sub.bottom) / 2), badgeLeft: badge.left - sub.left };
+    return { shown: innerHeight - s.top, below: innerHeight - pill.bottom, pillH: pill.height, oneLine: name.scrollHeight <= name.clientHeight + 1,
+      badgeOff: Math.abs((badge.top + badge.bottom) / 2 - (code.top + code.bottom) / 2), badgeGap: badge.left - code.right };
   });
-  expect(low.below).toBeGreaterThan(0); // the pills are on screen
+  expect(low.below).toBeGreaterThan(0); // the small pills are on screen
   expect(low.below).toBeLessThan(40); // and low ends right under them
-  expect(low.shown).toBeLessThan(160); // 153 px here (a two-line name); it was 168 before TEL-227
+  expect(low.pillH).toBeLessThan(32); // small at low (28 px), 40 px from mid
+  expect(low.oneLine).toBe(true); // the name is one line, cut with "…": low is the same height for every stop
+  expect(low.shown).toBeLessThan(135); // 126 px (it was 168 here before TEL-227)
   expect(low.badgeOff).toBeLessThan(3); // the line badges sit on the subtitle line...
-  expect(low.badgeLeft).toBeGreaterThan(40); // ...after "Στάση 1011 ·"
+  expect(low.badgeGap).toBeGreaterThan(8); // ...after "Στάση 1011 ·"
+  expect(low.badgeGap).toBeLessThan(30);
   // and from mid they are the filter chips again, in their own row under the pills
   await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
   await page.waitForTimeout(150);
@@ -353,7 +352,7 @@ test.describe('touch close', () => {
   });
 });
 
-test('sheet mid fits the view: it ends right under the first arrival (TEL-224, TEL-227)', async ({ page }) => {
+test('sheet mid fits the view: the first arrival whole, a third of the second (TEL-224, TEL-227)', async ({ page }) => {
   await page.goto('/?demo&debug#/stop/1011');
   const items = page.locator('.stopv-list > li');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').nth(1)).toBeVisible();
@@ -362,10 +361,10 @@ test('sheet mid fits the view: it ends right under the first arrival (TEL-224, T
   const r = await page.evaluate(() => {
     const cut = innerHeight - 8; // the floating card ends a margin above the screen's bottom
     const [a, b] = [...document.querySelectorAll('.stopv-list > li')].map((li) => li.getBoundingClientRect());
-    return { firstWhole: a.bottom <= cut + 1, gap: cut - a.bottom, secondCut: b.bottom > cut };
+    return { firstWhole: a.bottom <= cut + 1, share: (cut - b.top) / b.height };
   });
   expect(await items.count()).toBeGreaterThan(1);
   expect(r.firstWhole).toBe(true);
-  expect(r.gap).toBeLessThan(10); // no more than the gap between arrivals: the pill row must not raise mid (TEL-227)
-  expect(r.secondCut).toBe(true);
+  expect(r.share).toBeGreaterThan(0.25); // 30–35% of the next card shows, as in Apple Maps
+  expect(r.share).toBeLessThan(0.45);
 });

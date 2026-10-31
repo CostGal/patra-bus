@@ -40,15 +40,15 @@ export const UI = [
   { id: 'P4', name: '← Πίσω', sel: '#sheet .btn.round:has(> .icon-back)' },
   { id: 'P5', name: '✕ Κλείσιμο', sel: '#sheet :is(.stopv-head, .ex-head) .btn.round:has(> .icon-close)' },
   { id: 'P6', name: '⋯ Περισσότερα', sel: '#sheet :is(.stopv-head, .ex-head) .btn.round[aria-expanded]' },
-  { id: 'P7', name: '☆ Αγαπημένο', sel: '.stopv-star' },
-  { id: 'P8', name: 'Κοινοποίηση (κεφαλίδα)', sel: '#sheet .ex-head .btn.round:has(> .icon-share)' },
+  { id: 'P7', name: '☆ Αγαπημένο', sel: '.stopv-star' }, // στάση: στη σειρά pills από το TEL-227
+  { id: 'P8', name: 'Κοινοποίηση (κεφαλίδα)', sel: '#sheet :is(.stopv-head, .ex-head) .btn.round:has(> .icon-share)' },
 
   { id: 'O1', name: 'Μενού ☰', sel: '#menu-pop' },
   { id: 'O2', name: 'Αλλαγή πόλης (μενού)', sel: '#menu-pop .pop-city' },
   { id: 'O3', name: 'Στοιχείο μενού', sel: '#menu-pop a.pop-item:not(.pop-city)', all: true },
   { id: 'O4', name: 'Θέμα (μενού)', sel: '#menu-pop .theme-row' },
   { id: 'O5', name: 'Επιλογή θέματος', sel: '#menu-pop .theme-opt', all: true },
-  { id: 'O6', name: 'Μενού ⋯ στάσης', sel: '.stopv-menu' },
+  { id: 'O6', name: 'Μενού ⋯ στάσης', sel: '.stopv-menu' }, // O6, O7: η στάση δεν έχει πια ⋯ (TEL-227)· μένουν για το island
   { id: 'O7', name: 'Στοιχείο μενού ⋯', sel: '.stopv-item', all: true },
   { id: 'O8', name: 'i (πληροφορίες)', sel: '.ex-info', all: true },
   { id: 'O9', name: 'Περισσότερα ⋯ οχήματος', sel: '.ob-more' },
@@ -62,7 +62,6 @@ export const UI = [
   { id: 'S7', name: 'Λεπτά (άφιξη)', sel: '.atile-eta' },
   { id: 'S8', name: 'Σειρά κουμπιών στάσης (pills)', sel: '.stopv-acts' }, // TEL-227
   { id: 'S9', name: 'Οδηγίες ως εδώ (pill)', sel: '.stopv-pill.primary' },
-  { id: 'S10', name: 'Κοινοποίηση (pill)', sel: '.stopv-pill:not(.primary)' },
 
   { id: 'E1', name: 'Κάρτα «κοντά σου»', sel: '.nb' },
   { id: 'E2', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary' },
@@ -113,7 +112,6 @@ export const UI = [
 export const UI_SCREENS = [
   { id: 'stop', url: '/?demo#/stop/1011' },
   { id: 'stop-scrolled', url: '/?demo#/stop/1011', act: (p) => p.evaluate(() => { const el = document.getElementById('sheet-body'); el.scrollTop = el.clientHeight * 0.6; }) },
-  { id: 'stop-more', url: '/?demo#/stop/1011', act: (p) => p.click('.stopv-more-btn') },
   { id: 'menu', url: '/?demo#/stop/1011', act: (p) => p.click('#menu-btn') },
   { id: 'search', url: '/?demo#/', act: async (p) => { await p.click('#search-input'); await p.fill('#search-input', 'παν'); } },
   { id: 'home', url: '/?demo#/' },

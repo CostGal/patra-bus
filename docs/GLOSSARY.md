@@ -103,6 +103,10 @@ My words:
 Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device list (iPhone SE, iPhone 15, Pixel 7, iPad Mini); touch feel, push, GPS and speed still need a real phone.
 My words:
 
+**Location mode / search mode**: the two modes of the sheet, as in Apple Maps. Search mode is home: the sheet starts with the search. Location mode is when you have picked something (a stop, a line, a bus, a route): the sheet starts with its header and a ✕ back home. Each has the three states low, mid and up, like a drawer that is either "looking for something" or "showing the thing you found".
+Where it shows up in Telematica: `docs/DESIGN.md` §4; the stop header (TEL-227) is location mode, home's search (TEL-223) is search mode.
+My words:
+
 **Snap point (stop)**: a position a sheet likes to rest at, like the notches of a dimmer switch. A drag ends at the nearest one.
 Where it shows up in Telematica: the bottom sheet has three: peek (low), half (mid) and full (up) (`web/js/sheet.js`, TEL-222). The bar you drag it by is the **grabber**.
 My words:

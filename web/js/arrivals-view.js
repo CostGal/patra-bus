@@ -123,9 +123,10 @@ export function mountStop(container, ctx, { code }) {
 
   addRecent('stop', { code, name: stop.displayName });
 
-  // ---- header: name · ★ · ⋯ (share, directions) · close ----
+  // ---- header (TEL-227, an Apple Maps place card): share · centred name and "Stop 1011 · <line badges>" · close;
+  // under it the pill row: directions and ☆. The ⋯ menu is gone: its two items are on screen now ----
   const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
-  const star = h('button', { type: 'button', class: 'btn round stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
+  const star = h('button', { type: 'button', class: 'stopv-pill stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
   function paintStar() {
     const on = isFavorite(code);
     const label = on ? t('Αφαίρεση από τα αγαπημένα') : t('Προσθήκη στα αγαπημένα');
@@ -146,34 +147,22 @@ export function mountStop(container, ctx, { code }) {
   }
   const directions = () => ctx.navigate(`#/plan?to=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&name=${encodeURIComponent(stop.displayName)}`);
 
-  const menu = h('div', { class: 'stopv-menu', role: 'menu', hidden: true },
-    h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); directions(); } }, icon('walk'), t('Οδηγίες ως εδώ')),
-    h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); share(); } }, icon('share'), t('Κοινοποίηση')));
-  const moreBtn = h('button', { type: 'button', class: 'btn round stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
-  function setMenu(open) {
-    menu.hidden = !open;
-    moreBtn.setAttribute('aria-expanded', String(open));
-    if (open) menu.querySelector('button')?.focus();
-  }
-  const onDocClick = (e) => { if (!menu.hidden && !menu.contains(e.target) && !moreBtn.contains(e.target)) setMenu(false); };
-  const onKey = (e) => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); moreBtn.focus(); } };
-  document.addEventListener('click', onDocClick);
-  document.addEventListener('keydown', onKey);
-
-  // TEL-227: an Apple Maps place card. Low = title, "Stop 1011 · <line badges>" and the pill row; the badges are the
-  // filter chips below, carried up into the subtitle at low (css/glass.css, placed by placeChips()), so they are one row
-  const slot = h('span', { class: 'stopv-slot', 'aria-hidden': 'true' });
-  const pill = (cls, name, label, onclick) => h('button', { type: 'button', class: `stopv-pill${cls}`, onclick }, icon(name), h('span', {}, label));
+  // the line badges sit in the slot at low (the filter chips below, carried up: css/glass.css, placed by placeChips())
+  const codeText = h('span', { class: 'stopv-code' }, t('Στάση {code}', { code }));
+  const dot = h('span', { class: 'stopv-dot' }, '·');
+  const slot = h('span', { class: 'stopv-slot', 'aria-hidden': 'true' }, dot);
+  const name = h('h1', { class: 'stopv-name', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
-      h('div', { class: 'stopv-titles' },
-        h('h1', { class: 'stopv-name' }, stop.displayName),
-        h('p', { class: 'stopv-sub' }, t('Στάση {code}', { code }), h('span', { class: 'stopv-dot', 'aria-hidden': 'true' }, '·'), slot)),
-      h('div', { class: 'stopv-actions' }, star, moreBtn, iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/')), menu)),
-    // low ends here (js/sheet.js)
-    h('div', { class: 'stopv-acts', 'data-peek-end': '' },
-      pill(' primary', 'walk', t('Οδηγίες ως εδώ'), directions),
-      pill('', 'share', t('Κοινοποίηση'), share)));
+      iconBtn('share', t('Κοινοποίηση'), share),
+      h('div', { class: 'stopv-titles' }, name, h('p', { class: 'stopv-sub' }, codeText, slot)),
+      iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))),
+    // the row keeps its mid height at every state (the pills grow inside it), so nothing below moves while they grow;
+    // low ends at the bottom of the small pills (the marker, js/sheet.js)
+    h('div', { class: 'stopv-acts' },
+      h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' }),
+      h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
+      star));
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -190,21 +179,31 @@ export function mountStop(container, ctx, { code }) {
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
   root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
-  // where the chips go at low (TEL-227): the first badge on the subtitle's slot, the row cut where there is no more room.
-  // Measured without the transform; css/glass.css moves the bar by (1 - --l) of it, so it travels with the sheet.
+  // where the chips go at low (TEL-227): the slot gets the badges' width (as much of it as fits beside "Stop 1011", so
+  // the line stays centred) and the first badge lands just after the dot. Measured with the slot at its low width and
+  // the bar without its transform; css/glass.css moves the bar by (1 - --l) of it, so it travels with the sheet.
   function placeChips() {
-    if (dead || chipBar.hidden) return;
+    if (dead || chipBar.hidden || getComputedStyle(slot).display === 'none') return;
+    const badges = [...chips.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')];
+    const GAP = 4; // the chips' gap at low (css/glass.css)
+    const titles = slot.parentElement.parentElement.getBoundingClientRect();
+    const dotW = dot.getBoundingClientRect().width + 12; // the dot and its 6 px margins
+    const room = Math.max(0, titles.width - codeText.getBoundingClientRect().width - dotW);
+    const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1);
+    const shown = Math.min(want, room);
     chipBar.style.transform = 'none';
+    slot.style.width = `${dotW + shown}px`;
     const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), s = slot.getBoundingClientRect();
-    // beside the ☆ ⋯ ✕, or the whole width once a two-line name has pushed the subtitle below them
-    const acts = head.querySelector('.stopv-actions').getBoundingClientRect();
-    const right = s.top >= acts.bottom - 4 ? head.getBoundingClientRect().right : slot.closest('.stopv-titles').getBoundingClientRect().right;
     const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
+    slot.style.width = '';
     chipBar.style.transform = '';
     const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
-    chipBar.style.setProperty('--pk-dx', `${Math.round(s.left - bar.left - start)}px`);
+    head.style.setProperty('--pk-w', `${Math.round(dotW + shown)}px`);
+    chipBar.style.setProperty('--pk-dx', `${Math.round(s.left + dotW - bar.left - start)}px`);
     chipBar.style.setProperty('--pk-dy', `${Math.round(s.top + s.height / 2 - (row.top + row.height / 2))}px`);
-    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(row.right - bar.left - (start + right - s.left)))}px`);
+    // all fit: the scroller keeps its right padding too, so it has nothing to scroll and draws no edge fade
+    const end = start + shown + (want <= room ? pad + 8 : 0);
+    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(row.right - bar.left - end))}px`);
   }
   const chipRO = new ResizeObserver(() => placeChips());
   chipRO.observe(head);
@@ -331,12 +330,12 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
-    // where mid ends (TEL-224, js/sheet.js): right under the first arrival (or the message). It was 20% into the second;
-    // TEL-227 moved it up so the pill row above does not raise mid by its full height. The loading skeleton is marked
-    // the same way, so mid does not jump on load.
+    // where mid ends (TEL-224, js/sheet.js): a third into the second arrival (TEL-227, as Apple Maps shows the next
+    // card), so it is clear the list goes on; with one arrival (or a message) right under it. The loading skeleton is
+    // marked the same way, so mid does not jump on load.
     const rows = body.querySelectorAll('.stopv-list > li');
-    const midEnd = rows[0] || body.querySelector('.stopv-state');
-    if (midEnd) midEnd.dataset.midEnd = '1';
+    const midEnd = rows[1] || rows[0] || body.querySelector('.stopv-state');
+    if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.33' : '1';
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });
@@ -423,8 +422,6 @@ export function mountStop(container, ctx, { code }) {
       clearInterval(timer);
       clearTimeout(sayTimer);
       document.removeEventListener('visibilitychange', onVisibility);
-      document.removeEventListener('click', onDocClick);
-      document.removeEventListener('keydown', onKey);
       unsubStore();
       chipRO.disconnect();
       poller.destroy();
