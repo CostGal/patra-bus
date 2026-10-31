@@ -199,8 +199,8 @@ type Ctx = {
   (names: search, back, close, locate, locate-fixed, compass, star, star-on, share, walk, bus, clock, live, route, layers, menu, swap, bell, settings, info, chevron),
   `toast(text, opts)`, `lineBadge(line|{code,color,textColor}) → HTMLElement`, `fmtClock(epochMs) → "HH:MM"`.
 - `map.js`: `createMap(container, { onStopClick(code), onMapClick({lat,lng}), onLongPress({lat,lng}), attribInto }) → MapApi`
-  (`attribInto`: an element that takes MapLibre's attribution control: app.js passes `#fabs-bottom`, so the (i) is a
-  round button above locate, TEL-226; it stays on the map, CLAUDE.md rule 5)
+  (`attribInto`: an element that takes MapLibre's attribution control, uncollapsed: app.js passes `#map-attrib`, one line of text
+  always shown at the left just above the sheet, moved with the sheet's edge like `#fabs-bottom`, TEL-226; CLAUDE.md rule 5)
 ```ts
 type MapApi = {
   ready: Promise<void>;
@@ -430,7 +430,8 @@ No finger light (removed in review 2). Round buttons get `z-index` while pressed
 The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
 Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head, .pl-head` in the content,
 or home's `.sheet-search`; a view can end low further down with `[data-peek-end]`, as the stop's line chips do, TEL-224;
-unless `setPeek()` gives a height; a ResizeObserver on the content keeps low in step as that row appears), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+unless `setPeek()` gives a height; a ResizeObserver on the content keeps low in step as that row appears), `half` = mid (default: half the screen, or where the view marks `[data-mid-end="<share>"]`: the stop 20% into its second
+arrival, home under its card; kept to 35–60% of the screen, TEL-224), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
 full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
 floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
 bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
@@ -475,7 +476,7 @@ Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; s
    `--destructive`, `--border` (decorative hairlines), `--input` (control edge, ≥ 3:1), `--ring` (focus), plus the app's own status
    colours `--live/--live-foreground/--live-muted`, `--scheduled/--scheduled-border/--scheduled-muted`, `--warning/--warning-muted`.
    Each has a `*-foreground` partner where text sits on the fill.
-2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills), spacing
+2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills; the nesting levels `--radius-sheet/-card/-inner` (28/20/12) step down 8 px per level for concentric corners, TEL-225), spacing
    (`--space-1…8`, 4 px grid), type (`--text-2xs…3xl`, `--weight-*`, `--track-*/--lead-*`), controls (`--control-h` 44 px,
    `--control-h-sm`, `--disabled-opacity`), elevation (`--shadow-1/-2/-sheet`), motion (`--ease`, `--spring-ease`).
 

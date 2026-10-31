@@ -197,6 +197,7 @@ onChange(applyTheme);
 
 // ---------------------------------------------------------------- sheet <-> map/floating UI
 const fabsBottom = $('fabs-bottom');
+const mapAttrib = $('map-attrib');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
 const chipsEl = $('chips');
@@ -221,10 +222,13 @@ function onSnap({ state, visible, desktop }) {
   const lowMid = (from === 'peek' && state === 'half') || (from === 'half' && state === 'peek');
   if (!desktop && lowMid && !routeSnap && (currentHead === '' || focusPt)) map.recenter(focusPt);
 }
-function onMove({ lift, opacity }) {
+function onMove({ visible, lift, opacity }) {
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
   fabsBottom.style.opacity = String(opacity);
   fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
+  mapAttrib.style.transform = visible ? `translateY(${-visible}px)` : ''; // glued to the sheet's edge, every frame, all the way up
+  mapAttrib.style.opacity = String(opacity);
+  mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
 }
 
@@ -590,7 +594,7 @@ function mountHome(container, c) {
   const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
   const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
   const more = h('div', { class: 'home-more', hidden: true });
-  const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
+  const card = h('div', { class: 'home-card', 'data-mid-end': '1' }, box.onboard, box.places, box.nearby); // mid ends under it (js/sheet.js)
   const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
   container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
   const views = {};
@@ -969,7 +973,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), attribInto: fabsBottom, avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');
