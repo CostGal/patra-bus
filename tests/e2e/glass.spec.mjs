@@ -262,11 +262,9 @@ test.describe('touch', () => {
   });
 });
 
-test('map buttons: one glass capsule, the attribution (i) above locate (TEL-226)', async ({ page }) => {
+test('map buttons: one glass capsule; the attribution is a line of text above the sheet, not a button (TEL-226)', async ({ page }) => {
   await page.goto('/?demo#/');
   await expect(page.locator('#locate-btn')).toBeVisible();
-  const order = await page.evaluate(() => [...document.getElementById('map-capsule').children].map((e) => e.id || e.className.split(' ').find((c) => c.startsWith('maplibregl-ctrl-')) || e.className));
-  expect(order).toEqual(['maplibregl-ctrl-attrib', 'locate-btn']);
   const look = await page.evaluate(() => {
     const cap = getComputedStyle(document.getElementById('map-capsule'));
     const fab = getComputedStyle(document.getElementById('locate-btn'));
@@ -275,45 +273,34 @@ test('map buttons: one glass capsule, the attribution (i) above locate (TEL-226)
   expect(look.capBlur).toContain('blur('); // the capsule is the glass…
   expect(look.fabBlur).toBe('none'); // …its buttons are flat segments of it
   expect(look.width).toBe(48);
-  // the (i) works like ☰: our i turns into ✕ while the pill is open (MapLibre hides the (i) without attributions, which
-  // need the map's style: show it as if it had some)
-  const info = page.locator('#map-capsule .maplibregl-ctrl-attrib-button');
-  await expect(info).toHaveClass(/g-morph-btn/);
-  await expect(info.locator('.g-x')).toHaveCount(1);
-  await page.evaluate(() => {
-    const a = document.querySelector('#map-capsule .maplibregl-ctrl-attrib');
-    a.classList.remove('maplibregl-attrib-empty'); a.classList.add('maplibregl-compact');
-    a.querySelector('.maplibregl-ctrl-attrib-inner').textContent = 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap';
+  // the attribution: MapLibre's control, open (no (i) to tap), in #map-attrib (the style's credits need the network:
+  // stand in for them)
+  const attrib = page.locator('#map-attrib .maplibregl-ctrl-attrib');
+  await expect(attrib).toHaveCount(1);
+  await page.evaluate(() => { document.querySelector('#map-attrib .maplibregl-ctrl-attrib').classList.remove('maplibregl-attrib-empty'); document.querySelector('#map-attrib .maplibregl-ctrl-attrib-inner').innerHTML = '<a href="https://openfreemap.org">OpenFreeMap</a> © OpenMapTiles Data from OpenStreetMap'; });
+  await expect(page.locator('#map-attrib .maplibregl-ctrl-attrib-button')).toBeHidden();
+  await expect(page.locator('#map-attrib a')).toBeVisible();
+  // one line, at the left, just above the sheet's edge, and it rides with it
+  const at = async () => page.evaluate(() => {
+    const a = document.querySelector('#map-attrib .maplibregl-ctrl-attrib').getBoundingClientRect();
+    const card = [...document.querySelectorAll('#sheet, #sheet .sheet-body')].map((e) => e.getBoundingClientRect().top).filter((v) => v > 0);
+    return { left: a.left, height: a.height, bottom: a.bottom, sheetTop: Math.min(...card) };
   });
-  // the i is centred in its segment (MapLibre's display: block used to push it into the top-left corner)
-  const off = await info.evaluate((b) => {
-    const r = b.getBoundingClientRect(); const i = b.querySelector('.icon:not(.g-x)').getBoundingClientRect();
-    return Math.max(Math.abs(i.left + i.width / 2 - (r.left + r.width / 2)), Math.abs(i.top + i.height / 2 - (r.top + r.height / 2)));
-  });
-  expect(off).toBeLessThan(1);
-  const pill = page.locator('#map-capsule .maplibregl-ctrl-attrib');
-  const shut = await pill.boundingBox();
-  await info.click();
-  await expect(info).toHaveClass(/g-open/);
   await page.waitForTimeout(600);
-  // the ✕ lands exactly where the i was
-  const xBox = await info.boundingBox();
-  expect(Math.abs(xBox.x + xBox.width / 2 - (shut.x + shut.width / 2))).toBeLessThan(1);
-  // the pill shrinks back into the i by its own size, pinned to the button's corner (no clip-path: on iPhone a
-  // clip-path doesn't clip the glass, and the pill only slid off to the right)
-  const open = await pill.boundingBox();
-  await info.click();
-  await page.waitForTimeout(150);
-  const mid = await pill.evaluate((el) => ({ r: el.getBoundingClientRect().toJSON(), clip: getComputedStyle(el).clipPath, tr: getComputedStyle(el).translate }));
-  expect(mid.r.width).toBeLessThan(open.width - 10);
-  expect(mid.r.width).toBeGreaterThan(shut.width);
-  expect(Math.abs(mid.r.right - (open.x + open.width))).toBeLessThan(1);
-  expect(mid.clip).toBe('none');
-  expect(mid.tr).toBe('none');
-  await expect(info).not.toHaveClass(/g-open/);
-  await page.waitForTimeout(500);
-  const back = await pill.boundingBox();
-  expect([back.x, back.width, back.height]).toEqual([shut.x, shut.width, shut.height]); // (y: the sheet may still be settling)
+  let p = await at();
+  expect(p.left).toBeLessThan(20);
+  expect(p.height).toBeLessThanOrEqual(17);
+  expect(p.sheetTop - p.bottom).toBeGreaterThanOrEqual(0);
+  expect(p.sheetTop - p.bottom).toBeLessThan(16);
+  const hb = await page.locator('#sheet-handle').boundingBox(); // mid → low: the line follows the sheet down
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + 300, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  const q = await at();
+  expect(q.bottom).toBeGreaterThan(p.bottom + 40);
+  expect(q.sheetTop - q.bottom).toBeLessThan(16);
 });
 
 test.describe('search near me', () => {

@@ -66,11 +66,13 @@
 
     <div class="fabs-bottom" id="fabs-bottom">
       <button type="button" class="fab fab-sm" id="north-btn" aria-label="Επαναφορά βορρά" hidden></button>
-      <!-- the map buttons in one glass capsule (TEL-226): the map's (i) goes in above locate (map.js, attribInto) -->
+      <!-- the map buttons in one glass capsule (TEL-226) -->
       <div class="map-capsule" id="map-capsule">
         <button type="button" class="fab" id="locate-btn" data-mode="idle" aria-label="Εντοπισμός τοποθεσίας"></button>
       </div>
     </div>
+    <!-- the map's attribution, one line just above the sheet (map.js, attribInto; CLAUDE.md rule 5) -->
+    <div class="map-attrib" id="map-attrib"></div>
 
     <section class="sheet" id="sheet" aria-label="Πληροφορίες" data-state="half">
       <button type="button" class="sheet-handle" id="sheet-handle"><span class="sheet-pill"></span></button>

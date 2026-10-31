@@ -119,8 +119,8 @@ html.glass .g-press {
   --g-chip: color-mix(in srgb, var(--g-card) 75%, transparent);
 }
 html.glass :is(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
-/* round buttons (☰, back, ☆, ⋯, ✕, the map's i): pressed, they become a whiter glass circle, still a little see-through */
-html.glass :is(.sb-btn, .btn.round, .maplibregl-ctrl-attrib-button).g-press { background-color: var(--g-pressed); }
+/* round buttons (☰, back, ☆, ⋯, ✕): pressed, they become a whiter glass circle, still a little see-through */
+html.glass :is(.sb-btn, .btn.round).g-press { background-color: var(--g-pressed); }
 /* controls that are not glass surfaces are lifted off the sheet by a shadow */
 html.glass .g-press:not(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
@@ -130,8 +130,8 @@ html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(-
 /* round buttons pop out: above their neighbours (a positioned layer), and the sheet leaves room above its first row so
    the grown circle is not cut by the scroller (js/sheet.js adds the same room to the peek height) */
 /* (:where keeps this at zero specificity, so a button that is already absolute or fixed stays so) */
-:where(html.glass) :where(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button) { position: relative; }
-html.glass :is(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button).g-press { z-index: 8; }
+:where(html.glass) :where(.btn.round, .sb-btn, .fab) { position: relative; }
+html.glass :is(.btn.round, .sb-btn, .fab).g-press { z-index: 8; }
 html.glass .sheet-content { padding-top: var(--g-headroom); }
 
 /* the search in the sheet (TEL-223): the same headroom above it; behind it, the sheet's own colour once it is up (it is
@@ -169,31 +169,15 @@ html.glass .fab.g-ping::after {
    hairline between them. Held, each pops out like ☰ (Kostas): a whiter glass circle that grows above the capsule
    (js/glass.js grows it; locate's blue fill is for loose buttons only) */
 html.glass .map-capsule > .fab { background: transparent; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; transition: border-radius .15s ease-out, background-color .15s; }
-html.glass .map-capsule:has(> .maplibregl-ctrl-attrib:not(.maplibregl-attrib-empty)) > .fab { box-shadow: inset 0 .5px 0 var(--g-hair); }
+html.glass .map-capsule > .fab + .fab { box-shadow: inset 0 .5px 0 var(--g-hair); }
 html.glass .map-capsule > .fab.g-press { background: var(--g-pressed); color: var(--foreground); }
-html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press { background-color: var(--g-pressed); } /* not the shorthand: the i is its background image */
-/* once tapped, the (i) shows our own i (it turns into ✕ while open, as ☰ does): not MapLibre's image, not inverted */
-html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn { background-image: none !important; filter: none !important; opacity: 1; color: var(--muted-foreground); }
-html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn .icon { --icon: 22px; }
-/* MapLibre's `.maplibregl-compact .maplibregl-ctrl-attrib-button { display: block }` outranks .g-morph-btn's grid, and
-   without the grid the i and ✕ sit as blocks in the top-left corner instead of stacked in the centre */
-html.glass .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button.g-morph-btn { display: grid; place-items: center; padding: 0; }
-html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn > * { grid-area: 1 / 1; }
-/* the pill grows out of the i and shrinks back by its own size (js/glass.js), so its box is its border box */
-html.glass .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact-show { box-sizing: border-box; }
-/* the segments fill the capsule inside its 1 px border (at 48 px they hung 1 px out on the right, and the i sat off
-   centre), and the open pill's button is centred on the same spot, so the ✕ lands exactly on the closed i */
-html.glass .map-capsule > .fab, html.glass .map-capsule > .maplibregl-ctrl-attrib:not(.maplibregl-compact-show),
-html.glass .map-capsule .maplibregl-ctrl-attrib:not(.maplibregl-compact-show) > .maplibregl-ctrl-attrib-button { min-width: 0; width: 100%; }
-html.glass .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact-show > .maplibregl-ctrl-attrib-button { top: -1px; right: -2px; } /* over the pill's border and the capsule's: a 48 px circle on the capsule's own edge */
-html.glass .map-capsule .maplibregl-ctrl-attrib.g-sizing { overflow: hidden; }
-html.glass .map-capsule .maplibregl-ctrl-attrib.g-sizing .maplibregl-ctrl-attrib-inner { white-space: nowrap; }
-html.glass .map-capsule > .fab.g-press, html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press {
+/* the segments fill the capsule inside its 1 px border (at 48 px they hung 1 px out and sat off centre) */
+html.glass .map-capsule > .fab { min-width: 0; width: 100%; height: 46px; }
+html.glass .map-capsule > .fab.g-press {
   --g-sheen: none; border-radius: 50%;
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
 }
-html.glass-fx .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) { background: transparent !important; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 html.glass .map-capsule .fab.g-ping::after { border-radius: inherit; }
 
 /* the sheet handle: a more reactive pill. Held or dragged it widens, thickens and darkens inside a small glass capsule;
@@ -275,13 +259,6 @@ html.glass-fx .stopv-menu {
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
 }
 html.glass-fx .stopv-item:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
-/* the map's i: a glass circle that grows into the attribution pill (and back) */
-html.glass-fx .maplibregl-ctrl-attrib.maplibregl-compact {
-  background: var(--g-sheen), var(--g-bg) !important; -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  border: var(--g-line); border-radius: 24px; box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
-}
-html.glass-fx .maplibregl-ctrl-attrib-button { border-radius: 50%; }
-html.glass-fx .maplibregl-ctrl-attrib-button:focus:not(:focus-visible) { box-shadow: none; outline: none; }
 /* line filter chips: the selection is one glass lens that slides (and stretches) from chip to chip */
 html.glass-fx .stopv-chips { position: relative; z-index: 1; }
 html.glass-fx .stopv-chip.on { background: transparent; border-color: transparent; }

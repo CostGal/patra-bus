@@ -199,8 +199,8 @@ type Ctx = {
   (names: search, back, close, locate, locate-fixed, compass, star, star-on, share, walk, bus, clock, live, route, layers, menu, swap, bell, settings, info, chevron),
   `toast(text, opts)`, `lineBadge(line|{code,color,textColor}) → HTMLElement`, `fmtClock(epochMs) → "HH:MM"`.
 - `map.js`: `createMap(container, { onStopClick(code), onMapClick({lat,lng}), onLongPress({lat,lng}), attribInto }) → MapApi`
-  (`attribInto`: an element that takes MapLibre's attribution control: app.js passes `#map-capsule` (in `#fabs-bottom`), so the (i) is
-  the top segment of one glass capsule with locate below it, TEL-226; open, it leaves the capsule as a pill to the left; it stays on the map, CLAUDE.md rule 5)
+  (`attribInto`: an element that takes MapLibre's attribution control, uncollapsed: app.js passes `#map-attrib`, one line of text
+  always shown at the left just above the sheet, moved with the sheet's edge like `#fabs-bottom`, TEL-226; CLAUDE.md rule 5)
 ```ts
 type MapApi = {
   ready: Promise<void>;

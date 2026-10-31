@@ -29,11 +29,10 @@ export const UI = [
   { id: 'N8', name: '✕ Κλείσιμο αναζήτησης', sel: '#search-close' },
 
   { id: 'M1', name: 'Εντοπισμός τοποθεσίας', sel: '#locate-btn' },
-  { id: 'M2', name: 'i (attribution)', sel: '.maplibregl-ctrl-attrib-button' },
-  { id: 'M3', name: 'Πλαίσιο attribution', sel: '.maplibregl-ctrl-attrib' },
+  { id: 'M3', name: 'Γραμμή attribution', sel: '#map-attrib' },
   { id: 'M4', name: 'Σύνδεσμος attribution', sel: '.maplibregl-ctrl-attrib a', all: true },
   { id: 'M5', name: 'Marker στον χάρτη', sel: '.mk', all: true },
-  { id: 'M6', name: 'Κάψουλα κουμπιών χάρτη (i + θέση)', sel: '#map-capsule' },
+  { id: 'M6', name: 'Κάψουλα κουμπιών χάρτη', sel: '#map-capsule' },
 
   { id: 'P1', name: 'Φύλλο (sheet / side panel)', sel: '#sheet' },
   { id: 'P2', name: 'Λαβή φύλλου', sel: '#sheet-handle' },

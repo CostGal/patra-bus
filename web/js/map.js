@@ -88,23 +88,11 @@ export function createMap(container, opts = {}) {
     console.warn('[map] init failed', err);
     return fallbackApi('init');
   }
-  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+  // Attribution as one line of text that is always there (Kostas, TEL-226; like Apple's "Legal" and Google's logo in
+  // the apps that use their maps): no (i) to open. opts.attribInto: the shell's place for it, just above the sheet.
+  map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-left');
   const attribEl = container.querySelector('.maplibregl-ctrl-attrib');
-  // opts.attribInto: the shell's column of map buttons, where the (i) sits as one more round button (TEL-226); still
-  // on the map, always visible (CLAUDE.md rule 5)
-  if (attribEl && opts.attribInto) opts.attribInto.prepend(attribEl);
-  // Attribution stays behind the (i) button: MapLibre opens compact mode on load, collapse it.
-  const collapseAttrib = () => {
-    attribEl?.classList.remove('maplibregl-compact-show');
-    attribEl?.removeAttribute('open');
-  };
-  collapseAttrib();
-  map.once('load', collapseAttrib);
-  if (attribEl) { // MapLibre re-opens it on style/resize events: keep it shut until the user opens it
-    const guard = new MutationObserver(() => { if (attribEl.classList.contains('maplibregl-compact-show')) collapseAttrib(); });
-    guard.observe(attribEl, { attributes: true, attributeFilter: ['class', 'open'] });
-    attribEl.addEventListener('click', () => guard.disconnect(), { once: true, capture: true });
-  }
+  if (attribEl && opts.attribInto) opts.attribInto.append(attribEl);
   const labelCanvas = () => map.getCanvas().setAttribute('aria-label', t('Χάρτης'));
   labelCanvas();
   onLangChange(labelCanvas); // the map outlives a language switch (only the views re-render)
