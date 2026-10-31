@@ -61,15 +61,17 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   which cells (mode × low/mid/up) it changes.
   **Stop header** (location mode, TEL-227, an Apple Maps place card): share on the left, ✕ on the right, both the
   card's one round button (`.g-circle`: a 38 px glass circle with a bright rim and a small shadow, 44 px tap area, a
-  20 px icon in the text colour; the ☆ is the same button). The name is centred, one line at low and mid (22 px, shrunk
-  down to 18 px before it is cut with "…", so the card is the same height for every stop); once the sheet rests up it
-  grows into the large title (28 px, up to two lines), and is one line again as soon as the sheet leaves up (the sheet
-  never measures a two-line header). Under it "Stop 1011 · <line badges>". **Low** = that header alone, 88 px with the
-  grabber at any width. From mid, under the header: the line chips, then directions (wide, tinted blue glass while the
-  sheet floats, solid up) and ☆. Dragging up, the line badges leave the subtitle and slide down into their row right
-  under the header, growing into the filter chips ("All" unfolds in front); they cross nothing. No ⋯ for now (its two
-  items are on screen; it comes back with an island of the stop card once it has its own items). (TEL-224 had the
-  badges as their own row at low.) **The sheet at mid** is more see-through than before (40% tint, its own 20 px blur).
+  20 px icon in the text colour; the ☆ is the same button), centred on the name's first line. The name is centred,
+  26 px on one line at low and mid (a long one shrinks down to 20 px, then is cut with "…"), so low is the same height
+  for every stop; from mid towards up it grows with the sheet to 30 px, and past 60% of the way it may take two lines
+  (one line again below that point, and before the sheet measures low and mid on the way down). Its line box stays
+  34 px, so growing moves nothing. Under it, on one line: the line badges at low (85%, centred), "Stop 1011" from mid
+  (it fades in as they leave). **Low** = that header alone, 96 px with the grabber at any width. From mid, under the
+  header: the line chips, then directions (wide, tinted blue glass while the sheet floats, solid up) and ☆. Dragging up,
+  the badges leave the name's line and slide down into their row right under the header, growing into the filter chips
+  ("All" unfolds in front); they cross nothing. No ⋯ for now (its two items are on screen; it comes back with an island
+  of the stop card once it has its own items). **The sheet at mid** is more see-through than before (40% tint, its own
+  20 px blur).
   **Mid fits the view** (TEL-224, TEL-227): on a stop it ends a third into the second arrival (the first whole, about
   30–35% of the next card says the list goes on, as in Apple Maps); on home, under its card; 35–60% of the screen, and
   it follows as the content loads.

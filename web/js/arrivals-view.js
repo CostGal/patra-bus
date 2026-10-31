@@ -148,37 +148,46 @@ export function mountStop(container, ctx, { code }) {
   }
   const directions = () => ctx.navigate(`#/plan?to=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&name=${encodeURIComponent(stop.displayName)}`);
 
-  // the line badges sit in the slot at low (the filter chips below, carried up: css/glass.css, placed by placeChips())
+  // under the name: the line badges at low (the filter chips below, carried up and centred there: css/glass.css,
+  // placed by placeChips()); from mid "Stop 1011" fades in on the same line as they leave
   const codeText = h('span', { class: 'stopv-code' }, t('Στάση {code}', { code }));
-  const dot = h('span', { class: 'stopv-dot' }, '·');
-  const slot = h('span', { class: 'stopv-slot', 'aria-hidden': 'true' }, dot);
+  const sub = h('p', { class: 'stopv-sub', 'data-peek-end': '' }, codeText); // low ends under it (js/sheet.js)
   const name = h('h1', { class: 'stopv-name', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
       iconBtn('share', t('Κοινοποίηση'), share),
-      // low ends under the subtitle (js/sheet.js)
-      h('div', { class: 'stopv-titles' }, name, h('p', { class: 'stopv-sub', 'data-peek-end': '' }, codeText, slot)),
+      h('div', { class: 'stopv-titles' }, name, sub),
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
   const acts = h('div', { class: 'stopv-acts' },
     h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
     star);
 
-  // the name, as in Apple Maps: one line at low and mid, a little smaller (down to 18 px) before it is cut with "…";
-  // once the sheet rests up, the large title (28 px, up to two lines). It is one line again as soon as the sheet
-  // leaves up, before mid is measured, so the sheet never measures a two-line header
+  // the name, as in Apple Maps: one line at low and mid (26 px, shrunk down to 20 px before it is cut with "…"); from
+  // mid towards up it grows with the sheet (css/glass.css, by --u) and, past 60% of the way, may take two lines. Below
+  // that point it is one line again, before the sheet measures mid, so the sheet never measures a two-line header.
+  // The line height stays 34 px, so growing moves nothing below it.
   const sheetEl = document.getElementById('sheet');
-  const NAME_PX = 22, NAME_MIN = 18;
+  const NAME_PX = 26, NAME_MIN = 20, UP_AT = 1.6; // --sheet-t: 1 at mid, 2 at up
   function fitName() {
     if (dead) return;
-    name.style.fontSize = '';
+    name.style.removeProperty('--name-px');
     if (head.classList.contains('is-up') || !name.clientWidth) return;
-    if (name.scrollWidth > name.clientWidth) name.style.fontSize = `${Math.max(NAME_MIN, Math.floor(NAME_PX * name.clientWidth / name.scrollWidth))}px`;
+    if (name.scrollWidth > name.clientWidth + 1) {
+      const px = parseFloat(getComputedStyle(name).fontSize) || NAME_PX; // includes its growth towards up
+      // 2 px to spare: scrollWidth is rounded, and a fraction of a pixel over would still draw the "…"
+      name.style.setProperty('--name-px', `${Math.max(NAME_MIN, Math.floor(px * (name.clientWidth - 2) / name.scrollWidth - (px - NAME_PX)))}px`);
+    }
   }
   const setUp = (on) => { if (head.classList.contains('is-up') !== on) { head.classList.toggle('is-up', on); fitName(); } };
-  const onSettle = () => setUp(sheetEl?.dataset.state === 'full');
-  sheetEl?.addEventListener('sheet:settle', onSettle);
-  const stateMO = new MutationObserver(() => { if (sheetEl.dataset.state !== 'full') setUp(false); });
-  if (sheetEl) stateMO.observe(sheetEl, { attributes: true, attributeFilter: ['data-state'] });
+  // sheet.js writes --sheet-t on every frame of a drag or a spring. Two lines only while the sheet is up or held (it
+  // measures neither then); on the way down it tells us first (sheet:leave-full), then measures low and mid
+  const twoLines = () => (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > UP_AT
+    && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'));
+  const tMO = new MutationObserver(() => setUp(twoLines()));
+  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
+  const onLeaveUp = () => setUp(false);
+  sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
+  document.fonts?.ready.then(fitName); // a web font that arrives late changes the name's width, not the header's size
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -195,30 +204,26 @@ export function mountStop(container, ctx, { code }) {
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
   root.append(head, banner, chipBar, acts, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
-  // where the chips go at low (TEL-227): the slot gets the badges' width (as much of it as fits beside "Stop 1011", so
-  // the line stays centred) and the first badge lands just after the dot. Measured with the slot at its low width and
-  // the bar without its transform; css/glass.css moves the bar by (1 - --l) of it, so it travels with the sheet.
+  // where the chips go at low (TEL-227): centred on the line under the name, at 85% (LOW_SCALE), as many as fit.
+  // Measured with the bar without its transform; css/glass.css moves and scales it by (1 - --l) of that, around the
+  // first badge (--pk-ox), so it travels with the sheet.
+  const LOW_SCALE = 0.85, GAP = 6; // GAP: the chips' gap at low (4 px, css/glass.css) and their two 1 px borders
   function placeChips() {
-    if (dead || chipBar.hidden || getComputedStyle(slot).display === 'none') return;
+    if (dead || chipBar.hidden || !head.classList.contains('has-lines')) return;
     const badges = [...chips.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')];
-    const GAP = 4; // the chips' gap at low (css/glass.css)
-    const titles = slot.parentElement.parentElement.getBoundingClientRect();
-    const dotW = dot.getBoundingClientRect().width + 12; // the dot and its 6 px margins
-    const room = Math.max(0, titles.width - codeText.getBoundingClientRect().width - dotW);
-    const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1);
-    const shown = Math.min(want, room);
     chipBar.style.transform = 'none';
-    slot.style.width = `${dotW + shown}px`;
-    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), s = slot.getBoundingClientRect();
-    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
-    slot.style.width = '';
+    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), line = sub.getBoundingClientRect();
+    const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1); // unscaled
     chipBar.style.transform = '';
+    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
+    const shown = Math.min(want, line.width / LOW_SCALE);
     const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
-    head.style.setProperty('--pk-w', `${Math.round(dotW + shown)}px`);
-    chipBar.style.setProperty('--pk-dx', `${Math.round(s.left + dotW - bar.left - start)}px`);
-    chipBar.style.setProperty('--pk-dy', `${Math.round(s.top + s.height / 2 - (row.top + row.height / 2))}px`);
+    const target = line.left + (line.width - shown * LOW_SCALE) / 2;
+    chipBar.style.setProperty('--pk-ox', `${Math.round(start)}px`);
+    chipBar.style.setProperty('--pk-dx', `${Math.round(target - (bar.left + start))}px`);
+    chipBar.style.setProperty('--pk-dy', `${Math.round(line.top + line.height / 2 - (row.top + row.height / 2))}px`);
     // all fit: the scroller keeps its right padding too, so it has nothing to scroll and draws no edge fade
-    const end = start + shown + (want <= room ? pad + 8 : 0);
+    const end = start + shown + (want <= shown ? pad + 8 : 0);
     chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(row.right - bar.left - end))}px`);
   }
   const chipRO = new ResizeObserver(() => { fitName(); placeChips(); });
@@ -266,6 +271,7 @@ export function mountStop(container, ctx, { code }) {
   }
 
   function render() {
+    fitName();
     if (dead) return;
     const now = Date.now();
     const data = st.data;
@@ -440,8 +446,8 @@ export function mountStop(container, ctx, { code }) {
       document.removeEventListener('visibilitychange', onVisibility);
       unsubStore();
       chipRO.disconnect();
-      stateMO.disconnect();
-      sheetEl?.removeEventListener('sheet:settle', onSettle);
+      tMO.disconnect();
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
       poller.destroy();
       mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();

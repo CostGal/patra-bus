@@ -336,24 +336,30 @@ html.glass .sheet .stopv-pill.primary {
   background-image: var(--g-sheen); background-color: color-mix(in srgb, var(--primary) calc(85% + var(--u, 1) * 15%), transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--g-edge) 60%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--g-rim) 70%, transparent);
 }
-/* TEL-227, phone sheet only: at low the line badges sit in the subtitle ("Stop 1011 · 201 606 609"); towards mid (--l)
-   the bar comes down into its own row right under the header, the badges spread and become the filter chips; the
-   directions row is under the chips, so nothing crosses it. js/arrivals-view.js measures the move (--pk-dx/-dy), the
-   slot's width at low (--pk-w) and how much of the row fits there (--pk-cut: the scroller is that much narrower, so
-   its own edge fade cuts the row) */
+/* TEL-227, phone sheet only: at low the line badges sit centred under the name, at 85%; towards mid (--l) the bar
+   comes down into its own row right under the header, the badges spread and become the filter chips; the directions
+   row is under the chips, so nothing crosses it. js/arrivals-view.js measures the move (--pk-dx/-dy, around the first
+   badge --pk-ox) and how much of the row fits there (--pk-cut: the scroller is that much narrower, so its own edge
+   fade cuts the row) */
 @media (max-width: 899.98px) {
-  html.glass .sheet .stopv-head.has-lines .stopv-slot { display: inline-flex; width: calc(var(--pk-w, 0px) * (1 - var(--l, 1))); }
-  html.glass .sheet .stopv-dot { opacity: calc(1 - var(--l, 1)); }
-  html.glass .sheet .stopv-chipbar { transform: translate(calc((1 - var(--l, 1)) * var(--pk-dx, 0px)), calc((1 - var(--l, 1)) * var(--pk-dy, 0px))); }
+  /* the name grows with the sheet from mid to up (26 → 30 px; js/arrivals-view.js shrinks a long one at low and mid) */
+  html.glass .sheet .stopv-name { font-size: calc(var(--name-px, 26px) + var(--u, 0) * 4px); }
+  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(26px + var(--u, 0) * 4px); }
+  /* "Stop 1011" fades in as the badges leave its line */
+  html.glass .sheet .stopv-head.has-lines .stopv-code { opacity: var(--l, 1); }
+  html.glass .sheet .stopv-chipbar {
+    transform-origin: var(--pk-ox, 0px) 50%;
+    transform: translate(calc((1 - var(--l, 1)) * var(--pk-dx, 0px)), calc((1 - var(--l, 1)) * var(--pk-dy, 0px))) scale(calc(1 - (1 - var(--l, 1)) * .15));
+  }
   html.glass .sheet .stopv-chips { margin-right: calc((1 - var(--l, 1)) * var(--pk-cut, 0px)); gap: calc(4px + var(--l, 1) * 4px); }
   html.glass .sheet .stopv-chip:not([data-key="*"]) { padding-inline: calc(var(--l, 1) * var(--space-3)); }
   html.glass .sheet .stopv-chip[data-key="*"] { margin-right: calc((var(--l, 1) - 1) * 4px); } /* folds away with its gap */
 }
-/* reduced motion: nothing slides; the bar only fades in towards mid (low shows the header alone) */
+/* reduced motion: nothing slides; the bar only fades in towards mid, and "Stop 1011" is always on its line */
 @media (max-width: 899.98px) and (prefers-reduced-motion: reduce) {
   html.glass .sheet .stopv-chipbar { transform: none; opacity: var(--l, 1); }
   html.glass .sheet .stopv-chips { margin-right: 0; }
-  html.glass .sheet .stopv-head.has-lines .stopv-slot { display: none; }
+  html.glass .sheet .stopv-head.has-lines .stopv-code { opacity: 1; }
 }
 /* dots on a line drawing must hide the line behind them */
 html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }

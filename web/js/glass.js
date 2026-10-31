@@ -308,7 +308,10 @@ function watchChips() {
     if (bar) place(bar, false);
   }, { capture: true, passive: true });
   // the chips change shape with the sheet (flat pills at low, TEL-224): once it comes to rest, the lens follows them
-  document.getElementById('sheet')?.addEventListener('sheet:settle', () => {
+  // (not at low: there the chips are the small badges in the stop's header, TEL-227, and the lens is hidden anyway;
+  // measured there it would sit in the wrong place on the way up)
+  document.getElementById('sheet')?.addEventListener('sheet:settle', (e) => {
+    if (e.currentTarget.dataset.state === 'peek') return;
     for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden])')) place(bar, false);
   });
 }
