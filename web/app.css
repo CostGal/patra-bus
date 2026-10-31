@@ -88,13 +88,12 @@ a { color: var(--primary); }
 /* ---------- ☰ and the search (TEL-223) ---------- */
 /* ☰ alone at the top left, a round floating button (material §4) */
 .menu-fab {
-  position: fixed; z-index: 50; top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px);
+  position: fixed; z-index: 50; transform: translateZ(0); /* its own layer: iOS sends taps on a fixed button over a scroller to the scroller */ top: calc(var(--safe-top) + 8px); left: calc(var(--safe-left) + 12px);
   color: var(--foreground); background: var(--material-bg); box-shadow: var(--shadow-1);
   backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate)); -webkit-backdrop-filter: blur(var(--blur-chip)) saturate(var(--blur-saturate));
 }
 /* the search: home's first row in the sheet, sticky while the sheet scrolls */
 .sheet-search { position: sticky; top: 0; z-index: 3; padding: var(--space-2) var(--space-4) var(--space-1); background: var(--background); }
-.sheet-search[hidden] { display: none; }
 /* the field: a grey capsule on the sheet (Apple Maps), no glass of its own */
 .sb-field {
   height: 44px; display: flex; align-items: center; border-radius: var(--radius-full);
@@ -108,6 +107,12 @@ a { color: var(--primary); }
 }
 .sb-btn:hover { background: var(--muted); }
 .sb-field .sb-btn { width: 44px; height: 44px; }
+/* while searching, a ✕ to the right of the field closes the search (TEL-223); the field's own ✕ only clears the text */
+.sheet-search { display: flex; align-items: center; gap: var(--space-2); }
+.sheet-search[hidden] { display: none; }
+.sb-field { flex: 1; min-width: 0; }
+.search-close { display: none; flex: none; width: 44px; height: 44px; background: var(--muted); color: var(--foreground); }
+.searching .search-close { display: grid; }
 .sb-input {
   flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--foreground); font-size: var(--text-base); padding: 0 var(--space-4) 0 var(--space-1); outline: none;
   -webkit-appearance: none; appearance: none; text-overflow: ellipsis;
@@ -232,7 +237,7 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 .sheet-handle:hover .sheet-pill { background: var(--muted-foreground); }
 .sheet-handle:focus-visible { outline-offset: -4px; }
 .sheet-body {
-  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; outline: none; -webkit-overflow-scrolling: touch;
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; outline: none;
   padding-bottom: var(--safe-bottom);
 }
 .sheet[data-state="peek"] .sheet-body, .sheet[data-state="half"] .sheet-body { overflow-y: hidden; touch-action: pan-x; }
@@ -243,7 +248,7 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 .sheet-content h1 { font-size: var(--text-lg); line-height: var(--lead-title); letter-spacing: var(--track-title); font-weight: var(--weight-semibold); }
 .sheet-content h2 { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--muted-foreground); letter-spacing: var(--track-label); margin: var(--space-4) 0 var(--space-2); }
 
-.map-note { margin: var(--space-1) var(--space-4) var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--warning-muted); color: var(--warning); font-size: 14px; }
+.map-note { margin: var(--space-1) var(--space-4) var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--warning); font-size: 14px; }
 
 /* no map (WebGL/maplibre unavailable): the sheet is just the page below the chips */
 .no-map .map, .no-map .fabs-bottom { display: none; }
@@ -268,10 +273,19 @@ html.sheet-dragging .fabs-bottom { transition: none; }
   .no-map.is-offline .sheet, .no-map.has-chips .sheet { top: 0; }
   [data-sheet="full"] .chips { opacity: 1; visibility: visible; }
   .fabs-bottom { bottom: 40px; right: 16px; transform: none !important; opacity: 1 !important; }
+  .map-attrib { left: calc(var(--panel-w) + 16px); right: 80px; bottom: 8px; transform: none !important; opacity: 1 !important; visibility: visible !important; }
   /* home: the search moves up into the ☰'s row, to its right */
   .app:has(.sheet-search:not([hidden])) .sheet { padding-top: 0; }
   .sheet-search { padding: 14px var(--space-4) var(--space-1) 72px; }
   .no-map .sheet { top: 0; border-radius: 0; }
+}
+
+/* home on a phone: up reaches the top, and the ☰ slides down into the search row as the sheet gets there (TEL-223;
+   20 px = from its resting place to the row's centre: grabber 18 + headroom 12 + half the field 22, less half of ☰ 24 +
+   its 8 px margin); css/glass.css makes room for it at the row's start */
+@media (max-width: 899px) {
+  .app:not(.no-map):has(.sheet-search:not([hidden])) .sheet { top: var(--safe-top); }
+  .app:has(.sheet-search:not([hidden])) .menu-fab { top: calc(var(--safe-top) + 8px + clamp(0, var(--sheet-t, 1) - 1, 1) * 20px); }
 }
 
 /* ---------- toast ---------- */
@@ -435,26 +449,28 @@ html.sheet-dragging .toast-host { transition: none; }
 .sheet-content .stopv { padding-inline: 0; }
 .maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--card) 85%, transparent) !important; }
 .maplibregl-ctrl-attrib a, .maplibregl-ctrl-attrib { color: var(--muted-foreground) !important; }
-.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) { background: transparent !important; box-shadow: none; }
-.maplibregl-ctrl-attrib-button { filter: none; width: 44px; height: 44px; background-size: 20px; background-repeat: no-repeat; background-position: center; opacity: .7; }
-.maplibregl-ctrl-attrib.maplibregl-compact { min-height: 44px; min-width: 44px; }
-/* the (i) in the column of map buttons, above locate (TEL-226): a round button the size of the others, which opens
-   into the attribution pill to its left */
-.fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact {
-  margin: 0; min-width: 48px; min-height: 48px; max-width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));
-  border-radius: 24px; box-shadow: var(--shadow-1);
+/* the map's attribution (TEL-226): one small line of text, always there, at the left just above the sheet; it rides
+   with the sheet's edge (app.js) and the sheet covers it at full (Settings lists the same credits) */
+.map-attrib {
+  position: fixed; z-index: 29; left: calc(var(--safe-left) + 12px); right: calc(var(--safe-right) + 12px); bottom: 2px;
+  pointer-events: none; will-change: transform; /* no transition: it moves with the sheet frame by frame (app.js) */
 }
-.fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
-  box-sizing: border-box; width: 48px; height: 48px; padding: 0; background: var(--material-bg) !important; /* a circle, not MapLibre's pill */
+.no-map .map-attrib { display: none; }
+.map-attrib .maplibregl-ctrl-attrib {
+  margin: 0; padding: 0; background: none !important; pointer-events: auto; font-size: 10px; line-height: 16px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 0 2px var(--background), 0 0 4px var(--background); /* legible on any map colour, no box */
 }
-.fabs-bottom .maplibregl-ctrl-attrib.maplibregl-compact-show { padding: 0 52px 0 14px; display: flex; align-items: center; }
-.fabs-bottom .maplibregl-ctrl-attrib-button { width: 48px; height: 48px; top: 0; right: 0; background-color: transparent; }
-:root[data-theme="dark"] .maplibregl-ctrl-attrib-button { filter: invert(1); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .maplibregl-ctrl-attrib-button { filter: invert(1); } }
+.map-attrib .maplibregl-ctrl-attrib-inner { display: inline; }
+.map-attrib .maplibregl-ctrl-attrib a { text-decoration: none; }
+/* the map buttons in one capsule (TEL-226): the capsule is the surface (css/glass.css), the buttons in it are flat
+   segments split by a 0.5 px line */
+.map-capsule { position: relative; display: flex; flex-direction: column; width: 48px; border-radius: 24px; background: var(--material-bg); box-shadow: var(--shadow-1); }
+.map-capsule > .fab { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 24px; }
 
 /* first-run guide card / install hint under the home card (js/app.js mountHome). Surface: .material (§4); press: .press (§1);
    entrance: .card-in (css/nearby.css, opacity-only under reduced motion); leave: the same path back, fade + lift. */
-.guide-hint { display: flex; align-items: center; margin-top: var(--space-2); padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius); }
+.guide-hint { display: flex; align-items: center; margin-top: var(--space-2); padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius-card); }
 .guide-hint-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--foreground); font-weight: 600; font-size: var(--text-md); line-height: 1.25; text-decoration: none; }
 .guide-hint-go .icon { color: var(--primary); }
 .guide-hint-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; }

@@ -197,6 +197,7 @@ onChange(applyTheme);
 
 // ---------------------------------------------------------------- sheet <-> map/floating UI
 const fabsBottom = $('fabs-bottom');
+const mapAttrib = $('map-attrib');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
 const chipsEl = $('chips');
@@ -221,10 +222,13 @@ function onSnap({ state, visible, desktop }) {
   const lowMid = (from === 'peek' && state === 'half') || (from === 'half' && state === 'peek');
   if (!desktop && lowMid && !routeSnap && (currentHead === '' || focusPt)) map.recenter(focusPt);
 }
-function onMove({ lift, opacity }) {
+function onMove({ visible, lift, opacity }) {
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
   fabsBottom.style.opacity = String(opacity);
   fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
+  mapAttrib.style.transform = visible ? `translateY(${-visible}px)` : ''; // glued to the sheet's edge, every frame, all the way up
+  mapAttrib.style.opacity = String(opacity);
+  mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
 }
 
@@ -356,10 +360,6 @@ function openSearch() {
   searchPanel.hidden = false;
   searchInput.setAttribute('aria-expanded', 'true');
   menuPopover.close(false);
-  menuBtn.replaceChildren(icon('back'));
-  menuBtn.setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
-  menuBtn.removeAttribute('aria-haspopup');
-  menuBtn.removeAttribute('aria-expanded');
   renderSearch();
 }
 // restore: the user closed it (back, Escape, a tap outside), so the sheet goes back to where it was
@@ -379,10 +379,6 @@ function closeSearch(focusMenu = false, restore = false) {
   searchInput.setAttribute('aria-expanded', 'false');
   searchInput.removeAttribute('aria-activedescendant');
   searchClear.hidden = true;
-  menuBtn.replaceChildren(icon('menu'));
-  menuBtn.setAttribute('aria-label', t('Μενού'));
-  menuBtn.setAttribute('aria-haspopup', 'true');
-  menuBtn.setAttribute('aria-expanded', 'false');
   sayStatus('');
   if (focusMenu) menuBtn.focus(); else searchInput.blur();
 }
@@ -427,6 +423,14 @@ function renderSearch(keepActive = false) {
         ...rp.map((p) => srRow(`sr-${n++}`, 'history', p.name, p.subtitle, () => choosePlace(p))));
     } else {
       out.push(msg(t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
+    }
+    // nearby stops, when the device already knows where it is (computed here: the location never leaves the device)
+    const fix = locationService.current;
+    const recent = new Set(rs.map((s) => s.code));
+    const near = fix && inArea(fix) ? nearestStops(data.stops, fix, { limit: 4, maxMeters: 800 }).filter((x) => !recent.has(x.stop.code)) : [];
+    if (near.length) {
+      out.push(srHead(t('Κοντινές στάσεις')), ...near.map(({ stop: s, meters }) =>
+        srRow(`sr-${n++}`, 'bus', s.displayName, [fmtDist(meters), ...lineBadges(s, 4)], () => chooseStop(s))));
     }
     // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
     out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
@@ -518,8 +522,9 @@ $('searchbar').addEventListener('click', (e) => { if (!e.target.closest('button'
 // The keyboard and the sheet (iOS): focusing the field while the sheet is low makes Safari pan the whole page to keep
 // the field above the keyboard, and the pan stays once the sheet has gone up (Kostas, TEL-223). So a tap on the field
 // while the sheet is not up opens the keyboard on a hidden field at the top (it must open inside the tap), takes the
-// sheet up, then hands the focus to the real field, which is at the top by then. Any pan left over is undone, and
-// --kb (the keyboard's height) keeps the last results above the keyboard.
+// sheet up, then hands the focus to the real field, which is at the top by then, so Safari has nothing to pan.
+// --kb (the keyboard's height) keeps the last results above the keyboard. No window.scrollTo() here: scrolling the page
+// while the keyboard is open shifts where iOS thinks fixed elements are, and taps on ✕ and ☰ then miss (Kostas, TEL-223).
 const kbProxy = h('input', { class: 'kb-proxy', type: 'text', tabindex: '-1', 'aria-hidden': 'true' });
 document.body.append(kbProxy);
 let kbHandoff = 0;
@@ -540,16 +545,35 @@ if (vv) {
   const onViewport = () => {
     const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
     document.documentElement.style.setProperty('--kb', `${kb}px`);
-    if (searchOpen && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
   };
   vv.addEventListener('resize', onViewport);
   vv.addEventListener('scroll', onViewport);
 }
-menuBtn.addEventListener('click', () => {
-  if (searchOpen) closeSearch(true, true);
-  else if (menuPop.hidden) menuPopover.open();
-  else menuPopover.close(true);
+// A tap on ☰ or the search's ✕ acts on touchend itself, not on the click iOS makes from it: with the keyboard open
+// that click is lost (Kostas, TEL-223), and preventDefault() there also stops the click, so it runs once. pointerdown
+// keeps the field focused until then; a drag that starts on the button does nothing. Mouse and keyboard use click
+// (detail 0 = from the keyboard).
+function onTap(btn, fn) {
+  let down = null;
+  btn.addEventListener('pointerdown', (e) => { if (searchOpen) e.preventDefault(); });
+  btn.addEventListener('touchstart', (e) => { const p = e.touches[0]; down = e.touches.length === 1 ? { x: p.clientX, y: p.clientY } : null; }, { passive: true });
+  btn.addEventListener('touchend', (e) => {
+    const p = e.changedTouches[0];
+    const tap = down && p && Math.hypot(p.clientX - down.x, p.clientY - down.y) < 10;
+    down = null;
+    if (!tap) return;
+    if (e.cancelable) e.preventDefault();
+    fn(false);
+  });
+  btn.addEventListener('click', (e) => fn(e.detail === 0));
+}
+// ☰ stays the menu while searching (the search closes with its own ✕): it ends the search, then opens the menu
+onTap(menuBtn, (fromKeys) => {
+  if (searchOpen) closeSearch(false, true);
+  if (menuPop.hidden) menuPopover.open();
+  else menuPopover.close(fromKeys);
 });
+onTap($('search-close'), (fromKeys) => closeSearch(fromKeys, true));
 // Keyboard focus leaving the search for another control closes it: the full-screen panel would hide that control
 // (WCAG 2.4.11). A blur with nowhere to go (touch scroll of the results) keeps it open.
 for (const el of [$('searchbar'), searchPanel]) {
@@ -570,7 +594,7 @@ function mountHome(container, c) {
   const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
   const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
   const more = h('div', { class: 'home-more', hidden: true });
-  const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
+  const card = h('div', { class: 'home-card', 'data-mid-end': '1' }, box.onboard, box.places, box.nearby); // mid ends under it (js/sheet.js)
   const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
   container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
   const views = {};
@@ -923,7 +947,8 @@ function localizeChrome() {
   searchInput.setAttribute('aria-label', t('Αναζήτηση στάσης ή τόπου'));
   searchClear.setAttribute('aria-label', t('Καθαρισμός αναζήτησης'));
   searchList.setAttribute('aria-label', t('Αποτελέσματα αναζήτησης'));
-  if (!searchOpen) menuBtn.setAttribute('aria-label', t('Μενού'));
+  menuBtn.setAttribute('aria-label', t('Μενού'));
+  $('search-close').setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
   northBtn.setAttribute('aria-label', t('Επαναφορά βορρά'));
   northBtn.title = t('Επαναφορά βορρά');
   chipsEl.setAttribute('aria-label', t('Αποθηκευμένα μέρη'));
@@ -936,6 +961,7 @@ function localizeChrome() {
 function buildChrome() {
   menuBtn.append(icon('menu'));
   searchClear.append(icon('close'));
+  $('search-close').append(icon('close'));
   northBtn.append(icon('compass'));
   locateBtn.append(icon('locate'));
   menuPopover = makePopover(menuBtn, menuPop);
@@ -947,7 +973,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), attribInto: fabsBottom, avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');
