@@ -101,7 +101,7 @@ test('removed legacy token names are not declared or used', () => {
 test('stylesheets only use tokens that exist', () => {
   const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
     'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css'];
-  const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--panel-w',
+  const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--sheet-t', '--panel-w',
     '--top-inset', '--chips-h', '--offline-h', '--chips-fl', '--chips-fr', '--kb']);
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');

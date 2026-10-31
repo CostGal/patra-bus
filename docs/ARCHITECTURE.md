@@ -198,7 +198,9 @@ type Ctx = {
 - `ui.js`: `h(tag, props, ...kids)` (props: `class`, `on*` listeners, attributes; `style` object allowed), `icon(name) → SVGElement`
   (names: search, back, close, locate, locate-fixed, compass, star, star-on, share, walk, bus, clock, live, route, layers, menu, swap, bell, settings, info, chevron),
   `toast(text, opts)`, `lineBadge(line|{code,color,textColor}) → HTMLElement`, `fmtClock(epochMs) → "HH:MM"`.
-- `map.js`: `createMap(container, { onStopClick(code), onMapClick({lat,lng}), onLongPress({lat,lng}) }) → MapApi`
+- `map.js`: `createMap(container, { onStopClick(code), onMapClick({lat,lng}), onLongPress({lat,lng}), attribInto }) → MapApi`
+  (`attribInto`: an element that takes MapLibre's attribution control, uncollapsed: app.js passes `#map-attrib`, one line of text
+  always shown at the left just above the sheet, moved with the sheet's edge like `#fabs-bottom`, TEL-226; CLAUDE.md rule 5)
 ```ts
 type MapApi = {
   ready: Promise<void>;
@@ -427,7 +429,9 @@ No finger light (removed in review 2). Round buttons get `z-index` while pressed
 `--g-headroom` (12 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
 The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
 Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head, .pl-head` in the content,
-or home's `.sheet-search`, unless `setPeek()` gives a height), `half` = mid (default), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+or home's `.sheet-search`; a view can end low further down with `[data-peek-end]`, as the stop's line chips do, TEL-224;
+unless `setPeek()` gives a height; a ResizeObserver on the content keeps low in step as that row appears), `half` = mid (default: half the screen, or where the view marks `[data-mid-end="<share>"]`: the stop 20% into its second
+arrival, home under its card; kept to 35–60% of the screen, TEL-224), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
 full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
 floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
 bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
@@ -435,15 +439,20 @@ nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves on
 (`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. **Search (TEL-223):** `#menu-btn` (`.menu-fab`) is a fixed round button at the top left, outside the sheet; `#searchbar`
 (`.sheet-search`, sticky) and `#search-panel` are the first children of `#sheet-body`. `app.js` shows the search on home
 only (`route()`); opening it adds `.searching` to `#app` (CSS hides `#sheet-content` and `#map-note`) and snaps the sheet
-to `full`; a close by the user (back, Escape, tap outside) snaps it back to the state it had. A touch tap on the field while the sheet
+to `full`; a close by the user (the ✕ `#search-close` next to the field, Escape, tap outside; ☰ also ends it before opening
+the menu) snaps it back to the state it had. On phones, home's sheet reaches `--safe-top` at full and the ☰ slides
+down into the search row (its `top` follows `--sheet-t`, which `sheet.js` also writes on `<html>`). An empty field lists
+recent searches, then up to 4 stops within 800 m of the device's last fix (`nearestStops`, on the device only). A touch tap on the field while the sheet
 is not up focuses a hidden `.kb-proxy` input at the top first (the keyboard must open inside the tap), and hands the focus
 to the field 320 ms later, once the sheet is up: focusing it low would make iOS pan the page above the keyboard. A
-`visualViewport` listener undoes any pan left while searching and writes `--kb` (keyboard height) for the results' bottom padding. The map's top padding
+`visualViewport` listener writes `--kb` (keyboard height) for the results' bottom padding; it never scrolls the page (with the
+keyboard open, a programmatic scroll shifts iOS's hit-testing of fixed elements and taps miss). `.menu-fab` has its own
+layer (`translateZ(0)`), or iOS hands taps on it to the sheet's scroller underneath at full. The map's top padding
 is measured from the ☰ and the chips (which share its row). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
 `app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
 (Apple Maps). One spring per move
-(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:stop`
+(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:settle` when it comes to rest (`glass.js` re-places the chip lens then) and `sheet:stop`
 while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
 touch strip (`::after`); its pill is the iOS grabber, 36 × 5 px, 8 px from the top. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
 sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
@@ -467,7 +476,7 @@ Two layers, both in `tokens.css` (the pre-TEL-46 names were removed in TEL-50; s
    `--destructive`, `--border` (decorative hairlines), `--input` (control edge, ≥ 3:1), `--ring` (focus), plus the app's own status
    colours `--live/--live-foreground/--live-muted`, `--scheduled/--scheduled-border/--scheduled-muted`, `--warning/--warning-muted`.
    Each has a `*-foreground` partner where text sits on the fill.
-2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills), spacing
+2. **Scales**: radius (`--radius` is the one knob; `--radius-sm/-md/-lg` derive from it, `--radius-full` for pills; the nesting levels `--radius-sheet/-card/-inner` (28/20/12) step down 8 px per level for concentric corners, TEL-225), spacing
    (`--space-1…8`, 4 px grid), type (`--text-2xs…3xl`, `--weight-*`, `--track-*/--lead-*`), controls (`--control-h` 44 px,
    `--control-h-sm`, `--disabled-opacity`), elevation (`--shadow-1/-2/-sheet`), motion (`--ease`, `--spring-ease`).
 
