@@ -1,21 +1,44 @@
 /* Stop view (.stopv-*) and arrival tiles (.atile-*). Colours come from tokens.css only.
    LIVE vs SCHEDULED: LIVE = solid green badge + pulsing dot + green stripe/countdown; SCHEDULED = outlined neutral badge + clock icon + timetable time. */
 
-.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) var(--space-4) var(--space-6); font-family: var(--font); color: var(--foreground); }
+.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-6); font-family: var(--font); color: var(--foreground); }
 .stopv .icon, .atile .icon { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 
-/* ---- header ---- */
-.stopv-head { display: flex; flex-direction: column; gap: 10px; }
-.stopv-top { display: flex; align-items: flex-start; gap: var(--space-2); }
-.stopv-titles { flex: 1; min-width: 0; }
-.stopv-name { margin: 0; font-size: var(--text-xl); line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
-/* at most two lines, so a long name never pushes the low row out of view (TEL-224) */
-.stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) 10px; margin: 6px 0 0; color: var(--muted-foreground); font-size: .85rem; }
-.stopv-actions { position: relative; display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
+/* ---- header (TEL-227: an Apple Maps place card) ---- */
+/* share · centred name · close; under the name the line badges at low, "Stop 1011" from mid. The name is one line
+   (26 px, shrunk to 20 px by js/arrivals-view.js before it is cut with "…"), so low is the same height for every stop;
+   towards up it grows (css/glass.css) and may take two lines. Its line box stays 34 px: growing moves nothing */
+.stopv-head { display: flex; flex-direction: column; }
+/* the circles are centred on the name's first line */
+.stopv-top { display: grid; grid-template-columns: var(--control-h) minmax(0, 1fr) var(--control-h); align-items: start; gap: var(--space-1); margin: -11px -8px 0; }
+.stopv-titles { position: relative; min-width: 0; padding-top: 5px; text-align: center; }
+/* low ends here (js/sheet.js): 10 px under the line of badges, plus this 8 px, so low has more room at the bottom than
+   at the top, without any space under the line from mid */
+.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: 8px; pointer-events: none; }
+.stopv-head .stopv-name { margin: 0; overflow: hidden; font-size: 1.625rem; line-height: 34px; /* .stopv-head: over .sheet-content h1 */ font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word; }
+.stopv-sub { display: flex; justify-content: center; align-items: center; height: 18px; margin: 4px 0 0; color: var(--muted-foreground); font-size: .85rem; white-space: nowrap; }
+.stopv-code { overflow: hidden; text-overflow: ellipsis; }
 
-/* "⋯" menu: share, directions */
+/* one round button for the whole card (share, ✕, ☆): a 38 px circle (glass in css/glass.css) with a 44 px tap area */
+.btn.round.g-circle { width: 38px; height: 38px; min-height: 0; margin: 3px; padding: 0; background: var(--muted); color: var(--foreground); } /* min-height: .btn's 44 px made it an oval */
+.btn.round.g-circle::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; }
+.btn.round.g-circle .icon { width: 20px; height: 20px; stroke-width: 2.25; }
+.stopv-star.on { color: var(--warning); }
+.stopv-star.on .icon { fill: currentColor; }
+
+/* from mid, under the line chips: directions (wide) and ☆ */
+.stopv-acts { display: flex; align-items: center; gap: var(--space-2); }
+.stopv-acts > .stopv-star { margin: 3px; }
+.stopv-pill { position: relative; display: inline-flex; flex: 1 1 auto; min-width: 0; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-full); background: var(--primary); color: var(--primary-foreground); font: inherit; font-size: .9375rem; font-weight: var(--weight-semibold); cursor: pointer; }
+.stopv-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stopv-pill .icon { width: 20px; height: 20px; }
+.stopv-pill .icon-walk { fill: currentColor; stroke: none; }
+.stopv-pill:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* "⋯" menu: no longer on the stop (TEL-227); kept for the coming island of the stop card (☆ ⋯), see js/glass.js */
 .stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }
 .stopv-menu[hidden] { display: none; }
 .stopv-item { display: flex; align-items: center; gap: 10px; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -25,8 +48,6 @@
 .stopv-item .icon-walk { fill: currentColor; stroke: none; }
 
 .stopv-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.btn.stopv-star.on { color: var(--warning); }
-.stopv-star.on .icon { fill: currentColor; }
 .stopv-small { --hit: -5px 0; }
 .stopv-more { align-self: center; margin-top: var(--space-1); padding: 0 10px; min-width: var(--control-h); }
 

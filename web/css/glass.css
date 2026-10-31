@@ -36,7 +36,10 @@ html.glass {
   --g-headroom: 12px; /* room above the first row of the sheet for a pressed round button (js/sheet.js: HEADROOM) */
   /* the sheet's three states (TEL-222): margin and corner of the floating card at peek/half, its tint at peek (a0) and
      half (a1), and the solid colours of full (no glass there) */
-  --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 3%; --g-sheet-a1: 55%;
+  /* TEL-227: mid more see-through (55% → 40%) with a heavier blur of its own (14 → 20 px), as in Apple Maps */
+  --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 3%; --g-sheet-a1: 40%;
+  --g-blur-sheet: blur(20px) saturate(200%) brightness(1.04);
+  --g-circle: rgba(255, 255, 255, .55); --g-circle-shadow: rgba(0, 0, 0, .12); /* the card's round buttons (TEL-227) */
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
   /* the search field's grey fill and the 0.5 px list hairlines (TEL-223, Apple Maps; estimates, not published values) */
   --sb-fill: rgba(118, 118, 128, .14); --g-hair: rgba(60, 60, 67, .18);
@@ -48,7 +51,8 @@ html.glass {
   html.glass:not([data-theme="light"]) {
     --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
     --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 26%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
-    --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
+    --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%); --g-blur-sheet: blur(20px) saturate(180%);
+    --g-circle: rgba(255, 255, 255, .14); --g-circle-shadow: rgba(0, 0, 0, .35);
     --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-row: rgba(255, 255, 255, .12); --g-pressed: rgba(255, 255, 255, .22);
     --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
     --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
@@ -59,7 +63,8 @@ html.glass {
 html.glass[data-theme="dark"] {
   --g-bg: color-mix(in srgb, var(--g-card) 30%, transparent); --g-bg-lg: color-mix(in srgb, var(--g-card) 36%, transparent);
   --g-tint: color-mix(in srgb, var(--g-card) 50%, transparent); --g-head: color-mix(in srgb, var(--g-card) 26%, transparent); --g-halo: color-mix(in srgb, var(--g-card) 45%, transparent);
-  --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%);
+  --g-blur: blur(10px) saturate(170%); --g-blur-lg: blur(14px) saturate(180%); --g-blur-sheet: blur(20px) saturate(180%);
+    --g-circle: rgba(255, 255, 255, .14); --g-circle-shadow: rgba(0, 0, 0, .35);
   --g-edge: rgba(255, 255, 255, .28); --g-rim: rgba(255, 255, 255, .14); --g-row: rgba(255, 255, 255, .12); --g-pressed: rgba(255, 255, 255, .22);
   --g-sheen: linear-gradient(to bottom, rgba(255, 255, 255, .12), rgba(255, 255, 255, 0) 50%);
   --g-sheen-lg: linear-gradient(to bottom, rgba(255, 255, 255, .08), rgba(255, 255, 255, 0) 90px);
@@ -106,7 +111,7 @@ html.glass .sheet::before {
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--g-sheen-c) calc((1 - var(--u)) * 100%), transparent), transparent 90px),
     color-mix(in srgb, var(--g-up) calc(var(--u) * 100%), color-mix(in srgb, var(--g-card) calc(var(--g-sheet-a0) + var(--l) * (var(--g-sheet-a1) - var(--g-sheet-a0))), transparent));
-  -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
+  -webkit-backdrop-filter: var(--g-blur-sheet); backdrop-filter: var(--g-blur-sheet);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
 }
 @media (min-width: 900px) { html.glass .sheet { border-top: 0; border-left: 0; } }
@@ -212,9 +217,10 @@ html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp
 html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip, html.glass-lens .map-capsule {
   -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
 }
-html.glass-lens .sheet::before, html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
+html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
   -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
 }
+html.glass-lens .sheet::before { -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); }
 
 /* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring, --g-morph = 0..1).
    The glass starts clear over the pressed ☰ circle and its blur grows with the shape, so the ☰ lines blur out through
@@ -317,6 +323,52 @@ html.glass .stopv-chip[data-key="*"] {
 }
 html.glass .stopv-chipbar > .g-lens { opacity: var(--l, 1); }
 [data-sheet="peek"] .stopv-chip { pointer-events: none; }
+/* TEL-227: the card's round buttons (share, ✕, ☆) are one glass circle, like ☰: lighter glass, a bright rim and a
+   small shadow; pressed, the usual whiter circle (background-color) */
+html.glass .btn.round.g-circle {
+  background-image: var(--g-sheen); background-color: var(--g-circle);
+  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 2px 8px var(--g-circle-shadow);
+}
+html.glass .btn.round.g-circle.g-press { background-color: var(--g-pressed); }
+/* directions: tinted blue glass while the sheet floats, solid blue up (--u: 0 up to mid, 1 up) */
+html.glass .sheet .stopv-pill.primary {
+  background-image: var(--g-sheen); background-color: color-mix(in srgb, var(--primary) calc(85% + var(--u, 1) * 15%), transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--g-edge) 60%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--g-rim) 70%, transparent);
+}
+/* TEL-227, phone sheet only: at low the line badges sit centred under the name, at 85%; towards mid (--l) the bar
+   comes down into its own row right under the header, the badges spread and become the filter chips; the directions
+   row is under the chips, so nothing crosses it. js/arrivals-view.js measures the move (--pk-dx/-dy, around the first
+   badge --pk-ox) and how much of the row fits there (--pk-cut: the scroller is that much narrower, so its own edge
+   fade cuts the row) */
+@media (max-width: 899.98px) {
+  /* more room at the sides of the floating card: 8 px more than the sheet's own 16 (16 px from the card's edge) */
+  html.glass .sheet .stopv { padding-inline: 8px; }
+  html.glass .sheet .stopv-chipbar { margin-inline: -24px; }
+  html.glass .sheet .stopv-chips { padding-inline: 24px; }
+  /* the name grows with the sheet from mid to up as a transform (smooth on a phone): from its low/mid size (26 px, or
+     --name-n when js/arrivals-view.js shrank a long one) to its up size (30 px, or --name-up-n when 30 would break a
+     word). On two lines it is set at the up size and drawn at the same visual size, growing to it */
+  html.glass .sheet .stopv-name { font-size: var(--name-px, 26px); transform-origin: 50% 0;
+    transform: scale(calc(1 + var(--u, 0) * (var(--name-up-n, 30) / var(--name-n, 26) - 1))); }
+  html.glass .sheet .stopv-head.is-up .stopv-name { font-size: calc(var(--name-up-n, 30) * 1px);
+    transform: scale(calc((var(--name-n, 26) + (var(--name-up-n, 30) - var(--name-n, 26)) * var(--u, 0)) / var(--name-up-n, 30))); }
+  /* "Stop 1011" fades in as the badges leave its line */
+  html.glass .sheet .stopv-head.has-lines .stopv-code { opacity: var(--l, 1); }
+  html.glass .sheet .stopv-chipbar {
+    transform-origin: var(--pk-ox, 0px) 50%;
+    transform: translate(calc((1 - var(--l, 1)) * var(--pk-dx, 0px)), calc((1 - var(--l, 1)) * var(--pk-dy, 0px))) scale(calc(1 - (1 - var(--l, 1)) * .15));
+  }
+  html.glass .sheet .stopv-chips { margin-right: calc((1 - var(--l, 1)) * var(--pk-cut, 0px)); gap: calc(4px + var(--l, 1) * 4px); }
+  html.glass .sheet .stopv-chip:not([data-key="*"]) { padding-inline: calc(var(--l, 1) * var(--space-3)); }
+  html.glass .sheet .stopv-chip[data-key="*"] { margin-right: calc((var(--l, 1) - 1) * 4px); } /* folds away with its gap */
+}
+/* reduced motion: nothing slides; the bar only fades in towards mid, and "Stop 1011" is always on its line */
+@media (max-width: 899.98px) and (prefers-reduced-motion: reduce) {
+  html.glass .sheet .stopv-chipbar { transform: none; opacity: var(--l, 1); }
+  html.glass .sheet .stopv-chips { margin-right: 0; }
+  html.glass .sheet .stopv-head.has-lines .stopv-code { opacity: 1; }
+}
 /* dots on a line drawing must hide the line behind them */
 html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 
@@ -327,13 +379,13 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 @media (prefers-reduced-transparency: reduce) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);
     --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
-    --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-sheet: none; --g-circle: var(--muted); --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
   }
 }
 @media (prefers-contrast: more) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);
     --g-bg: var(--g-card); --g-bg-lg: var(--g-card); --g-tint: var(--g-card); --g-head: var(--g-card);
-    --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
+    --g-sheet-a0: 100%; --g-sheet-a1: 100%; --g-blur: none; --g-blur-lg: none; --g-blur-sheet: none; --g-circle: var(--muted); --g-blur-head: none; --g-sheen: none; --g-sheen-lg: none; --g-rim: transparent;
     --g-line: 1px solid var(--border);
   }
 }

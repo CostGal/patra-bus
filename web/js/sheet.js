@@ -111,8 +111,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   const settled = () => root.dispatchEvent(new CustomEvent('sheet:settle'));
   const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
   // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
+  // (up, a view may lay its header out differently, e.g. the stop's two-line name: snap() measures on the way down)
   new ResizeObserver(() => {
-    if (dragging || inert() || !H) return;
+    if (dragging || inert() || !H || state === 'full') return;
     const before = SZ[state];
     measure();
     if (SZ[state] !== before && state !== 'full') moveTo(state);
@@ -165,6 +166,12 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   function snap(to, { animate = true, velocity = 0, spring: cfg } = {}) {
     if (!STATES.includes(to)) return;
     cfg ||= springFor(state, to);
+    // leaving up: views put back what they grew there (the stop's two-line name, TEL-227), then low and mid are
+    // measured again, so the spring aims at their real heights (they are not measured while up, see below)
+    if (state === 'full' && to !== 'full') {
+      root.dispatchEvent(new CustomEvent('sheet:leave-full'));
+      if (!inert() && H) measure();
+    }
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;

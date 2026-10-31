@@ -56,10 +56,27 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   reaches the top and the ☰ slides down into the search row, left of the field (TEL-223 B); an empty field shows recent
   searches and the nearby stops. Other views put their own header in
   the search's place, with a ✕ back home.
-  **Low on a stop** (TEL-224): the name (at most two lines), and the lines arriving as flat coloured pills (the badges
-  alone); dragging up, the pills grow into the filter chips with the sheet ("All" unfolds in front), and back.
-  **Mid fits the view** (TEL-224): on a stop it ends 20% into the second arrival (the first whole, a glimpse of the
-  next says the list goes on); on home, under its card; 35–60% of the screen, and it follows as the content loads.
+  **Two modes × three states** (as Apple Maps): *search mode* = home, the sheet starts with the search; *location
+  mode* = something is picked (a stop, line, vehicle or route), the sheet starts with its header and a ✕. Each card says
+  which cells (mode × low/mid/up) it changes.
+  **Stop header** (location mode, TEL-227, an Apple Maps place card): share on the left, ✕ on the right, both the
+  card's one round button (`.g-circle`: a 38 px glass circle with a bright rim and a small shadow, 44 px tap area, a
+  20 px icon in the text colour; the ☆ is the same button), centred on the name's first line. The name is centred,
+  26 px on one line at low and mid (a long one shrinks down to 20 px, then is cut with "…"), so low is the same height
+  for every stop; from mid towards up it grows with the sheet to 30 px (less if its longest word would not fit), as a
+  transform, so it stays smooth on a phone; it takes two lines as soon as one would no longer hold it, at the same
+  visual size (one line again on the way down, before the sheet measures low and mid). Its line box stays 34 px, so
+  growing moves nothing. Under it, on one line: the line badges at low (85%, centred), "Stop 1011" from mid (it fades
+  in as they leave). **Low** = that header alone, 98 px with the grabber at any width, with a little more room under
+  the badges than above the name. Content in the floating card sits 16 px from its edge. From mid, under the
+  header: the line chips, then directions (wide, tinted blue glass while the sheet floats, solid up) and ☆. Dragging up,
+  the badges leave the name's line and slide down into their row right under the header, growing into the filter chips
+  ("All" unfolds in front); they cross nothing. No ⋯ for now (its two items are on screen; it comes back with an island
+  of the stop card once it has its own items). **The sheet at mid** is more see-through than before (40% tint, its own
+  20 px blur).
+  **Mid fits the view** (TEL-224, TEL-227): on a stop it ends a third into the second arrival (the first whole, about
+  30–35% of the next card says the list goes on, as in Apple Maps); on home, under its card; 35–60% of the screen, and
+  it follows as the content loads.
   Mid is where most releases land (a slow flick moves one state; only a fast one, ≥ 1200 px/s, skips mid: up ↔ low), and the map
   stays still while the sheet moves; once the sheet is let go between low and mid, the map glides its focus (the stop,
   or your location on home) to the centre of the part left above the sheet, as in Apple Maps. Legibility comes
@@ -71,8 +88,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   as the menu opens, its glass starts clear over that circle and its blur grows with it, so the ☰ lines blur out through
   it and a ✕ blurs in where they were (the open menu's close button); the circle swells around the button, then opens into the panel (items fade in late); closing runs the same path
   back, ✕ blurs out and ☰ blurs back in (reduced motion: the icon just swaps). Same logic elsewhere: every round button (☆, ⋯, ✕)
-  presses into a whiter glass circle; the stop's ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
-  to the stop's close ✕); the map buttons sit in one vertical glass capsule (split by a hairline: the buttons in it are
+  presses into a whiter glass circle; a ⋯ menu grows out of ⋯ the same way (⋯ → ˄, not ✕, next
+  to a close ✕; the stop's ⋯ left in TEL-227, the code stays for the island); the map buttons sit in one vertical glass capsule (split by a hairline: the buttons in it are
   flat segments that, held, pop out like ☰ into a whiter glass circle; TEL-226), and the map's attribution is no button
   at all but one small line of text, always there, just above the sheet (like Apple's "Legal" in apps on Apple Maps); the selected line chip is one glass
   lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
