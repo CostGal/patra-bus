@@ -131,7 +131,8 @@ html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(-
    the grown circle is not cut by the scroller (js/sheet.js adds the same room to the peek height) */
 /* (:where keeps this at zero specificity, so a button that is already absolute or fixed stays so) */
 :where(html.glass) :where(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button) { position: relative; }
-html.glass :is(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button).g-press { z-index: 8; }
+/* not the ☰: it is fixed above the sheet (z 50), and z 8 would drop it under the sheet while held */
+html.glass :is(.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button).g-press:not(.menu-fab) { z-index: 8; }
 html.glass .sheet-content { padding-top: var(--g-headroom); }
 
 /* the search in the sheet (TEL-223): the same headroom above it; behind it, the sheet's own colour once it is up (it is
