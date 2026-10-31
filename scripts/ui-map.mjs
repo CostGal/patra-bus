@@ -19,19 +19,20 @@ export const AREAS = {
 };
 
 export const UI = [
-  { id: 'N1', name: 'Μπάρα αναζήτησης', sel: '#searchbar' },
-  { id: 'N2', name: '☰ Μενού / πίσω / κλείσιμο αναζήτησης', sel: '#menu-btn' },
+  { id: 'N1', name: 'Αναζήτηση (στο φύλλο, μόνο αρχική)', sel: '#searchbar' },
+  { id: 'N2', name: '☰ Μενού (μόνο του πάνω αριστερά· στο up μέσα στη γραμμή του search)', sel: '#menu-btn' },
   { id: 'N3', name: 'Πεδίο αναζήτησης', sel: '#search-input' },
   { id: 'N4', name: '✕ Καθαρισμός αναζήτησης', sel: '#search-clear' },
   { id: 'N5', name: 'Επικεφαλίδα αποτελεσμάτων', sel: '.sr-head', all: true },
   { id: 'N6', name: 'Αποτέλεσμα αναζήτησης', sel: '.sr', all: true },
   { id: 'N7', name: 'Σήμα DEMO', sel: '#demo-tag' },
+  { id: 'N8', name: '✕ Κλείσιμο αναζήτησης', sel: '#search-close' },
 
   { id: 'M1', name: 'Εντοπισμός τοποθεσίας', sel: '#locate-btn' },
-  { id: 'M2', name: 'i (attribution)', sel: '.maplibregl-ctrl-attrib-button' },
-  { id: 'M3', name: 'Πλαίσιο attribution', sel: '.maplibregl-ctrl-attrib' },
+  { id: 'M3', name: 'Γραμμή attribution', sel: '#map-attrib' },
   { id: 'M4', name: 'Σύνδεσμος attribution', sel: '.maplibregl-ctrl-attrib a', all: true },
   { id: 'M5', name: 'Marker στον χάρτη', sel: '.mk', all: true },
+  { id: 'M6', name: 'Κάψουλα κουμπιών χάρτη', sel: '#map-capsule' },
 
   { id: 'P1', name: 'Φύλλο (sheet / side panel)', sel: '#sheet' },
   { id: 'P2', name: 'Λαβή φύλλου', sel: '#sheet-handle' },

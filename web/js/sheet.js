@@ -47,20 +47,36 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let dragging = false;
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
-  let peekPx = null; // null = handle + the view's first row; the home card sets its own height (setPeek)
+  let peekPx = null; // null = handle + the view's first row (setPeek overrides it)
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
-  // peek: the handle and the view's first row (its header), tight; the home card sets its own height
+  // peek: the handle and the view's first row (its header, or home's search above the content), tight; a view can carry
+  // low further down by marking the row that ends it with [data-peek-end] (the stop's line pills, TEL-224)
   function firstRow() {
-    const head = content.querySelector(HEAD);
+    const head = body.querySelector('.sheet-search:not([hidden])') || content.querySelector('[data-peek-end]:not([hidden])')
+      || content.querySelector(HEAD);
     if (!head) return 96;
-    return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - content.getBoundingClientRect().top) + 10;
+    return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop) + 10;
+  }
+  // mid: half the screen, unless the view marks where it ends with [data-mid-end="<share of that element>"] (the stop:
+  // 20% into its second arrival; home: its card, TEL-224), kept between 35% and 60% of the screen
+  function midRow() {
+    const end = content.querySelector('[data-mid-end]');
+    if (!end || !end.offsetParent) return null;
+    const r = end.getBoundingClientRect();
+    const share = Math.max(0, Math.min(1, Number(end.dataset.midEnd) || 1));
+    return handle.offsetHeight + Math.round(r.top - body.getBoundingClientRect().top + body.scrollTop + r.height * share);
   }
   function measure() {
     H = root.offsetHeight;
     const peek = Math.min(Math.max(64, peekPx ?? firstRow()) + probe.offsetHeight, H);
-    SZ = { peek, half: Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100)), full: H };
+    const mid = midRow();
+    const half = mid == null ? Math.round(innerHeight * 0.5)
+      // + the space under the floating card (its margin, or the home bar), where the content is cut (css/glass.css)
+      : Math.max(Math.round(innerHeight * 0.35), Math.min(Math.round(innerHeight * 0.6),
+        mid + Math.max(parseFloat(getComputedStyle(root).getPropertyValue('--g-sheet-m')) || 0, probe.offsetHeight)));
+    SZ = { peek, half: Math.max(peek + 40, Math.min(half, H - 100)), full: H };
   }
   const yFor = (s) => H - SZ[s];
 
@@ -80,15 +96,27 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     tick(v);
     // 0 at peek, 1 at half, 2 at full (css/glass.css draws the sheet's shape and colour from it)
     const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
-    root.style.setProperty('--sheet-t', Math.max(0, Math.min(2, tt)).toFixed(3));
-    // floating UI (FABs, toast, attribution) rides on the sheet up to the half point, then fades out
+    const st = Math.max(0, Math.min(2, tt)).toFixed(3);
+    root.style.setProperty('--sheet-t', st);
+    docEl.style.setProperty('--sheet-t', st); // for chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
+    // floating UI (FABs, toast) rides on the sheet up to the half point, then fades out (the attribution line stays
+    // glued to the sheet's edge all the way: app.js uses `visible` for it)
     const lift = Math.min(vis, SZ.half);
     const opacity = vis <= SZ.half ? 1 : Math.max(0, 1 - (vis - SZ.half) / Math.max(1, (SZ.full - SZ.half) * 0.35));
     onMove?.({ visible: vis, lift, opacity });
   }
 
   // Drives --sheet-y with the spring while not dragging; the pointer sets it directly during a drag.
-  const spring = createSpringLoop({ get: () => y, set: setY });
+  // sheet:settle when the sheet comes to rest (glass.js re-places what it measured while the content was morphing)
+  const settled = () => root.dispatchEvent(new CustomEvent('sheet:settle'));
+  const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
+  // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
+  new ResizeObserver(() => {
+    if (dragging || inert() || !H) return;
+    const before = SZ[state];
+    measure();
+    if (SZ[state] !== before && state !== 'full') moveTo(state);
+  }).observe(content);
 
   // prefers-reduced-motion: bypass physics entirely, a short opacity cross-fade on the content instead
   // (docs/DESIGN.md §7). Position itself jumps straight to the target.
@@ -111,6 +139,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (inert()) {
       root.style.removeProperty('--sheet-y');
       root.style.setProperty('--sheet-t', fixed ? '2' : '1'); // plain page = the full look; side panel = the half look
+      docEl.style.setProperty('--sheet-t', '1');
       onMove?.({ visible: 0, lift: 0, opacity: 1 });
       onSnap?.({ state, visible: 0, desktop: isDesktop() });
       return;
@@ -119,6 +148,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (!animate) {
       spring.stop();
       setY(targetY);
+      settled();
     } else if (reduceMQ.matches) {
       spring.stop();
       reducedMotionTo(targetY);
@@ -299,7 +329,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       moveTo(state, { animate: false });
     },
     scrollToTop() { body.scrollTop = 0; },
-    // Peek height = handle + the single home card; null restores the default.
+    // A fixed peek height instead of the handle + first row; null restores the default.
     setPeek(px) {
       const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
       if (next === peekPx) return;

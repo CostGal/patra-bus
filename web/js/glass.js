@@ -9,7 +9,7 @@
 // - the sheet handle (js/sheet.js: three states): a tick on the handle each time a drag passes a stop;
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
 // - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕;
-// - the stop's ⋯ menu and the map's i morph the same way (⋯ → ˄), with their own timing;
+// - the stop's ⋯ menu morphs the same way (⋯ → ˄), with its own timing;
 // - line filter chips: a glass lens slides from the selected chip to the next.
 // Nothing is stored or sent. Reduced transparency / more contrast: no lens and no effects (CSS is solid then);
 // reduced motion: no growing, moving or ticking (the press itself still turns the glass more opaque).
@@ -67,10 +67,10 @@ function addLens() {
 
 // touch: the control under the finger (or the glass surface, if the finger is not on a control) gets .g-press;
 // controls also grow, lean towards the finger and spring back with a wobble.
-const SURFACE = '.searchbar, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card';
+const SURFACE = '.fab, .chip, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
 const ROW = '.stop-row, .lines-row, .pl-sug'; // full-width list rows: a highlight, no growing
-const ROUND = '.btn.round, .sb-btn, .fab, .maplibregl-ctrl-attrib-button'; // round buttons grow the most
+const ROUND = '.btn.round, .sb-btn, .fab'; // round buttons grow the most
 const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, ${ROW}`;
 const SPRING = 'cubic-bezier(.34, 1.56, .64, 1)'; // overshoots a little: the "liquid" settle
 const clamp = (v, m) => Math.max(-m, Math.min(m, v));
@@ -79,10 +79,8 @@ let origin = null;
 
 function targetOf(e) {
   if (!(e.target instanceof Element)) return null;
-  const round = e.target.closest('.sb-btn'); // the bar's round buttons (☰, back) press on their own, as glass circles
+  const round = e.target.closest('.sb-btn'); // ☰ (back while searching) and the search's ✕ press as glass circles
   if (round) return round;
-  const bar = e.target.closest('.searchbar'); // the rest of the bar (its input) presses the whole bar
-  if (bar) return bar;
   const c = e.target.closest(CONTROL);
   if (c && !c.matches('.sheet-handle')) return c;
   return e.target.closest(SURFACE);
@@ -194,7 +192,7 @@ function addCloseIcon() {
   new MutationObserver(ensure).observe(btn, { childList: true });
 }
 
-// ---- more morphs: the stop's ⋯ menu and the map's i, with the same logic as ☰ (a circle over the button that swells,
+// ---- more morphs: the stop's ⋯ menu, with the same logic as ☰ (a circle over the button that swells,
 // then opens into the panel; the same path back). These popovers are shown and hidden by other code in one step
 // (the `hidden` attribute, a class), so the opening plays after it shows, and the closing is held back: the popover is
 // kept visible, shrinks into its button, and is hidden again when the animation ends.
@@ -246,14 +244,7 @@ function morphButton(btn, to = 'chevron-up') {
   btn.classList.add('g-morph-btn');
 }
 
-const attribFrom = new WeakMap(); // the i circle's box, taken when it is tapped (it is gone once the pill is open)
 function watchPopovers() {
-  document.addEventListener('pointerdown', (e) => {
-    const b = e.target instanceof Element && e.target.closest('.maplibregl-ctrl-attrib-button');
-    const box = b?.closest('.maplibregl-ctrl-attrib');
-    if (box && !box.classList.contains('maplibregl-compact-show')) attribFrom.set(box, b.getBoundingClientRect());
-  }, { capture: true, passive: true });
-
   new MutationObserver((recs) => {
     for (const r of recs) {
       const el = r.target;
@@ -272,23 +263,8 @@ function watchPopovers() {
           morphClose(el, btn.getBoundingClientRect(), items, () => { el.hidden = true; });
         }
       }
-      // the map's i (MapLibre toggles maplibregl-compact-show)
-      if (r.attributeName === 'class' && el.classList.contains('maplibregl-ctrl-attrib')) {
-        const open = el.classList.contains('maplibregl-compact-show');
-        const was = (r.oldValue || '').includes('maplibregl-compact-show');
-        if (open === was) continue;
-        const items = [...el.querySelectorAll('.maplibregl-ctrl-attrib-inner')];
-        const from = attribFrom.get(el);
-        if (!from) continue;
-        if (open) morphOpen(el, from, items);
-        else {
-          busy.add(el);
-          el.classList.add('maplibregl-compact-show'); // keep the pill while it shrinks back into the i
-          morphClose(el, from, items, () => { el.classList.remove('maplibregl-compact-show'); });
-        }
-      }
     }
-  }).observe(document.body, { attributes: true, attributeFilter: ['hidden', 'class'], attributeOldValue: true, subtree: true });
+  }).observe(document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
 }
 
 // ---- line filter chips: one glass lens marks the selected chip and slides to the next one, stretching over both
@@ -331,6 +307,10 @@ function watchChips() {
     const bar = e.target instanceof Element && e.target.classList.contains('stopv-chips') && e.target.closest('.stopv-chipbar');
     if (bar) place(bar, false);
   }, { capture: true, passive: true });
+  // the chips change shape with the sheet (flat pills at low, TEL-224): once it comes to rest, the lens follows them
+  document.getElementById('sheet')?.addEventListener('sheet:settle', () => {
+    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden])')) place(bar, false);
+  });
 }
 
 // the locate button: a tap sends out a ring, so there is no doubt it was pressed (the fill shows while it is held)
