@@ -60,6 +60,9 @@ export const UI = [
   { id: 'S5', name: 'Σήμα γραμμής (άφιξη)', sel: '.atile-badge' },
   { id: 'S6', name: 'Ετικέτα LIVE / ΠΡΟΓΡ.', sel: '.atile-flag' },
   { id: 'S7', name: 'Λεπτά (άφιξη)', sel: '.atile-eta' },
+  { id: 'S8', name: 'Σειρά κουμπιών στάσης (pills)', sel: '.stopv-acts' }, // TEL-227
+  { id: 'S9', name: 'Οδηγίες ως εδώ (pill)', sel: '.stopv-pill.primary' },
+  { id: 'S10', name: 'Κοινοποίηση (pill)', sel: '.stopv-pill:not(.primary)' },
 
   { id: 'E1', name: 'Κάρτα «κοντά σου»', sel: '.nb' },
   { id: 'E2', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary' },

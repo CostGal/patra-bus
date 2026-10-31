@@ -1,7 +1,7 @@
 /* Stop view (.stopv-*) and arrival tiles (.atile-*). Colours come from tokens.css only.
    LIVE vs SCHEDULED: LIVE = solid green badge + pulsing dot + green stripe/countdown; SCHEDULED = outlined neutral badge + clock icon + timetable time. */
 
-.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) var(--space-4) var(--space-6); font-family: var(--font); color: var(--foreground); }
+.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-6); font-family: var(--font); color: var(--foreground); }
 .stopv .icon, .atile .icon { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 
@@ -12,8 +12,26 @@
 .stopv-name { margin: 0; font-size: var(--text-xl); line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
 /* at most two lines, so a long name never pushes the low row out of view (TEL-224) */
 .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
-.stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) 10px; margin: 6px 0 0; color: var(--muted-foreground); font-size: .85rem; }
-.stopv-actions { position: relative; display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
+.stopv-sub { display: flex; align-items: center; gap: 6px; min-height: 22px; margin: 4px 0 0; color: var(--muted-foreground); font-size: .85rem; white-space: nowrap; }
+/* "Stop 1011 · " then the slot where the line badges sit at low (TEL-227, css/glass.css); no badges, no dot */
+.stopv-dot { display: none; }
+.stopv-slot { flex: none; width: 0; height: 20px; }
+.stopv-actions { position: relative; display: flex; flex: none; gap: 0; margin: -6px -8px 0 0; }
+/* ☆ ⋯ ✕ (TEL-227): a visible 32 px circle inside the 44 px button, as in Apple Maps; the button keeps its size and tap area */
+.stopv-actions > .btn.round { background: radial-gradient(circle, var(--muted) 15.5px, transparent 16px); }
+.stopv-actions > .btn.round .icon { width: 18px; height: 18px; }
+.stopv-more-btn { font-size: 1.15rem; font-weight: 700; }
+
+/* the pill row under the title (TEL-227): directions (primary) and share, like the buttons of an Apple Maps place card */
+.stopv-acts { display: flex; gap: var(--space-2); }
+.stopv-pill { position: relative; display: inline-flex; flex: 1 1 auto; min-width: 0; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-full); background: var(--muted); color: var(--primary); font: inherit; font-size: .9375rem; font-weight: var(--weight-semibold); cursor: pointer; }
+.stopv-pill::after { content: ''; position: absolute; inset: -5px 0; } /* 44 px tap area */
+.stopv-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stopv-pill .icon { width: 18px; height: 18px; }
+.stopv-pill .icon-walk { fill: currentColor; stroke: none; }
+.stopv-pill.primary { background: var(--primary); color: var(--primary-foreground); }
+.stopv-pill:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 /* "⋯" menu: share, directions */
 .stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }

@@ -160,12 +160,20 @@ export function mountStop(container, ctx, { code }) {
   document.addEventListener('click', onDocClick);
   document.addEventListener('keydown', onKey);
 
+  // TEL-227: an Apple Maps place card. Low = title, "Stop 1011 · <line badges>" and the pill row; the badges are the
+  // filter chips below, carried up into the subtitle at low (css/glass.css, placed by placeChips()), so they are one row
+  const slot = h('span', { class: 'stopv-slot', 'aria-hidden': 'true' });
+  const pill = (cls, name, label, onclick) => h('button', { type: 'button', class: `stopv-pill${cls}`, onclick }, icon(name), h('span', {}, label));
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
       h('div', { class: 'stopv-titles' },
         h('h1', { class: 'stopv-name' }, stop.displayName),
-        h('p', { class: 'stopv-sub' }, t('Στάση {code}', { code }))),
-      h('div', { class: 'stopv-actions' }, star, moreBtn, iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/')), menu)));
+        h('p', { class: 'stopv-sub' }, t('Στάση {code}', { code }), h('span', { class: 'stopv-dot', 'aria-hidden': 'true' }, '·'), slot)),
+      h('div', { class: 'stopv-actions' }, star, moreBtn, iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/')), menu)),
+    // low ends here (js/sheet.js)
+    h('div', { class: 'stopv-acts', 'data-peek-end': '' },
+      pill(' primary', 'walk', t('Οδηγίες ως εδώ'), directions),
+      pill('', 'share', t('Κοινοποίηση'), share)));
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -173,14 +181,34 @@ export function mountStop(container, ctx, { code }) {
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
-  // also low's last row (TEL-224, js/sheet.js): there the chips are flat coloured pills, see css/glass.css
-  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true, 'data-peek-end': '' }, chips);
+  // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
+  // into their own row and grow into the filter chips
+  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
   root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  // where the chips go at low (TEL-227): the first badge on the subtitle's slot, the row cut where there is no more room.
+  // Measured without the transform; css/glass.css moves the bar by (1 - --l) of it, so it travels with the sheet.
+  function placeChips() {
+    if (dead || chipBar.hidden) return;
+    chipBar.style.transform = 'none';
+    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect(), s = slot.getBoundingClientRect();
+    // beside the ☆ ⋯ ✕, or the whole width once a two-line name has pushed the subtitle below them
+    const acts = head.querySelector('.stopv-actions').getBoundingClientRect();
+    const right = s.top >= acts.bottom - 4 ? head.getBoundingClientRect().right : slot.closest('.stopv-titles').getBoundingClientRect().right;
+    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
+    chipBar.style.transform = '';
+    const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
+    chipBar.style.setProperty('--pk-dx', `${Math.round(s.left - bar.left - start)}px`);
+    chipBar.style.setProperty('--pk-dy', `${Math.round(s.top + s.height / 2 - (row.top + row.height / 2))}px`);
+    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(row.right - bar.left - (start + right - s.left)))}px`);
+  }
+  const chipRO = new ResizeObserver(() => placeChips());
+  chipRO.observe(head);
+  chipRO.observe(chipBar);
   let saidKind = '', sayTimer = 0;
   function say(kind, text) {
     if (kind === saidKind) return;
@@ -233,7 +261,9 @@ export function mountStop(container, ctx, { code }) {
     const lines = [];
     for (const v of all) if (!lines.some((l) => l.code === v.lineCode)) lines.push({ code: v.lineCode, color: v.color, textColor: v.textColor });
     if (filter && !lines.some((l) => l.code === filter)) lines.push({ code: filter, color: ctx.data.lineByCode.get(filter)?.color, textColor: ctx.data.lineByCode.get(filter)?.textColor });
+    const hadChips = !chipBar.hidden;
     chipBar.hidden = lines.length < 2;
+    head.classList.toggle('has-lines', !chipBar.hidden);
     // Rebuilt only when the lines or the filter change (not on every poll), and focus stays on the same chip.
     const chipSig = `${filter}|${lines.map((l) => l.code).join(',')}`;
     if (!chipBar.hidden && chipSig !== chips.dataset.sig) {
@@ -245,7 +275,8 @@ export function mountStop(container, ctx, { code }) {
         ...lines.map((l) => chip(null, filter === l.code, () => { filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
           [lineBadge(ctx.data.lineByCode.get(l.code) || l)], l.code)));
       if (focusedChip) [...chips.children].find((c) => c.dataset.key === focusedChip)?.focus({ preventScroll: true });
-    }
+      placeChips();
+    } else if (!hadChips && !chipBar.hidden) placeChips();
 
     // body. Whatever had keyboard focus in it (a tile, "show all", "try again") gets it back after the rebuild.
     body.setAttribute('aria-busy', String(!data && !st.error));
@@ -300,11 +331,12 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
-    // where mid ends (TEL-224, js/sheet.js): 20% into the second arrival, so a bit of it says the list goes on; with one
-    // arrival (or a message) right under it. The loading skeleton is marked the same way, so mid does not jump on load.
+    // where mid ends (TEL-224, js/sheet.js): right under the first arrival (or the message). It was 20% into the second;
+    // TEL-227 moved it up so the pill row above does not raise mid by its full height. The loading skeleton is marked
+    // the same way, so mid does not jump on load.
     const rows = body.querySelectorAll('.stopv-list > li');
-    const midEnd = rows[1] || rows[0] || body.querySelector('.stopv-state');
-    if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.2' : '1';
+    const midEnd = rows[0] || body.querySelector('.stopv-state');
+    if (midEnd) midEnd.dataset.midEnd = '1';
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });
@@ -394,6 +426,7 @@ export function mountStop(container, ctx, { code }) {
       document.removeEventListener('click', onDocClick);
       document.removeEventListener('keydown', onKey);
       unsubStore();
+      chipRO.disconnect();
       poller.destroy();
       mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();

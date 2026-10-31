@@ -184,18 +184,26 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
   expect(await flick('full', 160, 40)).toBe('half');
   expect(await flick('full', 270, 0)).toBe('peek');
   expect(await flick('peek', -255, 0)).toBe('full');
-  // peek is tight: the handle, the stop's header and its line pills (TEL-224), nothing more
+  // peek is tight: the handle, the stop's header with its line badges in the subtitle, and the pill row (TEL-224/227)
   await expect(page.locator('.stopv-chipbar')).toBeVisible();
   await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
   await page.waitForTimeout(150);
   const low = await page.evaluate(() => {
     const s = document.getElementById('sheet').getBoundingClientRect();
-    const bar = document.querySelector('.stopv-chipbar').getBoundingClientRect();
-    return { shown: innerHeight - s.top, below: innerHeight - bar.bottom };
+    const acts = document.querySelector('.stopv-acts').getBoundingClientRect();
+    const sub = document.querySelector('.stopv-sub').getBoundingClientRect();
+    const badge = document.querySelector('.stopv-chip:not([data-key="*"]) .badge').getBoundingClientRect();
+    return { shown: innerHeight - s.top, below: innerHeight - acts.bottom, badgeOff: Math.abs((badge.top + badge.bottom) / 2 - (sub.top + sub.bottom) / 2), badgeLeft: badge.left - sub.left };
   });
   expect(low.below).toBeGreaterThan(0); // the pills are on screen
   expect(low.below).toBeLessThan(40); // and low ends right under them
-  expect(low.shown).toBeLessThan(200);
+  expect(low.shown).toBeLessThan(160); // 153 px here (a two-line name); it was 168 before TEL-227
+  expect(low.badgeOff).toBeLessThan(3); // the line badges sit on the subtitle line...
+  expect(low.badgeLeft).toBeGreaterThan(40); // ...after "Στάση 1011 ·"
+  // and from mid they are the filter chips again, in their own row under the pills
+  await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => document.querySelector('.stopv-chipbar').getBoundingClientRect().top - document.querySelector('.stopv-acts').getBoundingClientRect().bottom)).toBeGreaterThan(0);
 });
 
 test('search in the sheet: ☰ alone at the top, search home only, open = up, closed = back where it was', async ({ page }) => {
@@ -345,7 +353,7 @@ test.describe('touch close', () => {
   });
 });
 
-test('sheet mid fits the view: the first arrival whole, the second just started (TEL-224)', async ({ page }) => {
+test('sheet mid fits the view: it ends right under the first arrival (TEL-224, TEL-227)', async ({ page }) => {
   await page.goto('/?demo&debug#/stop/1011');
   const items = page.locator('.stopv-list > li');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').nth(1)).toBeVisible();
@@ -354,10 +362,10 @@ test('sheet mid fits the view: the first arrival whole, the second just started 
   const r = await page.evaluate(() => {
     const cut = innerHeight - 8; // the floating card ends a margin above the screen's bottom
     const [a, b] = [...document.querySelectorAll('.stopv-list > li')].map((li) => li.getBoundingClientRect());
-    return { firstWhole: a.bottom <= cut + 1, secondStarted: b.top < cut, secondCut: b.bottom > cut, share: (cut - b.top) / b.height };
+    return { firstWhole: a.bottom <= cut + 1, gap: cut - a.bottom, secondCut: b.bottom > cut };
   });
   expect(await items.count()).toBeGreaterThan(1);
   expect(r.firstWhole).toBe(true);
-  expect(r.secondStarted).toBe(true);
+  expect(r.gap).toBeLessThan(10); // no more than the gap between arrivals: the pill row must not raise mid (TEL-227)
   expect(r.secondCut).toBe(true);
 });
