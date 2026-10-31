@@ -32,6 +32,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Floating chrome (search bar, bottom sheet, locate button, toasts) = translucent material:
   `background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(20px) saturate(180%)`,
   a faint bright top edge, soft shadow; bigger surfaces = stronger blur + deeper shadow than small chips.
+- Concentric corners (TEL-225): a surface inside another has a smaller radius, one step (8 px) per level: sheet `--radius-sheet` 28 → cards/tiles in it `--radius-card` 20 → blocks inside a card `--radius-inner` 12. Buttons, chips, inputs and badges keep their own shape (pills stay pills).
 - Never stack translucent on translucent. Text on materials: slightly heavier weight, full-contrast colour.
 - Scroll edges: fade content under sticky headers with a mask, no 1 px divider lines.
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.

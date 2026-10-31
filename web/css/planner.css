@@ -50,14 +50,14 @@
 .pl-state-sub { margin: 0; max-width: 34ch; font-size: .92rem; line-height: 1.4; }
 .pl-btnrow { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: 10px; }
 
-.pl-banner { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); padding: 10px var(--space-3); border-radius: var(--radius); background: var(--warning-muted); color: var(--warning); font-size: .9rem; line-height: 1.35; }
+.pl-banner { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); padding: 10px var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--warning); font-size: .9rem; line-height: 1.35; }
 .pl-banner > span { flex: 1; min-width: 0; }
 
 /* ---- buttons ---- */
 
 /* ---- result cards ---- */
 .pl-cards { display: flex; flex-direction: column; gap: 10px; margin-top: var(--space-3); }
-.pl-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); overflow: hidden; }
+.pl-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); color: var(--card-foreground); overflow: hidden; }
 .pl-card.is-selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
 .pl-card.is-none:not(.is-selected) { opacity: .8; }
 .pl-card-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3); border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -90,7 +90,7 @@
 
 /* ---- selected card: hero ---- */
 .pl-detail { display: flex; flex-direction: column; gap: 10px; padding: 0 var(--space-3) 14px; }
-.pl-hero { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4) 14px; border-radius: var(--radius); background: var(--primary-soft); color: var(--primary); }
+.pl-hero { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3) var(--space-4) 14px; border-radius: var(--radius-card); background: var(--primary-soft); color: var(--primary); }
 .pl-hero-lead { font-size: var(--text-base); font-weight: 700; color: var(--muted-foreground); }
 .pl-hero-big { font-size: clamp(2.1rem, 11vw, 3rem); font-weight: 800; line-height: 1.05; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .pl-hero.is-now { background: var(--live-muted); color: var(--live); }
@@ -102,7 +102,7 @@
 .pl-hero.is-none .pl-hero-big { font-size: var(--text-xl); letter-spacing: 0; }
 .pl-hero-sub { margin-top: 6px; color: var(--foreground); font-size: .88rem; line-height: 1.4; opacity: .85; }
 .pl-hero-delay { margin-top: 2px; font-size: var(--text-sm); color: var(--muted-foreground); }
-.pl-note { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--muted); color: var(--foreground); font-size: .88rem; line-height: 1.4; }
+.pl-note { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-inner); background: var(--muted); color: var(--foreground); font-size: .88rem; line-height: 1.4; }
 .pl-note.is-warn { background: var(--warning-muted); color: var(--warning); }
 
 /* ---- timeline ---- */
@@ -161,7 +161,7 @@
 
 /* ---- onboard ("Θα κατέβω σε…"): home card, bus view picker ---- */
 /* material (css/tokens.css + app.css, §4): no opaque background here so the .material class shows through. */
-.ob-card { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius); border-left: 5px solid var(--primary); }
+.ob-card { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-card); border-left: 5px solid var(--primary); }
 .ob-card.is-alert { background: var(--warning-muted); border-left-color: var(--warning); }
 .ob-main { flex: 1; min-width: 0; }
 .ob-title { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
@@ -174,7 +174,7 @@
 .ob-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .ob-on { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 .ob-on .icon { flex: none; width: 18px; height: 18px; color: var(--primary); }
-.ob-picker { list-style: none; margin: var(--space-2) 0 0; padding: 0; max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.ob-picker { list-style: none; margin: var(--space-2) 0 0; padding: 0; max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
 .ob-picker li + li { border-top: 1px solid var(--border); }
 .ob-pick { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 0 var(--space-3); border: 0; background: none; color: var(--foreground); font: inherit; text-align: left; cursor: pointer; }
 .ob-pick:hover { background: var(--muted); }
