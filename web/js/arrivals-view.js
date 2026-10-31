@@ -175,9 +175,12 @@ export function mountStop(container, ctx, { code }) {
   function fitName() {
     if (dead) return;
     if (head.classList.contains('is-up')) return; // measured again once it is one line
+    // no transition while it is measured: with reduced motion app.css gives every change a 0.01 ms one, and the
+    // computed size would still be the old one when it is read
+    name.style.transition = 'none';
     for (const k of ['--name-px', '--name-n', '--name-up-n']) name.style.removeProperty(k);
     const room = name.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
-    if (room <= 0) return;
+    if (room <= 0) { name.style.transition = ''; return; }
     const r = document.createRange();
     r.selectNodeContents(name);
     const scale = name.getBoundingClientRect().width / name.offsetWidth || 1; // the growth towards up, if any
@@ -197,6 +200,7 @@ export function mountStop(container, ctx, { code }) {
     const longest = Math.max(...stop.displayName.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
     upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * room / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
     if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
+    name.style.transition = '';
   }
   const setUp = (on) => { if (head.classList.contains('is-up') !== on) { head.classList.toggle('is-up', on); if (!on) fitName(); } };
   const twoLines = () => {
@@ -209,7 +213,10 @@ export function mountStop(container, ctx, { code }) {
   if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
-  document.fonts?.ready.then(fitName); // a web font that arrives late changes the name's width, not the header's size
+  // a web font that arrives late changes the name's width, not the header's size (fonts.ready can resolve before the
+  // name's font has even been asked for)
+  document.fonts?.ready.then(fitName);
+  document.fonts?.addEventListener('loadingdone', fitName);
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -470,6 +477,7 @@ export function mountStop(container, ctx, { code }) {
       chipRO.disconnect();
       tMO.disconnect();
       sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      document.fonts?.removeEventListener('loadingdone', fitName);
       poller.destroy();
       mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();

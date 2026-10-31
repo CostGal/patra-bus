@@ -111,6 +111,9 @@ export const UI = [
 // Screens of the annotated sweep (hash appended to <base>/?demo…). `act` puts the screen in its state (menu open…).
 export const UI_SCREENS = [
   { id: 'stop', url: '/?demo#/stop/1011' },
+  // the sheet's three states on the stop (TEL-227): low and up too, so every element of the stop card has its ID
+  { id: 'stop-low', url: '/?demo&debug#/stop/1011', act: async (p) => { await p.evaluate(() => window.__app.sheet.snap('peek')); await p.waitForTimeout(900); } },
+  { id: 'stop-up', url: '/?demo&debug#/stop/1011', act: async (p) => { await p.evaluate(() => window.__app.sheet.snap('full')); await p.waitForTimeout(900); } },
   { id: 'stop-scrolled', url: '/?demo#/stop/1011', act: (p) => p.evaluate(() => { const el = document.getElementById('sheet-body'); el.scrollTop = el.clientHeight * 0.6; }) },
   { id: 'menu', url: '/?demo#/stop/1011', act: (p) => p.click('#menu-btn') },
   { id: 'search', url: '/?demo#/', act: async (p) => { await p.click('#search-input'); await p.fill('#search-input', 'παν'); } },
