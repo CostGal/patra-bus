@@ -231,6 +231,25 @@ function morphClose(pop, from, items, hide) {
   const a = pop.animate(frames, { duration: CLOSE_MS, easing: 'cubic-bezier(.5, 0, .7, .4)', fill: 'forwards' });
   a.onfinish = () => { hide(); a.cancel(); pop.getAnimations().forEach((x) => x.cancel()); requestAnimationFrame(() => busy.delete(pop)); };
 }
+// the capsule's i: the pill is pinned to the button's corner (top right), so it grows out of the circle and shrinks back
+// into it by its own size alone. Safari does not clip a backdrop-filter (the pill's glass) with an animated clip-path,
+// so the clip-path + translate path above showed only the translate there: the pill sliding off to the right.
+function pillMorph(pop, from, items, close, hide) {
+  pop.getAnimations().forEach((a) => a.cancel());
+  const { width, height } = pop.getBoundingClientRect();
+  const frames = [{ width: `${from.width}px`, height: `${from.height}px` }, { width: `${width}px`, height: `${height}px` }];
+  pop.classList.add('g-sizing');
+  const done = () => pop.classList.remove('g-sizing');
+  if (!close) {
+    for (const it of items) it.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }], { duration: OPEN_MS, easing: 'ease-out' });
+    pop.animate(frames, { duration: OPEN_MS, easing: OUT }).onfinish = done;
+    return;
+  }
+  busy.add(pop);
+  for (const it of items) it.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], { duration: CLOSE_MS, easing: 'ease-in' });
+  const a = pop.animate(frames.reverse(), { duration: CLOSE_MS, easing: 'cubic-bezier(.5, 0, .3, 1)', fill: 'forwards' });
+  a.onfinish = () => { hide(); done(); a.cancel(); pop.getAnimations().forEach((x) => x.cancel()); requestAnimationFrame(() => busy.delete(pop)); };
+}
 // the button that opens a popover turns its icon into another while it is open (⋯ → ˄: a ✕ there would sit next to
 // the stop's own close ✕ and read as the same thing)
 function morphButton(btn, to = 'chevron-up') {
@@ -292,11 +311,13 @@ function watchPopovers() {
         el.querySelector('.maplibregl-ctrl-attrib-button.g-morph-btn')?.classList.toggle('g-open', open); // i ↔ ✕
         const from = attribFrom.get(el);
         if (!from) continue;
-        if (open) morphOpen(el, from, items);
+        const pill = el.closest('.map-capsule');
+        if (open) pill ? pillMorph(el, from, items) : morphOpen(el, from, items);
         else {
           busy.add(el);
           el.classList.add('maplibregl-compact-show'); // keep the pill while it shrinks back into the i
-          morphClose(el, from, items, () => { el.classList.remove('maplibregl-compact-show'); });
+          const hide = () => { el.classList.remove('maplibregl-compact-show'); };
+          pill ? pillMorph(el, from, items, true, hide) : morphClose(el, from, items, hide);
         }
       }
     }

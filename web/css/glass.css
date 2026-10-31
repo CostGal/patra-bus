@@ -175,6 +175,19 @@ html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press { background-colo
 /* once tapped, the (i) shows our own i (it turns into ✕ while open, as ☰ does): not MapLibre's image, not inverted */
 html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn { background-image: none !important; filter: none !important; opacity: 1; color: var(--muted-foreground); }
 html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn .icon { --icon: 22px; }
+/* MapLibre's `.maplibregl-compact .maplibregl-ctrl-attrib-button { display: block }` outranks .g-morph-btn's grid, and
+   without the grid the i and ✕ sit as blocks in the top-left corner instead of stacked in the centre */
+html.glass .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button.g-morph-btn { display: grid; place-items: center; padding: 0; }
+html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-morph-btn > * { grid-area: 1 / 1; }
+/* the pill grows out of the i and shrinks back by its own size (js/glass.js), so its box is its border box */
+html.glass .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact-show { box-sizing: border-box; }
+/* the segments fill the capsule inside its 1 px border (at 48 px they hung 1 px out on the right, and the i sat off
+   centre), and the open pill's button is centred on the same spot, so the ✕ lands exactly on the closed i */
+html.glass .map-capsule > .fab, html.glass .map-capsule > .maplibregl-ctrl-attrib:not(.maplibregl-compact-show),
+html.glass .map-capsule .maplibregl-ctrl-attrib:not(.maplibregl-compact-show) > .maplibregl-ctrl-attrib-button { min-width: 0; width: 100%; }
+html.glass .map-capsule .maplibregl-ctrl-attrib.maplibregl-compact-show > .maplibregl-ctrl-attrib-button { top: -1px; right: -2px; } /* over the pill's border and the capsule's: a 48 px circle on the capsule's own edge */
+html.glass .map-capsule .maplibregl-ctrl-attrib.g-sizing { overflow: hidden; }
+html.glass .map-capsule .maplibregl-ctrl-attrib.g-sizing .maplibregl-ctrl-attrib-inner { white-space: nowrap; }
 html.glass .map-capsule > .fab.g-press, html.glass .map-capsule .maplibregl-ctrl-attrib-button.g-press {
   --g-sheen: none; border-radius: 50%;
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
