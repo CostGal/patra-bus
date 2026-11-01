@@ -152,6 +152,7 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
 - Το browser pane του Claude desktop **μερικές φορές** κάνει register τον SW και σερβίρει παλιά αρχεία: στο τεστ κάνε unregister + `caches.delete` πρώτα. Screenshots αποτυγχάνουν όταν το pane δεν είναι ορατό· χρησιμοποίησε DOM checks.
 
 ## Team rules
+- **Πώς μιλάει ο Claude (αυστηρό, TEL-240):** λίγα λόγια (ο Kostas έχει δυσλεξία)· μετά από κάθε αλλαγή μόνο «τι άλλαξε / τι τσεκάρεις / link preview»· σχέδια compact· λεπτομέρειες στο PR ή στην κάρτα, όχι στο chat· **καμία απάντηση σε GitHub notifications, κανένα `subscribe_pr_activity`**: ο Kostas τσεκάρει CI/preview και λέει το αποτέλεσμα. Όλα στο `docs/WORKFLOW.md` §0.
 - Plan before code: for anything bigger than a typo, present a plain-language plan and get
   approval first.
 - One task per branch/PR. If a task needs more than ~3 files or mixes concerns, split it.
