@@ -10,7 +10,8 @@ description: Βοηθός του weekly του Telematica (patra-bus). Διαβ�
 - Notion, βάση Blocks (`collection://6f2b0107-6723-4fe4-b05d-a9d242fe884c`): το block με `"Κατάσταση" = 'Τρέχον'`
   (το «Τελειώνει όταν» του είναι ο στόχος) και το επόμενο (`Επόμενο`).
 - Notion, βάση Code Tasks: data source `collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2`, κάρτες με
-  Project = Telematica (`https://app.notion.com/p/515a54a507ec4922a7aa1386664028be`) και `Task status` ≠ Done.
+  Project = Telematica (`https://app.notion.com/p/515a54a507ec4922a7aa1386664028be`) και `Task status` όχι Done ή Not now
+  (Not now = τη θέλαμε αλλά δεν χωρούσε· δεν είναι ανοιχτή δουλειά).
   Κολλημένο = In progress / In review με `Started on` πάνω από 7 μέρες πριν (υπολόγισέ το εσύ, το formula δεν
   διαβάζεται με SQL). Δομή, views και άλλες σελίδες δεν αλλάζουν. Δεν υπάρχουν ημερομηνίες ούτε sprint.
 - GitHub `CostGal/patra-bus`: ανοιχτά issues (με labels) και ανοιχτά PRs (draft, CI, mergeable).
