@@ -1,4 +1,4 @@
-/* Shell styles: layout, search bar, chips, locate FAB, sheet/side panel, menu popover, toast, map markers, shared bits.
+/* Shell styles: layout, search bar, locate FAB, sheet/side panel, menu popover, toast, map markers, shared bits.
    Tokens live in css/tokens.css (shadcn-style roles: background/foreground/card/popover/primary/muted/destructive/border/input/ring). Mobile first; >= 900 px switches the sheet to a left side panel. */
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -74,7 +74,6 @@ a { color: var(--primary); }
 .app {
   --top-inset: calc(var(--safe-top) + 68px); /* below the ☰ row */
   --panel-w: 408px;
-  --chips-h: 0px; /* contextual saved-place chips under the search bar (.has-chips) */
   --offline-h: 0px;
   position: fixed; inset: 0; overflow: hidden;
 }
@@ -82,7 +81,6 @@ a { color: var(--primary); }
 .map .maplibregl-canvas { outline: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .maplibregl-ctrl-attrib { font-size: 11px; }
 .map .maplibregl-canvas:focus-visible { outline: 3px solid var(--ring); outline-offset: -3px; } /* it takes keyboard focus (arrow keys pan) */
-.has-chips { --chips-h: 0px; } /* the chips share the ☰'s row (TEL-223) */
 .is-offline { --offline-h: 44px; }
 
 /* ---------- ☰ and the search (TEL-223) ---------- */
@@ -145,23 +143,9 @@ a { color: var(--primary); }
 .sr-sub { font-size: var(--text-sm); color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .sr-msg { padding: 14px var(--space-5); color: var(--muted-foreground); font-size: 14px; }
 
-/* ---------- chips: saved places only (max 3), home screen only ---------- */
-.chips { /* in the ☰'s row, to its right */
-  position: fixed; z-index: 15; top: calc(var(--safe-top) + 10px); left: calc(var(--safe-left) + 68px); right: 0; height: 44px; padding: 2px calc(var(--safe-right) + 12px) 4px 0;
-  display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; pointer-events: none; transition: opacity .2s;
-}
-.chips::-webkit-scrollbar { display: none; }
-.chip {
-  pointer-events: auto; flex: none; display: inline-flex; align-items: center; gap: var(--space-2); height: 40px; padding: 0 var(--space-4) 0 var(--space-3); border-radius: var(--radius-full);
-  background: var(--card); color: var(--card-foreground); box-shadow: var(--shadow-1); font-size: 14px; text-decoration: none; white-space: nowrap;
-}
-.chip .icon { --icon: 18px; color: var(--muted-foreground); }
-.chip:hover { background: var(--muted); }
-[data-sheet="full"] .chips { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
-
-/* ---------- offline cue (under the chips; hidden while the sheet covers the map) ---------- */
+/* ---------- offline cue (under the ☰; hidden while the sheet covers the map) ---------- */
 .offline-pill {
-  position: fixed; z-index: 15; top: calc(var(--safe-top) + 68px + var(--chips-h)); left: calc(var(--safe-left) + 12px); max-width: calc(100% - 96px - var(--safe-left));
+  position: fixed; z-index: 15; top: calc(var(--safe-top) + 68px); left: calc(var(--safe-left) + 12px); max-width: calc(100% - 96px - var(--safe-left));
   display: flex; align-items: flex-start; gap: var(--space-2); padding: 6px var(--space-3) 6px 10px; border-radius: var(--radius);
   background: var(--warning-muted); color: var(--foreground); box-shadow: var(--shadow-1); font-size: var(--text-sm); line-height: 1.3; pointer-events: none;
   transition: opacity .2s;
@@ -185,8 +169,12 @@ a { color: var(--primary); }
 .fab-sm { width: 44px; height: 44px; }
 .fab-sm .icon { --icon: 20px; }
 .fabs-bottom {
-  position: fixed; z-index: 30; right: calc(var(--safe-right) + 12px); bottom: var(--space-4);
-  display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); transition: transform .3s var(--ease), opacity .2s;
+  position: fixed; z-index: 19; right: calc(var(--safe-right) + 12px); bottom: var(--space-4);
+  display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);
+  /* z 19, under the sheet (20): above mid the sheet slides over it instead of it fading in front (TEL-227) */
+  will-change: transform;
+  /* (no transition on transform: app.js moves it with the sheet on every frame, so it stays glued at the same distance
+     above the sheet, like the attribution line, TEL-227) */
 }
 html.sheet-dragging .fabs-bottom { transition: none; }
 #locate-btn[data-mode="centre"], #locate-btn[data-mode="follow"], #locate-btn[data-mode="compass"] { color: var(--primary); }
@@ -250,11 +238,10 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 
 .map-note { margin: var(--space-1) var(--space-4) var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--warning); font-size: 14px; }
 
-/* no map (WebGL/maplibre unavailable): the sheet is just the page below the chips */
+/* no map (WebGL/maplibre unavailable): the sheet is just the page below the ☰ row */
 .no-map .map, .no-map .fabs-bottom { display: none; }
-.no-map .sheet { top: calc(var(--top-inset) + var(--chips-h) + var(--offline-h)); transform: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.no-map .sheet { top: calc(var(--top-inset) + var(--offline-h)); transform: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 .no-map .sheet-handle { display: none; }
-.no-map .chips { opacity: 1 !important; visibility: visible !important; }
 
 @media (min-width: 900px) {
   .menu-fab { top: 10px; left: 16px; } /* centred on the search beside it at home (44 px field under 12 px of headroom) */
@@ -265,13 +252,10 @@ html.sheet-dragging .fabs-bottom { transition: none; }
   }
   .sheet-handle { display: none; }
   .sheet-body, .sheet[data-state] .sheet-body { overflow-y: auto; touch-action: auto; }
-  .chips { top: 16px; left: calc(var(--panel-w) + 16px); right: 80px; padding: 2px var(--space-1); }
   .offline-pill { top: 16px; left: calc(var(--panel-w) + 20px); max-width: min(420px, calc(100% - var(--panel-w) - 120px)); }
-  .has-chips .offline-pill { top: 68px; }
   [data-sheet="full"] .offline-pill { opacity: 1; visibility: visible; }
   .no-map .offline-pill { max-width: min(420px, calc(100% - var(--panel-w) - 120px)); }
-  .no-map.is-offline .sheet, .no-map.has-chips .sheet { top: 0; }
-  [data-sheet="full"] .chips { opacity: 1; visibility: visible; }
+  .no-map.is-offline .sheet { top: 0; }
   .fabs-bottom { bottom: 40px; right: 16px; transform: none !important; opacity: 1 !important; }
   .map-attrib { left: calc(var(--panel-w) + 16px); right: 80px; bottom: 8px; transform: none !important; opacity: 1 !important; visibility: visible !important; }
   /* home: the search moves up into the ☰'s row, to its right */
@@ -281,11 +265,11 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 }
 
 /* home on a phone: up reaches the top, and the ☰ slides down into the search row as the sheet gets there (TEL-223;
-   20 px = from its resting place to the row's centre: grabber 18 + headroom 12 + half the field 22, less half of ☰ 24 +
-   its 8 px margin); css/glass.css makes room for it at the row's start */
+   6 px = from its resting place to the row's centre: grabber 6 + headroom 10 + half the field 22, less half of ☰ 24 +
+   its 8 px margin; was 20 with the 18 px grabber area, TEL-232); css/glass.css makes room for it at the row's start */
 @media (max-width: 899px) {
   .app:not(.no-map):has(.sheet-search:not([hidden])) .sheet { top: var(--safe-top); }
-  .app:has(.sheet-search:not([hidden])) .menu-fab { top: calc(var(--safe-top) + 8px + clamp(0, var(--sheet-t, 1) - 1, 1) * 20px); }
+  .app:has(.sheet-search:not([hidden])) .menu-fab { top: calc(var(--safe-top) + 8px + clamp(0, var(--sheet-t, 1) - 1, 1) * 6px); }
 }
 
 /* ---------- toast ---------- */
@@ -379,16 +363,6 @@ html.sheet-dragging .toast-host { transition: none; }
 .home-section > h2 { margin: 0 0 var(--space-1); }
 .hint { padding: var(--space-2) 0; color: var(--muted-foreground); font-size: 14px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-
-/* home: ONE contextual card (onboard > place > nearby); favourites/recents only when the sheet is expanded.
-   .home-card stacks its slots in one grid cell so the outgoing and incoming card overlap during the
-   ~180ms cross-fade (js/app.js showTop()) instead of both taking block-flow space and doubling the height. */
-.home-card { position: relative; display: grid; }
-.home-slot { grid-area: 1 / 1; min-width: 0; }
-.home-more { display: none; margin-top: var(--space-2); }
-[data-sheet="full"] .home-more { display: block; }
-.home-more[hidden] { display: none; }
-@media (min-width: 900px) { .home-more { display: block; } }
 
 /* ---------- map markers (HTML) ---------- */
 .veh, .user-mk, .mk { pointer-events: none; }

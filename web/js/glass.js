@@ -67,7 +67,7 @@ function addLens() {
 
 // touch: the control under the finger (or the glass surface, if the finger is not on a control) gets .g-press;
 // controls also grow, lean towards the finger and spring back with a wobble.
-const SURFACE = '.fab, .chip, .sheet, #menu-pop, .su-card, .wl-card';
+const SURFACE = '.fab, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
 const ROW = '.stop-row, .lines-row, .pl-sug'; // full-width list rows: a highlight, no growing
 const ROUND = '.btn.round, .sb-btn, .fab'; // round buttons grow the most
@@ -81,6 +81,8 @@ function targetOf(e) {
   if (!(e.target instanceof Element)) return null;
   const round = e.target.closest('.sb-btn'); // ☰ (back while searching) and the search's ✕ press as glass circles
   if (round) return round;
+  const place = e.target.closest('.hm-place'); // home's Places (TEL-232): the link is circle + label, the circle presses
+  if (place) return place.querySelector('.g-circle') || place;
   const c = e.target.closest(CONTROL);
   if (c && !c.matches('.sheet-handle')) return c;
   return e.target.closest(SURFACE);
@@ -308,7 +310,10 @@ function watchChips() {
     if (bar) place(bar, false);
   }, { capture: true, passive: true });
   // the chips change shape with the sheet (flat pills at low, TEL-224): once it comes to rest, the lens follows them
-  document.getElementById('sheet')?.addEventListener('sheet:settle', () => {
+  // (not at low: there the chips are the small badges in the stop's header, TEL-227, and the lens is hidden anyway;
+  // measured there it would sit in the wrong place on the way up)
+  document.getElementById('sheet')?.addEventListener('sheet:settle', (e) => {
+    if (e.currentTarget.dataset.state === 'peek') return;
     for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden])')) place(bar, false);
   });
 }

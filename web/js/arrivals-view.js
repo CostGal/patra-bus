@@ -123,9 +123,11 @@ export function mountStop(container, ctx, { code }) {
 
   addRecent('stop', { code, name: stop.displayName });
 
-  // ---- header: name · ★ · ⋯ (share, directions) · close ----
-  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
-  const star = h('button', { type: 'button', class: 'btn round stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
+  // ---- header (TEL-227, an Apple Maps place card): share · centred name and "Stop 1011 · <line badges>" · close.
+  // Low is this header alone; from mid, under the line chips, the row of directions and ☆. The ⋯ menu is gone: its
+  // two items are on screen now. Every round button here is one glass circle (.g-circle) ----
+  const iconBtn = (name, label, onclick, cls = '') => h('button', { type: 'button', class: `btn round g-circle${cls}`, 'aria-label': label, title: label, onclick }, icon(name));
+  const star = iconBtn('star', '', () => { toggleFavorite(code); paintStar(); }, ' stopv-star');
   function paintStar() {
     const on = isFavorite(code);
     const label = on ? t('Αφαίρεση από τα αγαπημένα') : t('Προσθήκη στα αγαπημένα');
@@ -146,26 +148,79 @@ export function mountStop(container, ctx, { code }) {
   }
   const directions = () => ctx.navigate(`#/plan?to=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&name=${encodeURIComponent(stop.displayName)}`);
 
-  const menu = h('div', { class: 'stopv-menu', role: 'menu', hidden: true },
-    h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); directions(); } }, icon('walk'), t('Οδηγίες ως εδώ')),
-    h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); share(); } }, icon('share'), t('Κοινοποίηση')));
-  const moreBtn = h('button', { type: 'button', class: 'btn round stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
-  function setMenu(open) {
-    menu.hidden = !open;
-    moreBtn.setAttribute('aria-expanded', String(open));
-    if (open) menu.querySelector('button')?.focus();
-  }
-  const onDocClick = (e) => { if (!menu.hidden && !menu.contains(e.target) && !moreBtn.contains(e.target)) setMenu(false); };
-  const onKey = (e) => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); moreBtn.focus(); } };
-  document.addEventListener('click', onDocClick);
-  document.addEventListener('keydown', onKey);
-
+  // under the name at low: the line badges (the filter chips, carried up and centred there: css/glass.css, placed by
+  // placeChips()); from mid the chips are right under the name. The stop's number is at the very bottom (TEL-227)
+  const name = h('h1', { class: 'stopv-name', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
     h('div', { class: 'stopv-top' },
-      h('div', { class: 'stopv-titles' },
-        h('h1', { class: 'stopv-name' }, stop.displayName),
-        h('p', { class: 'stopv-sub' }, t('Στάση {code}', { code }))),
-      h('div', { class: 'stopv-actions' }, star, moreBtn, iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/')), menu)));
+      iconBtn('share', t('Κοινοποίηση'), share),
+      h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
+      iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
+  const acts = h('div', { class: 'stopv-acts' },
+    h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
+    star);
+
+  // the name, as in Apple Maps: one line at low and mid (17 px, shrunk down to 14 px before it is cut with "…"); at up
+  // its own row under the buttons, 24 px (less if its longest word would not fit), up to two lines. From mid towards up
+  // it grows with the sheet as a transform (css/glass.css, by --u: smooth on a phone, no new font size per frame), and
+  // halfway up it moves to its own row at the same visual size, in a short blur. Only while the sheet is up or held: it
+  // measures low and mid at neither, and on the way down it tells us first (sheet:leave-full), so it never measures the
+  // up layout.
+  const sheetEl = document.getElementById('sheet');
+  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24, NAME_LH = 20; // NAME_LH: its line box at low and mid (css)
+  let nameN = NAME_PX, upN = NAME_UP; // its low/mid size, its up size
+  let measureCtx = null;
+  function fitName() {
+    if (dead) return;
+    if (head.classList.contains('is-up')) return; // measured again once it is one line
+    // no transition while it is measured: with reduced motion app.css gives every change a 0.01 ms one, and the
+    // computed size would still be the old one when it is read
+    name.style.transition = 'none';
+    for (const k of ['--name-px', '--name-n', '--name-up-n']) name.style.removeProperty(k);
+    const room = name.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
+    if (room <= 0) { name.style.transition = ''; return; }
+    const r = document.createRange();
+    r.selectNodeContents(name);
+    const scale = name.getBoundingClientRect().width / name.offsetWidth || 1; // the growth towards up, if any
+    let w = r.getBoundingClientRect().width / scale;
+    nameN = NAME_PX;
+    if (w > room) {
+      nameN = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
+      w = w * nameN / NAME_PX;
+      name.style.setProperty('--name-px', `${nameN}px`);
+      name.style.setProperty('--name-n', String(nameN));
+    }
+    // up: 30 px, unless its longest word would not fit on a line at that size (it would break inside the word)
+    measureCtx ||= document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(name);
+    measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
+    const longest = Math.max(...stop.displayName.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
+    const upRoom = head.clientWidth - 2; // up: the whole width of the card
+    upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * upRoom / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
+    if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
+    name.style.transition = '';
+  }
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!on) fitName();
+    // the move to its own row hides in a short blur, as in Apple Maps
+    if (!reduceMotion.matches) name.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  const upRow = () => (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5; // halfway from mid to up
+  // sheet.js writes --sheet-t on every frame of a drag or a spring
+  const tMO = new MutationObserver(() => setUp(upRow()));
+  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
+  const onLeaveUp = () => setUp(false);
+  sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
+  const onSettle = () => placeChips(); // measured again at rest
+  sheetEl?.addEventListener('sheet:settle', onSettle);
+  // a web font that arrives late changes the name's width, not the header's size (fonts.ready can resolve before the
+  // name's font has even been asked for)
+  document.fonts?.ready.then(fitName);
+  document.fonts?.addEventListener('loadingdone', fitName);
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -173,14 +228,45 @@ export function mountStop(container, ctx, { code }) {
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
-  // also low's last row (TEL-224, js/sheet.js): there the chips are flat coloured pills, see css/glass.css
-  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true, 'data-peek-end': '' }, chips);
+  // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
+  // into their own row and grow into the filter chips
+  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
-  root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  const codeLine = h('p', { class: 'stopv-code' }, t('Στάση {code}', { code }));
+  root.append(head, banner, chipBar, acts, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), codeLine, status);
+  // where the chips go at low (TEL-227): centred on the line under the name, at 85% (LOW_SCALE), as many as fit.
+  // Measured with the bar without its transform; css/glass.css moves and scales it by (1 - --l) of that, around the
+  // first badge (--pk-ox), so it travels with the sheet.
+  const LOW_SCALE = 0.85, GAP = 6; // GAP: the chips' gap at low (4 px, css/glass.css) and their two 1 px borders
+  function placeChips() {
+    if (dead || chipBar.hidden || !head.classList.contains('has-lines')) return;
+    const badges = [...chips.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')];
+    chipBar.style.transform = 'none';
+    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect();
+    const col = name.parentElement.getBoundingClientRect(); // (not the name: it moves with the sheet)
+    const line = { left: col.left, width: col.width, top: col.top + NAME_LH, height: 18 }; // the badges' line at low
+    const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1); // unscaled
+    chipBar.style.transform = '';
+    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
+    const shown = Math.min(want, line.width / LOW_SCALE);
+    const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
+    const target = line.left + (line.width - shown * LOW_SCALE) / 2;
+    chipBar.style.setProperty('--pk-ox', `${Math.round(start)}px`);
+    chipBar.style.setProperty('--pk-dx', `${Math.round(target - (bar.left + start))}px`);
+    chipBar.style.setProperty('--pk-dy', `${Math.round(line.top + line.height / 2 - (row.top + row.height / 2))}px`);
+    // all fit: the scroller keeps its right padding too, so it has nothing to scroll and draws no edge fade
+    const end = start + shown + (want <= shown ? pad + 8 : 0);
+    // (from the bar's width: the scroller's own right edge already moves with the cut at low)
+    const off = row.left - bar.left; // the scroller is wider than the bar by this much each side
+    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(bar.width - off - end))}px`);
+  }
+  const chipRO = new ResizeObserver(() => { fitName(); placeChips(); });
+  chipRO.observe(head);
+  chipRO.observe(chipBar);
   let saidKind = '', sayTimer = 0;
   function say(kind, text) {
     if (kind === saidKind) return;
@@ -223,6 +309,7 @@ export function mountStop(container, ctx, { code }) {
   }
 
   function render() {
+    fitName();
     if (dead) return;
     const now = Date.now();
     const data = st.data;
@@ -233,7 +320,9 @@ export function mountStop(container, ctx, { code }) {
     const lines = [];
     for (const v of all) if (!lines.some((l) => l.code === v.lineCode)) lines.push({ code: v.lineCode, color: v.color, textColor: v.textColor });
     if (filter && !lines.some((l) => l.code === filter)) lines.push({ code: filter, color: ctx.data.lineByCode.get(filter)?.color, textColor: ctx.data.lineByCode.get(filter)?.textColor });
+    const hadChips = !chipBar.hidden;
     chipBar.hidden = lines.length < 2;
+    head.classList.toggle('has-lines', !chipBar.hidden);
     // Rebuilt only when the lines or the filter change (not on every poll), and focus stays on the same chip.
     const chipSig = `${filter}|${lines.map((l) => l.code).join(',')}`;
     if (!chipBar.hidden && chipSig !== chips.dataset.sig) {
@@ -245,7 +334,8 @@ export function mountStop(container, ctx, { code }) {
         ...lines.map((l) => chip(null, filter === l.code, () => { filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
           [lineBadge(ctx.data.lineByCode.get(l.code) || l)], l.code)));
       if (focusedChip) [...chips.children].find((c) => c.dataset.key === focusedChip)?.focus({ preventScroll: true });
-    }
+      placeChips();
+    } else if (!hadChips && !chipBar.hidden) placeChips();
 
     // body. Whatever had keyboard focus in it (a tile, "show all", "try again") gets it back after the rebuild.
     body.setAttribute('aria-busy', String(!data && !st.error));
@@ -300,11 +390,12 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
-    // where mid ends (TEL-224, js/sheet.js): 20% into the second arrival, so a bit of it says the list goes on; with one
-    // arrival (or a message) right under it. The loading skeleton is marked the same way, so mid does not jump on load.
+    // where mid ends (TEL-224, js/sheet.js): a third into the second arrival (TEL-227, as Apple Maps shows the next
+    // card), so it is clear the list goes on; with one arrival (or a message) right under it. The loading skeleton is
+    // marked the same way, so mid does not jump on load.
     const rows = body.querySelectorAll('.stopv-list > li');
     const midEnd = rows[1] || rows[0] || body.querySelector('.stopv-state');
-    if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.2' : '1';
+    if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.33' : '1';
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });
@@ -391,9 +482,12 @@ export function mountStop(container, ctx, { code }) {
       clearInterval(timer);
       clearTimeout(sayTimer);
       document.removeEventListener('visibilitychange', onVisibility);
-      document.removeEventListener('click', onDocClick);
-      document.removeEventListener('keydown', onKey);
       unsubStore();
+      chipRO.disconnect();
+      tMO.disconnect();
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      sheetEl?.removeEventListener('sheet:settle', onSettle);
+      document.fonts?.removeEventListener('loadingdone', fitName);
       poller.destroy();
       mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();

@@ -20,7 +20,7 @@ const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point 
 const SPRINGS = {
   'peek>half': { damping: 0.86, response: 0.42 },
   'half>peek': { damping: 0.72, response: 0.42 },
-  'half>full': { damping: 1, response: 0.38 },
+  'half>full': { damping: 1, response: 0.3 }, // TEL-227: 25% quicker up, as in Apple Maps
   'full>half': { damping: 1, response: 0.38 },
 };
 const SETTLE = { damping: 1, response: 0.35 };
@@ -111,8 +111,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   const settled = () => root.dispatchEvent(new CustomEvent('sheet:settle'));
   const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
   // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
+  // (up, a view may lay its header out differently, e.g. the stop's two-line name: snap() measures on the way down)
   new ResizeObserver(() => {
-    if (dragging || inert() || !H) return;
+    if (dragging || inert() || !H || state === 'full') return;
     const before = SZ[state];
     measure();
     if (SZ[state] !== before && state !== 'full') moveTo(state);
@@ -165,6 +166,12 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   function snap(to, { animate = true, velocity = 0, spring: cfg } = {}) {
     if (!STATES.includes(to)) return;
     cfg ||= springFor(state, to);
+    // leaving up: views put back what they grew there (the stop's two-line name, TEL-227), then low and mid are
+    // measured again, so the spring aims at their real heights (they are not measured while up, see below)
+    if (state === 'full' && to !== 'full') {
+      root.dispatchEvent(new CustomEvent('sheet:leave-full'));
+      if (!inert() && H) measure();
+    }
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;
@@ -269,7 +276,8 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   // Body gestures (touch only): drag the sheet when it is not full, or when full and scrolled to the top.
   let t0 = null;
   body.addEventListener('touchstart', (e) => {
-    if (inert() || e.touches.length !== 1) { t0 = null; return; }
+    // a touch & hold on a button (not on a list row) is a press, never a drag of the sheet (TEL-227)
+    if (inert() || e.touches.length !== 1 || e.target.closest?.('button, [role="button"]')) { t0 = null; return; }
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, mode: 'undecided' };
   }, { passive: true });
   body.addEventListener('touchmove', (e) => {
