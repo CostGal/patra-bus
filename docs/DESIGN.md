@@ -38,7 +38,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
 - Glass UI (TEL-83, on for everyone since 2026-10-29, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
-  **glass** = floating chrome over the map (☰, chips, locate FAB, sheet / side panel, menu popover, setup and
+  **glass** = floating chrome over the map (☰, locate FAB, sheet / side panel, menu popover, setup and
   welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
   clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
   (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
@@ -100,6 +100,13 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   lens that slides, stretching, to the next chip. Touch & hold never selects text or opens the iOS callout (form fields still do). Solid on purpose: toast (TEL-47
   contrast), search results (on the solid up sheet), stop menu, map marker labels. Reduced transparency / more contrast: solid and
   static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
+
+**Home** (TEL-232, Apple Maps search mode, follows §10): low = grabber 5 px from the top, the search 8 px under it and 10 px of room
+  under it (70 px card; the side panel keeps its own padding); mid = Places (the card's glass circle, `.g-circle`, at 48 px with its label under it, pressed like every
+  round button: Σπίτι, Δουλειά, your own, "+"; a place not set yet has a dimmed icon and opens the Settings on it, until
+  its own panel in the sheet replaces that), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
+  60% of the screen, so the rows above stay compact); up = favourites with their next arrival (LIVE / ΠΡΟΓΡ., polled only while up,
+  4 stops, the rest "Δες αφίξεις") and my routines. The active trip sits above Places while there is one. No saved-place chips float over the map any more: Places show only in the sheet, at mid and up.
 
 ### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
 - Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft

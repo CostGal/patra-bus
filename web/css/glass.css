@@ -77,7 +77,7 @@ html.glass { -webkit-user-select: none; user-select: none; -webkit-touch-callout
 html.glass :is(input, textarea, select, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
 
 /* ---------- glass: floating chrome ---------- */
-html.glass .menu-fab, html.glass .fab, html.glass .chip, html.glass .map-capsule {
+html.glass .menu-fab, html.glass .fab, html.glass .map-capsule {
   background: var(--g-sheen), var(--g-bg);
   -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow);
@@ -123,11 +123,11 @@ html.glass .g-press {
   --card: color-mix(in srgb, var(--g-card) 82%, transparent); /* tiles, buttons and chips inside the sheet */
   --g-chip: color-mix(in srgb, var(--g-card) 75%, transparent);
 }
-html.glass :is(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
+html.glass :is(.menu-fab, .fab, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
 /* round buttons (☰, back, ☆, ⋯, ✕): pressed, they become a whiter glass circle, still a little see-through */
 html.glass :is(.sb-btn, .btn.round).g-press { background-color: var(--g-pressed); }
 /* controls that are not glass surfaces are lifted off the sheet by a shadow */
-html.glass .g-press:not(.menu-fab, .fab, .chip, .sheet, #menu-pop, .su-card, .wl-card) {
+html.glass .g-press:not(.menu-fab, .fab, .sheet, #menu-pop, .su-card, .wl-card) {
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
 }
 html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(--g-card) 65%, transparent); } /* mouse: tinted, not solid grey */
@@ -208,6 +208,13 @@ html.glass .sheet-handle { height: 18px; align-items: flex-start; padding-top: 8
 /* the stop (TEL-227, locked): the grabber 5 px from the card's top; the row under it stays centred in low (10 px above
    and below), so the grabber's area is 6 px and the grabber runs 2 px past it, close over the row */
 html.glass .sheet:has(.stopv) .sheet-handle { height: 6px; padding-top: 5px; overflow: visible; }
+/* home low (TEL-232, Apple Maps): a thin card. The grabber 5 px from the top and close over the search (8 px under it), a
+   little more room under the search than above it (10 px); the search row is 44 px, so low is 70 px. On a phone only: the
+   side panel keeps its own padding. app.css moves the ☰'s end point with it (6 px, was 20). */
+@media (max-width: 899px) {
+  html.glass .sheet:has(.sheet-search:not([hidden])) .sheet-handle { height: 6px; padding-top: 5px; overflow: visible; }
+  html.glass .sheet-search { padding-top: 10px; padding-bottom: 8px; }
+}
 /* the grabber: 48 x 3 (TEL-227: wider and thinner than iOS's 36 x 5), a translucent grey */
 html.glass .sheet-pill { width: 48px; height: 3px; border-radius: 2px; background: rgba(60, 60, 67, .3); }
 @media (prefers-color-scheme: dark) { html.glass:not([data-theme="light"]) .sheet-pill { background: rgba(235, 235, 245, .3); } }
@@ -217,7 +224,7 @@ html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; righ
 html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
 
 /* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
-html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .chip, html.glass-lens .map-capsule {
+html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .map-capsule {
   -webkit-backdrop-filter: url(#g-lens) var(--g-blur); backdrop-filter: url(#g-lens) var(--g-blur);
 }
 html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
@@ -287,7 +294,7 @@ html.glass-fx .g-lens[hidden] { display: none; }
 
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
 html.glass .sheet-content h2, html.glass .pop-head, html.glass .pop-city-sub { font-weight: var(--weight-semibold); }
-html.glass .chip, html.glass #menu-pop, html.glass .sheet-content > h1, html.glass .sheet-content > h2,
+html.glass #menu-pop, html.glass .sheet-content > h1, html.glass .sheet-content > h2,
 html.glass .stopv-head, html.glass .pl-head { text-shadow: 0 0 6px var(--g-halo), 0 0 2px var(--g-halo); }
 
 /* ---------- inside the sheet ---------- */

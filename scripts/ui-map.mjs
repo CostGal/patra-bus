@@ -63,15 +63,17 @@ export const UI = [
   { id: 'S8', name: 'Σειρά κουμπιών στάσης (pills)', sel: '.stopv-acts' }, // TEL-227
   { id: 'S9', name: 'Οδηγίες ως εδώ (pill)', sel: '.stopv-pill.primary' },
 
-  { id: 'E1', name: 'Κάρτα «κοντά σου»', sel: '.nb' },
-  { id: 'E2', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary' },
-  { id: 'E3', name: 'Περισσότερα («κοντά σου»)', sel: '.nb-how > summary' },
-  { id: 'E4', name: 'Δεύτερο κουμπί («κοντά σου»)', sel: '.nb .btn.ghost' },
+  { id: 'E1', name: 'Κάρτα «κοντά σου»', sel: '.nb', gone: true }, // TEL-232: the home no longer mounts it
+  { id: 'E2', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary', gone: true },
+  { id: 'E3', name: 'Περισσότερα («κοντά σου»)', sel: '.nb-how > summary', gone: true },
+  { id: 'E4', name: 'Δεύτερο κουμπί («κοντά σου»)', sel: '.nb .btn.ghost', gone: true },
   { id: 'E5', name: 'Κάρτα «Πρώτη φορά εδώ;»', sel: '.guide-hint' },
   { id: 'E6', name: 'Άνοιγμα οδηγού (κάρτα)', sel: '.guide-hint-go' },
   { id: 'E7', name: '✕ Κλείσιμο κάρτας οδηγού', sel: '.guide-hint-x' },
 
   { id: 'F1', name: 'Γραμμή στάσης (λίστα)', sel: 'a.stop-row', all: true },
+  { id: 'F2', name: 'Μέρη (στρογγυλά κουμπιά, αρχική)', sel: '.hm-place', all: true }, // TEL-232
+  { id: 'F3', name: 'Επόμενη άφιξη αγαπημένης (αρχική, up)', sel: '.hm-fav .atile', all: true },
 
   { id: 'L1', name: 'Αναζήτηση γραμμής', sel: '.ex-search' },
   { id: 'L2', name: 'Γραμμή (λίστα)', sel: 'a.lines-row', all: true },

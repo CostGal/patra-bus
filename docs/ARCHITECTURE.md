@@ -357,7 +357,7 @@ Settings mounts `mountPushCard` and `mountOfflineCard`; offline indicator; 4th n
 ## Round 3 (minimal UI, places/routines, onboard alert, reliability stats, English)
 
 ### UI principles (binding for every module)
-- Home = map + search bar + ONE contextual card in the peek sheet. Priority: active onboard trip (`mountOnboardCard`) > saved place card (`mountPlacesCard`) > nearby next bus (`mountNearby`) > a single CTA. Favourites/recents only when the sheet is expanded or search is focused.
+- Home (TEL-232, Apple Maps search mode) = map + the search in the sheet. Low: the search alone. Mid: the active onboard trip (`mountOnboardCard`, only while on a bus), Places (`mountPlacesRow`), the first-run hint, recents (mid ends 20% into the 2nd). Up: favourites with their next arrival live (`mountFavoritesLive`, polls only while the sheet is up) and my routines (`mountRoutinesHome`). `js/home-view.js` + `css/home.css`; `mountHome` in `app.js` lays them out. Places and routines are edited in the Settings (`#/settings?section=home`). `mountPlacesCard` and `mountNearby` are no longer mounted on the home.
 - Show things only when relevant: no permanent legends or explanations (one-time hints at most; full legend in Settings → Σχετικά), empty sections hidden, secondary actions behind a "⋯" menu or in the detail view. One primary action per card.
 - Text budget per card: one headline line + one meta line; details on tap.
 - Floating controls: search bar, locate button; everything else in the menu. Chips only when useful (e.g. saved places), max 3.
@@ -449,7 +449,7 @@ to the field 320 ms later, once the sheet is up: focusing it low would make iOS 
 `visualViewport` listener writes `--kb` (keyboard height) for the results' bottom padding; it never scrolls the page (with the
 keyboard open, a programmatic scroll shifts iOS's hit-testing of fixed elements and taps miss). `.menu-fab` has its own
 layer (`translateZ(0)`), or iOS hands taps on it to the sheet's scroller underneath at full. The map's top padding
-is measured from the ☰ and the chips (which share its row). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
+is measured from the ☰ (the saved-place chips that shared its row are gone since TEL-232: the places are in the sheet). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
 `app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
 (Apple Maps). One spring per move

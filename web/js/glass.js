@@ -67,7 +67,7 @@ function addLens() {
 
 // touch: the control under the finger (or the glass surface, if the finger is not on a control) gets .g-press;
 // controls also grow, lean towards the finger and spring back with a wobble.
-const SURFACE = '.fab, .chip, .sheet, #menu-pop, .su-card, .wl-card';
+const SURFACE = '.fab, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
 const ROW = '.stop-row, .lines-row, .pl-sug'; // full-width list rows: a highlight, no growing
 const ROUND = '.btn.round, .sb-btn, .fab'; // round buttons grow the most
@@ -81,6 +81,8 @@ function targetOf(e) {
   if (!(e.target instanceof Element)) return null;
   const round = e.target.closest('.sb-btn'); // ☰ (back while searching) and the search's ✕ press as glass circles
   if (round) return round;
+  const place = e.target.closest('.hm-place'); // home's Places (TEL-232): the link is circle + label, the circle presses
+  if (place) return place.querySelector('.g-circle') || place;
   const c = e.target.closest(CONTROL);
   if (c && !c.matches('.sheet-handle')) return c;
   return e.target.closest(SURFACE);
