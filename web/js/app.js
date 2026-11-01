@@ -197,27 +197,43 @@ onChange(applyTheme);
 
 // ---------------------------------------------------------------- sheet <-> map/floating UI
 const fabsBottom = $('fabs-bottom');
+const mapAttrib = $('map-attrib');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
-let attribEl = null;
-const chipsEl = $('chips');
 const searchbarEl = $('searchbar');
-function onSnap({ visible, desktop }) {
+// What the map re-centres on between low and mid: home = the user's location (if the map has it), a stop or a pin =
+// that point (route() sets it); other views keep the map still.
+let focusPt = null;
+let lastSnap = null;
+let routeSnap = false; // the snap comes from route(), which moves the map itself
+function onSnap({ state, visible, desktop }) {
   if (!map) return;
   if (desktop) {
     map.setPadding({ top: 72, bottom: 0, left: sheet.el.offsetWidth, right: 0 });
   } else {
-    const top = Math.max(searchbarEl.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
+    const top = menuBtn.getBoundingClientRect().bottom + 8;
     map.setPadding({ top, bottom: Math.min(visible, innerHeight * 0.6), left: 0, right: 0 });
   }
+  // As in Apple Maps (Kostas, TEL-222): between low and mid the map glides to centre its focus in the part left above
+  // the sheet. Only once the sheet is let go (this fires when its target is chosen), never to or from full.
+  const from = lastSnap;
+  lastSnap = state;
+  const lowMid = (from === 'peek' && state === 'half') || (from === 'half' && state === 'peek');
+  // Search mode (home) centres on the user; location mode (a stop, a pin) on that point, and stops following the user,
+  // or the next GPS fix would pull the map back to them (TEL-227)
+  if (!desktop && lowMid && !routeSnap) {
+    if (focusPt) { if (locMode !== 'idle') setLocMode('idle'); map.recenter(focusPt); }
+    else if (currentHead === '') map.recenter(null);
+  }
 }
-function onMove({ lift, opacity }) {
+function onMove({ visible, lift, opacity }) {
+  // the map buttons stay opaque: past mid the sheet slides over them (z-index, app.css). Fading a glass (backdrop-filter)
+  // layer drew it grey for a moment on iPhone (TEL-227)
   fabsBottom.style.transform = lift ? `translateY(${-lift}px)` : '';
-  fabsBottom.style.opacity = String(opacity);
-  fabsBottom.style.pointerEvents = opacity < 0.05 ? 'none' : '';
+  mapAttrib.style.transform = visible ? `translateY(${-visible}px)` : ''; // glued to the sheet's edge, every frame, all the way up
+  mapAttrib.style.opacity = String(opacity);
+  mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
-  attribEl ||= appEl.querySelector('.maplibregl-ctrl-bottom-right');
-  if (attribEl) attribEl.style.transform = lift ? `translateY(${-lift}px)` : '';
 }
 
 // ---------------------------------------------------------------- locate FAB (idle -> centre -> follow -> compass)
@@ -337,22 +353,28 @@ let rows = [];
 let placeTimer = 0;
 let placeCtl = null;
 let places = { q: '', loading: false, results: [], failed: false };
+let sheetBefore = null; // where the sheet was when the search opened (it goes up while the search is open)
 
 function openSearch() {
   if (searchOpen) return;
   searchOpen = true;
+  appEl.classList.add('searching');
+  sheetBefore = sheet.state;
+  if (sheetBefore !== 'full') sheet.snap('full');
   searchPanel.hidden = false;
   searchInput.setAttribute('aria-expanded', 'true');
   menuPopover.close(false);
-  menuBtn.replaceChildren(icon('back'));
-  menuBtn.setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
-  menuBtn.removeAttribute('aria-haspopup');
-  menuBtn.removeAttribute('aria-expanded');
   renderSearch();
 }
-function closeSearch(focusMenu = false) {
+// restore: the user closed it (back, Escape, a tap outside), so the sheet goes back to where it was
+function closeSearch(focusMenu = false, restore = false) {
   if (!searchOpen) return;
   searchOpen = false;
+  clearTimeout(kbHandoff);
+  if (document.activeElement === kbProxy) kbProxy.blur();
+  appEl.classList.remove('searching');
+  if (restore && sheetBefore && sheetBefore !== 'full' && sheet.state === 'full') sheet.snap(sheetBefore);
+  sheetBefore = null;
   clearTimeout(placeTimer);
   placeCtl?.abort();
   places = { q: '', loading: false, results: [], failed: false };
@@ -361,10 +383,6 @@ function closeSearch(focusMenu = false) {
   searchInput.setAttribute('aria-expanded', 'false');
   searchInput.removeAttribute('aria-activedescendant');
   searchClear.hidden = true;
-  menuBtn.replaceChildren(icon('menu'));
-  menuBtn.setAttribute('aria-label', t('Μενού'));
-  menuBtn.setAttribute('aria-haspopup', 'true');
-  menuBtn.setAttribute('aria-expanded', 'false');
   sayStatus('');
   if (focusMenu) menuBtn.focus(); else searchInput.blur();
 }
@@ -409,6 +427,14 @@ function renderSearch(keepActive = false) {
         ...rp.map((p) => srRow(`sr-${n++}`, 'history', p.name, p.subtitle, () => choosePlace(p))));
     } else {
       out.push(msg(t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
+    }
+    // nearby stops, when the device already knows where it is (computed here: the location never leaves the device)
+    const fix = locationService.current;
+    const recent = new Set(rs.map((s) => s.code));
+    const near = fix && inArea(fix) ? nearestStops(data.stops, fix, { limit: 4, maxMeters: 800 }).filter((x) => !recent.has(x.stop.code)) : [];
+    if (near.length) {
+      out.push(srHead(t('Κοντινές στάσεις')), ...near.map(({ stop: s, meters }) =>
+        srRow(`sr-${n++}`, 'bus', s.displayName, [fmtDist(meters), ...lineBadges(s, 4)], () => chooseStop(s))));
     }
     // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
     out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
@@ -483,7 +509,7 @@ searchInput.addEventListener('keydown', (e) => {
     (rows[activeIdx] || rows[0])?.choose();
   } else if (e.key === 'Escape') {
     e.preventDefault();
-    closeSearch(true);
+    closeSearch(true, true);
   }
 });
 searchClear.addEventListener('click', () => {
@@ -496,102 +522,105 @@ searchClear.addEventListener('click', () => {
   searchInput.focus();
 });
 $('searchbar').addEventListener('click', (e) => { if (!e.target.closest('button')) searchInput.focus(); });
-menuBtn.addEventListener('click', () => {
-  if (searchOpen) closeSearch(true);
-  else if (menuPop.hidden) menuPopover.open();
-  else menuPopover.close(true);
+
+// The keyboard and the sheet (iOS): focusing the field while the sheet is low makes Safari pan the whole page to keep
+// the field above the keyboard, and the pan stays once the sheet has gone up (Kostas, TEL-223). So a tap on the field
+// while the sheet is not up opens the keyboard on a hidden field at the top (it must open inside the tap), takes the
+// sheet up, then hands the focus to the real field, which is at the top by then, so Safari has nothing to pan.
+// --kb (the keyboard's height) keeps the last results above the keyboard. No window.scrollTo() here: scrolling the page
+// while the keyboard is open shifts where iOS thinks fixed elements are, and taps on ✕ and ☰ then miss (Kostas, TEL-223).
+const kbProxy = h('input', { class: 'kb-proxy', type: 'text', tabindex: '-1', 'aria-hidden': 'true' });
+document.body.append(kbProxy);
+let kbHandoff = 0;
+let tapY = null;
+searchInput.addEventListener('touchstart', (e) => { tapY = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive: true });
+searchInput.addEventListener('touchmove', (e) => { if (tapY != null && Math.abs(e.touches[0].clientY - tapY) > 6) tapY = null; }, { passive: true });
+searchInput.addEventListener('touchend', (e) => {
+  const tap = tapY != null;
+  tapY = null;
+  if (!tap || searchOpen || document.activeElement === searchInput || sheet.state === 'full' || desktopMQ.matches) return;
+  e.preventDefault(); // no native focus, so no pan
+  kbProxy.focus({ preventScroll: true });
+  openSearch();
+  kbHandoff = setTimeout(() => searchInput.focus({ preventScroll: true }), 320); // the sheet's up spring has settled
 });
+const vv = window.visualViewport;
+if (vv) {
+  const onViewport = () => {
+    const kb = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty('--kb', `${kb}px`);
+  };
+  vv.addEventListener('resize', onViewport);
+  vv.addEventListener('scroll', onViewport);
+}
+// A tap on ☰ or the search's ✕ acts on touchend itself, not on the click iOS makes from it: with the keyboard open
+// that click is lost (Kostas, TEL-223), and preventDefault() there also stops the click, so it runs once. pointerdown
+// keeps the field focused until then; a drag that starts on the button does nothing. Mouse and keyboard use click
+// (detail 0 = from the keyboard).
+function onTap(btn, fn) {
+  let down = null;
+  btn.addEventListener('pointerdown', (e) => { if (searchOpen) e.preventDefault(); });
+  btn.addEventListener('touchstart', (e) => { const p = e.touches[0]; down = e.touches.length === 1 ? { x: p.clientX, y: p.clientY } : null; }, { passive: true });
+  btn.addEventListener('touchend', (e) => {
+    const p = e.changedTouches[0];
+    const tap = down && p && Math.hypot(p.clientX - down.x, p.clientY - down.y) < 10;
+    down = null;
+    if (!tap) return;
+    if (e.cancelable) e.preventDefault();
+    fn(false);
+  });
+  btn.addEventListener('click', (e) => fn(e.detail === 0));
+}
+// ☰ stays the menu while searching (the search closes with its own ✕): it ends the search, then opens the menu
+onTap(menuBtn, (fromKeys) => {
+  if (searchOpen) closeSearch(false, true);
+  if (menuPop.hidden) menuPopover.open();
+  else menuPopover.close(fromKeys);
+});
+onTap($('search-close'), (fromKeys) => closeSearch(fromKeys, true));
 // Keyboard focus leaving the search for another control closes it: the full-screen panel would hide that control
 // (WCAG 2.4.11). A blur with nowhere to go (touch scroll of the results) keeps it open.
 for (const el of [$('searchbar'), searchPanel]) {
   el.addEventListener('focusout', (e) => {
     const to = e.relatedTarget;
-    if (searchOpen && to && !to.closest('#searchbar, #search-panel')) closeSearch();
+    if (searchOpen && to && !to.closest('#searchbar, #search-panel, #menu-btn')) closeSearch(false, true);
   });
 }
-searchPanel.addEventListener('scroll', () => { if (document.activeElement === searchInput && matchMedia('(pointer: coarse)').matches) searchInput.blur(); }, { passive: true });
+// the results scroll with the sheet: scrolling them puts the keyboard away
+$('sheet-body').addEventListener('scroll', () => { if (searchOpen && document.activeElement === searchInput && matchMedia('(pointer: coarse)').matches) searchInput.blur(); }, { passive: true });
 document.addEventListener('pointerdown', (e) => {
-  if (searchOpen && !e.target.closest('#searchbar, #search-panel')) closeSearch();
+  if (searchOpen && !e.target.closest('#searchbar, #search-panel, #menu-btn, #sheet-handle')) closeSearch(false, true);
 }, true);
 
 // ---------------------------------------------------------------- views owned by the shell
-// Home = ONE contextual card: onboard trip > saved place > nearby next bus. Favourites/recents show only when the sheet is expanded (CSS).
+// Home (TEL-232, Apple Maps search mode): low = the search alone; mid = Places (round buttons), the first-run hint, then the
+// recents (the sheet ends 20% into the 2nd one: [data-mid-end]); up = the favourites with their next arrival live, and
+// my routines (js/home-view.js). The active onboard trip sits above Places while there is one.
 function mountHome(container, c) {
-  const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
-  const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
-  const more = h('div', { class: 'home-more', hidden: true });
-  const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
-  const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
-  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
-  // The peek sheet is exactly as tall as the one visible card (plus the hint while it is shown).
-  const ro = new ResizeObserver(() => { const hh = card.offsetHeight; if (hh) sheet.setPeek(44 + hh + (hint.hidden ? 0 : hint.offsetHeight + 8) + 8); });
-  ro.observe(card);
-  ro.observe(hint);
-  const views = {};
+  const onboard = h('div', { class: 'home-onboard' });
+  const places = h('section', { class: 'home-section home-places' });
+  const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the places
+  const recents = h('div', { class: 'home-recents' });
+  const favs = h('div', { class: 'home-favs' });
+  const routines = h('div', { class: 'home-routines' });
+  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), onboard, places, hint, recents, favs, routines);
+  const views = [];
   const offs = [];
   let dead = false;
-  let nearbyBusy = false;
-  let nearbyFailed = false;
-  const LEAVE_MS = 180; // matches .home-slot's transition duration (css/nearby.css)
-  const hideTimers = {};
-  // Cross-fades which card is shown (DESIGN.md §3): the leaving slot fades/lifts out, then hides; the
-  // entering one shows right away (its own module adds "card-in" for its content's entrance animation).
-  const showTop = (top) => {
-    for (const k of Object.keys(box)) {
-      if (k === top) {
-        clearTimeout(hideTimers[k]); hideTimers[k] = null;
-        box[k].classList.remove('is-leaving');
-        box[k].hidden = false;
-      } else if (!box[k].hidden && !hideTimers[k]) {
-        box[k].classList.add('is-leaving');
-        hideTimers[k] = setTimeout(() => {
-          hideTimers[k] = null;
-          if (dead) return;
-          box[k].hidden = true;
-          box[k].classList.remove('is-leaving');
-        }, LEAVE_MS);
-      }
-    }
-  };
-  const load = (key, file, fn, after) => import(file).then((m) => {
-    if (dead) return;
-    views[key] = m[fn](box[key], c);
-    after?.(m);
-  });
+  const LEAVE_MS = 180;
+  const add = (p) => p.then((v) => { if (dead) v?.destroy?.(); else if (v) views.push(v); }).catch((err) => console.error('[home]', err));
+  add(import('./onboard.js').then((m) => m.mountOnboardCard(onboard, c)));
+  add(import('./home-view.js').then((m) => m.mountPlacesRow(places, c)));
+  add(import('./home-view.js').then((m) => m.mountFavoritesLive(favs, c, stopRow)));
+  add(import('./home-view.js').then((m) => m.mountRoutinesHome(routines, c)));
 
-  // The first card with content wins; nearby is mounted only when nothing above it renders (it polls live data).
-  const evaluate = () => {
-    if (dead) return;
-    const top = box.onboard.childElementCount ? 'onboard' : box.places.childElementCount ? 'places' : 'nearby';
-    showTop(top);
-    if (top === 'nearby') {
-      if (views.nearby || nearbyBusy || nearbyFailed) return;
-      nearbyBusy = true;
-      load('nearby', './nearby.js', 'mountNearby')
-        .catch((err) => { console.error(err); nearbyFailed = true; box.nearby.replaceChildren(msgEl(t('Δεν φορτώθηκε η ενότητα «κοντά σου».'))); })
-        .finally(() => { nearbyBusy = false; evaluate(); });
-    } else if (views.nearby) {
-      views.nearby.destroy?.();
-      views.nearby = null;
-      box.nearby.replaceChildren();
-    }
-  };
-  const mo = new MutationObserver(evaluate);
-  mo.observe(box.onboard, { childList: true });
-  mo.observe(box.places, { childList: true });
-  Promise.allSettled([
-    load('onboard', './onboard.js', 'mountOnboardCard', (m) => { if (m.onTripChange) offs.push(m.onTripChange(evaluate)); }),
-    load('places', './places.js', 'mountPlacesCard'),
-  ]).then((rs) => { rs.forEach((r) => r.status === 'rejected' && console.error('[home]', r.reason)); evaluate(); });
-
+  // Recents: stops, then places. The first row whole, the second one 20% into it, is where mid ends.
   const paint = () => {
-    const favs = getFavorites().map((code) => data.stopByCode.get(String(code))).filter(Boolean);
-    const rs = recentStops(5);
-    const rp = recentPlaces(3);
-    more.replaceChildren(...[
-      favs.length ? h('section', { class: 'home-section' }, h('h2', {}, t('Αγαπημένες στάσεις')), h('div', { class: 'list' }, favs.map((s) => stopRow(s)))) : null,
-      rs.length || rp.length ? h('section', { class: 'home-section' }, h('h2', {}, t('Πρόσφατα')), h('div', { class: 'list' }, rs.map((s) => stopRow(s)), rp.map(placeRow))) : null].filter(Boolean));
-    more.hidden = !more.childElementCount;
+    const rows = [...recentStops(5).map((s) => stopRow(s)), ...recentPlaces(3).map(placeRow)];
+    delete places.dataset.midEnd;
+    if (rows.length) rows[Math.min(1, rows.length - 1)].dataset.midEnd = rows.length > 1 ? '0.2' : '1';
+    else places.dataset.midEnd = '1'; // no recents: mid ends under the places
+    recents.replaceChildren(...(rows.length ? [h('section', { class: 'home-section' }, h('h2', {}, t('Πρόσφατα')), h('div', { class: 'list' }, rows))] : []));
   };
   paint();
   offs.push(onChange(paint));
@@ -629,12 +658,8 @@ function mountHome(container, c) {
     destroy() {
       dead = true;
       clearTimeout(hintTimer);
-      mo.disconnect();
-      ro.disconnect();
-      sheet.setPeek(null);
-      Object.values(hideTimers).forEach((id) => id && clearTimeout(id));
       offs.forEach((f) => f?.());
-      Object.values(views).forEach((v) => v?.destroy?.());
+      views.forEach((v) => v?.destroy?.());
     },
   };
 }
@@ -679,7 +704,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -693,16 +718,6 @@ function teardown() {
   view = null;
   map.highlightStop(null);
   map.clearMarkers('pin');
-}
-// Contextual shortcuts: saved places (max 3), home screen only. Nothing is rendered when there are none.
-let getPlaces = () => [];
-import('./places.js').then((m) => { getPlaces = m.getPlaces; paintChips(); }).catch(() => {});
-function paintChips() {
-  let list = [];
-  try { list = currentHead === '' ? getPlaces().filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng)).slice(0, 3) : []; } catch { /* ignore */ }
-  chipsEl.replaceChildren(...list.map((p) => h('a', { class: 'chip', href: planHash(p, p.name) }, icon(p.id === 'home' ? 'home' : p.id === 'work' ? 'briefcase' : 'pin'), p.name)));
-  chipsEl.hidden = !list.length;
-  appEl.classList.toggle('has-chips', !chipsEl.hidden);
 }
 
 // A notification link (`#/notif?routine=…|ref=…&stop=…`, js/notif-link.js) → the hash it stands for on this device.
@@ -738,16 +753,20 @@ async function route() {
   const head = parts[0] || '';
   const arg = parts[1];
   currentHead = SNAP[head] != null ? head : '';
+  // the search is home's first row (TEL-223); the other views put their own header there, with a ✕ back home
+  searchbarEl.hidden = currentHead !== '';
   if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' || currentHead === 'line' ? String(arg) : '' };
   if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
   content.replaceChildren();
   sheet.scrollToTop();
   if (!reduceMotion.matches) { content.classList.remove('enter'); void content.offsetWidth; content.classList.add('enter'); }
-  paintChips();
   document.title = title();
 
+  focusPt = null;
+  routeSnap = true;
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted });
+  routeSnap = false;
   nextSnap = null;
 
   const mount = async (loader, build) => {
@@ -774,6 +793,7 @@ async function route() {
       noteStop(stop);
       map.highlightStop(stop.code);
       map.flyTo(stop, 17);
+      focusPt = stop;
       await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code }));
       break;
     }
@@ -797,7 +817,7 @@ async function route() {
       break;
     case 'settings':
       document.title = `${t('Ρυθμίσεις')} · ${title()}`;
-      await mount(() => import('./settings-view.js'), (m) => m.mountSettings(content, ctx));
+      await mount(() => import('./settings-view.js'), (m) => m.mountSettings(content, ctx, { section: params.section || undefined }));
       break;
     case 'report':
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
@@ -823,6 +843,7 @@ async function route() {
       document.title = `${pinName()} · ${title()}`;
       view = mountPin(content, ctx, p);
       map.flyTo(p, 17);
+      focusPt = p;
       break;
     }
     default:
@@ -872,10 +893,10 @@ function localizeChrome() {
   searchInput.setAttribute('aria-label', t('Αναζήτηση στάσης ή τόπου'));
   searchClear.setAttribute('aria-label', t('Καθαρισμός αναζήτησης'));
   searchList.setAttribute('aria-label', t('Αποτελέσματα αναζήτησης'));
-  if (!searchOpen) menuBtn.setAttribute('aria-label', t('Μενού'));
+  menuBtn.setAttribute('aria-label', t('Μενού'));
+  $('search-close').setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
   northBtn.setAttribute('aria-label', t('Επαναφορά βορρά'));
   northBtn.title = t('Επαναφορά βορρά');
-  chipsEl.setAttribute('aria-label', t('Αποθηκευμένα μέρη'));
   $('sheet').setAttribute('aria-label', t('Πληροφορίες'));
   $('demo-tag').title = t('Δεδομένα επίδειξης');
   paintLocLabel();
@@ -885,6 +906,7 @@ function localizeChrome() {
 function buildChrome() {
   menuBtn.append(icon('menu'));
   searchClear.append(icon('close'));
+  $('search-close').append(icon('close'));
   northBtn.append(icon('compass'));
   locateBtn.append(icon('locate'));
   menuPopover = makePopover(menuBtn, menuPop);
@@ -896,7 +918,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), avoid: { top: ['#searchbar', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

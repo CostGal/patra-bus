@@ -2,7 +2,7 @@
 /* ---- home card: one headline line + one meta line ---- */
 /* surface + blur come from .material (app.css, added in places.js); .card-in's entrance keyframes
    live in css/nearby.css (shared by the three home-screen cards; that file is always loaded too). */
-.plc-card { display: block; padding: 10px 14px; border-radius: var(--radius); color: var(--foreground); text-decoration: none; }
+.plc-card { display: block; padding: 10px 14px; border-radius: var(--radius-card); color: var(--foreground); text-decoration: none; }
 .plc-card:hover { filter: brightness(1.04); }
 .plc-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .plc-head { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-size: var(--text-base); }

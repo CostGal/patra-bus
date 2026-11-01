@@ -35,7 +35,7 @@
 .ex-search::placeholder { color: var(--muted-foreground); }
 
 .ex-note {
-  margin: var(--space-2) 0; padding: 10px var(--space-3); border-radius: var(--radius);
+  margin: var(--space-2) 0; padding: 10px var(--space-3); border-radius: var(--radius-card);
   background: var(--warning-muted); color: var(--foreground); font-size: .875rem; line-height: 1.4;
 }
 
@@ -116,7 +116,7 @@
 .lines-age { padding-top: 2px; }
 
 /* ---- settings ---- */
-.set-card { margin: 0 0 var(--space-3); padding: 14px var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); }
+.set-card { margin: 0 0 var(--space-3); padding: 14px var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
 .set-title { margin-bottom: var(--space-2); color: var(--foreground); font-size: var(--text-base); font-weight: 700; }
 .set-sub { margin: 14px 0 var(--space-1); font-size: .875rem; font-weight: 700; color: var(--muted-foreground); }
 .set-p { margin: 0 0 var(--space-2); font-size: var(--text-md); }
@@ -157,7 +157,7 @@ a.atile { text-decoration: none; }
 .atile-link.atile-now.atile-live:hover { background: var(--live-muted); }
 
 /* ---- timetable block in the line view ---- */
-.lines-times { margin: var(--space-1) 0 var(--space-3); padding: var(--space-3) 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); }
+.lines-times { margin: var(--space-1) 0 var(--space-3); padding: var(--space-3) 14px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
 .lines-times-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 6px; font-size: var(--text-base); font-weight: 700; }
 .lines-times-title .icon { width: 18px; height: 18px; }
 .lines-times-facts { margin: 0 0 var(--space-1); font-size: .9rem; }
@@ -172,9 +172,9 @@ a.atile { text-decoration: none; }
 .bv-head .bv-badge { display: flex; flex: none; font-size: 1.1rem; }
 .bv-flag { flex: none; display: inline-flex; }
 .bv-flag .ex-chip .icon { width: 13px; height: 13px; }
-.bv-banner { margin: 0 0 var(--space-2); padding: 10px var(--space-3); border-radius: var(--radius); background: var(--warning-muted); color: var(--foreground); font-size: .875rem; line-height: 1.4; }
+.bv-banner { margin: 0 0 var(--space-2); padding: 10px var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--foreground); font-size: .875rem; line-height: 1.4; }
 .bv-banner.is-bad { border-left: 4px solid var(--warning); }
-.bv-summary { display: grid; gap: 2px; margin: 0 0 var(--space-2); padding: 10px var(--space-3); border-radius: var(--radius); background: var(--muted); border-left: 5px solid var(--lc); }
+.bv-summary { display: grid; gap: 2px; margin: 0 0 var(--space-2); padding: 10px var(--space-3); border-radius: var(--radius-card); background: var(--muted); border-left: 5px solid var(--lc); }
 .bv-sum-main { font-size: var(--text-base); }
 .bv-toggle { margin: 0 0 var(--space-1); }
 .bv-list { margin: var(--space-1) 0 0; }
@@ -205,8 +205,8 @@ a.atile { text-decoration: none; }
 .bv-foot, .bv-legend { margin-top: 10px; }
 
 /* ---- settings v3: collapsible sections, (i) hints, language row ---- */
-.set-lang { margin: 0 0 var(--space-3); padding: var(--space-1) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); }
-.set-sec { margin: 0 0 var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); }
+.set-lang { margin: 0 0 var(--space-3); padding: var(--space-1) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
+.set-sec { margin: 0 0 var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
 .set-sum {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 52px; padding: 0 var(--space-4);
   font-weight: 600; cursor: pointer; list-style: none;

@@ -23,10 +23,12 @@ let openKeys = new Set();
 let leftAt = 0;
 
 // The whole view is rebuilt on a language change (open sections and the focused language button are kept).
-export function mountSettings(container, ctx) {
+// opts.section ('home' = Σπίτι, δουλειά & ρουτίνες, from the home's Places and routines) opens that section and scrolls to it.
+export function mountSettings(container, ctx, opts = {}) {
   let view = null;
   let gone = false;
   if (Date.now() - leftAt > 1500) openKeys = new Set();
+  if (opts?.section === 'home') openKeys.add('home');
   const render = () => {
     if (gone) return; // the app may already have re-mounted this view
     const keep = { lang: null };
@@ -37,6 +39,7 @@ export function mountSettings(container, ctx) {
     if (keep.lang) container.querySelector(`[data-lang-seg] [data-v="${keep.lang}"]`)?.focus();
   };
   render();
+  if (opts?.section === 'home') container.querySelector('[data-k="home"]')?.scrollIntoView({ block: 'start' });
   const off = onLangChange(render);
   return { destroy() { gone = true; leftAt = Date.now(); off(); view.teardown(); } };
 }
