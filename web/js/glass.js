@@ -81,6 +81,8 @@ function targetOf(e) {
   if (!(e.target instanceof Element)) return null;
   const round = e.target.closest('.sb-btn'); // ☰ (back while searching) and the search's ✕ press as glass circles
   if (round) return round;
+  const place = e.target.closest('.hm-place'); // home's Places (TEL-232): the link is circle + label, the circle presses
+  if (place) return place.querySelector('.g-circle') || place;
   const c = e.target.closest(CONTROL);
   if (c && !c.matches('.sheet-handle')) return c;
   return e.target.closest(SURFACE);

@@ -102,8 +102,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   static; reduced motion: light only, no growing or moving. Made the default before the speed check (TEL-70, TEL-218) by Kostas's decision (closed beta): if it lags on cheap phones, that is where it gets fixed.
 
 **Home** (TEL-232, Apple Maps search mode, follows §10): low = grabber 5 px from the top, the search 8 px under it and 10 px of room
-  under it (70 px card; the side panel keeps its own padding); mid = Places (48 px round buttons: Σπίτι, Δουλειά, your own, "+"; a
-  place not set yet is an empty ring and opens the Settings on it), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
+  under it (70 px card; the side panel keeps its own padding); mid = Places (the card's glass circle, `.g-circle`, at 48 px with its label under it, pressed like every
+  round button: Σπίτι, Δουλειά, your own, "+"; a place not set yet has a dimmed icon and opens the Settings on it, until
+  its own panel in the sheet replaces that), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
   60% of the screen, so the rows above stay compact); up = favourites with their next arrival (LIVE / ΠΡΟΓΡ., polled only while up,
   4 stops, the rest "Δες αφίξεις") and my routines. The active trip sits above Places while there is one. No saved-place chips float over the map any more: Places show only in the sheet, at mid and up.
 

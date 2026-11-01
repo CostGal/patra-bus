@@ -14,13 +14,14 @@ const SETTINGS_PLACES = () => cityHash('#/settings?section=home');
 const PLACE_ICON = { home: 'home', work: 'briefcase' };
 
 // ---------------------------------------------------------------- Places: round buttons
-// Σπίτι and Δουλειά are always there (grey until set: a tap sets them in the settings), then your own places, then "+".
+// Σπίτι and Δουλειά are always there (dimmed until set: a tap sets them in the settings), then your own places, then "+".
+// Each is the card's round glass button (.g-circle, DESIGN §10) at 48 px, its label under it; js/glass.js presses the circle.
 export function mountPlacesRow(container) {
   const paint = () => {
     const saved = getPlaces().filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng));
     const byId = new Map(saved.map((p) => [p.id, p]));
     const circle = (cls, ico, label, href, aria) => h('a', { class: `hm-place press ${cls}`, href, 'aria-label': aria || label },
-      h('span', { class: 'hm-circle' }, icon(ico)), h('span', { class: 'hm-label' }, label));
+      h('span', { class: 'btn round g-circle', 'aria-hidden': 'true' }, icon(ico)), h('span', { class: 'hm-label' }, label));
     const slots = ['home', 'work'].map((id) => {
       const p = byId.get(id);
       const label = id === 'home' ? t('Σπίτι') : t('Δουλειά');
