@@ -63,7 +63,8 @@ craft (deliberate spacing/timing values from tokens, nothing random).
 ## 9. UI review: the numbered UI map (TEL-198)
 Every element has one **permanent ID**: a letter for the **area** of the app (not the screen) and a number. The same
 element keeps its ID on every screen and in every session, so feedback from one review still means the same thing in
-the next one. Registry: `scripts/ui-map.mjs`.
+the next one. Each element also has a **nick** (TEL-230): a short English name to say out loud (`grabber`, `badge`,
+`countdown`, `stripe`). Registry: `scripts/ui-map.mjs`.
 
 | Letter | Area | Letter | Area |
 |---|---|---|---|
@@ -75,12 +76,16 @@ the next one. Registry: `scripts/ui-map.mjs`.
 | G | Settings and guide | D | Dialogs and forms (setup, welcome, report) |
 
 - Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--glass --map` etc. as for any sweep).
-  It boxes every element with its ID on its own set of screens (menus open, vehicle, search…) into `shots/ui-map/`,
-  plus `LEGEND.md`: the whole registry with the screens each ID appears on.
-- Feedback is one line per element: `ID — τώρα: … / θέλω: …` (one of many alike: `S2 (606)`), with a phone screenshot
-  where it helps. Everything else: «τα υπόλοιπα ΟΚ».
+  It boxes every element with its nick and ID on its own set of screens (menus open, vehicle, search…) into
+  `shots/ui-map/`, plus `LEGEND.md` (a nick → ID dictionary and the whole registry with the screens each ID appears on)
+  and `explorer.html`: the clean screens, where a click on an element shows its nick, ID and description, with a
+  quiz to learn the names. To share it, publish that folder (page + `screens/`) as an artifact.
+- Feedback is one line per element: `nick — τώρα: … / θέλω: …` (or the ID; one of many alike: `chip (606)`), with a
+  phone screenshot where it helps. Everything else: «τα υπόλοιπα ΟΚ».
 - Per element check three things: **at rest** (legible, distinct), **touch & hold**, **tap** (does what you expect,
   open/close motion).
-- **Never renumber or reuse an ID.** A new element takes the next free number of its area; a removed one stays in the
-  registry with `gone: true`. A red `?` box (listed at the end of `LEGEND.md`) is something pressable that is not in
+- **Never renumber or reuse an ID or a nick.** A new element takes the next free number of its area and a nick of its
+  own (English, lower case, one or two words, unique: `tests/ui-map.test.mjs` checks it); a removed one stays in the
+  registry with `gone: true`. Something that is not an element of its own (the stripe is a tile's left border) gets
+  `edge: 'left'`. A red `?` box (listed at the end of `LEGEND.md`) is something pressable that is not in
   the registry: add it in the same PR. An ID whose selector stops matching shows "—" in the legend: fix its selector.

@@ -51,7 +51,7 @@ npm run dev:worker       # wrangler dev --local στο :8787 (local KV)
 # deploy του worker: ΜΟΝΟ από GitHub → Actions → «Worker deploy» (staging από κάθε branch· production από main με έγκριση Kostas)
 npm run dev:web          # static server του web/ στο :8080, χωρίς HTTP cache
 npm run shots            # screenshots (?demo, mocks) για συσκευές × light/dark × EL/EN στο shots/ + SUMMARY.md· `-- --device= --lang= --theme= --screen= --base=<preview URL> --web=<web/ άλλου checkout> --chromium=<path>`· ~6′ για όλα, μόνο layout (όχι αφή/push/GPS/απόδοση)
-npm run shots -- --annotate   # αριθμημένος χάρτης UI για reviews (TEL-198): κάθε στοιχείο με μόνιμο ID ανά περιοχή (`scripts/ui-map.mjs`) → shots/ui-map/ + LEGEND.md· κανόνες στο docs/DESIGN.md §9
+npm run shots -- --annotate   # αριθμημένος χάρτης UI για reviews (TEL-198): κάθε στοιχείο με μόνιμο ID ανά περιοχή (`scripts/ui-map.mjs`) και nick (TEL-230) → shots/ui-map/ + LEGEND.md + explorer.html (κλικ σε στοιχείο = το όνομά του)· κανόνες στο docs/DESIGN.md §9
 ```
 Άνοιγμα: http://localhost:8080/ · demo (προσομοίωση για όλες τις στάσεις): http://localhost:8080/?demo#/stop/1011 · `?demo=nosvc`, `?demo=error`, `?demo=stale` (δεδομένα 90″ παλιά: τα LIVE tiles «γερνούν») για τις αντίστοιχες καταστάσεις.
 Τα δύο dev servers υπάρχουν και στο `.claude/launch.json` (`worker`, `web`).
