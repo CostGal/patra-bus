@@ -251,6 +251,10 @@ My words:
 Where it shows up in Telematica: 15 s minimum between live requests per stop; per-IP limits on reminders and reports (`worker/src/index.js`).
 My words:
 
+**Registry**: the one central list where every item has exactly one entry and a permanent number, like a town's register of residents.
+Where it shows up in Telematica: `scripts/ui-map.mjs` lists every UI element with its ID (S7) and nick (countdown) for the UI map and the explorer (TEL-198, TEL-230).
+My words:
+
 **Required check**: a test or status that must be green on a pull request before GitHub lets anyone merge it, like a signature a form needs before it is accepted.
 Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
 My words:
@@ -269,6 +273,10 @@ My words:
 
 **Secret scan** (gitleaks): a robot that reads every commit looking for passwords and keys, like a security guard checking every bag at the exit, including old ones.
 Where it shows up in Telematica: the `test` job in `.github/workflows/test.yml`, allowlist in `.gitleaks.toml`.
+My words:
+
+**Selector** (CSS selector): the "address" that tells the browser which elements of the page we mean, like a street and house number (`.atile-badge` = every element with that class).
+Where it shows up in Telematica: the CSS files, and the `sel` of each entry in `scripts/ui-map.mjs`; when the app's markup changes, a selector can stop matching and the legend shows "—".
 My words:
 
 **Service worker**: a helper script the browser runs in the background for a site, like a doorman who answers for you when you're out.

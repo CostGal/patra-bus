@@ -1,0 +1,473 @@
+<title>Telematica UI Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<!-- Template of `npm run shots -- --annotate` (TEL-230). scripts/shots.mjs writes it as shots/ui-map/<device>/<lang-theme>/explorer.html
+     with DATA (below) filled in from the registry (scripts/ui-map.mjs) and the boxes measured on each clean screenshot (screens/*.jpg). -->
+<style>
+/* Layout: a design tool's three panes — screens + layers | the phone (canvas) | inspector; one column on phones. */
+:root {
+  --bg: #e7eaef; --panel: #fbfcfd; --line: #d5dae2; --fg: #161a21; --muted: #5a6474; --canvas: #dde1e8;
+  --select: #0b6fde; --select-soft: rgba(11, 111, 222, .13); --ok: #127a52; --ok-soft: rgba(18, 122, 82, .14); --bad: #c42b2b; --bad-soft: rgba(196, 43, 43, .12);
+  --font-ui: 'Commissioner', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121418; --panel: #1b1e24; --line: #2d323b; --fg: #e8ebf0; --muted: #98a2b3; --canvas: #16191e;
+  --select: #4c9bff; --select-soft: rgba(76, 155, 255, .18); --ok: #3ccf8e; --ok-soft: rgba(60, 207, 142, .16); --bad: #ff6b6b; --bad-soft: rgba(255, 107, 107, .15);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121418; --panel: #1b1e24; --line: #2d323b; --fg: #e8ebf0; --muted: #98a2b3; --canvas: #16191e;
+  --select: #4c9bff; --select-soft: rgba(76, 155, 255, .18); --ok: #3ccf8e; --ok-soft: rgba(60, 207, 142, .16); --bad: #ff6b6b; --bad-soft: rgba(255, 107, 107, .15);
+  color-scheme: dark; }
+
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--font-ui); }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--select); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); }
+
+.app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--panel); border-bottom: 1px solid var(--line); }
+.brand { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
+.brand b { font-size: 15px; letter-spacing: .01em; }
+.brand span { color: var(--muted); font-size: 12px; }
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.search { position: relative; flex: 1 1 220px; max-width: 320px; }
+.search input { width: 100%; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+.results { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px; list-style: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); max-height: 60vh; overflow: auto; }
+.results button { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: none; text-align: left; }
+.results button:hover, .results button.on { background: var(--select-soft); }
+.results small { color: var(--muted); }
+
+.main { display: grid; grid-template-columns: 250px minmax(0, 1fr) 310px; min-height: 0; }
+.pane { min-height: 0; overflow: auto; background: var(--panel); }
+.left { border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+.right { border-left: 1px solid var(--line); }
+.sec { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sec:last-child { border-bottom: 0; }
+.label { margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+.screens { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.screens button { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: 6px; background: none; text-align: left; }
+.screens button:hover { background: var(--bg); }
+.screens button[aria-current="true"] { background: var(--select-soft); color: var(--select); font-weight: 600; }
+.screens small { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.layers { margin: 0; padding: 0; list-style: none; }
+.layers .area { margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
+.layers .area:first-child { margin-top: 0; }
+.layer { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; padding: 4px 8px; border: 0; border-radius: 6px; background: none; text-align: left; }
+.layer:hover { background: var(--bg); }
+.layer[aria-pressed="true"] { background: var(--select-soft); }
+.layer .dot { width: 10px; height: 10px; border-radius: 3px; }
+.layer .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer small { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+
+.center { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; min-height: 0; overflow: auto; background: var(--canvas); background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 16px 16px; }
+.quizbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; padding: 8px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0, 0, 0, .08); }
+.quizbar .q { font-size: 15px; }
+.quizbar .q b { font-size: 17px; }
+.quizbar .score { color: var(--muted); font-variant-numeric: tabular-nums; }
+.quizbar .msg { width: 100%; text-align: center; font-size: 13px; min-height: 1.2em; }
+.msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
+.btn { padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 13px; font-weight: 600; }
+.btn:hover { border-color: var(--select); }
+.btn.primary { background: var(--select); border-color: var(--select); color: #fff; }
+
+.phone { position: relative; flex: none; border-radius: 28px; overflow: hidden; background: #000; box-shadow: 0 0 0 8px #0d0f12, 0 0 0 9px #3a3f48, 0 18px 40px rgba(0, 0, 0, .3); cursor: crosshair; touch-action: manipulation; }
+.phone img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+.ov { position: absolute; inset: 0; pointer-events: none; }
+.bx { position: absolute; box-sizing: border-box; border-radius: 3px; }
+.bx.all { outline: 1px solid var(--c); outline-offset: -1px; background: color-mix(in srgb, var(--c) 7%, transparent); }
+.bx.hover { outline: 2px solid var(--select); outline-offset: -1px; background: var(--select-soft); }
+.bx.sel { outline: 2px solid var(--select); outline-offset: -1px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .28); }
+.bx.twin { outline: 2px dashed var(--select); outline-offset: -1px; }
+.bx.right { outline: 3px solid var(--ok); background: var(--ok-soft); }
+.bx.wrong { outline: 2px solid var(--bad); background: var(--bad-soft); }
+.bx.reveal { outline: 3px solid var(--ok); animation: pulse 1s ease-in-out 3; }
+@keyframes pulse { 50% { outline-offset: 4px; } }
+@media (prefers-reduced-motion: reduce) { .bx.reveal { animation: none; } }
+.tagl { position: absolute; z-index: 2; padding: 1px 6px; border-radius: 5px; background: var(--select); color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; transform: translateY(-100%); }
+.tagl small { font-family: var(--font-mono); font-weight: 400; opacity: .85; margin-left: 4px; }
+.hint { max-width: 420px; margin: 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+.insp-empty { color: var(--muted); }
+.insp-empty ol { padding-left: 18px; margin: 8px 0 0; }
+.nick { margin: 2px 0 6px; font-size: 30px; line-height: 1.1; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; overflow-wrap: anywhere; }
+.idrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.idchip { padding: 1px 8px; border-radius: 6px; color: #fff; font: 600 13px/20px var(--font-mono); }
+.gr { margin: 10px 0 0; font-size: 15px; }
+.facts { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); font-size: 12px; }
+.chip:hover { border-color: var(--select); }
+.chip[aria-current="true"] { border-color: var(--select); color: var(--select); font-weight: 600; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.crumbs span { color: var(--muted); }
+textarea#fb { width: 100%; box-sizing: border-box; min-height: 64px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); resize: vertical; }
+.row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.row .status { color: var(--ok); font-size: 12px; }
+.code { padding: 6px 8px; border-radius: 6px; background: var(--bg); font: 12px/1.4 var(--font-mono); overflow-wrap: anywhere; }
+
+@media (max-width: 960px) {
+  html, body { height: auto; }
+  .app { height: auto; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .pane { overflow: visible; }
+  .left, .right { border: 0; border-top: 1px solid var(--line); }
+  .center { order: -1; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); overflow: visible; }
+  .right { order: 0; } .left { order: 1; }
+  .screens { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .screens button { white-space: nowrap; }
+  .search { max-width: none; }
+}
+</style>
+
+<div class="app" lang="el">
+  <header class="top">
+    <div class="brand"><b>UI Explorer</b><span id="meta"></span></div>
+    <div class="seg" role="group" aria-label="Λειτουργία">
+      <button type="button" id="m-explore" aria-pressed="true">Εξερεύνηση</button>
+      <button type="button" id="m-quiz" aria-pressed="false">Κουίζ</button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="showall"> Δείξε όλα τα κουτάκια</label>
+    <div class="search">
+      <input id="q" type="search" placeholder="Βρες στοιχείο: badge, S7, λεπτά…" autocomplete="off" aria-label="Αναζήτηση στοιχείου" aria-controls="results">
+      <ul class="results" id="results" hidden></ul>
+    </div>
+  </header>
+  <div class="main">
+    <aside class="pane left">
+      <section class="sec"><p class="label">Οθόνες</p><ul class="screens" id="screens"></ul></section>
+      <section class="sec"><p class="label">Layers σε αυτή την οθόνη</p><ul class="layers" id="layers"></ul></section>
+    </aside>
+    <main class="center" id="center">
+      <div class="quizbar" id="quizbar" hidden>
+        <span class="q">Βρες: <b id="qtarget"></b></span>
+        <span class="score" id="qscore"></span>
+        <button type="button" class="btn" id="qshow">Δείξε μου</button>
+        <button type="button" class="btn primary" id="qnext">Επόμενο</button>
+        <span class="msg" id="qmsg" role="status"></span>
+      </div>
+      <div class="phone" id="phone"><img id="shot" alt=""><div class="ov" id="ov"></div></div>
+      <p class="hint" id="hint">Πάτα ένα στοιχείο για να δεις το όνομά του. Ξαναπάτα στο ίδιο σημείο για το στοιχείο από κάτω (π.χ. την κάρτα γύρω από το badge). ← → αλλάζουν οθόνη.</p>
+    </main>
+    <aside class="pane right"><section class="sec" id="insp"></section></aside>
+  </div>
+</div>
+
+<script>
+const DATA = __UI_DATA__;
+
+const UIX = Object.fromEntries(DATA.ui.map((u) => [u.id, u]));
+const fold = (s) => String(s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const known = (id) => id[0] !== '?';
+const colorOf = (id) => (known(id) ? DATA.colors[id[0]] || '#555' : 'var(--bad)');
+const nickOf = (b) => (known(b.id) ? UIX[b.id]?.nick || b.id : 'χωρίς όνομα');
+const screensOf = (id) => DATA.screens.filter((s) => s.boxes.some((b) => b.id === id));
+const store = {
+  get(k) { try { return localStorage.getItem('ui-explorer:' + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem('ui-explorer:' + k, v); } catch { /* private window */ } },
+};
+const $ = (id) => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'style') el.style.cssText = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c);
+  return el;
+}
+
+let cur = Math.max(0, DATA.screens.findIndex((s) => s.id === store.get('screen')));
+let sel = null;      // { id, box }  (box = the clicked instance, or null)
+let stack = [];      // every box under the last click, smallest first
+let hover = null;
+let mode = 'explore';
+let showAll = false;
+let scale = 1;
+const quiz = { target: null, asked: 0, right: 0, misses: 0, done: false, flash: null, best: +(store.get('best') || 0) };
+
+const screen = () => DATA.screens[cur];
+const area = (b) => b.w * b.h;
+const hitsAt = (x, y) => screen().boxes.filter((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h).sort((a, b) => area(a) - area(b));
+
+// ---- phone + overlay ----
+function fit() {
+  const s = screen(), c = $('center');
+  const narrow = matchMedia('(max-width: 960px)').matches;
+  const availW = c.clientWidth - 48;
+  const availH = narrow ? Infinity : c.clientHeight - 48 - ($('quizbar').hidden ? 0 : $('quizbar').offsetHeight + 12) - $('hint').offsetHeight - 12;
+  scale = Math.min(availW / s.vw, availH / s.vh, 1.3);
+  $('phone').style.width = `${Math.round(s.vw * scale)}px`;
+  $('phone').style.height = `${Math.round(s.vh * scale)}px`;
+  drawOverlay();
+}
+function boxEl(b, cls, color) {
+  return h('div', { class: `bx ${cls}`, style: `left:${b.x * scale}px;top:${b.y * scale}px;width:${b.w * scale}px;height:${b.h * scale}px;--c:${color || colorOf(b.id)}` });
+}
+function label(b, extra) {
+  const top = Math.max(16, b.y * scale);
+  const left = Math.min(Math.max(0, b.x * scale), screen().vw * scale - 140);
+  return h('div', { class: 'tagl', style: `left:${left}px;top:${top}px` }, nickOf(b), h('small', null, extra ?? b.id));
+}
+function drawOverlay() {
+  const ov = $('ov'); ov.replaceChildren();
+  const s = screen();
+  if (showAll && mode === 'explore') for (const b of [...s.boxes].sort((a, b) => area(b) - area(a))) ov.append(boxEl(b, 'all'));
+  if (mode === 'explore' && sel) {
+    for (const b of s.boxes.filter((b) => b.id === sel.id && b !== sel.box)) ov.append(boxEl(b, 'twin'));
+    const main = sel.box && s.boxes.includes(sel.box) ? sel.box : s.boxes.find((b) => b.id === sel.id);
+    if (main) { ov.append(boxEl(main, 'sel'), label(main)); }
+  }
+  if (mode === 'quiz' && quiz.flash) {
+    for (const f of quiz.flash) ov.append(boxEl(f.box, f.cls));
+    const named = quiz.flash.find((f) => f.cls === 'wrong');
+    if (named) ov.append(label(named.box));
+  }
+  if (hover && !(mode === 'explore' && sel && hover === sel.box)) {
+    ov.append(boxEl(hover, 'hover'));
+    if (mode === 'explore') ov.append(label(hover));
+  }
+}
+
+// ---- pointer ----
+const phone = $('phone');
+const point = (e) => { const r = phone.getBoundingClientRect(); return [(e.clientX - r.left) / scale, (e.clientY - r.top) / scale]; };
+let last = null;
+phone.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'touch') return;
+  const [x, y] = point(e);
+  const top = hitsAt(x, y)[0] || null;
+  if (top !== hover) { hover = top; drawOverlay(); }
+});
+phone.addEventListener('pointerleave', () => { hover = null; drawOverlay(); });
+phone.addEventListener('click', (e) => {
+  const [x, y] = point(e);
+  const hits = hitsAt(x, y);
+  if (mode === 'quiz') return answer(hits);
+  if (!hits.length) { select(null); return; }
+  const same = last && Math.hypot(last[0] - x, last[1] - y) < 6 && stack.length === hits.length;
+  const i = same && sel ? (hits.indexOf(sel.box) + 1) % hits.length : 0;
+  last = [x, y]; stack = hits;
+  select(hits[i]);
+});
+
+function select(box, id) {
+  sel = box ? { id: box.id, box } : id ? { id, box: null } : null;
+  if (!box && !id) stack = [];
+  hover = null;
+  renderLayers(); renderInspector(); drawOverlay();
+}
+function go(i, then) {
+  cur = (i + DATA.screens.length) % DATA.screens.length;
+  store.set('screen', screen().id);
+  hover = null; stack = []; last = null;
+  if (sel) sel.box = null;
+  $('shot').src = screen().img;
+  $('shot').alt = `Οθόνη ${screen().id}`;
+  renderScreens(); renderLayers();
+  fit();
+  if (then) then();
+  renderInspector();
+}
+
+// ---- left pane ----
+function renderScreens() {
+  $('screens').replaceChildren(...DATA.screens.map((s, i) => h('li', null,
+    h('button', { type: 'button', 'aria-current': i === cur ? 'true' : 'false', onclick: () => go(i) },
+      h('span', null, s.id), h('small', null, String(new Set(s.boxes.filter((b) => known(b.id)).map((b) => b.id)).size))))));
+}
+function renderLayers() {
+  const s = screen();
+  const ids = [...new Set(s.boxes.map((b) => b.id))];
+  const out = [];
+  for (const [letter, name] of Object.entries(DATA.areas)) {
+    const mine = ids.filter((id) => id[0] === letter).sort((a, b) => a.slice(1) - b.slice(1));
+    if (!mine.length) continue;
+    out.push(h('li', { class: 'area' }, `${letter} · ${name}`));
+    for (const id of mine) out.push(layerRow(id, s.boxes.filter((b) => b.id === id)));
+  }
+  const unk = s.boxes.filter((b) => !known(b.id));
+  if (unk.length) {
+    out.push(h('li', { class: 'area' }, 'Χωρίς όνομα (κόκκινο ?)'));
+    for (const b of unk) out.push(layerRow(b.id, [b], b.label || b.tag));
+  }
+  if (!out.length) out.push(h('li', { class: 'insp-empty' }, 'Τίποτα σε αυτή την οθόνη.'));
+  $('layers').replaceChildren(...out);
+}
+function layerRow(id, boxes, text) {
+  return h('li', null, h('button', {
+    type: 'button', class: 'layer', 'aria-pressed': sel?.id === id ? 'true' : 'false',
+    onmouseenter: () => { if (mode === 'explore') { hover = boxes[0]; drawOverlay(); } },
+    onmouseleave: () => { hover = null; drawOverlay(); },
+    onclick: () => { if (mode === 'explore') { stack = []; select(boxes[0]); } },
+  }, h('span', { class: 'dot', style: `background:${colorOf(id)}` }), h('span', { class: 'nm' }, text || nickOf({ id })),
+  h('small', null, boxes.length > 1 ? `${id} ×${boxes.length}` : id)));
+}
+
+// ---- inspector ----
+function renderInspector() {
+  const el = $('insp');
+  if (mode === 'quiz') {
+    el.replaceChildren(h('p', { class: 'label' }, 'Κουίζ'),
+      h('p', null, 'Σου λέω ένα όνομα και το βρίσκεις πάνω στο κινητό. Τα ονόματα δεν φαίνονται όσο παίζεις.'),
+      h('p', { class: 'facts' }, `Καλύτερο σκορ: ${quiz.best} σωστά στη σειρά.`),
+      quiz.flash?.some((f) => f.cls === 'wrong') ? h('p', { class: 'facts' }, 'Λάθος: δες το όνομα πάνω στο κουτάκι και ψάξε ξανά.') : '');
+    return;
+  }
+  if (!sel) {
+    el.replaceChildren(h('div', { class: 'insp-empty' },
+      h('p', { class: 'label' }, 'Τίποτα επιλεγμένο'),
+      h('p', null, 'Τρεις τρόποι να μάθεις τα ονόματα:'),
+      h('ol', null, h('li', null, 'Πάτα ένα στοιχείο στο κινητό.'), h('li', null, 'Διάλεξε από τη λίστα Layers.'), h('li', null, 'Παίξε το Κουίζ (πάνω).')),
+      h('p', { class: 'facts' }, `${DATA.ui.filter((u) => !u.gone).length} στοιχεία με όνομα, ${DATA.screens.length} οθόνες.`)));
+    return;
+  }
+  const id = sel.id, u = UIX[id];
+  const parts = [];
+  if (known(id)) {
+    parts.push(h('p', { class: 'label' }, `${id[0]} · ${DATA.areas[id[0]] || ''}`),
+      h('h2', { class: 'nick' }, u?.nick || id),
+      h('div', { class: 'idrow' }, h('span', { class: 'idchip', style: `background:${colorOf(id)}` }, id), u?.gone ? h('span', { class: 'facts' }, 'αφαιρέθηκε') : null),
+      h('p', { class: 'gr' }, u?.name || ''));
+    const here = screen().boxes.filter((b) => b.id === id).length;
+    parts.push(h('p', { class: 'facts' }, here ? (here > 1 ? `${here} φορές σε αυτή την οθόνη (οι άλλες με διακεκομμένη γραμμή).` : 'Μία φορά σε αυτή την οθόνη.') : 'Δεν φαίνεται σε αυτή την οθόνη.'));
+  } else {
+    const b = sel.box;
+    parts.push(h('p', { class: 'label' }, 'Εκτός registry'), h('h2', { class: 'nick' }, 'χωρίς όνομα'),
+      h('p', { class: 'gr' }, b?.label ? `«${b.label}»` : ''), h('div', { class: 'code' }, b?.tag || ''),
+      h('p', { class: 'facts' }, 'Αυτό πατιέται, αλλά δεν έχει ακόμα ID ούτε όνομα. Πες στον Claude ένα όνομα και θα μπει στη λίστα.'));
+  }
+  if (stack.length > 1 && sel.box && stack.includes(sel.box)) {
+    parts.push(h('div', { class: 'sec', style: 'padding:12px 0 0;border:0' }, h('p', { class: 'label' }, 'Στο ίδιο σημείο (από μέσα προς τα έξω)'),
+      h('div', { class: 'crumbs' }, stack.flatMap((b, i) => [i ? h('span', null, '›') : null,
+        h('button', { type: 'button', class: 'chip', 'aria-current': b === sel.box ? 'true' : 'false', onclick: () => select(b) }, nickOf(b))]))));
+  }
+  if (known(id)) {
+    const where = screensOf(id);
+    parts.push(h('div', { class: 'sec', style: 'padding:12px 0 0;border:0' }, h('p', { class: 'label' }, `Σε ποιες οθόνες (${where.length})`),
+      where.length ? h('div', { class: 'chips' }, where.map((s) => h('button', {
+        type: 'button', class: 'chip', 'aria-current': s === screen() ? 'true' : 'false',
+        onclick: () => go(DATA.screens.indexOf(s), () => { sel = { id, box: null }; renderLayers(); drawOverlay(); }),
+      }, s.id))) : h('p', { class: 'facts' }, 'Σε καμία οθόνη του annotate.')));
+    const line = `${u?.nick || id} — τώρα: … / θέλω: …`;
+    const fb = h('textarea', { id: 'fb', 'aria-label': 'Γραμμή feedback' }); fb.value = line;
+    const status = h('span', { class: 'status', role: 'status' });
+    parts.push(h('div', { class: 'sec', style: 'padding:12px 0 0;border:0' }, h('p', { class: 'label' }, 'Feedback'), fb,
+      h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: async () => {
+        try { await navigator.clipboard.writeText(fb.value); status.textContent = 'Αντιγράφηκε'; } catch { fb.select(); status.textContent = 'Πάτα Ctrl+C'; }
+      } }, 'Αντιγραφή'), status)));
+  }
+  el.replaceChildren(...parts);
+}
+
+// ---- search ----
+const q = $('q'), results = $('results');
+let found = [], pick = 0;
+function search() {
+  const t = fold(q.value.trim());
+  if (!t) { results.hidden = true; return; }
+  found = DATA.ui.filter((u) => !u.gone && [u.nick, u.id, u.name].some((x) => fold(x).includes(t)))
+    .sort((a, b) => (fold(a.nick).startsWith(t) ? 0 : 1) - (fold(b.nick).startsWith(t) ? 0 : 1)).slice(0, 10);
+  pick = 0;
+  results.replaceChildren(...(found.length ? found.map((u, i) => h('li', null, h('button', { type: 'button', class: i === pick ? 'on' : '', onclick: () => choose(u) },
+    h('b', null, u.nick), h('span', null, u.name), h('small', { class: 'mono' }, u.id)))) : [h('li', { class: 'insp-empty', style: 'padding:6px 8px' }, 'Κανένα στοιχείο.')]));
+  results.hidden = false;
+}
+function choose(u) {
+  results.hidden = true; q.value = '';
+  if (mode !== 'explore') setMode('explore');
+  const where = screensOf(u.id);
+  const i = where.includes(screen()) ? cur : where.length ? DATA.screens.indexOf(where[0]) : cur;
+  go(i, () => { sel = { id: u.id, box: null }; stack = []; renderLayers(); drawOverlay(); });
+}
+q.addEventListener('input', search);
+q.addEventListener('keydown', (e) => {
+  if (results.hidden || !found.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); pick = (pick + (e.key === 'ArrowDown' ? 1 : -1) + found.length) % found.length;
+    [...results.querySelectorAll('button')].forEach((b, i) => b.classList.toggle('on', i === pick));
+  } else if (e.key === 'Enter') { e.preventDefault(); choose(found[pick]); }
+  else if (e.key === 'Escape') results.hidden = true;
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('.search')) results.hidden = true; });
+
+// ---- quiz ----
+function setMode(m) {
+  mode = m;
+  $('m-explore').setAttribute('aria-pressed', String(m === 'explore'));
+  $('m-quiz').setAttribute('aria-pressed', String(m === 'quiz'));
+  $('quizbar').hidden = m !== 'quiz';
+  $('hint').hidden = m === 'quiz';
+  sel = null; stack = []; hover = null; quiz.flash = null;
+  if (m === 'quiz') nextQuestion(); else { renderLayers(); renderInspector(); fit(); }
+}
+function nextQuestion() {
+  const pool = DATA.ui.filter((u) => !u.gone && u.id !== quiz.target && screensOf(u.id).length);
+  const u = pool[Math.floor(Math.random() * pool.length)];
+  quiz.target = u.id; quiz.misses = 0; quiz.done = false; quiz.flash = null;
+  const where = screensOf(u.id);
+  const s = where.includes(screen()) ? screen() : where[Math.floor(Math.random() * where.length)];
+  $('qtarget').textContent = u.nick;
+  $('qmsg').textContent = ''; $('qmsg').className = 'msg';
+  go(DATA.screens.indexOf(s));
+  renderScore();
+}
+function renderScore() { $('qscore').textContent = `${quiz.right}/${quiz.asked} σωστά`; }
+function answer(hits) {
+  if (quiz.done) return;
+  const right = hits.find((b) => b.id === quiz.target);
+  const msg = $('qmsg');
+  if (right) {
+    quiz.done = true; quiz.asked++;
+    if (!quiz.misses) { quiz.right++; quiz.streak = (quiz.streak || 0) + 1; if (quiz.streak > quiz.best) { quiz.best = quiz.streak; store.set('best', String(quiz.best)); } }
+    else quiz.streak = 0;
+    quiz.flash = screen().boxes.filter((b) => b.id === quiz.target).map((box) => ({ box, cls: 'right' }));
+    msg.textContent = quiz.misses ? 'Σωστό, με βοήθεια.' : 'Σωστό!'; msg.className = 'msg ok';
+    renderScore(); drawOverlay(); renderInspector();
+    setTimeout(() => { if (mode === 'quiz' && quiz.done) nextQuestion(); }, 1100);
+    return;
+  }
+  quiz.misses++;
+  const wrong = hits[0];
+  quiz.flash = wrong ? [{ box: wrong, cls: 'wrong' }] : null;
+  msg.textContent = wrong ? `Αυτό είναι το «${nickOf(wrong)}». Ψάξε ξανά.` : 'Εκεί δεν υπάρχει στοιχείο. Ψάξε ξανά.';
+  msg.className = 'msg bad';
+  if (quiz.misses >= 3) reveal();
+  drawOverlay(); renderInspector();
+}
+function reveal() {
+  quiz.misses = Math.max(1, quiz.misses);
+  quiz.flash = screen().boxes.filter((b) => b.id === quiz.target).map((box) => ({ box, cls: 'reveal' }));
+  $('qmsg').textContent = `Εδώ είναι το «${UIX[quiz.target].nick}». Πάτα το για να συνεχίσεις.`; $('qmsg').className = 'msg';
+  drawOverlay();
+}
+$('qshow').addEventListener('click', reveal);
+$('qnext').addEventListener('click', () => { if (!quiz.done) { quiz.asked++; quiz.streak = 0; } nextQuestion(); });
+$('m-explore').addEventListener('click', () => setMode('explore'));
+$('m-quiz').addEventListener('click', () => setMode('quiz'));
+$('showall').addEventListener('change', (e) => { showAll = e.target.checked; drawOverlay(); });
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowRight') go(cur + 1);
+  else if (e.key === 'ArrowLeft') go(cur - 1);
+  else if (e.key === 'Escape' && mode === 'explore') select(null);
+});
+new ResizeObserver(() => fit()).observe($('center'));
+
+$('meta').textContent = DATA.meta;
+go(cur);
+</script>

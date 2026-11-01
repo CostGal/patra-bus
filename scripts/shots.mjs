@@ -1,17 +1,18 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
 // Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
 //      --annotate: numbered UI map for UI reviews (TEL-198): every element boxed with its permanent ID from scripts/ui-map.mjs,
-//      -> shots/ui-map/ + LEGEND.md; its own screens (menus open, vehicle…), default iPhone 15 · el · light
+//      -> shots/ui-map/ + LEGEND.md + explorer.html (click an element, see its nick); its own screens (menus open, vehicle…),
+//      default iPhone 15 · el · light
 // Uses the ?demo mode and the same network mocks as the smoke tests (nothing reaches citybus.gr or any third party), so
 // it checks LAYOUT only: the map tiles are blocked (the map area stays empty), fonts are the computer's (not SF/Roboto), and touch feel, push, install, GPS,
 // speed and sunlight still need a real phone (CLAUDE.md rule 9).
 import { spawn } from 'node:child_process';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, firefox, devices } from '@playwright/test';
 import { mockNetwork } from '../tests/e2e/mock.mjs';
-import { UI, UI_SCREENS, annotate, legend } from './ui-map.mjs';
+import { AREAS, COLORS, UI, UI_SCREENS, annotate, legend } from './ui-map.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = fileURLToPath(new URL('../shots/', import.meta.url));
@@ -95,10 +96,14 @@ async function capture(context, base, screen, dir, summary) {
   await page.waitForTimeout(500);
   if (ANNOTATE) {
     if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
-    const { ids, unknown } = await page.evaluate(annotate, UI);
+    // first a clean JPEG with the boxes as data (explorer.html), then the boxed PNG
+    const { boxes, vw, vh } = await page.evaluate(annotate, { ui: UI, colors: COLORS, draw: false });
+    await mkdir(`${dir}/screens`, { recursive: true });
+    await page.screenshot({ path: `${dir}/screens/${screen.id}.jpg`, type: 'jpeg', quality: 80 });
+    const { ids, unknown } = await page.evaluate(annotate, { ui: UI, colors: COLORS });
     await shoot(page, `${dir}/${screen.id}.png`);
     await page.close();
-    summary.push({ dir, screen: screen.id, files: [`${screen.id}.png`], problems, ids, unknown });
+    summary.push({ dir, screen: screen.id, files: [`${screen.id}.png`], problems, ids, unknown, boxes, vw, vh });
     return;
   }
   const files = [];
@@ -156,7 +161,19 @@ if (ANNOTATE) {
   const flagged = summary.filter((s) => s.problems.length);
   const meta = `Base: ${base}/ · ${new Date().toISOString()} · ${wantDevices.join(', ')} · ${wantLangs.join(', ')} · ${wantThemes.join(', ')}${[...notes].map((n) => `\n\n> **Note:** ${n}`).join('')}${flagged.map((s) => `\n\n> **Problem** \`${rel(s.dir)}/${s.screen}\`: ${s.problems.join('; ')}`).join('')}`;
   await writeFile(`${outDir}LEGEND.md`, legend(results, meta));
+  // explorer.html per device/lang/theme: the clean screenshots with every box clickable (scripts/ui-explorer.html)
+  const template = await readFile(`${ROOT}scripts/ui-explorer.html`, 'utf8');
+  const explorers = [];
+  for (const dir of new Set(summary.map((s) => s.dir))) {
+    const data = { meta: `${rel(dir).replace('ui-map/', '').replace('/', ' · ')} · ${new Date().toISOString().slice(0, 10)}`, areas: AREAS, colors: COLORS,
+      ui: UI.map(({ id, nick, name, gone }) => ({ id, nick, name, gone })),
+      screens: summary.filter((s) => s.dir === dir).map(({ screen, vw, vh, boxes }) => ({ id: screen, img: `screens/${screen}.jpg`, vw, vh, boxes })) };
+    const json = JSON.stringify(data).replace(/</g, '\\u003c');
+    await writeFile(`${dir}/explorer.html`, '<!doctype html>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' + template.replace('__UI_DATA__', () => json));
+    explorers.push(`${rel(dir)}/explorer.html`);
+  }
   console.log(`\n${summary.length} annotated screens -> shots/ui-map/ (see shots/ui-map/LEGEND.md); ${summary.reduce((n, s) => n + s.unknown.length, 0)} elements not in the registry`);
+  console.log(`Explorer (click an element to see its name): ${explorers.map((f) => `shots/${f}`).join(', ')}`);
   process.exit(0);
 }
 const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', 'Layout only (demo data, map tiles blocked). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as `device-test` issues.', ''];
