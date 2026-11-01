@@ -27,6 +27,7 @@ function rows(now: number) {
       area: 'App', started: daysAgo(now, 9), pr: 'https://github.com/CostGal/patra-bus/pull/77',
     },
     { id: 89, title: 'TEL ids', status: 'Done', url: 'https://app.notion.com/cccc', area: null, started: daysAgo(now, 20), pr: null },
+    { id: 92, title: 'Cut feature', status: 'Not now', url: 'https://app.notion.com/eeee', area: null, started: daysAgo(now, 30), pr: null },
     { id: 91, title: 'Fresh review', status: 'In review', url: 'https://app.notion.com/dddd', area: null, started: daysAgo(now, 2), pr: null },
   ]
 }
@@ -77,13 +78,14 @@ test('reads the current block and draws the cards grouped by status', async ($, 
     if (surface === 'desktop') expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('1/4 done')
     else expect((await ui.find({ type: 'Text', text: /█/ }))?.text).toBe('███░░░░░░░')
     expect(await ui.find({ text: 'Φόρτωση…' })).toBeUndefined()
-    // Ομάδες με πλήθος· η Done κάρτα δεν φαίνεται.
+    // Ομάδες με πλήθος· οι Done και Not now κάρτες δεν φαίνονται, και η Not now δεν μετρά στην πρόοδο (1/4, όχι 1/5).
     expect(await ui.find({ type: 'Text', text: 'In progress' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'In review' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'Not started' })).toBeDefined()
     expect((await ui.findAll({ type: 'Text', text: '●' })).map(t => t.props.color))
       .toEqual(['#5E9FE0', '#FFA344', '#9B9B9B'])
     expect(await ui.find({ text: /TEL-89/ })).toBeUndefined()
+    expect(await ui.find({ text: /TEL-92/ })).toBeUndefined()
     // Κάρτα σε πλαίσιο, τίτλος ως link στο www.notion.so.
     const card = await ui.find({ type: 'Box', key: 'TEL-90' })
     expect(card?.props.borderStyle).toBe('round')

@@ -10,6 +10,8 @@ const TASKS = 'collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2'
 const SERVERS = ['Notion', 'claude.ai Notion']
 const NOTION_TOOL = /^mcp__(.+)__notion-query-data-sources$/
 const STATUSES = ['In progress', 'In review', 'Not started']
+// Κλειστές κάρτες: Done, και Not now (τη θέλαμε αλλά δεν χωρούσε). Καμία δεν φαίνεται· μόνο οι Done μετράνε στην πρόοδο.
+const CLOSED = ['Done', 'Not now']
 const EVERY_MS = 5 * 60_000
 // Κολλημένο = In progress ή In review πάνω από 7 μέρες από το Started on (το formula του Notion δεν διαβάζεται με SQL).
 const STUCK_STATUSES = ['In progress', 'In review']
@@ -81,7 +83,7 @@ export function isStuck(status: string, started: string | null | undefined, now:
   return Number.isFinite(t) && now - t > STUCK_MS
 }
 
-/** Το τρέχον block (Κατάσταση = Τρέχον) και οι κάρτες του συνδεδεμένου χρήστη: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος. */
+/** Το τρέχον block (Κατάσταση = Τρέχον) και οι κάρτες του συνδεδεμένου χρήστη: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος, οι Not now πουθενά. */
 export async function loadBlock(ways: Way[], now: number): Promise<Omit<Block, 'error' | 'updatedAt'>> {
   const self = await notion(ways, 'notion-get-self', {})
   const userId: string = self.user.id
@@ -96,11 +98,11 @@ export async function loadBlock(ways: Way[], now: number): Promise<Omit<Block, '
      FROM "${TASKS}" WHERE "Block" LIKE ? AND "Owner" LIKE ?`,
     [`%${blockId}%`, `%${userId}%`]))
   const rows = tasks.results as Row[]
-  const cards = rows.filter(r => r.status !== 'Done').map((r): Card => ({
+  const cards = rows.filter(r => !CLOSED.includes(r.status)).map((r): Card => ({
     id: r.id, title: r.title, status: r.status, url: notionLink(r.url),
     area: r.area || undefined, pr: r.pr || undefined, stuck: isStuck(r.status, r.started, now) || undefined,
   })).sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || a.id - b.id)
-  return { cards, done: rows.length - cards.length, name: current.name || undefined }
+  return { cards, done: rows.filter(r => r.status === 'Done').length, name: current.name || undefined }
 }
 
 let timer: { cancel: () => void } | undefined

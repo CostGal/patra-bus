@@ -8,7 +8,7 @@ Task: $ARGUMENTS
 Ακολούθησε το `docs/WORKFLOW.md`: ενότητα «`/task`» για τη ροή, ενότητα 3 για τα βήματα, και το `CLAUDE.md`. Απάντα στα
 ελληνικά.
 
-- Αν δεν δόθηκε TEL-id: δείξε τις κάρτες του τρέχοντος block που δεν είναι Done (βάση Code Tasks,
+- Αν δεν δόθηκε TEL-id: δείξε τις κάρτες του τρέχοντος block που δεν είναι Done ή Not now (βάση Code Tasks,
   `collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2`, πεδίο `Block` = το block της βάσης Blocks
   `collection://6f2b0107-6723-4fe4-b05d-a9d242fe884c` με `"Κατάσταση" = 'Τρέχον'`) και ρώτα ποια. Σημείωσε ποιες
   είναι Κολλημένες (In progress / In review πάνω από 7 μέρες από το `Started on`).
