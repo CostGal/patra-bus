@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/cloud-session-start.mjs\"",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/session-start.mjs\"",
             "timeout": 600
           }
         ]

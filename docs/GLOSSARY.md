@@ -156,7 +156,7 @@ Where it shows up in Telematica: the `hp` field in the problem report (`web/js/r
 My words:
 
 **Hook** (SessionStart hook): a command Claude Code runs by itself at a fixed moment, like a checklist taped inside the project folder that gets done every time the folder is opened.
-Where it shows up in Telematica: `.claude/settings.json` runs `scripts/cloud-session-start.mjs` when a session starts; in a cloud session it installs packages and Chromium, locally it does nothing.
+Where it shows up in Telematica: `.claude/settings.json` runs `scripts/session-start.mjs` when a session starts; it runs `npm ci` when `node_modules` is missing (a new worktree), and in a cloud session it also installs Chromium.
 My words:
 
 **i18n** (internationalisation): preparing an app so text can be shown in several languages, like menus printed in two languages.
@@ -209,6 +209,10 @@ My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Blocks from Notion (there can be two) (`/block` refreshes it; `/sprint` is kept as an alias).
+My words:
+
+**npm ci**: installs the packages exactly as `package-lock.json` lists them, like stocking a new desk with exactly the tools on the old desk's list.
+Where it shows up in Telematica: the CI runs it, and the SessionStart hook (`scripts/session-start.mjs`) runs it when a session starts without `node_modules`.
 My words:
 
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
