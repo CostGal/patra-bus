@@ -9,7 +9,7 @@ export type Card = {
   /** In progress / In review πάνω από 7 μέρες από το Started on. */
   stuck?: boolean
 }
-/** Το τρέχον block (Κατάσταση = Τρέχον): όνομα, οι ανοιχτές κάρτες και πόσες είναι ήδη Done. */
+/** Τα τρέχοντα blocks (Κατάσταση = Τρέχον, ένα ή δύο): όνομα («B0 · … + B0.5 · …»), οι ανοιχτές κάρτες και πόσες είναι ήδη Done. */
 export type Block = {
   cards: Card[]
   name?: string

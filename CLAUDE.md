@@ -164,7 +164,7 @@ transform-origin, reduced motion) στο **`docs/DESIGN.md`** — δεσμευτ
   helper for the weekly, `/task TEL-<id>` for one task per session; every step the user does is given one at a time and
   Claude waits for confirmation.
 - The mod `.claude/skills/tel-sprint/` opens a pane «Block» in Claude Code with the connected Notion user's open cards
-  of the current Block (Κατάσταση = Τρέχον; read-only, through the Notion connector, every 5′ and on `/block`, with
+  of the current Blocks (Κατάσταση = Τρέχον, can be two, e.g. B0 and B0.5; Done, Not now and Covered cards hidden; read-only, through the Notion connector, every 5′ and on `/block`, with
   `/sprint` kept as an alias). It also marks the Κολλημένα (In progress / In review for more than 7 days). In a local Claude desktop
   session the connector is a server named by an id per user; in auto mode each user allows its two read tools once in
   `.claude/settings.local.json` (gitignored): `mcp__<id>__notion-get-self`, `mcp__<id>__notion-query-data-sources`.
