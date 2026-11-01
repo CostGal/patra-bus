@@ -208,7 +208,7 @@ Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `wor
 My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
-Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Block from Notion (`/block` refreshes it; `/sprint` is kept as an alias).
+Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Blocks from Notion (there can be two) (`/block` refreshes it; `/sprint` is kept as an alias).
 My words:
 
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
