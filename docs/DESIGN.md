@@ -38,7 +38,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Modal = dim scrim; non-blocking panels (the sheet) = no scrim.
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
 - Glass UI (TEL-83, on for everyone since 2026-10-29, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
-  **glass** = floating chrome over the map (☰, chips, locate FAB, sheet / side panel, menu popover, setup and
+  **glass** = floating chrome over the map (☰, locate FAB, sheet / side panel, menu popover, setup and
   welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
   clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
   (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
@@ -105,7 +105,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   under it (70 px card; the side panel keeps its own padding); mid = Places (48 px round buttons: Σπίτι, Δουλειά, your own, "+"; a
   place not set yet is an empty ring and opens the Settings on it), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
   60% of the screen, so the rows above stay compact); up = favourites with their next arrival (LIVE / ΠΡΟΓΡ., polled only while up,
-  4 stops, the rest "Δες αφίξεις") and my routines. The active trip sits above Places while there is one.
+  4 stops, the rest "Δες αφίξεις") and my routines. The active trip sits above Places while there is one. No saved-place chips float over the map any more: Places show only in the sheet, at mid and up.
 
 ### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
 - Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft

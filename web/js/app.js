@@ -200,7 +200,6 @@ const fabsBottom = $('fabs-bottom');
 const mapAttrib = $('map-attrib');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
-const chipsEl = $('chips');
 const searchbarEl = $('searchbar');
 // What the map re-centres on between low and mid: home = the user's location (if the map has it), a stop or a pin =
 // that point (route() sets it); other views keep the map still.
@@ -212,7 +211,7 @@ function onSnap({ state, visible, desktop }) {
   if (desktop) {
     map.setPadding({ top: 72, bottom: 0, left: sheet.el.offsetWidth, right: 0 });
   } else {
-    const top = Math.max(menuBtn.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
+    const top = menuBtn.getBoundingClientRect().bottom + 8;
     map.setPadding({ top, bottom: Math.min(visible, innerHeight * 0.6), left: 0, right: 0 });
   }
   // As in Apple Maps (Kostas, TEL-222): between low and mid the map glides to centre its focus in the part left above
@@ -720,16 +719,6 @@ function teardown() {
   map.highlightStop(null);
   map.clearMarkers('pin');
 }
-// Contextual shortcuts: saved places (max 3), home screen only. Nothing is rendered when there are none.
-let getPlaces = () => [];
-import('./places.js').then((m) => { getPlaces = m.getPlaces; paintChips(); }).catch(() => {});
-function paintChips() {
-  let list = [];
-  try { list = currentHead === '' ? getPlaces().filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng)).slice(0, 3) : []; } catch { /* ignore */ }
-  chipsEl.replaceChildren(...list.map((p) => h('a', { class: 'chip', href: planHash(p, p.name) }, icon(p.id === 'home' ? 'home' : p.id === 'work' ? 'briefcase' : 'pin'), p.name)));
-  chipsEl.hidden = !list.length;
-  appEl.classList.toggle('has-chips', !chipsEl.hidden);
-}
 
 // A notification link (`#/notif?routine=…|ref=…&stop=…`, js/notif-link.js) → the hash it stands for on this device.
 async function resolveNotifLink(params) {
@@ -772,7 +761,6 @@ async function route() {
   content.replaceChildren();
   sheet.scrollToTop();
   if (!reduceMotion.matches) { content.classList.remove('enter'); void content.offsetWidth; content.classList.add('enter'); }
-  paintChips();
   document.title = title();
 
   focusPt = null;
@@ -909,7 +897,6 @@ function localizeChrome() {
   $('search-close').setAttribute('aria-label', t('Κλείσιμο αναζήτησης'));
   northBtn.setAttribute('aria-label', t('Επαναφορά βορρά'));
   northBtn.title = t('Επαναφορά βορρά');
-  chipsEl.setAttribute('aria-label', t('Αποθηκευμένα μέρη'));
   $('sheet').setAttribute('aria-label', t('Πληροφορίες'));
   $('demo-tag').title = t('Δεδομένα επίδειξης');
   paintLocLabel();
@@ -931,7 +918,7 @@ function buildChrome() {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#chips', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

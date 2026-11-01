@@ -439,7 +439,7 @@ export function createMap(container, opts = {}) {
   }
 
   // ---------- camera helpers ----------
-  // How far the visible floating elements (search bar + chips on top, the FAB column on the right) reach into the map.
+  // How far the visible floating elements (the ☰ and the offline note on top, the FAB column on the right) reach into the map.
   const GAP = 8;
   function floatingInsets() {
     const mr = container.getBoundingClientRect();

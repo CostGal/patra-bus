@@ -449,7 +449,7 @@ to the field 320 ms later, once the sheet is up: focusing it low would make iOS 
 `visualViewport` listener writes `--kb` (keyboard height) for the results' bottom padding; it never scrolls the page (with the
 keyboard open, a programmatic scroll shifts iOS's hit-testing of fixed elements and taps miss). `.menu-fab` has its own
 layer (`translateZ(0)`), or iOS hands taps on it to the sheet's scroller underneath at full. The map's top padding
-is measured from the ☰ and the chips (which share its row). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
+is measured from the ☰ (the saved-place chips that shared its row are gone since TEL-232: the places are in the sheet). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
 fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
 `app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
 (Apple Maps). One spring per move
