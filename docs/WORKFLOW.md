@@ -24,7 +24,9 @@
 - **Κολλημένο** = κάρτα In progress / In review πάνω από 7 μέρες από το `Started on`. Τα `Started on` και
   `Completed on` τα γεμίζει μόνο του το Notion.
 - Ό,τι βρίσκουμε μέσα σε ένα session (bug, ιδέα, «αυτό θέλει αλλαγή») δεν διορθώνεται εκεί. Σημειώνεται (F1, F2…) και στο
-  τέλος του session γίνεται **κάρτα** (Not started, χωρίς block, λεπτομέρειες στο σώμα της κάρτας).
+  τέλος του session γίνεται **κάρτα** (Not started, λεπτομέρειες στο σώμα της κάρτας). **Καμία κάρτα δεν μένει χωρίς Block:**
+  τα findings μπαίνουν στο Block **Backlog** (Κατάσταση = Αργότερα, δεν κλείνει ποτέ), πάντα σε ένα **Group**: σε υπάρχον
+  Group του Backlog αν υπάρχει παρόμοιο θέμα, αλλιώς σε νέο. Στο weekly οι κάρτες του Backlog μπαίνουν σε τρέχον Block.
 
 ### TEL-id, issues και PRs
 
@@ -43,7 +45,8 @@ issues και PRs με **έναν κοινό** μετρητή (#74 issue, #75 PR
 - Με το TEL-id στο branch ή στον τίτλο, το Notion βάζει μόνο του το link της κάρτας στο PR και δείχνει το PR στην κάρτα.
 
 **Τι αλλάζει ο Claude στο Notion χωρίς να ρωτήσει** (μόνιμη άδεια του Kostas, 2026-10-17):
-- νέες κάρτες στη βάση Code Tasks (Project = Telematica, `Owner` = Kostas)·
+- νέες κάρτες στη βάση Code Tasks (Project = Telematica, `Owner` = Kostas, πάντα με Block· findings: Block = Backlog)·
+- νέο Group (γραμμή στη βάση Groups, με Block = Backlog) μόνο όταν στο Backlog δεν ταιριάζει υπάρχον·
 - σε υπάρχουσες κάρτες: `Task status`, `Block` (μόνο μετά από απόφαση στο weekly/planning, ή το τρέχον block σε κάρτα
   που μόλις έφτιαξε το `/quick-task`), `PR`, `Agent-ready`, `Owner`, σύντομο κείμενο στο σώμα της κάρτας. Τα
   `Started on` και `Completed on` δεν γράφονται με το χέρι (τα βάζει το Notion).
