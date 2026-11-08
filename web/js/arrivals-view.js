@@ -157,7 +157,7 @@ export function mountStop(container, ctx, { code }) {
       h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
   const acts = h('div', { class: 'stopv-acts' },
-    h('button', { type: 'button', class: 'stopv-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
+    h('button', { type: 'button', class: 'stopv-pill g-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
     star);
 
   // the name, as in Apple Maps: one line at low and mid (17 px, shrunk down to 14 px before it is cut with "…"); at up
