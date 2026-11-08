@@ -335,16 +335,7 @@ html.glass .stopv-chip[data-key="*"] {
 }
 html.glass .stopv-chipbar > .g-lens { opacity: var(--l, 1); }
 [data-sheet="peek"] .stopv-chip { pointer-events: none; }
-/* TEL-227: the card's round buttons (share, ✕, ☆) are one glass circle, like ☰: lighter glass, a bright rim and a
-   small shadow; pressed, the usual whiter circle (background-color) */
-html.glass .btn.round.g-circle {
-  background-image: var(--g-sheen); background-color: var(--g-circle);
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 5px var(--g-circle-shadow);
-}
-/* in the sheet: lighter blur, 3.4 px at low growing to 3.9 px from mid (--l) */
-html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: blur(calc(3.4px + var(--l, 1) * .5px)) saturate(180%); backdrop-filter: blur(calc(3.4px + var(--l, 1) * .5px)) saturate(180%); }
-html.glass .btn.round.g-circle.g-press { background-color: var(--g-pressed); }
+/* TEL-227: the card's round buttons (share, ✕, ☆) are one glass circle, .g-circle: its glass is in css/ui-kit.css */
 /* directions: tinted blue glass while the sheet floats, solid blue up (--u: 0 up to mid, 1 up) */
 html.glass .sheet .stopv-pill.primary {
   background-image: linear-gradient(to bottom, rgba(255, 255, 255, calc(.32 * (1 - var(--u, 1)))), rgba(255, 255, 255, 0) 55%);
@@ -411,10 +402,9 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
     --g-line: 1px solid var(--border);
   }
 }
-/* TEL-227: the sheet and its round buttons set their own blur; solid there too */
+/* TEL-227: the sheet sets its own blur; solid there too (its round buttons: css/ui-kit.css) */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   html.glass .sheet { --g-blur-sheet: none; }
-  html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 /* TEL-227: up on the stop the sheet reaches the top, and the ☰ fades out as it gets there (it would sit on the share
    button); not tappable while up */

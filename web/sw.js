@@ -57,6 +57,7 @@ const SHELL = [
   'css/welcome.css',
   'css/setup.css',
   'css/glass.css',
+  'css/ui-kit.css',
   'css/home.css',
   'js/app.js',
   'js/ui.js',
