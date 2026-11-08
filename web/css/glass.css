@@ -343,8 +343,7 @@ html.glass .stopv-chipbar > .g-lens { opacity: var(--l, 1); }
    badge --pk-ox) and how much of the row fits there (--pk-cut: the scroller is that much narrower, so its own edge
    fade cuts the row) */
 @media (max-width: 899.98px) {
-  /* more room at the sides of the floating card: 8 px more than the sheet's own 16 (16 px from the card's edge) */
-  html.glass .sheet .stopv { padding-inline: 8px; }
+  /* the floating card's side room (16 px from its edge) is the kit's .sheet-inset (css/ui-kit.css) */
   /* the chips' row ends at the same inset as everything else, faded where more chips scroll (the scroller is 6 px wider
      each side, taken back by margins, and 10 px taller, so a held chip grows without being cut, nor its tap area) */
   html.glass .sheet .stopv-chipbar { margin-inline: 0; }

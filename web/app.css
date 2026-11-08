@@ -419,8 +419,6 @@ html.sheet-dragging .toast-host { transition: none; }
   .veh-ring, .user-dot::after { display: none; }
 }
 
-/* the sheet already provides the 16 px side padding */
-.sheet-content .stopv { padding-inline: 0; }
 .maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--card) 85%, transparent) !important; }
 .maplibregl-ctrl-attrib a, .maplibregl-ctrl-attrib { color: var(--muted-foreground) !important; }
 /* the map's attribution (TEL-226): one small line of text, always there, at the left just above the sheet; it rides

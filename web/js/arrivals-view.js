@@ -97,7 +97,7 @@ const secsUntil = (at, now) => Math.max(0, Math.ceil((at - now) / 1000));
 export function mountStop(container, ctx, { code }) {
   code = String(code);
   const stop = ctx.data && ctx.data.stopByCode.get(code);
-  const root = h('div', { class: 'stopv' });
+  const root = h('div', { class: 'stopv sheet-inset' });
   container.replaceChildren(root);
   if (!stop) {
     root.append(

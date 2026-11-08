@@ -48,3 +48,13 @@ html.glass .sheet .g-pill.primary {
 .card-head > .btn.round.g-circle { margin: 0; grid-row: 1; transform-origin: 50% 0; } /* held, it grows downwards: up, the sheet's top edge would cut it */
 .card-head > .btn.round.g-circle:last-child { grid-column: 3; } /* stays right when the title moves to its own row */
 .card-head .card-title { margin: 0; overflow: hidden; font-size: 1.0625rem; line-height: 20px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+
+/* ---- .sheet-inset: one inset in a card, 16 px from its edge (U2) ----
+   On a view's root: header circles, chips, buttons and inner cards all line up on it. Outside the sheet it is the
+   view's own 16 px; in the sheet the sheet's content padding already gives 16; on a phone the glass card floats 8 px
+   in from the screen's edge, so 8 px more keeps 16 px from the card's edge. */
+.sheet-inset { padding-inline: var(--space-4); }
+.sheet-content .sheet-inset { padding-inline: 0; }
+@media (max-width: 899.98px) {
+  html.glass .sheet .sheet-inset { padding-inline: 8px; }
+}
