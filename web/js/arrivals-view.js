@@ -150,9 +150,9 @@ export function mountStop(container, ctx, { code }) {
 
   // under the name at low: the line badges (the filter chips, carried up and centred there: css/glass.css, placed by
   // placeChips()); from mid the chips are right under the name. The stop's number is at the very bottom (TEL-227)
-  const name = h('h1', { class: 'stopv-name', title: stop.displayName }, stop.displayName);
+  const name = h('h1', { class: 'stopv-name card-title', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
-    h('div', { class: 'stopv-top' },
+    h('div', { class: 'stopv-top card-head' },
       iconBtn('share', t('Κοινοποίηση'), share),
       h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
