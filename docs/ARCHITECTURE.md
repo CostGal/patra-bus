@@ -414,6 +414,11 @@ get real `:active`), `.tabular` (`font-variant-numeric: tabular-nums`), `.fade-e
 instead of a divider line under sticky chrome). `@media (prefers-reduced-transparency: reduce)` and
 `(prefers-contrast: more)` fall back `.material`/`.material-lg`/`.menu-fab`/`.fab`/`.sheet`/`.toast` to solid.
 
+**UI kit (TEL-268): `web/css/ui-kit.css`.** The shared pieces of the locked stop card style (`docs/DESIGN.md` §10,
+rules in `docs/UI-PROTOCOL.md`): `.g-circle`, `.g-pill`, `.card-head` + `.card-title`, `.sheet-inset`, each with its plain
+and its `html.glass` rules. It loads right after `glass.css` (so it wins over module CSS of the same weight); a view adds
+the class next to its own (`stopv-top card-head`) and keeps only what is its own in its CSS.
+
 **Glass prototype (TEL-83): `web/css/glass.css` + `web/js/glass.js`.** The CSS loads always and is active only under
 `html.glass`, which `index.html` sets in its markup (glass is on for everyone since 2026-10-29); `index.html` also loads
 `js/glass.js` as a module (app.js never imports it).
