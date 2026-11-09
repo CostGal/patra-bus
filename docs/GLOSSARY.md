@@ -295,6 +295,10 @@ My words:
 Where it shows up in Telematica: `/plan-week` and `/task TEL-<id>` in `.claude/skills/`, both following `docs/WORKFLOW.md`.
 My words:
 
+**Specificity** (CSS): how CSS picks a winner when two rules set the same thing on one element: the more precise rule wins, and between two equally precise ones the later one wins, like two notes on the fridge where the more detailed one counts, or else the newer one.
+Where it shows up in Telematica: in TEL-268, moving the `.g-circle` rules into `css/ui-kit.css` (which loads later) let them beat `.stopv .btn.round .icon`, and the stop card's icons went from 22 px to the 20 px of rule U3.
+My words:
+
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
 My words:
@@ -317,6 +321,10 @@ My words:
 
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
+My words:
+
+**UI kit**: one file with the shared building blocks of the look, like a box of Lego pieces every model is built from.
+Where it shows up in Telematica: `web/css/ui-kit.css` (TEL-268): the card's round button, wide pill, header row and inset; each view takes them from there.
 My words:
 
 **Upsert**: "update the row if it exists, otherwise create it", in one step, like a tally sheet where you add a stroke to a line or start the line if it is new.

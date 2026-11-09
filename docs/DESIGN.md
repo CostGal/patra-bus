@@ -180,7 +180,8 @@ the next one. Registry: `scripts/ui-map.mjs`.
 ## 10. The stop card style (LOCKED, TEL-227, Kostas 2026-10-31)
 
 The stop card (location mode) is the reference for every other card and header: the next sessions follow it, and a
-change to it needs Kostas's decision. Its layout is in §4 ("Stop header"), its glass in §4 ("Glass target"). What we
+change to it needs Kostas's decision. Its layout is in §4 ("Stop header"), its glass in §4 ("Glass target"); its shared
+classes (`.g-circle`, `.g-pill`, `.card-head`, `.card-title`, `.sheet-inset`) are in `web/css/ui-kit.css` (TEL-268). What we
 learned building it, as rules:
 
 **Look**

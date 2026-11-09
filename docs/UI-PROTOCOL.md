@@ -8,8 +8,8 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
   exceptions.
 - **Check** says how a rule is checked: **auto** = a test will check it (TEL-269, with a list of exceptions per view that
   gets shorter in every PR of the block), **eye** = screenshots and Kostas on his iPhone.
-- The kit (`web/css/ui-kit.css`, TEL-268) holds the shared classes. Until it lands they live in `css/arrivals.css`,
-  `css/home.css` and `css/glass.css`.
+- The kit (`web/css/ui-kit.css`, TEL-268) holds the shared classes, plain and glass: `.g-circle` (U3), `.g-pill`,
+  `.card-head` + `.card-title` (U4, U19) and `.sheet-inset` (U2). A view's own CSS only places them.
 
 ## Rules
 

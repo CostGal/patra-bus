@@ -335,32 +335,15 @@ html.glass .stopv-chip[data-key="*"] {
 }
 html.glass .stopv-chipbar > .g-lens { opacity: var(--l, 1); }
 [data-sheet="peek"] .stopv-chip { pointer-events: none; }
-/* TEL-227: the card's round buttons (share, ✕, ☆) are one glass circle, like ☰: lighter glass, a bright rim and a
-   small shadow; pressed, the usual whiter circle (background-color) */
-html.glass .btn.round.g-circle {
-  background-image: var(--g-sheen); background-color: var(--g-circle);
-  -webkit-backdrop-filter: var(--g-blur); backdrop-filter: var(--g-blur);
-  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 5px var(--g-circle-shadow);
-}
-/* in the sheet: lighter blur, 3.4 px at low growing to 3.9 px from mid (--l) */
-html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: blur(calc(3.4px + var(--l, 1) * .5px)) saturate(180%); backdrop-filter: blur(calc(3.4px + var(--l, 1) * .5px)) saturate(180%); }
-html.glass .btn.round.g-circle.g-press { background-color: var(--g-pressed); }
+/* TEL-227: the card's round buttons (share, ✕, ☆) are one glass circle, .g-circle: its glass is in css/ui-kit.css */
 /* directions: tinted blue glass while the sheet floats, solid blue up (--u: 0 up to mid, 1 up) */
-html.glass .sheet .stopv-pill.primary {
-  background-image: linear-gradient(to bottom, rgba(255, 255, 255, calc(.32 * (1 - var(--u, 1)))), rgba(255, 255, 255, 0) 55%);
-  background-color: color-mix(in srgb, var(--primary) calc(74% + var(--u, 1) * 26%), transparent);
-  /* a shining outline: bright along the top, a light rim all round */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .75), inset 0 -1px 0 rgba(255, 255, 255, .18), inset 0 0 0 1px rgba(255, 255, 255, .32), 0 2px 10px color-mix(in srgb, var(--primary) 30%, transparent);
-  -webkit-backdrop-filter: blur(3px) saturate(180%); backdrop-filter: blur(3px) saturate(180%);
-}
 /* TEL-227, phone sheet only: at low the line badges sit centred under the name, at 85%; towards mid (--l) the bar
    comes down into its own row right under the header, the badges spread and become the filter chips; the directions
    row is under the chips, so nothing crosses it. js/arrivals-view.js measures the move (--pk-dx/-dy, around the first
    badge --pk-ox) and how much of the row fits there (--pk-cut: the scroller is that much narrower, so its own edge
    fade cuts the row) */
 @media (max-width: 899.98px) {
-  /* more room at the sides of the floating card: 8 px more than the sheet's own 16 (16 px from the card's edge) */
-  html.glass .sheet .stopv { padding-inline: 8px; }
+  /* the floating card's side room (16 px from its edge) is the kit's .sheet-inset (css/ui-kit.css) */
   /* the chips' row ends at the same inset as everything else, faded where more chips scroll (the scroller is 6 px wider
      each side, taken back by margins, and 10 px taller, so a held chip grows without being cut, nor its tap area) */
   html.glass .sheet .stopv-chipbar { margin-inline: 0; }
@@ -411,10 +394,9 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
     --g-line: 1px solid var(--border);
   }
 }
-/* TEL-227: the sheet and its round buttons set their own blur; solid there too */
+/* TEL-227: the sheet sets its own blur; solid there too (its round buttons: css/ui-kit.css) */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   html.glass .sheet { --g-blur-sheet: none; }
-  html.glass .sheet .btn.round.g-circle { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 /* TEL-227: up on the stop the sheet reaches the top, and the ☰ fades out as it gets there (it would sit on the share
    button); not tappable while up */
