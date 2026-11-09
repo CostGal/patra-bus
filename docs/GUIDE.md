@@ -54,8 +54,8 @@ Files: `web/js/guide-view.js`, `web/css/guide.css`, `web/js/i18n-en-guide.js`, `
      (`icon(name)` and `h()` from `ui.js`, read-only) for menu, search, locate, star, share, bell, etc.
   Each section collapsible or simply stacked; follow DESIGN.md (materials, typography tokens, press feedback,
   reduced motion). Back button like the other views (`ctx`/`cityHash` patterns from settings-view.js).
-- Use the real current UI as the source of truth (read `app.js`, `arrivals-view.js`, `planner-view.js`,
-  `lines-view.js`, `settings-view.js`, `nearby.js`, `onboard.js`, `routines.js`, `notify.js`); never describe a
+- Use the real current UI as the source of truth (read `app.js`, `arrivals-view.js`,
+  `lines-view.js`, `settings-view.js`, `nearby.js`, `routines.js`, `notify.js`); never describe a
   feature that does not exist.
 
 ## Part C: integration

@@ -52,7 +52,7 @@ Third-party services (free, no key, credit shown in Settings and on the map):
 | Stops, lines, routes data | `scripts/fetch-static.mjs`, `scripts/build-routes.mjs`, `web/data/`, `web/js/data.js` |
 | Map | `web/js/map.js` |
 | "Next bus near me" | `web/js/nearby.js`, `location.js`, `walk.js` |
-| Trip planner and place search | `web/js/planner.js`, `planner-view.js`, `geocode.js` |
+| Place search | `web/js/geocode.js` |
 | Push reminders | `web/js/push.js`, `notify.js`, `web/sw-push.js`, `worker/src/reminders.js`, `worker/src/push.js` |
 | Weekly routines | `web/js/routines.js`, `worker/src/routines.js` |
 | Delay statistics | `worker/src/stats.js` |
@@ -130,7 +130,6 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 |---|---|
 | `#/` | home: next-bus-near-me card (`nearby.js`) + favorites + recents |
 | `#/stop/{code}` | stop sheet with arrival tiles (`arrivals-view.js`) |
-| `#/plan` / `#/plan?to=lat,lng&name=…&from=lat,lng` | trip planner (`planner-view.js`) |
 | `#/lines` / `#/line/{lineCode}?dir=1` | line browser / one line on the map (`lines-view.js`) |
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
 | `#/guide` / `#/guide?section=install` | in-app guide + install-as-app tutorial (`guide-view.js`, `install-guide.js`; contract in `docs/GUIDE.md`) |
@@ -239,7 +238,7 @@ createLivePoller(code, onUpdate: (s: { data: LiveResult|null, error: ApiError|nu
 - `demo.js`: `demoLive(code) → LiveResult` synthesised from `routes.json` order + leg times, consistent across stops
   (same `vehicleCode` passes stops in route order), mix of live (with positions along the route) and scheduled.
 - `arrivals-view.js`: `mountStop(container, ctx, { code }) → {destroy}` (header with name, code, favorite, share,
-  "Οδηγίες ως εδώ" → `#/plan?to=…`; arrival tiles with per-second countdown, LIVE vs ΠΡΟΓΡ. unmistakable;
+  arrival tiles with per-second countdown, LIVE vs ΠΡΟΓΡ. unmistakable;
   shows the stop's live buses on the map via `ctx.map.setVehicles('stop', …)`);
   `arrivalTile(v: Vehicle, fetchedAt, opts?: { compact?: boolean, now?: number, line?: Line }) → HTMLElement`;
   `etaText(sec) → string` (e.g. "τώρα", "<1′", "7′", "1 ώ 05′").
@@ -280,16 +279,8 @@ type Data = { stops: Stop[], lines: Line[], routes: Route[], stopByCode: Map, li
               routesByStop: Map<string, Route[]> };
 ```
 
-### E — trip planner: `js/planner.js`, `js/planner-view.js`, `js/geocode.js`, `css/planner.css`, `tests/planner.test.mjs`
-- `geocode.js`: `searchPlaces(q, { near, signal }) → Promise<Place[]>`, `Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode? }`.
-- `planner.js`: `planTrips(ctx, from: {lat,lng}, to: {lat,lng}, { now }) → Promise<Itinerary[]>` (single bus, plus walk-only when sensible).
-  `Itinerary = { kind: 'bus'|'walk', line, route, board: Stop, alight: Stop, walkTo: {seconds, meters, geometry}, walkFrom: {...},
-   bus: { remainingSec, live, vehicleCode, scheduledAt?: number }, rideSec, rideSource: 'live-match'|'estimate',
-   leaveInSec /* when to start walking: bus remaining − walkTo − buffer */, arriveAt: number, next?: {...} }`.
-  If a live vehicle with the same `vehicleCode` appears at both board and alight stops, ride time = difference (exact).
-- `planner-view.js`: `mountPlanner(container, ctx, { to?, from?, name? }) → {destroy}`: destination search, itinerary cards
-  with a big "Φύγε σε 12′" (or "Φύγε τώρα" / "Δεν προλαβαίνεις αυτό, επόμενο σε…"), step timeline, map overlays
-  (walk dashed, ride in line colour, board/alight markers), reminder button (`notify.js`), live refresh.
+### E — place search: `js/geocode.js`
+- `geocode.js`: `searchPlaces(q, { near, signal }) → Promise<Place[]>`, `Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode? }`. A place result opens `#/pin?lat=&lng=` (nearby stops). The trip planner (`planner.js`, `planner-view.js`, `#/plan`) was removed in TEL-217.
 
 ### F — PWA, storage & extras: `js/store.js`, `js/notify.js`, `js/lines-view.js`, `js/share.js`, `js/settings-view.js`, `css/extras.css`, `web/sw.js`, `web/manifest.webmanifest`, `web/icons/*`
 - `store.js`: `getFavorites(): string[]`, `isFavorite(code)`, `toggleFavorite(code): boolean`, `getRecents(kind: 'stop'|'place'): any[]`,
@@ -310,10 +301,6 @@ type Data = { stops: Stop[], lines: Line[], routes: Route[], stopByCode: Map, li
 - Browser checks: open your **own** tab (`tabs_create`) and only drive that tab. Use `?demo` for data at night.
 
 ## Round 2 (transfers, push, offline map, accents, polish)
-
-### T — transfers: `js/planner.js`, `js/planner-view.js`, `css/planner.css`, `tests/planner.test.mjs`
-`Itinerary.kind` gains `'transfer'` with `legs: [{ route, line, board, alight, bus, rideSec, rideSource }, …]` (2 bus legs) and `transfer: { stop|walk, waitSec }`.
-The reminder button passes `trip` to `scheduleReminder` (below) for the FIRST bus leg.
 
 ### PW — push server: `worker/src/index.js`, `worker/src/push.js`, `worker/src/reminders.js`, `worker/wrangler.toml`, `tests/push-worker.test.mjs`, `.dev.vars` (gitignored, local keys only)
 - `GET /api/push/key` → `{ publicKey }` (VAPID, base64url, uncompressed P-256 point).
@@ -352,13 +339,13 @@ The reminder button passes `trip` to `scheduleReminder` (below) for the FIRST bu
 ### PO — polish + integration: `js/app.js`, `js/nearby.js`, `js/location.js`, `js/map.js`, `js/settings-view.js`, `app.css`, `css/extras.css`, `tests/location.test.mjs`, `tests/nearby.test.mjs`
 Settings mounts `mountPushCard` and `mountOfflineCard`; offline indicator; 4th nearby stop; compass in landscape; map pins clear of the floating buttons.
 
-## Round 3 (minimal UI, places/routines, onboard alert, reliability stats, English)
+## Round 3 (minimal UI, places/routines, onboard alert [removed, TEL-217], reliability stats, English)
 
 ### UI principles (binding for every module)
-- Home = map + search bar + ONE contextual card in the peek sheet. Priority: active onboard trip (`mountOnboardCard`) > saved place card (`mountPlacesCard`) > nearby next bus (`mountNearby`) > a single CTA. Favourites/recents only when the sheet is expanded or search is focused.
+- Home = map + search bar + ONE contextual card in the peek sheet: the nearby next bus (`mountNearby`) or a single CTA. (The onboard trip and saved-place cards were removed in TEL-217.) Favourites/recents only when the sheet is expanded or search is focused.
 - Show things only when relevant: no permanent legends or explanations (one-time hints at most; full legend in Settings → Σχετικά), empty sections hidden, secondary actions behind a "⋯" menu or in the detail view. One primary action per card.
 - Text budget per card: one headline line + one meta line; details on tap.
-- Floating controls: search bar, locate button; everything else in the menu. Chips only when useful (e.g. saved places), max 3.
+- Floating controls: search bar, locate button; everything else in the menu. No chips row (the saved-places chips were removed in TEL-217).
 - Every new user-visible string goes through `t()` from `js/i18n.js` with the GREEK text as the key: `t('Φύγε σε {n}′', { n })`.
 
 ### U — minimal shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/sheet.js`, `js/ui.js`, `js/map.js`, `web/sw.js`
@@ -366,7 +353,6 @@ Applies the principles above; home composition; links `css/places.css`; SW shell
 
 ### P — places + routines (client): `js/places.js`, `js/routines.js`, `css/places.css`, `tests/places.test.mjs`
 - `getPlaces() → [{ id: 'home'|'work'|string, name, lat, lng }]`, `setPlace(p)`, `removePlace(id)` (own localStorage key `patra-bus:places`, try/catch).
-- `mountPlacesCard(container, ctx) → {destroy}`: compact "Για το σπίτι · 601 · Φύγε σε 6′" using `planTrips` (best itinerary), refreshed ≤ every 60 s while visible; renders nothing if no places or no location.
 - `mountPlacesSettings`, `mountRoutinesSettings(container, ctx) → {destroy}` (settings sections).
 - Routines: `{ id, days: number[] /*0=Κυρ*/, time: 'HH:MM' /*Europe/Athens, planned leave time*/, placeId, ref, trip: { stopCode, routeCode, lineCode, offsetSec }, leadMin }` booked on the server (below) when push is on.
   The server gets the push address, days/time, the boarding `trip` (incl. `offsetSec`, the walk to the stop) and the opaque link `#/{city}/notif?routine=<ref>`: never the place, its coordinates or its name.
@@ -376,11 +362,8 @@ Applies the principles above; home composition; links `css/places.css`; SW shell
 - Reminders gain `kind: 'leave'|'alight'` (default 'leave'); 'alight' text: "Ετοιμάσου: η στάση «{name}» σε ~1′" (`trip.stopName` optional field).
 - Stats: only from upstream live responses the worker already fetches (never extra calls). When a `vehicleCode` seen as scheduled at stop S (scheduled time T) later appears live at S with eta ≤ 5′, record delay = liveArrival − T once per (vehicle, stop) into a Stats Durable Object (rolling last 200 per routeCode+stopCode). `GET /api/stats/{routeCode}/{stopCode}` → `{ samples, medianDelaySec, p80DelaySec, updatedAt }` (cache 10 min).
 
-### B — onboard alert: `js/onboard.js`, `js/bus-view.js`, `js/planner-view.js`, `css/planner.css`, `tests/onboard.test.mjs`
-`startOnboard({ vehicleCode, routeCode, lineCode, alightStop })` (user gesture): foreground = GPS + Screen Wake Lock + countdown, vibrate/notify ~1 stop before; background = push reminder via `notify.scheduleReminder({ …, trip: { stopCode: alightStop, vehicleCode, routeCode, lineCode, offsetSec: 90, stopName }, kind: 'alight' })`. `activeTrip()`, `onTripChange(fn)`, `stopOnboard()`, `mountOnboardCard(container, ctx)`. Entry: bus view ("Θα κατέβω στη…") and planner itinerary ("Είμαι στο λεωφορείο").
-
-### R — reliability in the UI: `js/api.js`, `js/arrivals-view.js`, `css/arrivals.css`, `js/nearby.js`, `css/nearby.css`, `js/planner.js`, `tests/api.test.mjs`, `tests/planner.test.mjs`, `tests/nearby.test.mjs`
-`fetchStats(routeCode, stopCode)` (memo 10 min, null on failure). Scheduled tiles show a quiet "συνήθως +3′" when samples ≥ 10; the planner shifts scheduled buses by the median delay (labelled). Also make tiles + nearby card follow the UI principles.
+### R — reliability in the UI: `js/api.js`, `js/arrivals-view.js`, `css/arrivals.css`, `js/nearby.js`, `css/nearby.css`, `tests/api.test.mjs`, `tests/nearby.test.mjs`
+`fetchStats(routeCode, stopCode)` (memo 10 min, null on failure). Scheduled tiles show a quiet "συνήθως +3′" when samples ≥ 10; Also make tiles + nearby card follow the UI principles.
 
 ### L — English + settings: `js/i18n.js`, `js/i18n-en.js`, `js/store.js`, `js/settings-view.js`, `js/lines-view.js`, `css/extras.css`, `tests/i18n.test.mjs`, `tests/store.test.mjs`
 `t()`, `lang()`, `setLang('el'|'en')`, `onLangChange`; language auto from `navigator.language`, override in Settings; `<html lang>` updated. Stop/line names stay Greek. Settings mounts `mountPlacesSettings`, `mountRoutinesSettings`, push and offline cards; settings and lines follow the UI principles.

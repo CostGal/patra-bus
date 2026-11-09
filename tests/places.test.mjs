@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlaces, pickPlace, usableItinerary, cleanPlace, placeHash, MAX_CUSTOM } from '../web/js/places.js';
+import { createPlaces, cleanPlace, MAX_CUSTOM } from '../web/js/places.js';
 import { createRoutines, normDays, daysLabel, buildRoutinePayload, tripFromItinerary, validTime, MAX_ROUTINES } from '../web/js/routines.js';
 
 function fakeStorage(init = {}) {
@@ -11,8 +11,6 @@ const broken = { getItem() { throw new Error('denied'); }, setItem() { throw new
 
 const HOME = { id: 'home', name: 'Σπίτι', lat: 38.2466, lng: 21.7346 };
 const WORK = { id: 'work', name: 'Δουλειά', lat: 38.2900, lng: 21.7900 };
-const AT_HOME = { lat: 38.2467, lng: 21.7347 };
-const FAR = { lat: 38.2700, lng: 21.7600 }; // ~3 km from both
 
 // ---------------------------------------------------------------- places storage
 
@@ -70,48 +68,6 @@ test('places: unusable localStorage falls back to memory and keeps working', () 
   }
 });
 
-test('places: placeHash matches the planner deep link', () => {
-  assert.equal(placeHash(HOME), '#/plan?to=38.24660,21.73460&name=%CE%A3%CF%80%CE%AF%CF%84%CE%B9');
-});
-
-// ---------------------------------------------------------------- selection
-
-test('pickPlace: nothing within 300 m, unknown location → null', () => {
-  assert.equal(pickPlace([HOME], AT_HOME, { hour: 20 }), null);
-  assert.equal(pickPlace([HOME, WORK], null, { hour: 8 }), null);
-  assert.equal(pickPlace([], FAR, { hour: 8 }), null);
-});
-
-test('pickPlace: mornings → Δουλειά, evenings → Σπίτι, midday → farthest', () => {
-  const places = [HOME, WORK];
-  assert.equal(pickPlace(places, FAR, { hour: 8 }).id, 'work');
-  assert.equal(pickPlace(places, FAR, { hour: 19 }).id, 'home');
-  assert.equal(pickPlace(places, FAR, { hour: 1 }).id, 'home');
-  assert.equal(pickPlace(places, AT_HOME, { hour: 13 }).id, 'work'); // only work is far
-  const near = { lat: 38.2475, lng: 21.7346 };
-  assert.equal(pickPlace(places, near, { hour: 13 }).id, 'work'); // farthest
-});
-
-test('pickPlace: preferred place too close → the other one; custom places are candidates', () => {
-  assert.equal(pickPlace([HOME, WORK], AT_HOME, { hour: 19 }).id, 'work');
-  const gym = { id: 'p1', name: 'Γυμναστήριο', lat: 38.30, lng: 21.80 };
-  assert.equal(pickPlace([HOME, gym], AT_HOME, { hour: 8 }).id, 'p1');
-  assert.equal(pickPlace([HOME, WORK, gym], AT_HOME, { hour: 8 }).id, 'work');
-});
-
-test('usableItinerary: first walk or catchable bus; missed/none skipped', () => {
-  const now = 1_700_000_000_000;
-  const bus = (secs) => ({ kind: 'bus', bus: { departAt: now + secs * 1000 }, walkTo: { seconds: 120 }, bufferSec: 120 });
-  const missed = bus(60); // 60 s left, walk 120 s
-  const none = { kind: 'bus', bus: null };
-  const ok = bus(900);
-  assert.equal(usableItinerary([missed, none, ok], now), ok);
-  assert.equal(usableItinerary([missed, none], now), null);
-  const walk = { kind: 'walk' };
-  assert.equal(usableItinerary([none, walk, ok], now), walk);
-  assert.equal(usableItinerary([], now), null);
-  assert.equal(usableItinerary(null, now), null);
-});
 
 // ---------------------------------------------------------------- routines
 

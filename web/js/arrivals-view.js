@@ -123,7 +123,7 @@ export function mountStop(container, ctx, { code }) {
 
   addRecent('stop', { code, name: stop.displayName });
 
-  // ---- header: name · ★ · ⋯ (share, directions) · close ----
+  // ---- header: name · ★ · ⋯ (share) · close ----
   const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
   const star = h('button', { type: 'button', class: 'btn round stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
   function paintStar() {
@@ -144,10 +144,8 @@ export function mountStop(container, ctx, { code }) {
     if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
   }
-  const directions = () => ctx.navigate(`#/plan?to=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&name=${encodeURIComponent(stop.displayName)}`);
 
   const menu = h('div', { class: 'stopv-menu', role: 'menu', hidden: true },
-    h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); directions(); } }, icon('walk'), t('Οδηγίες ως εδώ')),
     h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); share(); } }, icon('share'), t('Κοινοποίηση')));
   const moreBtn = h('button', { type: 'button', class: 'btn round stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
   function setMenu(open) {
