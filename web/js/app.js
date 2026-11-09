@@ -56,8 +56,7 @@ const parsePt = (s) => {
   const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(s || '');
   return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
 };
-const ptStr = (p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
-const planHash = (to, name) => cityHash(`#/plan?to=${ptStr(to)}${name ? `&name=${encodeURIComponent(name)}` : ''}`);
+const pinHash = (to) => cityHash(`#/pin?lat=${to.lat.toFixed(5)}&lng=${to.lng.toFixed(5)}`);
 const msgEl = (text) => h('p', { class: 'state-msg' }, text);
 const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, t('Δοκίμασε ξανά')));
 const backBtn = (to = '#/') => h('a', { class: 'btn round', href: cityHash(to), 'aria-label': t('Πίσω') }, icon('back'));
@@ -75,7 +74,7 @@ function stopRow(stop, meters) {
     h('span', { class: 'chev' }, icon('chevron')));
 }
 function placeRow(p) {
-  return h('a', { class: 'stop-row', href: planHash(p, p.name) },
+  return h('a', { class: 'stop-row', href: pinHash(p) },
     h('span', { class: 'stop-ico' }, icon('pin')),
     h('span', { class: 'stop-main' },
       h('div', { class: 'stop-name' }, p.name),
@@ -166,7 +165,6 @@ function buildMenu() {
     item('#/', 'home', t('Αρχική')),
     item('#/favorites', 'star', t('Αγαπημένες στάσεις')),
     item('#/lines', 'bus', t('Γραμμές')),
-    item('#/plan', 'route', t('Διαδρομή')),
     h('div', { class: 'pop-sep' }),
     h('div', { class: 'pop-head', id: 'theme-label' }, t('Θέμα')),
     h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' },
@@ -194,14 +192,13 @@ const fabsBottom = $('fabs-bottom');
 const desktopMQ = matchMedia('(min-width: 900px)');
 const toastHost = $('toasts');
 let attribEl = null;
-const chipsEl = $('chips');
 const searchbarEl = $('searchbar');
 function onSnap({ visible, desktop }) {
   if (!map) return;
   if (desktop) {
     map.setPadding({ top: 72, bottom: 0, left: sheet.el.offsetWidth, right: 0 });
   } else {
-    const top = Math.max(searchbarEl.getBoundingClientRect().bottom, chipsEl.hidden ? 0 : chipsEl.getBoundingClientRect().bottom) + 8;
+    const top = searchbarEl.getBoundingClientRect().bottom + 8;
     map.setPadding({ top, bottom: Math.min(visible, innerHeight * 0.6), left: 0, right: 0 });
   }
 }
@@ -382,7 +379,7 @@ function choosePlace(p) {
   if (p.kind === 'stop' && p.stopCode && data.stopByCode.has(String(p.stopCode))) { chooseStop(data.stopByCode.get(String(p.stopCode))); return; }
   addRecent('place', { name: p.name, subtitle: p.subtitle || '', lat: p.lat, lng: p.lng });
   closeSearch();
-  ctx.navigate(planHash(p, p.name));
+  ctx.navigate(pinHash(p));
 }
 const srHead = (text) => h('div', { class: 'sr-head', role: 'presentation' }, text);
 
@@ -404,8 +401,6 @@ function renderSearch(keepActive = false) {
     } else {
       out.push(msg(t('Γράψε το όνομα μιας στάσης, έναν κωδικό στάσης ή έναν τόπο.')));
     }
-    // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
-    out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
   } else {
     const stops = searchStops(data, q, 6);
     if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops));
@@ -509,12 +504,12 @@ document.addEventListener('pointerdown', (e) => {
 }, true);
 
 // ---------------------------------------------------------------- views owned by the shell
-// Home = ONE contextual card: onboard trip > saved place > nearby next bus. Favourites/recents show only when the sheet is expanded (CSS).
+// Home = ONE contextual card: nearby next bus. Favourites/recents show only when the sheet is expanded (CSS).
 function mountHome(container, c) {
   const slot = (cls) => h('div', { class: `home-slot ${cls}`, hidden: true });
-  const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
+  const box = { nearby: slot('home-nearby') };
   const more = h('div', { class: 'home-more', hidden: true });
-  const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
+  const card = h('div', { class: 'home-card' }, box.nearby);
   container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, more);
   // The peek sheet is exactly as tall as the one visible card.
   const ro = new ResizeObserver(() => { const hh = card.offsetHeight; if (hh) sheet.setPeek(44 + hh + 8); });
@@ -554,7 +549,7 @@ function mountHome(container, c) {
   // The first card with content wins; nearby is mounted only when nothing above it renders (it polls live data).
   const evaluate = () => {
     if (dead) return;
-    const top = box.onboard.childElementCount ? 'onboard' : box.places.childElementCount ? 'places' : 'nearby';
+    const top = 'nearby';
     showTop(top);
     if (top === 'nearby') {
       if (views.nearby || nearbyBusy || nearbyFailed) return;
@@ -568,13 +563,7 @@ function mountHome(container, c) {
       box.nearby.replaceChildren();
     }
   };
-  const mo = new MutationObserver(evaluate);
-  mo.observe(box.onboard, { childList: true });
-  mo.observe(box.places, { childList: true });
-  Promise.allSettled([
-    load('onboard', './onboard.js', 'mountOnboardCard', (m) => { if (m.onTripChange) offs.push(m.onTripChange(evaluate)); }),
-    load('places', './places.js', 'mountPlacesCard'),
-  ]).then((rs) => { rs.forEach((r) => r.status === 'rejected' && console.error('[home]', r.reason)); evaluate(); });
+  evaluate();
 
   const paint = () => {
     const favs = getFavorites().map((code) => data.stopByCode.get(String(code))).filter(Boolean);
@@ -591,7 +580,6 @@ function mountHome(container, c) {
   return {
     destroy() {
       dead = true;
-      mo.disconnect();
       ro.disconnect();
       sheet.setPeek(null);
       Object.values(hideTimers).forEach((id) => id && clearTimeout(id));
@@ -623,8 +611,6 @@ function mountPin(container, c, p) {
   if (fix) sub.push(t('{d} από εσένα', { d: fmtDist(haversine(fix, p)) }));
   container.replaceChildren(
     h('div', { class: 'view-head' }, backBtn(), h('h1', {}, pinName(), h('span', { class: 'sub' }, sub.join(' · ')))),
-    h('div', { class: 'btn-row' },
-      h('a', { class: 'btn primary', href: planHash(p, pinName()) }, icon('route'), t('Διαδρομή ως εδώ'))),
     h('section', { class: 'home-section' },
       h('h2', {}, t('Κοντινές στάσεις')),
       near.length ? h('div', { class: 'list' }, near.map((n) => stopRow(n.stop, n.meters)))
@@ -641,7 +627,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', report: 'full' };
+const SNAP = { '': 'peek', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -656,41 +642,11 @@ function teardown() {
   map.highlightStop(null);
   map.clearMarkers('pin');
 }
-// Contextual shortcuts: saved places (max 3), home screen only. Nothing is rendered when there are none.
-let getPlaces = () => [];
-import('./places.js').then((m) => { getPlaces = m.getPlaces; paintChips(); }).catch(() => {});
-function paintChips() {
-  let list = [];
-  try { list = currentHead === '' ? getPlaces().filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng)).slice(0, 3) : []; } catch { /* ignore */ }
-  chipsEl.replaceChildren(...list.map((p) => h('a', { class: 'chip', href: planHash(p, p.name) }, icon(p.id === 'home' ? 'home' : p.id === 'work' ? 'briefcase' : 'pin'), p.name)));
-  chipsEl.hidden = !list.length;
-  appEl.classList.toggle('has-chips', !chipsEl.hidden);
-}
-
-// A notification link (`#/notif?routine=…|ref=…&stop=…`, js/notif-link.js) → the hash it stands for on this device.
-async function resolveNotifLink(params) {
-  const stop = params.stop && data.stopByCode.has(String(params.stop)) ? `#/stop/${encodeURIComponent(params.stop)}` : '#/';
-  try {
-    const [nl, rt, pl] = await Promise.all([import('./notif-link.js'), import('./routines.js'), import('./places.js')]);
-    return nl.resolveNotif(params, { routines: rt.getRoutines(), places: pl.getPlaces(), links: nl.createLinks(), hasStop: (c) => data.stopByCode.has(c) });
-  } catch (err) {
-    console.error('[notif]', err);
-    return stop;
-  }
-}
-
 async function route() {
   const token = ++routeToken;
   const { city: hashCity, rel, parts, params } = parseHash(location.hash);
   // A link into the other city (pasted, shared, history): the page is per city, so remember it and reload on that hash.
   if (hashCity && hashCity !== cityId()) { setSetting('city', hashCity); location.reload(); return; }
-  if (parts[0] === 'notif') {
-    const to = await resolveNotifLink(params);
-    if (token !== routeToken) return;
-    try { history.replaceState(history.state, '', cityHash(to)); } catch { /* ignore */ }
-    route();
-    return;
-  }
   // Canonical form: prefix for every city but the default (an unprefixed hash means "this city" while running).
   const canon = formatHash(rel);
   if ((location.hash || '#/') !== canon) { try { history.replaceState(history.state, '', canon); } catch { /* ignore */ } }
@@ -706,7 +662,6 @@ async function route() {
   content.replaceChildren();
   sheet.scrollToTop();
   if (!reduceMotion.matches) { content.classList.remove('enter'); void content.offsetWidth; content.classList.add('enter'); }
-  paintChips();
   document.title = title();
 
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted });
@@ -742,12 +697,6 @@ async function route() {
     case 'bus':
       document.title = `${t('Διαδρομή οχήματος')} · ${title()}`;
       await mount(() => import('./bus-view.js'), (m) => m.mountBus(content, ctx, { vehicleCode: String(arg), route: params.route || undefined, stop: params.stop || undefined }));
-      break;
-    case 'plan':
-      document.title = `${t('Διαδρομή')} · ${title()}`;
-      await mount(() => import('./planner-view.js'), (m) => m.mountPlanner(content, ctx, {
-        to: parsePt(params.to) || undefined, from: parsePt(params.from) || undefined, name: params.name || undefined,
-      }));
       break;
     case 'lines':
       document.title = `${t('Γραμμές')} · ${title()}`;
@@ -827,7 +776,6 @@ function localizeChrome() {
   if (!searchOpen) menuBtn.setAttribute('aria-label', t('Μενού'));
   northBtn.setAttribute('aria-label', t('Επαναφορά βορρά'));
   northBtn.title = t('Επαναφορά βορρά');
-  chipsEl.setAttribute('aria-label', t('Αποθηκευμένα μέρη'));
   $('sheet').setAttribute('aria-label', t('Πληροφορίες'));
   $('demo-tag').title = t('Δεδομένα επίδειξης');
   paintLocLabel();

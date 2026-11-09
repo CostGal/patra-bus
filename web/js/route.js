@@ -40,7 +40,7 @@ export const cityHash = (hash) => formatHash(hash, cityId());
 // For anything that leaves the page (share, notification, push): always carries the prefix.
 export const shareHash = (hash) => formatHash(hash, cityId(), { always: true });
 
-// Is the hash pointing at something city-specific (a code or coordinates)? Bare views (`#/`, `#/plan`, `#/lines`,
+// Is the hash pointing at something city-specific (a code or coordinates)? Bare views (`#/`, `#/lines`,
 // `#/settings`, `#/favorites`) are not: they open in whatever city the user is in.
 // The settings never are.
 const CITYLESS = new Set(['settings']);

@@ -140,7 +140,7 @@ Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` uses it 
 My words:
 
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
-Where it shows up in Telematica: `#/stop/1011`, `#/plan`, `#/settings` (`web/js/app.js`, `route.js`).
+Where it shows up in Telematica: `#/stop/1011`, `#/lines`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
 
 **Headless browser**: a real browser that runs without a visible window, so a script can open pages and take screenshots, like a robot using the browser for you.
@@ -240,7 +240,7 @@ Where it shows up in Telematica: `.github/pull_request_template.md`; only Kostas
 My words:
 
 **Push subscription**: the address of one phone's notification inbox, which a server uses to send it a message, like a postal address for notifications.
-Where it shows up in Telematica: the phone gives it to the Worker when booking a reminder (`web/js/push.js`, `worker/src/reminders.js`).
+Where it shows up in Telematica: the phone gives it to the Worker when booking a reminder (`worker/src/reminders.js`; the web client was removed in TEL-270).
 My words:
 
 **PWA** (progressive web app): a website that can be installed and work like an app, even partly offline, like a bookmark with superpowers.
@@ -280,7 +280,7 @@ Where it shows up in Telematica: the CSS files, and the `sel` of each entry in `
 My words:
 
 **Service worker**: a helper script the browser runs in the background for a site, like a doorman who answers for you when you're out.
-Where it shows up in Telematica: `web/sw.js` keeps the app working offline; `web/sw-push.js` shows notifications.
+Where it shows up in Telematica: `web/sw.js` keeps the app working offline.
 My words:
 
 **Skill** (slash command): a saved set of instructions Claude Code loads when you type its name, like a recipe card you hand the cook.
@@ -332,7 +332,7 @@ Where it shows up in Telematica: the founders' proposal (TEL-1) suggests 4 years
 My words:
 
 **Web Push**: the standard way a server sends a notification to a phone even when the app is closed, like a postal delivery to your door.
-Where it shows up in Telematica: `web/js/push.js`, `web/sw-push.js`, `worker/src/push.js`.
+Where it shows up in Telematica: `worker/src/push.js` (the web client was removed in TEL-270).
 My words:
 
 **WebKit**: the browser engine inside Safari and every iPhone browser, like the engine block that all iPhone browsers share.

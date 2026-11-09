@@ -360,7 +360,7 @@ html.sheet-dragging .toast-host { transition: none; }
 .hint { padding: var(--space-2) 0; color: var(--muted-foreground); font-size: 14px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 
-/* home: ONE contextual card (onboard > place > nearby); favourites/recents only when the sheet is expanded.
+/* home: ONE contextual card (nearby); favourites/recents only when the sheet is expanded.
    .home-card stacks its slots in one grid cell so the outgoing and incoming card overlap during the
    ~180ms cross-fade (js/app.js showTop()) instead of both taking block-flow space and doubling the height. */
 .home-card { position: relative; display: grid; }
@@ -409,9 +409,9 @@ html.sheet-dragging .toast-host { transition: none; }
    The system replaces our colours, so LIVE vs SCHEDULED must differ by something else: the LIVE badge is filled (Highlight) with a
    visible dot, SCHEDULED stays an outline (dashed); the live stripe is thick, the scheduled one thin; the chosen filter chip is filled. */
 @media (forced-colors: active) {
-  :root .atile-flag, :root .nb-flag, :root .pl-flag, :root .ex-chip { border: 1px dashed CanvasText; background: Canvas; color: CanvasText; }
-  :root .atile-live .atile-flag, :root .nb-flag-live, :root .pl-flag.is-live, :root .ex-chip-live { forced-color-adjust: none; border: 1px solid Highlight; background: Highlight; color: HighlightText; }
-  :root .atile-dot, :root .nb-dot, :root .pl-dot, :root .ex-chip-dot { forced-color-adjust: none; background: HighlightText; }
+  :root .atile-flag, :root .nb-flag, :root .ex-chip { border: 1px dashed CanvasText; background: Canvas; color: CanvasText; }
+  :root .atile-live .atile-flag, :root .nb-flag-live.is-live, :root .ex-chip-live { forced-color-adjust: none; border: 1px solid Highlight; background: Highlight; color: HighlightText; }
+  :root .atile-dot, :root .nb-dot, :root .ex-chip-dot { forced-color-adjust: none; background: HighlightText; }
   :root .atile { border-left-width: 2px; border-left-style: dashed; }
   :root .atile-live, :root .nb-hero-live, :root .nb-mini-live { border-left-width: 8px; border-left-style: solid; }
   :root .atile-live.atile-aged { border-left-width: 2px; border-left-style: dashed; }
