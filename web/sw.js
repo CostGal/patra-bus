@@ -1,13 +1,10 @@
 // Service worker: offline app shell + OpenFreeMap assets. Bump CACHE on any shell change.
 // Never touches /api/ or any other origin except tiles.openfreemap.org (routing, geocoding etc. stay on the network).
-// Push handlers live in sw-push.js (owned separately).
-importScripts('sw-push.js');
 
 const CACHE = 'patra-bus-v18';
 const MAP_CACHE = 'patra-bus-map-v1'; // runtime OpenFreeMap cache, bounded (oldest tiles trimmed first)
-const MAP_OFFLINE = 'patra-bus-map-offline-v1'; // filled by js/offline.js (opt-in download), never trimmed
 const MAP_MAX = 4000;
-const KEEP_CACHES = [CACHE, MAP_CACHE, MAP_OFFLINE];
+const KEEP_CACHES = [CACHE, MAP_CACHE];
 
 // <pure> (loaded verbatim by tests/offline.test.mjs: no outer references)
 // 'static' = immutable per versioned URL (cache-first); 'dynamic' = style + TileJSON (network-first); null = not ours.
@@ -43,7 +40,6 @@ const SHELL = [
   'index.html',
   'app.css',
   'manifest.webmanifest',
-  'sw-push.js',
   'icon.svg',
   'css/tokens.css',
   'css/arrivals.css',
@@ -72,7 +68,6 @@ const SHELL = [
   'js/cities.js',
   'js/city-detect.js',
   'js/route.js',
-  'js/notif-link.js',
   'js/boot-city.js',
   'js/geo.js',
   'js/walk.js',
@@ -87,8 +82,6 @@ const SHELL = [
   'js/bus-view.js',
   'js/settings-view.js',
   'js/accents.js',
-  'js/push.js',
-  'js/offline.js',
   'js/i18n.js',
   'js/i18n-en.js',
   'js/i18n-en-guide.js',
@@ -97,7 +90,6 @@ const SHELL = [
   'js/i18n-en-welcome.js',
   'js/i18n-en-setup.js',
   'js/places.js',
-  'js/routines.js',
   'js/onboard.js',
   'js/guide-view.js',
   'js/platform.js',
@@ -181,13 +173,7 @@ async function networkFirst(event) {
 }
 
 // ---- OpenFreeMap (the only foreign origin we cache) ----
-const mapFirst = async (request) => { // downloaded copy wins over the runtime one
-  for (const name of [MAP_OFFLINE, MAP_CACHE]) {
-    const hit = await (await caches.open(name)).match(request, { ignoreVary: true });
-    if (hit) return hit;
-  }
-  return null;
-};
+const mapFirst = async (request) => (await caches.open(MAP_CACHE)).match(request, { ignoreVary: true });
 let mapPuts = 0;
 async function mapPut(request, res) {
   const cache = await caches.open(MAP_CACHE);
@@ -237,8 +223,7 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.hostname === 'tiles.openfreemap.org') {
-    // cache: 'reload' marks js/offline.js downloads: straight to the network, js/offline.js stores them itself
-    const kind = request.cache === 'reload' ? null : mapKind(url.href);
+    const kind = mapKind(url.href);
     if (kind) event.respondWith(kind === 'static' ? mapStatic(event) : mapDynamic(event));
     return;
   }
