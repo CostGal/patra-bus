@@ -65,7 +65,7 @@ function build(container, ctx, keep) {
     } }, icon('info'));
     return [b, p];
   };
-  // Cards owned by other modules (push, offline map, places, routines): loaded lazily and guarded, so a failing one never breaks settings.
+  // Cards owned by other modules (places): loaded lazily and guarded, so a failing one never breaks settings.
   const ext = [];
   const slots = [];
   function extSlot(load, mountName) {
@@ -133,13 +133,12 @@ function build(container, ctx, keep) {
     row(idBuf, t('Περιθώριο στη στάση'), t('Πόσο νωρίτερα θέλεις να φτάνεις στη στάση.'), select('bufferMin', idBuf, [0, 1, 2, 3, 5, 7, 10].map((n) => [n, mins(n)]))),
     row(idRem, t('Υπενθύμιση πριν φύγεις'), t('Πόσο νωρίτερα να σε ειδοποιώ πριν χρειαστεί να φύγεις.'), select('reminderMin', idRem, [1, 2, 3, 5, 10].map((n) => [n, mins(n)]))));
 
-  // ---------- home, work & routines (modules from places.js / routines.js) ----------
+  // ---------- home & work (module from places.js) ----------
   const places = extSlot(() => import('./places.js'), 'mountPlacesSettings');
-  const routines = extSlot(() => import('./routines.js'), 'mountRoutinesSettings');
-  const homeSec = sec('home', t('Σπίτι, δουλειά & ρουτίνες'), places, routines);
+  const homeSec = sec('home', t('Σπίτι & δουλειά'), places);
   // Hidden while both modules render nothing (they may render asynchronously).
   const paintHome = () => { // assign only on change: a no-op write would re-trigger the observer
-    const hide = !slots.slice(0, 2).some((el) => !el.hidden && el.childElementCount > 0);
+    const hide = !slots.slice(0, 1).some((el) => !el.hidden && el.childElementCount > 0);
     if (homeSec.hidden !== hide) homeSec.hidden = hide;
   };
   const mo = typeof MutationObserver === 'function' ? new MutationObserver(paintHome) : null;
@@ -177,10 +176,9 @@ function build(container, ctx, keep) {
       h('div', { class: 'set-item-main' }, h('div', { class: 'set-label' }, r.title || t('Υπενθύμιση')), h('div', { class: 'ex-sub' }, `${t('στις {time}', { time: fmtClock(r.at) })}${r.body ? ` · ${r.body}` : ''}`)),
       h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Ακύρωση υπενθύμισης: {name}', { name: r.title || r.tag }), onclick: () => cancelReminder(r.tag) }, icon('close')))));
   }
-  const push = extSlot(() => import('./push.js'), 'mountPushCard');
   const notifications = sec('notifications', t('Ειδοποιήσεις'),
     h('div', { class: 'set-line' }, permText, ...info(t('Χωρίς ειδοποιήσεις με κλειστή εφαρμογή, οι υπενθυμίσεις λειτουργούν μόνο όσο η εφαρμογή είναι ανοιχτή (ακόμη και στο παρασκήνιο). Αν την κλείσεις εντελώς ή το τηλέφωνο την σταματήσει, δεν θα χτυπήσουν.'))),
-    h('div', { class: 'set-actions' }, permBtn, testBtn), remList, push);
+    h('div', { class: 'set-actions' }, permBtn, testBtn), remList);
 
   // ---------- favourites (hidden while empty) ----------
   const favList = h('ul', { class: 'set-list' });
@@ -243,8 +241,6 @@ function build(container, ctx, keep) {
     h('div', { class: 'set-line' }, h('div', { class: 'set-actions' }, clearRecentsBtn, wipeBtn),
       ...info(t('Η διαγραφή αφορά αγαπημένα, πρόσφατα, ρυθμίσεις και υπενθυμίσεις αυτής της συσκευής.'))));
 
-  const offline = sec('offline', t('Χάρτης χωρίς σύνδεση'), extSlot(() => import('./offline.js'), 'mountOfflineCard'));
-
   // ---------- about (full LIVE / ΠΡΟΓΡ. legend lives here) ----------
   const about = sec('about', t('Σχετικά'),
     h('p', { class: 'set-p' }, h('strong', {}, APP_NAME), ` · ${cityName(city(), lang())} · ${t('έκδοση {v}', { v: APP_VERSION })}`),
@@ -264,7 +260,7 @@ function build(container, ctx, keep) {
     h('header', { class: 'ex-head' },
       h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
       h('h1', {}, t('Ρυθμίσεις'))),
-    language, guide, display, homeSec, notifications, favorites, data, offline, about));
+    language, guide, display, homeSec, notifications, favorites, data, about));
 
   paintPerm(); paintReminders(); paintFavs();
   offs.push(onChange(() => { if (dead) return; for (const s of syncs) s(); paintFavs(); }));
