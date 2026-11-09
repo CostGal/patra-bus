@@ -17,12 +17,7 @@ import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
 
-// Install-as-app helper (js/install-guide.js, docs/GUIDE.md). Started here, in parallel with boot and never awaited by it,
-// so it cannot delay the first paint; captureInstallPrompt() keeps `beforeinstallprompt` for the guide's Install button.
-let installP = null;
-const installGuide = () => (installP ||= import('./install-guide.js').catch((err) => { installP = null; throw err; }));
-installGuide().then((m) => m.captureInstallPrompt()).catch(() => {});
-// Was the page opened on the home view (not a deep link)? Only then the first-run setup / guide / install hint may appear.
+// Was the page opened on the home view (not a deep link)? Only then the first-run setup may appear.
 const bootHome = parseHash(location.hash).path === '/';
 // First-run setup (js/setup.js, TEL-74): fetched in parallel with boot, opened just before the first route.
 const setupP = import('./setup.js').catch(() => null);
@@ -180,7 +175,6 @@ function buildMenu() {
         'aria-label': t(label), title: t(label), onclick: () => setSetting('theme', value),
       }, icon(ico)))),
     h('div', { class: 'pop-sep' }),
-    item('#/guide', 'info', t('Οδηγός')),
     item('#/report', 'bug', t('Αναφορά προβλήματος')),
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
   paintThemeRow();
@@ -521,12 +515,10 @@ function mountHome(container, c) {
   const box = { onboard: slot('home-onboard'), places: slot('home-places'), nearby: slot('home-nearby') };
   const more = h('div', { class: 'home-more', hidden: true });
   const card = h('div', { class: 'home-card' }, box.onboard, box.places, box.nearby);
-  const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the card
-  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, hint, more);
-  // The peek sheet is exactly as tall as the one visible card (plus the hint while it is shown).
-  const ro = new ResizeObserver(() => { const hh = card.offsetHeight; if (hh) sheet.setPeek(44 + hh + (hint.hidden ? 0 : hint.offsetHeight + 8) + 8); });
+  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), card, more);
+  // The peek sheet is exactly as tall as the one visible card.
+  const ro = new ResizeObserver(() => { const hh = card.offsetHeight; if (hh) sheet.setPeek(44 + hh + 8); });
   ro.observe(card);
-  ro.observe(hint);
   const views = {};
   const offs = [];
   let dead = false;
@@ -596,39 +588,9 @@ function mountHome(container, c) {
   paint();
   offs.push(onChange(paint));
 
-  // One small card, once: "first time here?" until the guide was opened or dismissed; after that, on a phone browser tab,
-  // a one-time "add to home screen" hint. Never both, never on a deep-link boot (bootHome). Either action stores its flag.
-  let hintTimer = 0;
-  const paintHint = async () => {
-    if (!bootHome) return;
-    let spec = null;
-    if (!getSettings().guideSeen) {
-      spec = { flag: 'guideSeen', ico: 'info', href: '#/guide', text: t('Πρώτη φορά εδώ; Δες τον οδηγό') };
-    } else if (!getSettings().installHintDismissed) {
-      let ih = null;
-      try { ih = (await installGuide()).installHint(); } catch { /* no install helper: no hint */ }
-      if (ih && !getSettings().installHintDismissed) {
-        spec = { flag: 'installHintDismissed', ico: 'home', href: '#/guide?section=install', text: t('Βάλε την εφαρμογή στην αρχική οθόνη') };
-      }
-    }
-    if (!spec || dead) return;
-    const done = () => setSetting(spec.flag, true);
-    const go = h('a', { class: 'guide-hint-go press', href: cityHash(spec.href), onclick: done }, icon(spec.ico), h('span', {}, spec.text));
-    const x = h('button', { type: 'button', class: 'guide-hint-x press', 'aria-label': t('Κλείσιμο'), onclick: () => {
-      done();
-      hint.classList.add('is-leaving');
-      hintTimer = setTimeout(() => { hint.hidden = true; hint.replaceChildren(); }, reduceMotion.matches ? 0 : LEAVE_MS);
-    } }, icon('close'));
-    hint.className = 'guide-hint material card-in';
-    hint.replaceChildren(go, x);
-    hint.hidden = false;
-  };
-  paintHint();
-
   return {
     destroy() {
       dead = true;
-      clearTimeout(hintTimer);
       mo.disconnect();
       ro.disconnect();
       sheet.setPeek(null);
@@ -679,7 +641,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
+const SNAP = { '': 'peek', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -803,16 +765,6 @@ async function route() {
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
       await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx }));
       break;
-    case 'guide': {
-      document.title = `${t('Οδηγός')} · ${title()}`;
-      // The install tutorial is optional: without install-guide.js the guide simply has no install section.
-      let install = null;
-      try { install = await installGuide(); } catch { /* the guide still works */ }
-      if (token !== routeToken) break;
-      ctx.renderInstall = install ? () => install.renderInstallSection() : undefined;
-      await mount(() => import('./guide-view.js'), (m) => m.mountGuide(content, ctx, { section: params.section || undefined }));
-      break;
-    }
     case 'favorites':
       document.title = `${t('Αγαπημένες στάσεις')} · ${title()}`;
       view = mountFavorites(content, ctx);

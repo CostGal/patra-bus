@@ -32,7 +32,6 @@ const SCREENS = [
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'plan', url: '/?demo#/plan?to=38.2466,21.7346&name=Test' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
-  { id: 'guide', url: '/?demo#/guide', scroll: 2 },
   { id: 'report', url: '/?demo#/report', scroll: 1 },
   { id: 'setup', url: '/?demo&setup#/', steps: 2 },
 ];

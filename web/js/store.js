@@ -23,8 +23,6 @@ const VALID = {
   bufferMin: intIn(0, 30),
   reminderMin: intIn(0, 30),
   city: isCity, // absent until the user picks one: the default city applies
-  guideSeen: (v) => typeof v === 'boolean', // absent = not seen yet
-  installHintDismissed: (v) => typeof v === 'boolean', // absent = not dismissed
   welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
   legendSeen: (v) => typeof v === 'boolean', // unused since TEL-65 removed the stop-view legend (the first-run setup explains LIVE / ΠΡΟΓΡ. now); kept so stored flags still validate
   setupDone: (v) => typeof v === 'boolean', // absent = the first-run setup (language, city, LIVE / ΠΡΟΓΡ.) was not shown yet
@@ -34,7 +32,7 @@ const VALID = {
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
 // The usage choice and markers survive too: a reset must not switch counting back on or count this device again.
-const KEEP_ON_RESET = ['city', 'guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen', 'setupDone', 'usageStats', 'usageDay', 'usageInstall'];
+const KEEP_ON_RESET = ['city', 'welcomeSeen', 'legendSeen', 'setupDone', 'usageStats', 'usageDay', 'usageInstall'];
 const NUMERIC = new Set(['bufferMin', 'reminderMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };

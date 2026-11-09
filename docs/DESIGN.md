@@ -73,7 +73,7 @@ the next one. Each element also has a **nick** (TEL-230): a short English name t
 | P | Sheet and every view's header (☆ ⋯ ✕ ←) | L | Lines |
 | O | Menus and popovers (☰, ⋯, i) | R | Route planner |
 | S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
-| G | Settings and guide | D | Dialogs and forms (setup, welcome, report) |
+| G | Settings | D | Dialogs and forms (setup, welcome, report) |
 
 - Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--glass --map` etc. as for any sweep).
   It boxes every element with its nick and ID on its own set of screens (menus open, vehicle, search…) into

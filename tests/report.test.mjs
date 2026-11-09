@@ -262,7 +262,7 @@ test('/api/report: GET is 404, preflight allows POST + Content-Type', async () =
 test('app wiring: bug icon in the menu above settings, full-height route, shell files precached and linked', () => {
   const app = read('js/app.js');
   assert.match(app, /item\('#\/report', 'bug', t\('Αναφορά προβλήματος'\)\)/);
-  assert.ok(app.indexOf("item('#/report'") > app.indexOf("item('#/guide'") && app.indexOf("item('#/report'") < app.indexOf("item('#/settings'"));
+  assert.ok(app.indexOf("item('#/report'") > app.lastIndexOf("pop-sep") && app.indexOf("item('#/report'") < app.indexOf("item('#/settings'"));
   assert.match(app, /SNAP = \{[^}]*report: 'full'/);
   assert.match(app, /case 'report':/);
   assert.match(app, /mountReport\(content, ctx, \{ context: reportCtx \}\)/);

@@ -1,7 +1,5 @@
 // Greek source string -> English (owner: i18n). Keys are EXACTLY the Greek text passed to t(); {name} placeholders must match.
 // Stop and line names are data and are never translated. Keep UI English short.
-import { PAIRS as GUIDE_PAIRS } from './i18n-en-guide.js';
-import { PAIRS as INSTALL_PAIRS } from './i18n-en-install.js';
 import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 import { PAIRS as WELCOME_PAIRS } from './i18n-en-welcome.js';
 import { PAIRS as SETUP_PAIRS } from './i18n-en-setup.js';
@@ -117,7 +115,6 @@ const PAIRS = [
   ['Τα δεδομένα της εφαρμογής διαγράφηκαν από αυτή τη συσκευή', 'App data deleted from this device'],
   ['Η διαγραφή αφορά αγαπημένα, πρόσφατα, ρυθμίσεις και υπενθυμίσεις αυτής της συσκευής.', 'Deletes favourites, recents, settings and reminders on this device.'],
   ['Χάρτης χωρίς σύνδεση', 'Offline map'],
-  ['Εγκατάσταση', 'Install'],
 
   // ---- settings: about ----
   ['Σχετικά', 'About'],
@@ -564,12 +561,6 @@ const PAIRS = [
   ['{n}′ πριν', '{n}′ before'],
   ['Λεωφορείο {line}', 'Bus {line}'],
 
-  // ---- guide entry points (app.js menu / first-run card, settings-view.js rows); the guide itself is in i18n-en-guide.js ----
-  ['Οδηγός', 'Guide'],
-  ['Οδηγός χρήσης', 'How to use'],
-  ['Εγκατάσταση ως εφαρμογή', 'Install as an app'],
-  ['Πρώτη φορά εδώ; Δες τον οδηγό', 'First time here? See the guide'],
-  ['Βάλε την εφαρμογή στην αρχική οθόνη', 'Add the app to your home screen'],
   // screen-reader only (TEL-19): search result count, stop view state changes, stale tiles
   ['{n} αποτέλεσμα', '{n} result'],
   ['{n} αποτελέσματα', '{n} results'],
@@ -580,4 +571,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);
+export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);
