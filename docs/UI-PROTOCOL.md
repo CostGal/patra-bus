@@ -6,8 +6,11 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
 
 - **v0.x** while block B0.5 brings the views to it, one PR at a time. **v1** when every view we keep passes it with no
   exceptions.
-- **Check** says how a rule is checked: **auto** = a test will check it (TEL-269, with a list of exceptions per view that
-  gets shorter in every PR of the block), **eye** = screenshots and Kostas on his iPhone.
+- **Check** says how a rule is checked: **auto** = a test checks it in CI (TEL-269), **eye** = screenshots and Kostas on
+  his iPhone. The tests: `tests/ui-protocol.test.mjs` reads the files (U3, U8, U12, U14, U15, U19) and
+  `tests/e2e/ui-protocol.spec.mjs` measures every view at low / mid / up (U2, U3, U4, U5, U9, U11, U12, U20). What
+  breaks today is in `tests/ui-protocol-exceptions.mjs`, with the reason; a test fails on a break that is not listed and
+  on a listed one that holds now, so the list only gets shorter. A PR that fixes a break removes its line.
 - The kit (`web/css/ui-kit.css`, TEL-268) holds the shared classes, plain and glass: `.g-circle` (U3), `.g-pill`,
   `.card-head` + `.card-title` (U4, U19) and `.sheet-inset` (U2). A view's own CSS only places them.
 
