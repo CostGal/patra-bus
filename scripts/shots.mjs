@@ -31,7 +31,6 @@ const SCREENS = [
   { id: 'lines', url: '/?demo#/lines', scroll: 1 },
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
-  { id: 'guide', url: '/?demo#/guide', scroll: 2 },
   { id: 'report', url: '/?demo#/report', scroll: 1 },
   { id: 'setup', url: '/?demo&setup#/', steps: 2 },
 ];

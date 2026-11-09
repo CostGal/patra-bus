@@ -24,8 +24,7 @@ test('setup: three steps, language switch, then never again', async ({ page }) =
   await expect(dlg.locator('.atile-sched')).toHaveCount(1);
   await dlg.getByRole('button', { name: 'Let’s go' }).click();
   await expect(dlg).toBeHidden();
-  expect(await settings(page)).toMatchObject({ lang: 'en', setupDone: true, guideSeen: true });
-  await expect(page.locator('.guide-hint-go')).toHaveCount(0); // no "first time here?" card after the setup
+  expect(await settings(page)).toMatchObject({ lang: 'en', setupDone: true });
   await page.reload();
   await expect(page.locator('#sheet-content')).not.toContainText('Loading…');
   await expect(page.locator('.su')).toHaveCount(0);

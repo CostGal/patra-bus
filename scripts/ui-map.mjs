@@ -79,9 +79,6 @@ export const UI = [
   { id: 'E2', nick: 'find stop', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary' },
   { id: 'E3', nick: 'nearby how', name: 'Περισσότερα («κοντά σου»)', sel: '.nb-how > summary' },
   { id: 'E4', nick: 'nearby second', name: 'Δεύτερο κουμπί («κοντά σου»)', sel: '.nb .btn.ghost' },
-  { id: 'E5', nick: 'guide card', name: 'Κάρτα «Πρώτη φορά εδώ;»', sel: '.guide-hint' },
-  { id: 'E6', nick: 'guide open', name: 'Άνοιγμα οδηγού (κάρτα)', sel: '.guide-hint-go' },
-  { id: 'E7', nick: 'guide close', name: '✕ Κλείσιμο κάρτας οδηγού', sel: '.guide-hint-x' },
 
   { id: 'F1', nick: 'stop row', name: 'Γραμμή στάσης (λίστα)', sel: 'a.stop-row', all: true },
 
@@ -105,7 +102,6 @@ export const UI = [
   { id: 'G2', nick: 'segmented', name: 'Επιλογή (segmented)', sel: '.ex-seg-btn', all: true },
   { id: 'G3', nick: 'fold', name: 'Πτυσσόμενη ενότητα', sel: '.set-sec > summary', all: true },
   { id: 'G4', nick: 'open button', name: 'Κουμπί «Άνοιγμα»', sel: '.set-row a.btn', all: true },
-  { id: 'G5', nick: 'guide section', name: 'Ενότητα οδηγού', sel: '.gd-sec', all: true },
 
   { id: 'D1', nick: 'setup card', name: 'Κάρτα πρώτης ρύθμισης', sel: '.su-card' },
   { id: 'D2', nick: 'skip', name: 'Παράλειψη (setup)', sel: '.su-skip' },
@@ -140,7 +136,6 @@ export const UI_SCREENS = [
     await p.reload(); await p.waitForTimeout(800);
   } },
   { id: 'settings', url: '/?demo#/settings' },
-  { id: 'guide', url: '/?demo#/guide' },
   { id: 'report', url: '/?demo#/report' },
   { id: 'setup', url: '/?demo&setup#/' },
   { id: 'welcome', url: '/?demo&welcome#/' },

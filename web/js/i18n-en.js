@@ -1,7 +1,5 @@
 // Greek source string -> English (owner: i18n). Keys are EXACTLY the Greek text passed to t(); {name} placeholders must match.
 // Stop and line names are data and are never translated. Keep UI English short.
-import { PAIRS as GUIDE_PAIRS } from './i18n-en-guide.js';
-import { PAIRS as INSTALL_PAIRS } from './i18n-en-install.js';
 import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 import { PAIRS as WELCOME_PAIRS } from './i18n-en-welcome.js';
 import { PAIRS as SETUP_PAIRS } from './i18n-en-setup.js';
@@ -42,7 +40,6 @@ const PAIRS = [
   ['Πίσω στην αρχική', 'Back to home'],
   ['Αφαίρεση από τα αγαπημένα', 'Remove from favourites'],
   ['Προσθήκη στα αγαπημένα', 'Add to favourites'],
-  ['Οδηγίες ως εδώ', 'Directions here'],
   ['Φίλτρο γραμμής', 'Line filter'],
   ['Δεν φορτώθηκαν οι αφίξεις', 'Could not load arrivals'],
   ['Καμία προγραμματισμένη άφιξη αυτή τη στιγμή', 'No arrivals scheduled right now'],
@@ -116,8 +113,6 @@ const PAIRS = [
   ['Σίγουρα; Πάτα ξανά για διαγραφή', 'Sure? Tap again to delete'],
   ['Τα δεδομένα της εφαρμογής διαγράφηκαν από αυτή τη συσκευή', 'App data deleted from this device'],
   ['Η διαγραφή αφορά αγαπημένα, πρόσφατα, ρυθμίσεις και υπενθυμίσεις αυτής της συσκευής.', 'Deletes favourites, recents, settings and reminders on this device.'],
-  ['Χάρτης χωρίς σύνδεση', 'Offline map'],
-  ['Εγκατάσταση', 'Install'],
 
   // ---- settings: about ----
   ['Σχετικά', 'About'],
@@ -200,7 +195,6 @@ const PAIRS = [
   ['Επόμενη: ', 'Next: '],
   ['Γραμμή {code}', 'Line {code}'],
   ['σε {when}', 'in {when}'],
-  ['Είμαι στο λεωφορείο', 'I am on the bus'],
   ['Γραμμή {code}, {label}', 'Line {code}, {label}'],
   ['Γραμμή {line}, {dest}. Ζωντανή θέση: φτάνει {when}, περίπου στις {clock}.{hint}', 'Line {line}, {dest}. Live position: arrives {when}, around {clock}.{hint}'],
   ['Γραμμή {line}, {dest}. Προγραμματισμένη άφιξη στις {clock}, {when}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.', 'Line {line}, {dest}. Scheduled arrival at {clock}, {when}. No live position, and it may not be kept.'],
@@ -319,7 +313,6 @@ const PAIRS = [
   ['Το κέντρο του χάρτη', 'Map center'],
   ['Άκυρο', 'Cancel'],
   ['Νέος τόπος', 'New place'],
-  ['Υπενθύμισέ μου', 'Remind me'],
   ['κλειστός', 'collapsed'],
 
   // ---- round 3 wave 2: remaining strings ----
@@ -347,12 +340,6 @@ const PAIRS = [
   ['Γραμμή {line}, {kind}, {when}, στάση {name}, {min} με τα πόδια. {act}.', 'Line {line}, {kind}, {when}, {name} stop, {min} on foot. {act}.'],
   ['Αποθηκεύτηκε: {name}', 'Saved: {name}'],
 
-  // ---- guide entry points (app.js menu / first-run card, settings-view.js rows); the guide itself is in i18n-en-guide.js ----
-  ['Οδηγός', 'Guide'],
-  ['Οδηγός χρήσης', 'How to use'],
-  ['Εγκατάσταση ως εφαρμογή', 'Install as an app'],
-  ['Πρώτη φορά εδώ; Δες τον οδηγό', 'First time here? See the guide'],
-  ['Βάλε την εφαρμογή στην αρχική οθόνη', 'Add the app to your home screen'],
   // screen-reader only (TEL-19): search result count, stop view state changes, stale tiles
   ['{n} αποτέλεσμα', '{n} result'],
   ['{n} αποτελέσματα', '{n} results'],
@@ -363,4 +350,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...GUIDE_PAIRS, ...INSTALL_PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);
+export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);

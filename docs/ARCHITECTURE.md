@@ -131,7 +131,6 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 | `#/stop/{code}` | stop sheet with arrival tiles (`arrivals-view.js`) |
 | `#/lines` / `#/line/{lineCode}?dir=1` | line browser / one line on the map (`lines-view.js`) |
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
-| `#/guide` / `#/guide?section=install` | in-app guide + install-as-app tutorial (`guide-view.js`, `install-guide.js`; contract in `docs/GUIDE.md`) |
 | `#/report` | report a problem (`report-view.js`; menu item with the `bug` icon, SNAP `full`) |
 
 **Problem reports** (`js/report.js` shared, `js/report-view.js`, `worker/src/report.js`, `POST /api/report`): the view sends `{ category: data|app|idea|other, message (10–2000), email?, hp, diag }`.
@@ -144,24 +143,13 @@ Worker: Origin must be allowed (403) and Content-Type `application/json` (415) �
 Notion database properties (exact names): `Name` (title), `Category` (select), `Status` (select, "New"), `City` (select), `Email` (email), `Received` (date); the page body is the
 message plus a JSON code block with the diagnostics.
 
-**Guide integration** (`app.js`, part C of `docs/GUIDE.md`): `guide` has SNAP `full` and mounts `mountGuide(content, ctx, { section })`
-like settings. Just before mounting, `ctx.renderInstall` is set to `() => install-guide.renderInstallSection()` (left `undefined` when
-that module fails to load, the guide then has no install section). `install-guide.js` is imported once at the top of `app.js`, in
-parallel with boot and never awaited, and `captureInstallPrompt()` runs as soon as it resolves. Entry points: menu item "Οδηγός"
-(above Settings), a "Οδηγός χρήσης" row in Settings and, when `installHint()` is non-null, "Εγκατάσταση ως εφαρμογή"
-(`#/guide?section=install`). Settings flags `guideSeen` and `installHintDismissed` (booleans in `store.js`, absent = false, kept by
-`resetSettings`, wiped by `clearAll`) drive one small `.guide-hint` card under the home card (inside the sheet's peek height): "first time
-here?" until `guideSeen`, else the one-time install hint until `installHintDismissed`; never both, and only when the page booted on the home
-view (not a deep link). Opening the guide or pressing ✕ sets the flag.
-
 **First-run setup** (TEL-74, `js/setup.js` + `css/setup.css` + `js/i18n-en-setup.js`): a 3-step dialog (language, city, LIVE vs ΠΡΟΓΡ.)
 shown once, only when the page boots on the home view. `app.js` imports it in parallel with boot and calls
-`maybeSetup({ bootHome, ctx })` just **before** the first `route()`, so it can set `setupDone` + `guideSeen` on show and the home's
-"first time here?" card never paints under it. `maybeSetup` returns a promise that resolves on close (or `null`); the testers'
+`maybeSetup({ bootHome, ctx })` just **before** the first `route()`, so it can set `setupDone` on show. `maybeSetup` returns a promise that resolves on close (or `null`); the testers'
 welcome (`welcome.js`) waits for it. A language tap calls `setLang` at once (the setup re-renders on `onLangChange`; "Next" commits
 the highlighted one, pre-selected from `navigator.language`); the city is applied on close (done, skip or Esc): a different city =
 `settings.city` + reload, like `switchCity`. Skipping stores no `lang`, so the store default (`'el'`) applies. `?setup` previews it
-without touching the flags. The sample tiles reuse `exampleTile` / `sampleLines` exported by `guide-view.js`. E2E: `tests/e2e/mock.mjs`
+without touching the flags. The sample tiles (`exampleTile` / `sampleLines`) live in `setup.js`. E2E: `tests/e2e/mock.mjs`
 marks the setup done for every spec unless `test.use({ firstRun: true })`; `scripts/shots.mjs` seeds the same flag and shoots the
 dialog as screen `setup`.
 
