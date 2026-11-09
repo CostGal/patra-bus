@@ -16,7 +16,7 @@ jobs:
       LANG: el_GR.UTF-8
       LC_ALL: el_GR.UTF-8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history, for the secret scan below
       # Secret scan of every commit (not just the files): a key that was added and later deleted is still public.
@@ -29,7 +29,7 @@ jobs:
           tar xzf gitleaks.tgz gitleaks && rm gitleaks.tgz
           ./gitleaks git . --redact --no-banner
           rm gitleaks
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm ci
@@ -40,7 +40,7 @@ jobs:
       - run: npm run check:i18n
       # The API worker bundles (syntax, imports, wrangler.toml) without deploying or logging in to Cloudflare.
       - run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/worker" --config worker/wrangler.toml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-results
