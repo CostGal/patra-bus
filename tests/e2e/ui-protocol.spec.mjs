@@ -213,8 +213,10 @@ test('UI protocol: chrome over the map has no transition on transform (U11)', as
 });
 
 // U4, the rest: a long name shrinks (to 14 px at the least, js/arrivals-view.js) and then "…": the card's header is as
-// tall as with a short one, at every state. 826 has the longest stop name in Patras; here it gets longer still, so it
-// is too long with any font (Linux CI's and Windows' differ by a few px).
+// tall as with a short one, at every state. Both names are set here, so the result does not depend on the font (Linux
+// CI's is wider than Windows': there 1011's real name already takes two lines up): 1011 gets a one-word name, 826 (the
+// longest name in Patras) a longer one still.
+const SHORT = 'ΑΓΟΡΑ';
 const LONG = 'ΑΚΡΩΤΗΡΙΟΥ ΚΑΙ ΓΛΑΥΚΟΣ ΠΑΝΕΠΙΣΤΗΜΙΟΥΠΟΛΗ ΡΙΟΥ (προς Πάτρα)';
 test.describe('long name', () => {
 test.use({ serviceWorkers: 'block' }); // the service worker would serve stops.json from its cache, past page.route
@@ -222,14 +224,14 @@ test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ pag
   await page.route('**/data/stops.json', async (route) => {
     const res = await route.fetch();
     const stops = await res.json();
-    for (const s of stops) if (String(s.code) === '826') s.name = LONG;
+    for (const s of stops) if (String(s.code) === '826') s.name = LONG; else if (String(s.code) === '1011') s.name = SHORT;
     await route.fulfill({ response: res, json: stops });
   });
   const heads = {};
   for (const code of ['1011', '826']) {
     await page.goto(`/?demo&debug#/stop/${code}`);
     await page.waitForFunction(() => window.__app?.sheet && document.querySelector('.stopv .card-head'));
-    if (code === '826') expect(await page.locator('.stopv .card-title').getAttribute('title')).toMatch(/Πανεπιστημιουπολη|ΠΑΝΕΠΙΣΤΗΜΙΟΥΠΟΛΗ/i); // the longer name is in
+    expect(await page.locator('.stopv .card-title').getAttribute('title')).toMatch(code === '826' ? /Πανεπιστημιουπολη/i : /^Αγορα$/i); // the test's names are in
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(300);
     for (const [label, state] of Object.entries(STATES)) {
@@ -237,7 +239,7 @@ test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ pag
       await page.waitForTimeout(150);
       heads[`${code} ${label}`] = await page.evaluate(() => {
         const t = document.querySelector('.stopv .card-head .card-title');
-        return { head: document.querySelector('.stopv .card-head').offsetHeight,
+        return { head: document.querySelector('.stopv .card-head').offsetHeight, titleH: t.offsetHeight, lh: getComputedStyle(t).lineHeight, font: getComputedStyle(t).fontFamily.slice(0, 40),
           px: Math.round(parseFloat(getComputedStyle(t).fontSize) * t.getBoundingClientRect().height / t.offsetHeight * 10) / 10 };
       });
     }
@@ -250,6 +252,6 @@ test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ pag
     ];
   });
   const listed = Object.keys(VIEW_EXCEPTIONS['stop-long'] || {});
-  expect(broken.length ? ['U4'] : [], `U4 (long name):\n  ${broken.join('\n  ')}`).toEqual(listed.filter((k) => k === 'U4'));
+  expect(broken.length ? ['U4'] : [], `U4 (long name):\n  ${broken.join('\n  ')}\n  measured: ${JSON.stringify(heads)}`).toEqual(listed.filter((k) => k === 'U4'));
 });
 });
