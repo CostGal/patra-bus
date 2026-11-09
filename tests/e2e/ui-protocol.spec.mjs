@@ -216,6 +216,8 @@ test('UI protocol: chrome over the map has no transition on transform (U11)', as
 // tall as with a short one, at every state. 826 has the longest stop name in Patras; here it gets longer still, so it
 // is too long with any font (Linux CI's and Windows' differ by a few px).
 const LONG = 'ΑΚΡΩΤΗΡΙΟΥ ΚΑΙ ΓΛΑΥΚΟΣ ΠΑΝΕΠΙΣΤΗΜΙΟΥΠΟΛΗ ΡΙΟΥ (προς Πάτρα)';
+test.describe('long name', () => {
+test.use({ serviceWorkers: 'block' }); // the service worker would serve stops.json from its cache, past page.route
 test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ page }) => {
   await page.route('**/data/stops.json', async (route) => {
     const res = await route.fetch();
@@ -227,6 +229,7 @@ test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ pag
   for (const code of ['1011', '826']) {
     await page.goto(`/?demo&debug#/stop/${code}`);
     await page.waitForFunction(() => window.__app?.sheet && document.querySelector('.stopv .card-head'));
+    if (code === '826') expect(await page.locator('.stopv .card-title').getAttribute('title')).toMatch(/Πανεπιστημιουπολη|ΠΑΝΕΠΙΣΤΗΜΙΟΥΠΟΛΗ/i); // the longer name is in
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(300);
     for (const [label, state] of Object.entries(STATES)) {
@@ -248,4 +251,5 @@ test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ pag
   });
   const listed = Object.keys(VIEW_EXCEPTIONS['stop-long'] || {});
   expect(broken.length ? ['U4'] : [], `U4 (long name):\n  ${broken.join('\n  ')}`).toEqual(listed.filter((k) => k === 'U4'));
+});
 });
