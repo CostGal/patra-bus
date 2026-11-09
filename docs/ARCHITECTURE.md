@@ -30,10 +30,10 @@ for features that must work when the app is closed (push reminders, routines, de
 ## Where data lives
 | Where | What | Notes |
 |---|---|---|
-| **On the phone only** | Favourites, recents, settings, saved places (home/work), routines, language, one big blob in `localStorage` ⓖ (`patra-bus:v2`, places in `patra-bus:places`) | Cleared by "Delete all" in Settings. |
+| **On the phone only** | Favourites, recents, settings, saved places (home/work), language, one big blob in `localStorage` ⓖ (`patra-bus:v2`, places in `patra-bus:places`) | Cleared by "Delete all" in Settings. |
 | **On the phone, never stored** | Your live GPS location | Only a flag "permission granted" is saved. Never sent to our Worker, never put in a link. |
 | **Cloudflare KV** ⓖ | Citybus token per city (`token/{city}`), daily report counter (`report-day/{date}`), short fallback cache (`memo/…`, 60 s) | Token expires every 48 h. It is fetched only when a request needs it: the first request for that city, any request in the last 5 min before expiry, or a retry after a 401/403. No timer refreshes it. The KV entry expires with the token, so a city with no requests since then has no token (`/health` shows `null`). |
-| **Cloudflare Durable Objects** ⓖ | **Push reminders** (one-off: push subscription ⓖ, time, bus line/stop codes), **routines** (weekly: same, kept up to 120 days), **delay statistics** (last 200 samples per route + stop) | A reminder is deleted after it is sent. No place names or coordinates are stored. |
+| **Cloudflare Durable Objects** ⓖ | **Push reminders** (one-off: push subscription ⓖ, time, bus line/stop codes), **routines** (weekly: same, kept up to 120 days; no client in the app any more), **delay statistics** (last 200 samples per route + stop) | A reminder is deleted after it is sent. No place names or coordinates are stored. |
 | **Cloudflare Durable Object `Counters`** ⓖ | Anonymous daily totals: one number per (Athens day, metric, city), e.g. "3 feedback reports from Patras on 2026-10-25". Metrics and cities come from a fixed whitelist (`worker/src/counters.js`). `feedback` is counted by the Worker after a forwarded report; `open` and `install` arrive from the app through `POST /api/count` `{metric, city}` (only those two metrics; Origin + JSON checks, 20 / 10′ per IP in memory, 204 with no body; previews and localhost answer 204 without counting; TEL-196). The app side is `web/js/usage.js`, called once after boot: `open` at most once per device per Athens day, `install` once on the first launch as an installed app; nothing with the Settings → Data switch off (`usageStats`), with Global Privacy Control, in `?demo` or off `https://costgal.github.io`. The markers `usageDay` / `usageInstall` stay on the device and survive "reset settings" (TEL-197). `push` is reserved for a later card. | No IP, device id, user id or free text, and nothing finer than the day: a request can only add 1 to a row. Counting is best effort and never blocks the request it rides on. Read only through the private page `GET /stats` (served by the Worker, not by Pages) → `GET /api/admin/counts` with `Authorization: Bearer <STATS_TOKEN>` (Cloudflare secret; 401 wrong token, 429 after 3 wrong tries / 10′ per IP in memory, 503 without the secret). No CORS header, `no-store`, the token never in a URL (`worker/src/admin.js`, TEL-195). |
 | **GitHub repo** | Stops, lines, routes (`web/data/`), all code | Public. Secrets are never committed. |
 | **Notion** | Problem reports a user chose to send | Via the Worker. |
@@ -53,10 +53,9 @@ Third-party services (free, no key, credit shown in Settings and on the map):
 | Map | `web/js/map.js` |
 | "Next bus near me" | `web/js/nearby.js`, `location.js`, `walk.js` |
 | Place search | `web/js/geocode.js` |
-| Push reminders | `web/js/push.js`, `notify.js`, `web/sw-push.js`, `worker/src/reminders.js`, `worker/src/push.js` |
-| Weekly routines | `web/js/routines.js`, `worker/src/routines.js` |
+| In-app reminders | `web/js/notify.js` (local only; the push/routines client was removed in TEL-270, the worker side `worker/src/reminders.js`, `push.js`, `routines.js` stays for now) |
 | Delay statistics | `worker/src/stats.js` |
-| Offline app and offline map | `web/sw.js`, `web/js/offline.js` |
+| Offline app shell and runtime map cache | `web/sw.js` |
 | Problem report | `web/js/report-view.js`, `worker/src/report.js` |
 | Storage on the phone, settings | `web/js/store.js`, `settings-view.js` |
 | Cities (Patras, Corfu) | `web/js/cities.js`, `docs/MULTI-CITY.md` |
@@ -134,7 +133,6 @@ Language of the UI: Greek. Times in `Europe/Athens`, 24 h.
 | `#/settings` | settings + about/attribution (`settings-view.js`) |
 | `#/guide` / `#/guide?section=install` | in-app guide + install-as-app tutorial (`guide-view.js`, `install-guide.js`; contract in `docs/GUIDE.md`) |
 | `#/report` | report a problem (`report-view.js`; menu item with the `bug` icon, SNAP `full`) |
-| `#/notif?routine=…\|ref=…&stop=…` | notification link, never a view: `app.js` resolves it on the device (`notif-link.js`) and replaces the hash (see PC below) |
 
 **Problem reports** (`js/report.js` shared, `js/report-view.js`, `worker/src/report.js`, `POST /api/report`): the view sends `{ category: data|app|idea|other, message (10–2000), email?, hp, diag }`.
 `report.js` holds the one validation (`validateReport`, `cleanDiag` whitelist) used by both the form and the Worker. `diag` is a fixed whitelist of coarse facts
@@ -314,21 +312,8 @@ type Data = { stops: Stop[], lines: Line[], routes: Route[], stopByCode: Map, li
 - Web Push per RFC 8291 (aes128gcm) + VAPID (RFC 8292, ES256 via WebCrypto). Secrets: `VAPID_PRIVATE_KEY` (secret), `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` = `https://github.com/CostGal/patra-bus`.
 - CORS: same allowlist; methods GET, POST, DELETE, OPTIONS; header Content-Type.
 
-### PC — push client: `js/push.js`, `js/notify.js`, `web/sw-push.js`, `tests/push-client.test.mjs`
-- `push.js`: `isPushSupported()`, `pushState() → 'unsupported'|'needs-install'|'denied'|'off'|'on'`, `enablePush()` (user gesture), `disablePush()`,
-  `schedulePushReminder(payload) → id|null`, `cancelPushReminder(id)`, `mountPushCard(container, ctx) → {destroy}` (settings card; explains iPhone needs the installed app).
-- `notify.js`: `scheduleReminder({ at, title, body, tag, trip? })` keeps working locally and, when push is on, also books a server reminder (same `tag`), cancels it on cancel.
-- `sw-push.js` (imported by `sw.js` via `importScripts`): `push` → `showNotification(title, { body, tag, data: { url } })`. `notificationclick` stays in `sw.js`.
-- Notification links (`notif-link.js`, shared with the worker): the `url` sent to the server never carries a place. Routines send
-  `#/{city}/notif?routine=<ref>&stop=<code>` (`ref` random, kept in the local routine); one-off reminders whose link is a plan
-  (`isPrivateUrl`) send `#/{city}/notif?ref=<ref>&stop=<code>` and keep `ref → hash` in localStorage `patra-bus:push-links` (≤ 20, at + 24 h).
-  On the tap, `app.js` resolves it on the device: routine → `#/plan?to=` its saved place as it is now; reminder → the kept hash;
-  otherwise the stop (`stop`, which the server already has in `trip`), else home.
-
-### OM — offline map: `web/sw.js`, `web/vendor/**`, `web/index.html`, `js/offline.js`, `tests/offline.test.mjs`
-- MapLibre GL 4.7.1 self-hosted under `web/vendor/maplibre-gl/` (precached).
-- `sw.js` may now cache **OpenFreeMap only** (style, tilejson, tiles, glyphs, sprites) in a separate bounded cache; still never `/api/`, OSRM, Photon or any other origin.
-- `offline.js`: `offlineMapStatus()`, `downloadPatrasMap({ onProgress, signal })`, `clearOfflineMap()`, `mountOfflineCard(container, ctx) → {destroy}` (opt-in download with size estimate, progress, cancel, delete).
+### PC / OM — removed in TEL-270
+The push client (`push.js`, `sw-push.js`, `#/notif` links, `notif-link.js` apart from the shared `isPrivateUrl`), weekly routines (`routines.js`) and the offline map download (`offline.js`, cache `patra-bus-map-offline-v1`) no longer exist in `web/`. `notify.js` keeps local in-app reminders only. `sw.js` still caches OpenFreeMap (style, tilejson, tiles, glyphs, sprites) in the bounded runtime cache `patra-bus-map-v1`; MapLibre GL 4.7.1 stays self-hosted under `web/vendor/maplibre-gl/` (precached). Never `/api/`, OSRM, Photon or any other origin.
 
 ### AC — accented names: `js/text.js`, `js/accents.js`, `tests/text.test.mjs`
 `titleCase()` applies a curated word dictionary (`ACCENTS`) of unambiguous Greek words; unknown or ambiguous words stay unaccented. `searchKey()` unchanged.
@@ -337,7 +322,7 @@ type Data = { stops: Stop[], lines: Line[], routes: Route[], stopByCode: Map, li
 `readableLine(color, textColor) → { color, textColor }` (pure) makes upstream badge pairs reach WCAG 4.5:1: a ≤ 6% darkening first, then dark text (`#1f1f1f`) on bright lines, a darker background only as a last resort. Applied once at the sources, `data.js` `buildIndex` (static lines) and `api.js` `cleanVehicle` (live), so badges, chips, map markers and the line/bus views all get the readable pair. `arrivals.js` (shared with the worker) keeps the raw upstream colours. Full audit: `docs/ui-audit.md`.
 
 ### PO — polish + integration: `js/app.js`, `js/nearby.js`, `js/location.js`, `js/map.js`, `js/settings-view.js`, `app.css`, `css/extras.css`, `tests/location.test.mjs`, `tests/nearby.test.mjs`
-Settings mounts `mountPushCard` and `mountOfflineCard`; offline indicator; 4th nearby stop; compass in landscape; map pins clear of the floating buttons.
+Offline indicator; 4th nearby stop; compass in landscape; map pins clear of the floating buttons.
 
 ## Round 3 (minimal UI, places/routines, onboard alert [removed, TEL-217], reliability stats, English)
 
@@ -351,11 +336,9 @@ Settings mounts `mountPushCard` and `mountOfflineCard`; offline indicator; 4th n
 ### U — minimal shell: `index.html`, `app.css`, `css/tokens.css`, `js/app.js`, `js/sheet.js`, `js/ui.js`, `js/map.js`, `web/sw.js`
 Applies the principles above; home composition; links `css/places.css`; SW shell list gets every new file; bumps CACHE.
 
-### P — places + routines (client): `js/places.js`, `js/routines.js`, `css/places.css`, `tests/places.test.mjs`
+### P — places (client): `js/places.js`, `css/places.css`, `tests/places.test.mjs`
 - `getPlaces() → [{ id: 'home'|'work'|string, name, lat, lng }]`, `setPlace(p)`, `removePlace(id)` (own localStorage key `patra-bus:places`, try/catch).
-- `mountPlacesSettings`, `mountRoutinesSettings(container, ctx) → {destroy}` (settings sections).
-- Routines: `{ id, days: number[] /*0=Κυρ*/, time: 'HH:MM' /*Europe/Athens, planned leave time*/, placeId, ref, trip: { stopCode, routeCode, lineCode, offsetSec }, leadMin }` booked on the server (below) when push is on.
-  The server gets the push address, days/time, the boarding `trip` (incl. `offsetSec`, the walk to the stop) and the opaque link `#/{city}/notif?routine=<ref>`: never the place, its coordinates or its name.
+- `mountPlacesSettings(container, ctx) → {destroy}` (settings section).
 
 ### W — worker: routines + stats: `worker/src/index.js`, `worker/src/reminders.js`, `worker/src/routines.js`, `worker/src/stats.js`, `worker/wrangler.toml`, `tests/routines-worker.test.mjs`, `tests/stats.test.mjs`
 - `POST /api/push/routines` `{ subscription, days, time, tz: 'Europe/Athens', title, url, trip, leadMin }` → `201 { id }` (`url` as for reminders: a place link is dropped); `DELETE /api/push/routines/{id}`. One Durable Object per routine: on each matching day at time − 20′ read live (same 15 s cache path) for `trip.stopCode`, pick the first bus of `routeCode` with leave = eta − offsetSec ≥ now, alarm at leave − leadMin, send "Φύγε σε N′ για το 601", re-arm for the next matching day. Drop on 404/410; expire after 120 days.
@@ -366,7 +349,7 @@ Applies the principles above; home composition; links `css/places.css`; SW shell
 `fetchStats(routeCode, stopCode)` (memo 10 min, null on failure). Scheduled tiles show a quiet "συνήθως +3′" when samples ≥ 10; Also make tiles + nearby card follow the UI principles.
 
 ### L — English + settings: `js/i18n.js`, `js/i18n-en.js`, `js/store.js`, `js/settings-view.js`, `js/lines-view.js`, `css/extras.css`, `tests/i18n.test.mjs`, `tests/store.test.mjs`
-`t()`, `lang()`, `setLang('el'|'en')`, `onLangChange`; language auto from `navigator.language`, override in Settings; `<html lang>` updated. Stop/line names stay Greek. Settings mounts `mountPlacesSettings`, `mountRoutinesSettings`, push and offline cards; settings and lines follow the UI principles.
+`t()`, `lang()`, `setLang('el'|'en')`, `onLangChange`; language auto from `navigator.language`, override in Settings; `<html lang>` updated. Stop/line names stay Greek. Settings mounts `mountPlacesSettings`; settings and lines follow the UI principles.
 
 ## Round 4 (Apple-design motion pass)
 

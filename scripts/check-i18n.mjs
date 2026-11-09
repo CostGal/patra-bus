@@ -3,7 +3,7 @@
 //  2. EN->EL: every English entry's Greek key still appears as a string literal in web/ code (no orphans).
 //  3. Entries: English non-empty and != key, same {placeholders}, no key defined twice with different English.
 // Not keyed, Greek only by design: arrivals.js (shared with the worker), accents.js (data), <meta>/<noscript> in
-// index.html, manifest.webmanifest, the fallback body in sw-push.js (service worker, no i18n there).
+// index.html, manifest.webmanifest.
 import { readFileSync, readdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -95,7 +95,6 @@ async function load() {
     for (const l of literals(src)) used.add(l);
     if (!NOT_KEYED.has(f)) for (const key of callKeys(src)) calls.push({ file: f, key });
   }
-  for (const l of literals(read(new URL('sw-push.js', WEB)))) used.add(l);
   return { pairs, calls, used, html: htmlLabels(read(new URL('index.html', WEB))), size: EN.size };
 }
 

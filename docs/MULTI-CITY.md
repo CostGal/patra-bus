@@ -34,8 +34,8 @@ worker with `/api/{city}/…`, (3) app name **Telematica**.
 - Line codes are not always numeric (`04`, `2A`, `2B`); route codes and stop codes are numeric.
 - Whether one token works across agencies is untested; the design uses one token per city.
 
-The bbox on the Corfu page covers most of the island (~43 × 50 km), much more than the town network. For the
-offline map and for `inArea()`, derive a tighter bbox from the stops' extent (+ margin) once the stops are known.
+The bbox on the Corfu page covers most of the island (~43 × 50 km), much more than the town network. For
+`inArea()`, derive a tighter bbox from the stops' extent (+ margin) once the stops are known.
 The page bbox is only the fallback.
 
 ## Design
@@ -48,8 +48,7 @@ The page bbox is only the fallback.
   bbox: { west, south, east, north }, center: { lat, lng }, color: '#213A8F' }
 ```
 
-`geo.js` (`inArea`), `geocode.js` (Photon `bbox`, fallback center), `map.js` (initial center), `offline.js` (download
-bbox), `fetch-static.mjs` (`--city`), `build-routes.mjs` (center of «ΚΕΝΤΡΟ») read the **active city** instead
+`geo.js` (`inArea`), `geocode.js` (Photon `bbox`, fallback center), `map.js` (initial center), `fetch-static.mjs` (`--city`), `build-routes.mjs` (center of «ΚΕΝΤΡΟ») read the **active city** instead
 of their own constants. The table is a whitelist: the worker never takes an agency or host from a request.
 
 ### 2. Worker: one worker, city in the path (recommended)

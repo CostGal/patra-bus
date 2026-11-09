@@ -1,5 +1,5 @@
 /* owner: places (Round 3); uses css/tokens.css */
-/* ---- settings: places + routines ---- */
+/* ---- settings: places ---- */
 .plc-set { margin: 0 0 var(--space-2); }
 .plc-title { margin-top: var(--space-1); }
 .plc-row .btn { flex: none; }
@@ -11,12 +11,3 @@
 .plc-result { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer; }
 .plc-result:hover { background: var(--card); }
 .plc-result-name { font-weight: 600; }
-.plc-form { display: grid; gap: 10px; margin-top: var(--space-2); }
-.plc-field { display: grid; gap: var(--space-1); min-width: 0; }
-.plc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.plc-days { display: flex; gap: var(--space-1); }
-.plc-day { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
-.plc-day[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
-.plc-day:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-.plc-error { color: var(--destructive); }
-.plc-push { display: grid; gap: var(--space-2); }

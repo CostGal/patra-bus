@@ -75,7 +75,7 @@ test('wantedSection reads ?section=install from a hash or a params object', () =
 
 test('the guide only describes controls and labels that exist in the app (spot checks)', () => {
   const app = ['app.js', 'arrivals-view.js', 'bus-view.js', 'settings-view.js', 'i18n-en.js'].map((f) => read(`../web/js/${f}`)).join('\n');
-  for (const label of ['Πού πάμε;', 'Υπενθύμισέ μου', 'Είμαι στο λεωφορείο', 'Κοινοποίηση', 'Επαναφορά βορρά', 'Επόμενο λεωφορείο κοντά σου', 'Σπίτι, δουλειά & ρουτίνες', 'Ρυθμίσεις και σχετικά']) {
+  for (const label of ['Πού πάμε;', 'Υπενθύμισέ μου', 'Είμαι στο λεωφορείο', 'Κοινοποίηση', 'Επαναφορά βορρά', 'Επόμενο λεωφορείο κοντά σου', 'Ρυθμίσεις και σχετικά']) {
     assert.ok(app.includes(label), `label not found in the app: ${label}`);
   }
 });
