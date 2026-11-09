@@ -223,3 +223,5 @@ a.atile { text-decoration: none; }
 .ex-info[aria-expanded="true"] { color: var(--primary); }
 .lines-times-title .ex-info { margin: -8px -10px -8px 0; }
 .lines-times-title { font-size: var(--text-md); }
+
+.bv-more { margin-top: var(--space-3); }

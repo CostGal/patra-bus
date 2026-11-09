@@ -1,19 +1,4 @@
 /* owner: places (Round 3); uses css/tokens.css */
-/* ---- home card: one headline line + one meta line ---- */
-/* surface + blur come from .material (app.css, added in places.js); .card-in's entrance keyframes
-   live in css/nearby.css (shared by the three home-screen cards; that file is always loaded too). */
-.plc-card { display: block; padding: 10px 14px; border-radius: var(--radius); color: var(--foreground); text-decoration: none; }
-.plc-card:hover { filter: brightness(1.04); }
-.plc-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.plc-head { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-size: var(--text-base); }
-.plc-to { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.plc-sep { flex: none; color: var(--muted-foreground); }
-.plc-head .badge { flex: none; display: inline-block; min-width: 2.4em; padding: .1em .45em; border-radius: var(--radius-md); font-size: .85rem; font-weight: var(--weight-bold); text-align: center; font-variant-numeric: tabular-nums; }
-.plc-leave { flex: none; font-variant-numeric: tabular-nums; }
-.plc-flag { flex: none; margin-left: auto; font-size: var(--text-sm); }
-.plc-flag .icon { width: 12px; height: 12px; }
-.plc-meta { margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted-foreground); font-size: .875rem; font-variant-numeric: tabular-nums; }
-
 /* ---- settings: places ---- */
 .plc-set { margin: 0 0 var(--space-2); }
 .plc-title { margin-top: var(--space-1); }

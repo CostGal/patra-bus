@@ -1,18 +1,12 @@
-// Saved places (Σπίτι/Δουλειά + up to 3 custom) and the one-line home card (owner: places). See docs/ARCHITECTURE.md (Round 3).
+// Saved places (Σπίτι/Δουλειά + up to 3 custom) (owner: places). See docs/ARCHITECTURE.md (Round 3).
 // Storage is its own key and never throws: when localStorage is unavailable the places live in memory for the page.
-import { h, icon, lineBadge, fmtClock } from './ui.js';
+import { h, icon } from './ui.js';
 import { t, N_ } from './i18n.js';
-import { haversine } from './geo.js';
-import { planTrips, leaveState } from './planner.js';
 import { searchPlaces } from './geocode.js';
 import { DEFAULT_CITY, cityId, isCity } from './cities.js';
-import { cityHash } from './route.js';
 
 export const KEY = 'patra-bus:places';
 export const MAX_CUSTOM = 3;
-export const FAR_M = 300;        // the card appears only when you are farther than this from the place
-export const REPLAN_MS = 60000;  // plan refresh floor while visible
-const TICK_MS = 15000;           // repaint of the countdown
 const DEFAULT_NAMES = { home: N_('Σπίτι'), work: N_('Δουλειά') };
 const PLACE_NAME = N_('Τόπος'); // stored default name for custom places, shown translated
 
@@ -93,131 +87,6 @@ export const saveAsWork = (pt) => saveAs('work', pt);
 
 // Display name: the default Σπίτι/Δουλειά is translated, anything the user typed is shown as is.
 export const placeLabel = (p) => (DEFAULT_NAMES[p.id] === p.name || p.name === PLACE_NAME ? t(p.name) : p.name);
-// "Για το σπίτι" / "Για τη δουλειά" / "Προς {name}"
-export function placeTitle(p) {
-  if (p.id === 'home' && p.name === DEFAULT_NAMES.home) return t('Για το σπίτι');
-  if (p.id === 'work' && p.name === DEFAULT_NAMES.work) return t('Για τη δουλειά');
-  return t('Προς {name}', { name: p.name });
-}
-const fix2 = (n) => Number(n).toFixed(5);
-export const placeHash = (p) => cityHash(`#/plan?to=${fix2(p.lat)},${fix2(p.lng)}&name=${encodeURIComponent(p.name)}`);
-
-export const athensHour = (ms = Date.now()) =>
-  Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Europe/Athens' }).format(new Date(ms)));
-
-// The place worth a card right now: only places farther than minM; mornings → Δουλειά, evenings → Σπίτι,
-// otherwise (or when that one is too close / not saved) the farthest.
-export function pickPlace(places, here, { hour = athensHour(), minM = FAR_M } = {}) {
-  if (!here || !Number.isFinite(here.lat) || !Number.isFinite(here.lng)) return null;
-  const far = (places || []).map((p) => ({ p, d: haversine(here, p) })).filter((x) => x.d > minM);
-  if (!far.length) return null;
-  const want = hour >= 5 && hour < 12 ? 'work' : hour >= 16 || hour < 4 ? 'home' : null;
-  const hit = want && far.find((x) => x.p.id === want);
-  return (hit || far.reduce((a, b) => (b.d > a.d ? b : a))).p;
-}
-
-// First itinerary worth showing: a walk, or a bus that can still be caught.
-export function usableItinerary(its, now = Date.now()) {
-  for (const it of its || []) {
-    const k = leaveState(it, now).kind;
-    if (k === 'walk' || k === 'later' || k === 'now' || k === 'run') return it;
-  }
-  return null;
-}
-
-export function leaveText(st, it) {
-  if (st.kind === 'walk') return t('Περπάτησε {n}′', { n: Math.max(1, Math.round(it.estTotalSec / 60)) });
-  if (st.kind === 'later') return t('Φύγε σε {n}′', { n: Math.ceil(st.leaveInSec / 60) });
-  return t('Φύγε τώρα');
-}
-
-// ---------------------------------------------------------------- home card
-
-export function mountPlacesCard(container, ctx = {}) {
-  let dead = false, ctl = null, best = null, place = null, planFrom = null, lastPlanAt = 0, lastSig = null;
-  const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
-
-  function paint() {
-    if (dead) return;
-    const now = Date.now();
-    const st = best && place ? leaveState(best, now) : null;
-    if (!st || !['walk', 'later', 'now', 'run'].includes(st.kind)) {
-      best = null;
-      lastSig = null; // next real card is a fresh appearance, not a refresh
-      container.replaceChildren();
-      return;
-    }
-    const head = [h('span', { class: 'plc-to' }, placeTitle(place))];
-    const metaBits = [];
-    if (best.kind === 'walk') {
-      metaBits.push(t('Φτάνεις {time}', { time: fmtClock(best.arriveAt) }));
-    } else {
-      const line = best.line || { code: best.route?.lineCode };
-      head.push(h('span', { class: 'plc-sep', 'aria-hidden': 'true' }, '·'), lineBadge(line));
-      metaBits.push(t('Φτάνεις {time}', { time: fmtClock(best.arriveAt) }));
-      if (best.walkTo?.seconds >= 60) metaBits.push(t('{n}′ περπάτημα', { n: Math.round(best.walkTo.seconds / 60) }));
-    }
-    head.push(h('span', { class: 'plc-sep', 'aria-hidden': 'true' }, '·'), h('b', { class: 'plc-leave tabular' }, leaveText(st, best)));
-    if (best.kind !== 'walk') {
-      head.push(best.bus?.live
-        ? h('span', { class: 'ex-chip ex-chip-live plc-flag' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), 'LIVE')
-        : h('span', { class: 'ex-chip ex-chip-sched plc-flag' }, icon('clock'), t('ΠΡΟΓΡ.')));
-    }
-    // Only replay the entrance when the card is a genuinely different thing (place/kind/vehicle), not every countdown tick.
-    const sig = `${place.id}|${best.kind}|${best.bus?.vehicleCode || best.route?.lineCode || ''}`;
-    const changed = sig !== lastSig;
-    lastSig = sig;
-    container.replaceChildren(h('a', { class: `plc-card material press${changed ? ' card-in' : ''}`, href: placeHash(place) },
-      h('div', { class: 'plc-head' }, ...head),
-      h('div', { class: 'plc-meta' }, metaBits.join(' · '))));
-  }
-
-  function apply(pl, its) {
-    if (dead) return;
-    place = pl;
-    best = usableItinerary(its);
-    paint();
-  }
-
-  async function plan() {
-    if (dead || !visible()) return;
-    const here = ctx.location?.current;
-    const pl = pickPlace(getPlaces(), here);
-    if (!pl) { best = null; place = null; paint(); return; }
-    ctl?.abort();
-    const my = (ctl = new AbortController());
-    lastPlanAt = Date.now();
-    planFrom = { lat: here.lat, lng: here.lng };
-    try {
-      const its = await planTrips(ctx, planFrom, { lat: pl.lat, lng: pl.lng }, { signal: my.signal, onUpdate: (r) => { if (!my.signal.aborted) apply(pl, r.itineraries); } });
-      if (!my.signal.aborted) apply(pl, its);
-    } catch (e) {
-      if (!my.signal.aborted && e?.name !== 'AbortError') { best = null; paint(); }
-    }
-  }
-
-  const tick = () => {
-    if (dead || !visible()) return;
-    if (Date.now() - lastPlanAt >= REPLAN_MS || (!best && planFrom && Date.now() - lastPlanAt >= TICK_MS)) plan(); else paint();
-  };
-  const onVis = () => { if (visible()) tick(); };
-  const timer = setInterval(tick, TICK_MS);
-  document.addEventListener?.('visibilitychange', onVis);
-  const offLoc = ctx.location?.subscribe?.((fix) => { if (fix && !planFrom) plan(); });
-  const offPlaces = onPlacesChange(() => { lastPlanAt = 0; planFrom = null; plan(); });
-
-  container.replaceChildren();
-  plan();
-  return {
-    destroy() {
-      dead = true; ctl?.abort(); clearInterval(timer);
-      document.removeEventListener?.('visibilitychange', onVis);
-      try { offLoc?.(); } catch { /* ignore */ }
-      offPlaces();
-      container.replaceChildren();
-    },
-  };
-}
 
 // ---------------------------------------------------------------- settings
 

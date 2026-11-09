@@ -5,9 +5,8 @@ import { CITIES, DEFAULT_CITY, setActiveCity, cityId, cityName, dataDir } from '
 import { parseHash, relHash, formatHash, cityHash, shareHash, resolveBootCity } from '../web/js/route.js';
 import { createStore, KEY } from '../web/js/store.js';
 import { fetchLive, fetchStats, liveUrl, statsUrl, lastAttemptAt, _setTransport, API_BASE, MIN_GAP_MS } from '../web/js/api.js';
-import { createPlaces, placeHash } from '../web/js/places.js';
+import { createPlaces } from '../web/js/places.js';
 import { createReminders } from '../web/js/notify.js';
-import { loadTrip, KEY as TRIP_KEY } from '../web/js/onboard.js';
 import { buildIndex } from '../web/js/data.js';
 
 function fakeStorage(init = {}) {
@@ -75,7 +74,6 @@ test('cityHash / shareHash follow the active city', async () => {
     assert.equal(cityHash('#/stop/1'), '#/corfu/stop/1');
     assert.equal(cityHash('#/corfu/stop/1'), '#/corfu/stop/1');
     assert.equal(shareHash('#/lines'), '#/corfu/lines');
-    assert.equal(placeHash({ lat: 39.62, lng: 19.92, name: 'A' }), '#/corfu/plan?to=39.62000,19.92000&name=A');
   });
   assert.equal(cityId(), 'patra');
 });
@@ -293,18 +291,6 @@ test('reminders: stored ones without `city` (older app) are Patras', () => {
   assert.deepEqual(r.listReminders(), []);
   city.v = 'patra';
   assert.deepEqual(r.listReminders().map((x) => [x.tag, x.city]), [['old', 'patra']]);
-});
-
-test('onboard: a trip started in another city is not this city\'s trip (and is not deleted)', () => {
-  const NOW = 1_700_000_000_000;
-  const trip = { alightStop: '801', routeCode: '1', startedAt: NOW, city: 'corfu' };
-  const ls = fakeStorage({ [TRIP_KEY]: JSON.stringify(trip) });
-  assert.equal(loadTrip(() => ls, NOW, 'patra'), null);
-  assert.ok(ls.getItem(TRIP_KEY), 'kept for Corfu');
-  assert.equal(loadTrip(() => ls, NOW, 'corfu').alightStop, '801');
-  const legacy = fakeStorage({ [TRIP_KEY]: JSON.stringify({ alightStop: '1', routeCode: '2', startedAt: NOW }) });
-  assert.equal(loadTrip(() => legacy, NOW, 'patra').alightStop, '1');
-  assert.equal(loadTrip(() => legacy, NOW, 'corfu'), null);
 });
 
 // ---------------------------------------------------------------- data

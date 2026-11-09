@@ -2,13 +2,12 @@
 // Live data exists only per stop, so the bus is followed through the stop it was opened from (the "anchor"): its live
 // ETA there is the only measured time; everything else is that ETA plus/minus the route's typical leg times (an
 // ESTIMATE, labelled so). Route order itself is inferred (routes.json), see route.confidence. Styles: css/extras.css (bv-).
-import { h, icon, lineBadge, fmtClock, toast } from './ui.js';
+import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { createLivePoller, DEMO, STALE_MS } from './api.js';
 import { ageText } from './arrivals.js';
 import { loadShapes } from './data.js';
 import { closestOnPath } from './geo.js';
 import { t, N_, etaTxt, APP_NAME } from './i18n.js';
-import { activeTrip, onTripChange, startOnboard, stopOnboard } from './onboard.js';
 import { cityHash } from './route.js';
 
 export const MAX_SNAP_M = 250; // a GPS fix farther than this from the stop polyline is not trusted for placement
@@ -126,7 +125,6 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   let rowEls = []; // { li, name, sub, clock, inn, tag, i }
   let passedOpen = false;
   let moreOpen = false;
-  let pickerOpen = false;
   let fitted = false;
   let markersKey = '';
   let tl = null;
@@ -160,11 +158,10 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const list = h('ol', { class: 'bv-list' });
   const foot = h('p', { class: 'ex-sub bv-foot' });
   const legend = h('p', { class: 'ex-sub bv-legend' });
-  const alightBox = h('div', { class: 'ob-box', hidden: true });
   // secondary text lives behind the "⋯" button
-  const more = h('div', { class: 'ob-more', hidden: true }, caveat, foot, legend,
+  const more = h('div', { class: 'bv-more', hidden: true }, caveat, foot, legend,
     DEMO ? h('p', { class: 'ex-note' }, t('Δεδομένα προσομοίωσης (demo): δεν είναι πραγματικά λεωφορεία.')) : null);
-  root.append(head, banner, summary, alightBox, toggle, list, more);
+  root.append(head, banner, summary, toggle, list, more);
   container.replaceChildren(root);
 
   // The bus sits between two rows: a pseudo-row the list moves around.
@@ -290,7 +287,6 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
         terminus = last && last.state === 'upcoming' && last !== nx ? t('Τέρμα «{name}»: ≈ {clock} · {when} (εκτίμηση)', { name: nameOf(last.code), clock: fmtClock(last.at), when: inText(last.etaSec) }) : '';
       } else { summary.hidden = true; terminus = ''; }
     }
-    paintAlight();
 
     // footer + legend (behind "⋯")
     const bits = [];
@@ -303,45 +299,6 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       ? t('Μόνο η ώρα στη στάση «{name}» προέρχεται από live δεδομένα. Οι υπόλοιπες ώρες είναι εκτίμηση από τυπικούς χρόνους διαδρομής, όχι πρόγραμμα.', { name: nameOf(found.stop) })
       : t('Οι ώρες υπολογίζονται από live δεδομένα στάσης και τυπικούς χρόνους διαδρομής (εκτίμηση), όχι από πρόγραμμα.');
     pushMap();
-  }
-
-  // ---- "Θα κατέβω σε…": one button, a compact picker of the upcoming stops, then a one-line status with "Τέλος" ----
-  let alightKey = '';
-  function paintAlight() {
-    const tr = activeTrip();
-    const mine = !!tr && !!vehicleCode && tr.vehicleCode === vehicleCode;
-    const can = !!route && !!tl && !gone && !!vehicleCode;
-    alightBox.hidden = !(can || mine);
-    if (alightBox.hidden) { alightKey = ''; return; }
-    const key = `${mine ? tr.alightStop : ''}|${pickerOpen}|${tl ? tl.next : ''}|${route ? route.code : ''}`;
-    if (key === alightKey) return;
-    alightKey = key;
-    if (mine) {
-      pickerOpen = false;
-      alightBox.replaceChildren(h('div', { class: 'ob-row' },
-        h('span', { class: 'ob-on' }, icon('bell'), t('Κατεβαίνεις: «{name}»', { name: tr.stopName || nameOf(tr.alightStop) })),
-        h('button', { type: 'button', class: 'btn rect sm', onclick: () => stopOnboard() }, t('Τέλος'))));
-      return;
-    }
-    const btn = h('button', { type: 'button', class: 'btn rect ob-open', 'aria-expanded': String(pickerOpen), onclick: () => { pickerOpen = !pickerOpen; paint(Date.now()); } }, icon('bell'), t('Θα κατέβω σε…'));
-    const kids = [btn];
-    if (pickerOpen && tl) {
-      const items = [];
-      for (let i = Math.max(0, tl.next); i < route.stops.length; i++) {
-        const row = tl.rows[i];
-        items.push(h('li', {}, h('button', { type: 'button', class: 'ob-pick press', onclick: () => pickStop(i) },
-          h('span', { class: 'ob-pick-name' }, nameOf(route.stops[i])), h('span', { class: 'ob-pick-in tabular' }, row ? inText(row.etaSec) : ''))));
-      }
-      kids.push(h('ul', { class: 'ob-picker', role: 'list' }, items));
-    }
-    alightBox.replaceChildren(...kids);
-  }
-  async function pickStop(i) {
-    const code = route.stops[i];
-    pickerOpen = false;
-    const ok = await startOnboard({ vehicleCode, routeCode: route.code, lineCode: route.lineCode, alightStop: code, stopName: nameOf(code) });
-    if (ok) toast(t('Θα σε ειδοποιήσω πριν τη «{name}»', { name: nameOf(code) }));
-    if (!dead) paint(Date.now());
   }
 
   // ---- map ----
@@ -439,7 +396,6 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     timer = setInterval(() => paint(Date.now()), TICK_MS);
   }
   document.addEventListener('visibilitychange', onVisibility);
-  const offTrip = onTripChange(() => paint(Date.now()));
 
   // ---- go ----
   buildRows();
@@ -452,7 +408,6 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   return {
     destroy() {
       dead = true;
-      offTrip();
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
       if (poller) poller.destroy();
