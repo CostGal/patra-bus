@@ -167,10 +167,20 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
     const x = h.x + h.width / 2, y0 = h.y + h.height / 2;
     await page.mouse.move(x, y0);
     await page.mouse.down();
-    // slow: four steps with a pause; fast: one quick stroke (steps in one call, so a slow CI runner still flicks fast,
-    // and a fast local one flicks very fast: the case where half used to win)
+    // slow: four steps with a pause; fast: one quick stroke. The release speed is measured with performance.now, so
+    // the fast stroke runs on a fake clock that moves 10 ms per call: the speed is the same on every machine, however
+    // loaded (TEL-233: on a busy runner the real clock made it slower than the 1200 px/s a fast flick needs)
     if (pause) for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); await page.waitForTimeout(pause); }
-    else await page.mouse.move(x, y0 + dy, { steps: 3 });
+    else {
+      await page.evaluate(() => {
+        const real = performance.now.bind(performance);
+        let t = real();
+        window.__realNow = real;
+        performance.now = () => (t += 10);
+      });
+      await page.mouse.move(x, y0 + dy, { steps: 3 });
+      await page.evaluate(() => { performance.now = window.__realNow; });
+    }
     await page.mouse.up();
     await page.waitForTimeout(700);
     return page.evaluate(() => document.getElementById('sheet').dataset.state);
