@@ -70,8 +70,10 @@ function measure({ state, tol }) {
   if (!title) out.U4.push('no .card-head .card-title (the kit\'s header)');
   else {
     const px = parseFloat(getComputedStyle(title).fontSize) * title.getBoundingClientRect().height / title.offsetHeight;
-    const want = state === 'full' ? 24 : 17;
-    if (Math.abs(px - want) > 0.6) out.U4.push(`title ${r1(px)} px, wants ${want}`);
+    // 17 px, or less down to the 14 px floor when the name does not fit (it depends on the font: Linux CI's is wider);
+    // up 24 px, or less for a long name, never under the floor
+    const max = state === 'full' ? 24 : 17;
+    if (px > max + 0.6 || px < 14 - 0.6) out.U4.push(`title ${r1(px)} px, wants ${max} (or down to 14 for a long name)`);
     if (title.scrollHeight > title.clientHeight + 1) out.U4.push('title wraps');
   }
 
@@ -211,8 +213,16 @@ test('UI protocol: chrome over the map has no transition on transform (U11)', as
 });
 
 // U4, the rest: a long name shrinks (to 14 px at the least, js/arrivals-view.js) and then "…": the card's header is as
-// tall as with a short one, at every state. 826 has the longest stop name in Patras.
+// tall as with a short one, at every state. 826 has the longest stop name in Patras; here it gets longer still, so it
+// is too long with any font (Linux CI's and Windows' differ by a few px).
+const LONG = 'ΑΚΡΩΤΗΡΙΟΥ ΚΑΙ ΓΛΑΥΚΟΣ ΠΑΝΕΠΙΣΤΗΜΙΟΥΠΟΛΗ ΡΙΟΥ (προς Πάτρα)';
 test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ page }) => {
+  await page.route('**/data/stops.json', async (route) => {
+    const res = await route.fetch();
+    const stops = await res.json();
+    for (const s of stops) if (String(s.code) === '826') s.name = LONG;
+    await route.fulfill({ response: res, json: stops });
+  });
   const heads = {};
   for (const code of ['1011', '826']) {
     await page.goto(`/?demo&debug#/stop/${code}`);
