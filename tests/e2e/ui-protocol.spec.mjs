@@ -212,8 +212,9 @@ test('UI protocol: chrome over the map has no transition on transform (U11)', as
   expect(r.length ? ['U11'] : [], `U11: ${r.join('; ')}`).toEqual(listed.filter((k) => k === 'U11'));
 });
 
-// U4, the rest: a long name shrinks (to 14 px at the least, js/arrivals-view.js) and then "…": the card's header is as
-// tall as with a short one, at every state. Both names are set here, so the result does not depend on the font (Linux
+// U4 (v0.2), the rest: at low and mid a long name shrinks (to 14 px at the least, js/arrivals-view.js) and then "…": the
+// card's header is as tall as with a short one. At up it may wrap to a second line: the header grows by that one line
+// (the short name's line height), never more. Both names are set here, so the result does not depend on the font (Linux
 // CI's is wider than Windows': there 1011's real name already takes two lines up): 1011 gets a one-word name, 826 (the
 // longest name in Patras) a longer one still.
 const SHORT = 'ΑΓΟΡΑ';
@@ -246,8 +247,11 @@ test('UI protocol: a long stop name keeps the card\'s height (U4)', async ({ pag
   }
   const broken = Object.keys(STATES).flatMap((s) => {
     const a = heads[`1011 ${s}`], b = heads[`826 ${s}`];
+    const extra = s === 'up' ? a.titleH : 0; // one more line of the title, only at up
     return [
-      ...(a.head !== b.head ? [`${s}: header ${a.head} px with a short name, ${b.head} px with a long one`] : []),
+      ...(b.head < a.head || b.head > a.head + extra + 1
+        ? [`${s}: header ${a.head} px with a short name, ${b.head} px with a long one (may add ${extra} px)`] : []),
+      ...(b.titleH > a.titleH * (s === 'up' ? 2 : 1) + 1 ? [`${s}: the long name takes ${b.titleH} px, more than ${s === 'up' ? 'two lines' : 'one line'}`] : []),
       ...(b.px < 14 - 0.6 ? [`${s}: the long name is ${b.px} px, under the 14 px floor`] : []),
     ];
   });

@@ -1,4 +1,4 @@
-# UI protocol (v0.1, TEL-245)
+# UI protocol (v0.2, TEL-245)
 
 Every change a user can see follows this file. It turns the locked stop card style (`docs/DESIGN.md` §10, TEL-227) into
 numbered rules, so the same look and motion hold on every card, header and sheet. `docs/DESIGN.md` keeps the reasons
@@ -23,7 +23,7 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
 | U1 | Apple Maps iOS 26 is the reference. Compare against real screenshots, low / mid / up, before proposing a change. | eye |
 | U2 | One inset in a card: 16 px from the card's edge, for header circles, chips, buttons and inner cards. | auto |
 | U3 | A round button in a card is `.g-circle`: 38 px glass circle, 44 px tap area, 20 px icon in the text colour. Never a `.btn` size: `min-height` and `padding` are reset. | auto |
-| U4 | Titles are small and centred: 17 px on the buttons' row at low and mid, 24 px on their own row at up. A long name shrinks to a floor, then "…". A card never changes height with its name. | auto |
+| U4 | Titles are small and centred: 17 px on the buttons' row at low and mid, 24 px on their own row at up. At low and mid a long name shrinks to a floor (14 px), then "…": the header keeps its height. At up a long name may wrap to a second line; that one line is the only height a name may add. | auto |
 | U5 | Low is one row, centred in the card, as tall as the buttons. Buttons and actions appear from mid. | auto |
 | U6 | Chips fill their row from mid, with the same inset (U2). At low they are the small badges under the name. | eye |
 | U7 | Glass is clear: a light tint and a light blur (DESIGN §4 "Glass target"). Light mode gets a little more shadow on buttons. | eye |
@@ -83,3 +83,5 @@ Kostas may try something that breaks the protocol:
 ## History
 
 - **v0.1** (2026-11-02, TEL-245): rules U1–U23 from DESIGN §10.
+- **v0.2** (2026-11-10, TEL-269, Kostas): U4 at up lets a long name wrap to two lines (the header grows by that line
+  only); low and mid keep the floor and "…".

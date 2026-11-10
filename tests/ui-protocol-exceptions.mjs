@@ -56,9 +56,6 @@ export const VIEW_EXCEPTIONS = {
   favorites: { U2: 'the old .view-head starts at the card\'s edge (0 px) at low/mid, 8 px up', U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
   settings: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
   report: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
-  'stop-long': {
-    U4: 'up, a long name takes two lines (arrivals.css: line-clamp 2 at .is-up): the header grows 80 → 109 px. Rule or design to change: Kostas decides',
-  },
   chrome: {
     U11: 'the toast eases its transform in .3 s (none only while dragging): a programmatic snap leaves it behind',
   },
