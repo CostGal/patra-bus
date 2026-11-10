@@ -79,6 +79,10 @@ My words:
 Where it shows up in Telematica: `.github/CODEOWNERS` (`* @CostGal`).
 My words:
 
+**Computed style**: the final value the browser uses for a CSS property after every matching rule has had its say, like the bill after all the discounts and extras.
+Where it shows up in Telematica: `tests/e2e/ui-protocol.spec.mjs` (TEL-269) reads it (`getComputedStyle`) to check sizes, opacity and transitions against the UI protocol.
+My words:
+
 **Concentric corners**: rounded corners that nest like rings of a tree: anything sitting inside a rounded box gets a smaller roundness than the box, so the curves look parallel instead of bumping into each other.
 Where it shows up in Telematica: the sheet (28 px) → cards in it (20 px) → blocks inside a card (12 px), from the tokens `--radius-sheet/-card/-inner` in `web/css/tokens.css` (TEL-225).
 My words:
@@ -121,6 +125,10 @@ My words:
 
 **ES module**: a JavaScript file that declares what it shares (`export`) and what it borrows (`import`), like a kitchen drawer with a label.
 Where it shows up in Telematica: all of `web/js/` loads as modules directly in the browser, with no build step.
+My words:
+
+**Exception list** (ratchet): a list of known breaks a test lets through for now, which may only get shorter, like a ratchet spanner that turns one way only: a new break fails the test, and so does a listed one that has been fixed but not removed.
+Where it shows up in Telematica: `tests/ui-protocol-exceptions.mjs` (TEL-269): what breaks the UI protocol today, per view and rule; empty = UI protocol v1.
 My words:
 
 **Fallback**: a second way to do something when the first way doesn't work, like taking the stairs when the lift is broken.
@@ -305,6 +313,10 @@ My words:
 
 **Staging**: a full copy of the server that only the team uses, with its own data and keys, where a change is tried before real users get it, like a dress rehearsal on the real stage before opening night.
 Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging.
+My words:
+
+**Static check**: a test that reads the code as text without running it, like a proofreader reading the manuscript before anything is printed.
+Where it shows up in Telematica: `tests/ui-protocol.test.mjs` (TEL-269) reads the CSS, `sheet.js` and `index.html` for the UI protocol rules a file can show on its own; `scripts/check-i18n.mjs` is another one.
 My words:
 
 **Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.
