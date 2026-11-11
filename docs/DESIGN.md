@@ -46,8 +46,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Countdowns use `font-variant-numeric: tabular-nums` so digits don't jitter.
 
 ## 6. Feedback (multimodal, sparingly)
-- Haptics (`navigator.vibrate`) only for meaningful moments: sheet snaps to a new detent, reminder set, "leave now", alight alert.
-  Same frame as the visual change. Never on every tap.
+- Haptics (`navigator.vibrate`) only for meaningful moments. Today: a long-press on the map (`map.js`) and a reminder
+  that fires (`notify.js`). Same frame as the visual change. Never on every tap.
 - Four kinds of feedback: status, completion, warning, error — short, inline.
 
 ## 7. Reduced motion
@@ -75,7 +75,7 @@ the next one. Each element also has a **nick** (TEL-230): a short English name t
 | S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
 | G | Settings | D | Dialogs and forms (setup, welcome, report) |
 
-- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--glass --map` etc. as for any sweep).
+- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; the sweep flags in `docs/TESTING.md` apply).
   It boxes every element with its nick and ID on its own set of screens (menus open, vehicle, search…) into
   `shots/ui-map/`, plus `LEGEND.md` (a nick → ID dictionary and the whole registry with the screens each ID appears on)
   and `explorer.html`: the clean screens, where a click on an element shows its nick, ID and description, with a
