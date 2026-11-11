@@ -150,15 +150,15 @@ html.glass .sr + .sr::before { background: var(--g-hair); }
 
 /* list rows (stops, lines, place suggestions): no grey and no growing. A soft glass highlight, a little inside the row's
    edges, fades in on press and out on release */
-html.glass :is(.stop-row, .lines-row, .pl-sug) { position: relative; isolation: isolate; }
-html.glass :is(.stop-row, .lines-row, .pl-sug):hover { background: transparent; } /* iOS keeps :hover after a tap */
-html.glass :is(.stop-row, .lines-row, .pl-sug)::before {
+html.glass :is(.stop-row, .lines-row) { position: relative; isolation: isolate; }
+html.glass :is(.stop-row, .lines-row):hover { background: transparent; } /* iOS keeps :hover after a tap */
+html.glass :is(.stop-row, .lines-row)::before {
   content: ''; position: absolute; z-index: -1; inset: 3px 8px; border-radius: 16px; pointer-events: none;
   background: var(--g-row); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim);
   opacity: 0; transition: opacity .3s ease-out;
 }
-html.glass :is(.stop-row, .lines-row, .pl-sug).g-press { box-shadow: none; }
-html.glass :is(.stop-row, .lines-row, .pl-sug).g-press::before { opacity: 1; transition-duration: .12s; }
+html.glass :is(.stop-row, .lines-row).g-press { box-shadow: none; }
+html.glass :is(.stop-row, .lines-row).g-press::before { opacity: 1; transition-duration: .12s; }
 
 /* the locate button: held, it fills with the app's blue; a tap sends out a ring (js/glass.js: .g-ping) */
 html.glass .fab.g-press {
@@ -295,26 +295,26 @@ html.glass-fx .g-lens[hidden] { display: none; }
 /* text on glass: a step heavier (§4) and a soft halo in the surface colour, instead of more frosting */
 html.glass .sheet-content h2, html.glass .pop-head, html.glass .pop-city-sub { font-weight: var(--weight-semibold); }
 html.glass #menu-pop, html.glass .sheet-content > h1, html.glass .sheet-content > h2,
-html.glass .stopv-head, html.glass .pl-head { text-shadow: 0 0 6px var(--g-halo), 0 0 2px var(--g-halo); }
+html.glass .stopv-head { text-shadow: 0 0 6px var(--g-halo), 0 0 2px var(--g-halo); }
 
 /* ---------- inside the sheet ---------- */
 html.glass .sheet { --card: color-mix(in srgb, var(--g-up-card) calc(var(--u) * 100%), var(--g-tint)); }
 html.glass .sheet .material, html.glass .sheet .material-lg {
   background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 1px 0 var(--g-edge), var(--shadow-1);
 }
-/* sticky headers (stop line chips, planner head): no band of their own. At rest they sit on the sheet like everything
+/* sticky headers (stop line chips): no band of their own. At rest they sit on the sheet like everything
    else; once the list scrolls under them (js/glass.js puts .g-scrolled on the sheet) a blur layer fades in behind them,
    feathered at the bottom so there is no edge or line (the sheet is its backdrop root: it blurs the list, not the map) */
-html.glass .stopv-chipbar, html.glass .pl-head { background: none; box-shadow: none; border-bottom-color: transparent; }
+html.glass .stopv-chipbar { background: none; box-shadow: none; border-bottom-color: transparent; }
 html.glass .stopv-chipbar::after { content: none; } /* the solid fade below it would hide the list */
-html.glass .stopv-chipbar::before, html.glass .pl-head::before {
+html.glass .stopv-chipbar::before {
   content: ''; position: absolute; z-index: -1; left: 0; right: 0; top: 0; bottom: -16px; pointer-events: none;
   background: var(--g-head); -webkit-backdrop-filter: var(--g-blur-head); backdrop-filter: var(--g-blur-head);
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
   opacity: 0; transition: opacity .2s ease-out;
 }
-html.glass .g-scrolled :is(.stopv-chipbar, .pl-head)::before { opacity: 1; }
+html.glass .g-scrolled .stopv-chipbar::before { opacity: 1; }
 /* the chips themselves: small glass pills instead of solid buttons */
 /* TEL-224: at low they are flat coloured pills (the line badges alone: no chip around them, no "All", not pressable);
    towards mid they grow into the filter chips, with the sheet (--l: 0 at low, 1 from mid). The chips keep their size,
@@ -379,7 +379,7 @@ html.glass .bv-dot, html.glass .lines-dot { background: var(--g-card); }
 
 /* ---------- fallbacks: solid, no blur, no light effects ---------- */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  html.glass :is(.stopv-chipbar, .pl-head)::before { opacity: 1; } /* solid bar: js/glass.js does not run here */
+  html.glass .stopv-chipbar::before { opacity: 1; } /* solid bar: js/glass.js does not run here */
 }
 @media (prefers-reduced-transparency: reduce) {
   html.glass { --g-chip: var(--g-card); --g-chip-on: var(--primary-soft);

@@ -13,11 +13,9 @@ import { STATIC_EXCEPTIONS } from './ui-protocol-exceptions.mjs';
 const WEB = new URL('../web/', import.meta.url);
 const read = (p) => readFileSync(new URL(p, WEB), 'utf8');
 
-// The stylesheets the app loads, in order (index.html), minus the vendored map and the features cut on main
-// (TEL-217 planner, TEL-271 guide and install hint): their files go when this branch takes main.
-const CUT = new Set(['css/planner.css', 'css/guide.css', 'css/install.css']);
+// The stylesheets the app loads, in order (index.html), minus the vendored map.
 const SHEETS = [...read('index.html').matchAll(/<link rel="stylesheet" href="([^"]+\.css)">/g)]
-  .map((m) => m[1]).filter((f) => !f.startsWith('vendor/') && !CUT.has(f));
+  .map((m) => m[1]).filter((f) => !f.startsWith('vendor/'));
 
 // ---- a small CSS reader: enough for our own files (rules, nested @media/@supports, comments) ----
 // Returns [{ file, selector, media, decls: [{ prop, value }] }], one entry per rule.

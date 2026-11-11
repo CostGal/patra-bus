@@ -10,6 +10,9 @@ const TASKS = 'collection://4da2abc0-511d-4dfb-b9c5-180656a8f5e2'
 const SERVERS = ['Notion', 'claude.ai Notion']
 const NOTION_TOOL = /^mcp__(.+)__notion-query-data-sources$/
 const STATUSES = ['In progress', 'In review', 'Not started']
+// Κλειστές κάρτες: Done, Not now (τη θέλαμε αλλά δεν χωρούσε) και Covered (την κάνει άλλη κάρτα).
+// Καμία δεν φαίνεται· μόνο οι Done μετράνε στην πρόοδο.
+const CLOSED = ['Done', 'Not now', 'Covered']
 const EVERY_MS = 5 * 60_000
 // Κολλημένο = In progress ή In review πάνω από 7 μέρες από το Started on (το formula του Notion δεν διαβάζεται με SQL).
 const STUCK_STATUSES = ['In progress', 'In review']
@@ -81,26 +84,29 @@ export function isStuck(status: string, started: string | null | undefined, now:
   return Number.isFinite(t) && now - t > STUCK_MS
 }
 
-/** Το τρέχον block (Κατάσταση = Τρέχον) και οι κάρτες του συνδεδεμένου χρήστη: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος. */
+/** Τα τρέχοντα blocks (Κατάσταση = Τρέχον, μπορεί να είναι δύο, π.χ. B0 και B0.5) και οι κάρτες του συνδεδεμένου χρήστη σε
+ *  οποιοδήποτε από αυτά: οι ανοιχτές στη λίστα, οι Done μόνο ως πλήθος, οι Not now / Covered πουθενά. */
 export async function loadBlock(ways: Way[], now: number): Promise<Omit<Block, 'error' | 'updatedAt'>> {
   const self = await notion(ways, 'notion-get-self', {})
   const userId: string = self.user.id
   const blocks = await notion(ways, 'notion-query-data-sources', sql([BLOCKS],
     `SELECT url, "Block" AS name FROM "${BLOCKS}" WHERE "Κατάσταση" = 'Τρέχον'`))
-  const current = blocks.results[0] as { url: string; name?: string } | undefined
-  if (!current) return { cards: [], done: 0 }
-  const blockId = current.url.split('/').pop()!.replace(/-/g, '')
+  const current = (blocks.results as { url: string; name?: string }[])
+    .slice().sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? ''), undefined, { numeric: true }))
+  if (!current.length) return { cards: [], done: 0 }
+  const blockIds = current.map(b => b.url.split('/').pop()!.replace(/-/g, ''))
   const tasks = await notion(ways, 'notion-query-data-sources', sql([TASKS],
     `SELECT "userDefined:ID" AS id, "Task" AS title, "Task status" AS status, url,
        "Area" AS area, "PR" AS pr, "date:Started on:start" AS started
-     FROM "${TASKS}" WHERE "Block" LIKE ? AND "Owner" LIKE ?`,
-    [`%${blockId}%`, `%${userId}%`]))
+     FROM "${TASKS}" WHERE (${blockIds.map(() => '"Block" LIKE ?').join(' OR ')}) AND "Owner" LIKE ?`,
+    [...blockIds.map(id => `%${id}%`), `%${userId}%`]))
   const rows = tasks.results as Row[]
-  const cards = rows.filter(r => r.status !== 'Done').map((r): Card => ({
+  const cards = rows.filter(r => !CLOSED.includes(r.status)).map((r): Card => ({
     id: r.id, title: r.title, status: r.status, url: notionLink(r.url),
     area: r.area || undefined, pr: r.pr || undefined, stuck: isStuck(r.status, r.started, now) || undefined,
   })).sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || a.id - b.id)
-  return { cards, done: rows.length - cards.length, name: current.name || undefined }
+  const name = current.map(b => b.name).filter(Boolean).join(' + ')
+  return { cards, done: rows.filter(r => r.status === 'Done').length, name: name || undefined }
 }
 
 let timer: { cancel: () => void } | undefined

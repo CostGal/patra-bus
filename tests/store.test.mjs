@@ -356,8 +356,8 @@ test('settings: changing lang emits a settings event once', () => {
   assert.deepEqual(seen, ['settings']);
 });
 
-// ---- first-run flags (guide seen, install hint dismissed): booleans, absent = false ----
-const FLAGS = ['guideSeen', 'installHintDismissed', 'welcomeSeen', 'legendSeen'];
+// ---- first-run flags (welcome seen, legend seen): booleans, absent = false ----
+const FLAGS = ['welcomeSeen', 'legendSeen'];
 
 test('first-run flags: absent by default, booleans only, persisted', () => {
   const { s, ls } = make();
@@ -385,9 +385,9 @@ test('first-run flags: non-boolean values are rejected and leave state alone', (
 });
 
 test('first-run flags: a dirty stored blob keeps only the valid one', () => {
-  const dirty = { v: 3, favorites: [], recents: {}, settings: { guideSeen: 'yes', installHintDismissed: true } };
+  const dirty = { v: 3, favorites: [], recents: {}, settings: { welcomeSeen: 'yes', legendSeen: true } };
   const { s } = make(fakeStorage({ [KEY]: JSON.stringify(dirty) }));
-  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, installHintDismissed: true });
+  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, legendSeen: true });
 });
 
 test('first-run flags: survive resetSettings together with city, other settings are dropped', () => {
@@ -395,15 +395,15 @@ test('first-run flags: survive resetSettings together with city, other settings 
   const { s } = make(ls);
   s.setSetting('city', 'patra');
   s.setSetting('theme', 'dark'); s.setSetting('bufferMin', 5);
-  s.setSetting('guideSeen', true); s.setSetting('installHintDismissed', true);
+  s.setSetting('welcomeSeen', true); s.setSetting('legendSeen', true);
   s.resetSettings();
-  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, city: 'patra', guideSeen: true, installHintDismissed: true });
-  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { city: 'patra', guideSeen: true, installHintDismissed: true });
+  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, city: 'patra', welcomeSeen: true, legendSeen: true });
+  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { city: 'patra', welcomeSeen: true, legendSeen: true });
 });
 
 test('first-run flags: clearAll wipes them', () => {
   const { s } = make();
-  s.setSetting('guideSeen', true); s.setSetting('installHintDismissed', true);
+  s.setSetting('welcomeSeen', true); s.setSetting('legendSeen', true);
   s.clearAll();
   for (const key of FLAGS) assert.equal(s.getSettings()[key], undefined);
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
@@ -413,7 +413,7 @@ test('first-run flags: one settings event per real change', () => {
   const { s } = make();
   const seen = [];
   s.onChange((k) => seen.push(k));
-  s.setSetting('guideSeen', true); s.setSetting('guideSeen', true);
-  s.setSetting('installHintDismissed', true); s.setSetting('installHintDismissed', 'yes');
+  s.setSetting('welcomeSeen', true); s.setSetting('welcomeSeen', true);
+  s.setSetting('legendSeen', true); s.setSetting('legendSeen', 'yes');
   assert.deepEqual(seen, ['settings', 'settings']);
 });

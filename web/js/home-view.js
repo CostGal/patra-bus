@@ -1,17 +1,18 @@
-// Home parts for the sheet (TEL-232, owner: shell): the Places row (mid), the favourites with their next arrival live
-// and the routines (up). The recents and the layout live in app.js mountHome. Style: DESIGN.md §4 and §10, css/home.css.
+// Home parts for the sheet (TEL-232, owner: shell): the Places row (mid) and the favourites with their next arrival
+// live (up). The recents and the layout live in app.js mountHome. Style: DESIGN.md §4 and §10, css/home.css.
 import { h, icon } from './ui.js';
 import { t } from './i18n.js';
 import { cityHash } from './route.js';
 import { createLivePoller, isStale } from './api.js';
 import { getFavorites, onChange } from './store.js';
-import { getPlaces, onPlacesChange, placeLabel, placeHash, MAX_CUSTOM } from './places.js';
-import { getRoutines, onRoutinesChange, routineLabel } from './routines.js';
+import { getPlaces, onPlacesChange, placeLabel, MAX_CUSTOM } from './places.js';
 
 export const LIVE_FAVS = 4; // favourites that fetch their arrival; the rest load on demand ("Δες αφίξεις")
-// Where places and routines are set (settings-view.js opens this section for ?section=home)
+// Where places are set (settings-view.js opens this section for ?section=home)
 const SETTINGS_PLACES = () => cityHash('#/settings?section=home');
 const PLACE_ICON = { home: 'home', work: 'briefcase' };
+// A set place opens the stops around it (the pin view), as a recent place does in app.js (the planner is gone, TEL-217).
+const placeHash = (p) => cityHash(`#/pin?lat=${p.lat.toFixed(5)}&lng=${p.lng.toFixed(5)}`);
 
 // ---------------------------------------------------------------- Places: round buttons
 // Σπίτι and Δουλειά are always there (dimmed until set: a tap sets them in the settings), then your own places, then "+".
@@ -25,11 +26,11 @@ export function mountPlacesRow(container) {
     const slots = ['home', 'work'].map((id) => {
       const p = byId.get(id);
       const label = id === 'home' ? t('Σπίτι') : t('Δουλειά');
-      return p ? circle('', PLACE_ICON[id], label, placeHash(p), t('Διαδρομή: {name}', { name: label }))
+      return p ? circle('', PLACE_ICON[id], label, placeHash(p), t('Στάσεις κοντά: {name}', { name: label }))
         : circle('is-empty', PLACE_ICON[id], label, SETTINGS_PLACES(), t('Όρισε: {name}', { name: label }));
     });
     const custom = saved.filter((p) => !PLACE_ICON[p.id]);
-    const own = custom.map((p) => circle('', 'pin', placeLabel(p), placeHash(p), t('Διαδρομή: {name}', { name: placeLabel(p) })));
+    const own = custom.map((p) => circle('', 'pin', placeLabel(p), placeHash(p), t('Στάσεις κοντά: {name}', { name: placeLabel(p) })));
     const add = custom.length < MAX_CUSTOM ? [circle('is-add', 'plus', t('Νέο'), SETTINGS_PLACES(), t('Προσθήκη μέρους'))] : [];
     container.replaceChildren(h('h2', {}, t('Μέρη')), h('div', { class: 'hm-places' }, ...slots, ...own, ...add));
   };
@@ -102,20 +103,4 @@ export function mountFavoritesLive(container, ctx, stopRow) {
       rows.clear(); container.replaceChildren();
     },
   };
-}
-
-// ---------------------------------------------------------------- my routines (read only: they are edited in the settings)
-export function mountRoutinesHome(container) {
-  const paint = () => {
-    const rs = getRoutines();
-    if (!rs.length) { container.replaceChildren(); return; }
-    container.replaceChildren(h('section', { class: 'home-section' }, h('h2', {}, t('Οι ρουτίνες μου')),
-      h('div', { class: 'list' }, rs.map((r) => h('a', { class: 'stop-row', href: SETTINGS_PLACES() },
-        h('span', { class: 'stop-ico' }, icon('clock')),
-        h('span', { class: 'stop-main' }, h('div', { class: 'stop-name' }, routineLabel(r, t(r.placeName || 'Τόπος')))),
-        h('span', { class: 'chev' }, icon('chevron')))))));
-  };
-  paint();
-  const off = onRoutinesChange(paint);
-  return { destroy() { off?.(); container.replaceChildren(); } };
 }

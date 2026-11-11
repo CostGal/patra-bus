@@ -1,5 +1,5 @@
 // TEL-232: the home in the sheet (Apple Maps search mode): Places at mid, the first recent whole and the second 20% in,
-// favourites with their next arrival at up, my routines at up.
+// favourites with their next arrival at up.
 import { test, expect } from './mock.mjs';
 
 const seed = (page) => page.addInitScript(() => {
@@ -18,7 +18,7 @@ test('home: Places as round buttons, then recents; mid ends 20% into the second 
   await page.goto('/?demo&debug#/');
   const places = page.locator('.hm-place');
   await expect(places).toHaveCount(4); // Σπίτι (set), Δουλειά (empty), Γυμναστήριο, +
-  await expect(places.nth(0)).toHaveAttribute('href', /#\/plan\?to=38\.24660,21\.73460/);
+  await expect(places.nth(0)).toHaveAttribute('href', /#\/pin\?lat=38\.24660&lng=21\.73460/);
   await expect(places.nth(1)).toHaveClass(/is-empty/);
   await expect(places.nth(1)).toHaveAttribute('href', /#\/settings\?section=home/);
   await expect(places.nth(3)).toHaveClass(/is-add/);

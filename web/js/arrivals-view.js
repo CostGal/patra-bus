@@ -146,7 +146,6 @@ export function mountStop(container, ctx, { code }) {
     if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
   }
-  const directions = () => ctx.navigate(`#/plan?to=${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}&name=${encodeURIComponent(stop.displayName)}`);
 
   // under the name at low: the line badges (the filter chips, carried up and centred there: css/glass.css, placed by
   // placeChips()); from mid the chips are right under the name. The stop's number is at the very bottom (TEL-227)
@@ -156,6 +155,8 @@ export function mountStop(container, ctx, { code }) {
       iconBtn('share', t('Κοινοποίηση'), share),
       h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
+  // The planner it opened is gone (TEL-217). Until the walking route lands (next commit), it shows the stop on the map.
+  const directions = () => ctx.map?.flyTo?.(stop, 17);
   const acts = h('div', { class: 'stopv-acts' },
     h('button', { type: 'button', class: 'stopv-pill g-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
     star);

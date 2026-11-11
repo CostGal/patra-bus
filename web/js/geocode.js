@@ -1,4 +1,4 @@
-// Destination search (owner: planner): local stops first, then Photon (OSM geocoder, no key).
+// Destination search (owner: geocode): local stops first, then Photon (OSM geocoder, no key).
 // Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode? }
 import { loadData, searchStops } from './data.js';
 import { t } from './i18n.js';

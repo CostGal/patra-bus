@@ -1,7 +1,7 @@
-// Platform detection for the install tutorial (owner: guide). Pure: no DOM or i18n at import, node-testable.
+// Platform detection (used by welcome.js, report.js, usage.js). Pure: no DOM or i18n at import, node-testable.
 // detectPlatform() takes the raw signals; currentPlatform() reads the real globals and never throws.
 // User-agent sniffing is a best effort (iOS and Android browsers hide behind each other's tokens), so every
-// uncertain case falls to 'other' and the tutorial then shows the generic steps.
+// uncertain case falls to 'other' and the generic case applies.
 
 const IOS_UA = /iPhone|iPod|iPad/;
 // Browsers embedded in other apps (no install UI at all). Android WebViews carry "; wv)".
@@ -48,10 +48,4 @@ export function currentPlatform({ hasInstallPrompt = false } = {}) {
     ua: nav.userAgent, platform: nav.platform, maxTouchPoints: nav.maxTouchPoints,
     standalone, displayModeStandalone, hasInstallPrompt,
   });
-}
-
-// Pure core of install-guide.js installHint(): a suggestion only makes sense on a phone/tablet in a browser tab.
-export function installHintFor(p) {
-  if (!p || p.mode !== 'browser' || (p.os !== 'ios' && p.os !== 'android')) return null;
-  return { os: p.os, browser: p.browser };
 }

@@ -4,9 +4,8 @@ export const PAIRS = [
   ['Μέρη', 'Places'],
   ['Νέο', 'New'],
   ['Προσθήκη μέρους', 'Add a place'],
-  ['Διαδρομή: {name}', 'Directions: {name}'],
+  ['Στάσεις κοντά: {name}', 'Stops near: {name}'],
   ['Όρισε: {name}', 'Set: {name}'],
-  ['Οι ρουτίνες μου', 'My routines'],
   ['Καμία άφιξη αυτή την ώρα', 'No arrivals right now'],
   ['Φορτώνει…', 'Loading…'],
 ];

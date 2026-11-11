@@ -3,13 +3,12 @@
 // `?setup` previews it any time without touching the flag. Motion follows docs/DESIGN.md like welcome.js: the card rises and
 // sinks on the shared spring, steps slide in from the side they come from, reduced motion = short fades.
 // Styles: css/setup.css (prefix su-). English pairs: i18n-en-setup.js.
-import { h } from './ui.js';
+import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { t, setLang, langPref, resolveLang, onLangChange, lang, APP_NAME } from './i18n.js';
 import { getSettings, setSetting } from './store.js';
 import { CITIES, cityId, cityName, isCity } from './cities.js';
 import { createSpringLoop } from './motion.js';
 import { cityHash, formatHash } from './route.js';
-import { exampleTile, sampleLines } from './guide-view.js';
 
 // Pure: shown once, on a boot that lands on the home view (never over a shared link); a preview always shows.
 export const shouldSetup = ({ seen, preview, bootHome }) => !!preview || (!!bootHome && !seen);
@@ -18,6 +17,28 @@ export const shouldSetup = ({ seen, preview, bootHome }) => !!preview || (!!boot
 // ('el' is also the store default, so it cannot tell a choice from no choice).
 export const initialLang = (pref, navLang) => (pref === 'en' ? 'en' : resolveLang('auto', navLang));
 
+// Real-looking tile for the explanation (same markup and classes as arrivals-view.js, without the live countdown).
+export function exampleTile({ live, line, dest, mins }) {
+  const clock = fmtClock(Date.now() + mins * 60000);
+  const flag = live
+    ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'))
+    : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock));
+  const label = live
+    ? t('Παράδειγμα: γραμμή {line}, ζωντανή άφιξη σε {n} λεπτά.', { line: line.code, n: mins })
+    : t('Παράδειγμα: γραμμή {line}, προγραμματισμένη άφιξη στις {clock}.', { line: line.code, clock });
+  return h('div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}`, role: 'img', 'aria-label': label },
+    h('div', { class: 'atile-badge' }, lineBadge(line)),
+    h('div', { class: 'atile-body' }, h('div', { class: 'atile-dest' }, dest), h('div', { class: 'atile-status' }, flag)),
+    h('div', { class: 'atile-eta' }, h('span', { class: 'atile-num tabular' }, `${mins}′`)));
+}
+
+// Two sample lines: the first two of the active city when available (their real colours), else neutral ones.
+export function sampleLines(ctx) {
+  const real = (ctx?.data?.lines || []).filter((l) => l && l.code && l.color).slice(0, 2);
+  const fallback = [{ code: '1', color: '#1a73e8', textColor: '#ffffff' }, { code: '2', color: '#e8710a', textColor: '#ffffff' }];
+  return [real[0] || fallback[0], real[1] || fallback[1]];
+}
+
 export const STEPS = 3;
 const SETTLE = { damping: 1, response: 0.4 };
 
@@ -25,9 +46,8 @@ const SETTLE = { damping: 1, response: 0.4 };
 export function maybeSetup({ bootHome, ctx } = {}) {
   const preview = /[?&]setup\b/.test(globalThis.location?.search || '');
   if (!shouldSetup({ seen: getSettings().setupDone === true, preview, bootHome })) return null;
-  if (!preview) { // set on show, not on close: a reload mid-way must not bring it back. The home "first time here?" card goes too.
+  if (!preview) { // set on show, not on close: a reload mid-way must not bring it back.
     setSetting('setupDone', true);
-    setSetting('guideSeen', true);
   }
   return new Promise((resolve) => openSetup({ ctx, onClosed: resolve }));
 }
@@ -81,8 +101,7 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
         p(t('Το λεωφορείο στέλνει τη θέση του. Το βλέπεις στον χάρτη και ο χρόνος είναι εκτίμηση με βάση αυτή.'), 'su-cap')),
       h('div', { class: 'su-eg' }, exampleTile({ live: false, line: schedLine, dest: t('Κέντρο'), mins: 12 }),
         p(t('Είναι μόνο η ώρα του προγράμματος, χωρίς θέση οχήματος. Το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'), 'su-cap')),
-      p(t('′ = λεπτά, ″ = δευτερόλεπτα'), 'su-units'),
-      h('a', { class: 'su-guide press', href: formatHash('#/guide', pickCity), onclick: (e) => { e.preventDefault(); close('#/guide'); } }, t('Δες όλο τον οδηγό'))];
+      p(t('′ = λεπτά, ″ = δευτερόλεπτα'), 'su-units')];
   }
 
   function paintChoices() {

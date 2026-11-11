@@ -5,11 +5,8 @@ import { CITIES, DEFAULT_CITY, setActiveCity, cityId, cityName, dataDir } from '
 import { parseHash, relHash, formatHash, cityHash, shareHash, resolveBootCity } from '../web/js/route.js';
 import { createStore, KEY } from '../web/js/store.js';
 import { fetchLive, fetchStats, liveUrl, statsUrl, lastAttemptAt, _setTransport, API_BASE, MIN_GAP_MS } from '../web/js/api.js';
-import { createPlaces, placeHash } from '../web/js/places.js';
-import { createRoutines, buildRoutinePayload, cleanRoutine } from '../web/js/routines.js';
+import { createPlaces } from '../web/js/places.js';
 import { createReminders } from '../web/js/notify.js';
-import { buildReminderBody } from '../web/js/push.js';
-import { loadTrip, KEY as TRIP_KEY } from '../web/js/onboard.js';
 import { buildIndex } from '../web/js/data.js';
 
 function fakeStorage(init = {}) {
@@ -77,7 +74,6 @@ test('cityHash / shareHash follow the active city', async () => {
     assert.equal(cityHash('#/stop/1'), '#/corfu/stop/1');
     assert.equal(cityHash('#/corfu/stop/1'), '#/corfu/stop/1');
     assert.equal(shareHash('#/lines'), '#/corfu/lines');
-    assert.equal(placeHash({ lat: 39.62, lng: 19.92, name: 'A' }), '#/corfu/plan?to=39.62000,19.92000&name=A');
   });
   assert.equal(cityId(), 'patra');
 });
@@ -238,7 +234,7 @@ test('api: fetchLive / fetchStats call the active city; the 15 s memo is keyed b
   } finally { _setTransport(); }
 });
 
-// ---------------------------------------------------------------- places / routines / reminders / trip / push
+// ---------------------------------------------------------------- places / reminders / trip
 test('places: per city; the other city keeps its own Σπίτι', () => {
   const ls = fakeStorage();
   const city = { v: 'patra' };
@@ -266,47 +262,19 @@ test('places: items saved before multi-city (no `city`) are Patras', () => {
   assert.deepEqual(p.getPlaces().map((x) => x.city), ['patra']);
 });
 
-const SUB = { endpoint: 'https://push.example/abc', keys: { p256dh: 'P', auth: 'A' } };
-const TRIP = { stopCode: '801', routeCode: '1', lineCode: '1', offsetSec: 120 };
-const PAYLOAD = (city) => buildRoutinePayload({ subscription: SUB, days: [1], time: '07:45', trip: TRIP, city });
-
-test('routines: payload carries the city; stored routines are per city', async () => {
-  assert.equal(PAYLOAD('corfu').city, 'corfu');
-  assert.equal(PAYLOAD(undefined).city, 'patra');
-  assert.equal(PAYLOAD('atlantis').city, 'patra');
-  let n = 0;
-  const fetchFn = async () => ({ ok: true, status: 201, json: async () => ({ id: `r${n++}` }) });
-  const city = { v: 'patra' };
-  const r = createRoutines({ storage: fakeStorage(), fetchFn, apiBase: 'http://api', city: () => city.v });
-  assert.equal((await r.bookRoutine(PAYLOAD('patra'))).ok, true);
-  city.v = 'corfu';
-  assert.deepEqual(r.getRoutines(), []);
-  assert.equal((await r.bookRoutine(PAYLOAD('corfu'))).routine.city, 'corfu');
-  assert.deepEqual(r.getRoutines().map((x) => x.id), ['r1']);
-  city.v = 'patra';
-  assert.deepEqual(r.getRoutines().map((x) => x.id), ['r0']);
-  await r.removeRoutine('r0');
-  city.v = 'corfu';
-  assert.deepEqual(r.getRoutines().map((x) => x.id), ['r1'], 'removing in Patras left Corfu alone');
-  assert.equal(cleanRoutine({ id: 'x', days: [1], time: '07:00', trip: TRIP }).city, 'patra'); // legacy
-});
-
 test('reminders: tagged with the city; lists and lookups show the active city only; due ones fire anywhere', () => {
   let t = 1_700_000_000_000;
   const timers = [];
   const fired = [];
   const ls = fakeStorage();
   const city = { v: 'patra' };
-  const booked = [];
-  const push = { state: () => 'on', schedule: async (p) => { booked.push(p); return null; }, cancel: async () => {} };
-  const r = createReminders({ storage: () => ls, now: () => t, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimer: () => {}, onFire: (x) => fired.push(x), push, city: () => city.v });
+  const r = createReminders({ storage: () => ls, now: () => t, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimer: () => {}, onFire: (x) => fired.push(x), city: () => city.v });
   r.scheduleReminder({ at: t + 60_000, title: 'P', tag: 'a', url: '#/patra/plan' });
   city.v = 'corfu';
   r.scheduleReminder({ at: t + 90_000, title: 'C', tag: 'b', url: '#/corfu/plan' });
   assert.deepEqual(r.listReminders().map((x) => [x.tag, x.city]), [['b', 'corfu']]);
   assert.equal(r.hasReminder('a'), false);
   assert.equal(r.hasReminder('b'), true);
-  assert.deepEqual(booked.map((b) => b.city), ['patra', 'corfu'], 'the server is told which city');
   city.v = 'patra';
   assert.deepEqual(r.listReminders().map((x) => x.tag), ['a']);
   t += 100_000;
@@ -323,26 +291,6 @@ test('reminders: stored ones without `city` (older app) are Patras', () => {
   assert.deepEqual(r.listReminders(), []);
   city.v = 'patra';
   assert.deepEqual(r.listReminders().map((x) => [x.tag, x.city]), [['old', 'patra']]);
-});
-
-test('push: the reminder body names the city (default: the active one)', async () => {
-  const base = { at: Date.now() + 60_000, title: 'T', tag: 'x' };
-  assert.equal(buildReminderBody(SUB, { ...base, city: 'corfu' }).city, 'corfu');
-  assert.equal(buildReminderBody(SUB, base).city, 'patra');
-  assert.equal(buildReminderBody(SUB, { ...base, city: 'atlantis' }).city, 'patra');
-  await withCity('corfu', () => assert.equal(buildReminderBody(SUB, base).city, 'corfu'));
-});
-
-test('onboard: a trip started in another city is not this city\'s trip (and is not deleted)', () => {
-  const NOW = 1_700_000_000_000;
-  const trip = { alightStop: '801', routeCode: '1', startedAt: NOW, city: 'corfu' };
-  const ls = fakeStorage({ [TRIP_KEY]: JSON.stringify(trip) });
-  assert.equal(loadTrip(() => ls, NOW, 'patra'), null);
-  assert.ok(ls.getItem(TRIP_KEY), 'kept for Corfu');
-  assert.equal(loadTrip(() => ls, NOW, 'corfu').alightStop, '801');
-  const legacy = fakeStorage({ [TRIP_KEY]: JSON.stringify({ alightStop: '1', routeCode: '2', startedAt: NOW }) });
-  assert.equal(loadTrip(() => legacy, NOW, 'patra').alightStop, '1');
-  assert.equal(loadTrip(() => legacy, NOW, 'corfu'), null);
 });
 
 // ---------------------------------------------------------------- data

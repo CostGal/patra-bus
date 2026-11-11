@@ -40,7 +40,7 @@ const OLD_HEAD = 'old header (.ex-head / .view-head), not the kit\'s .card-head 
 const OLD_INSET = 'content 24 px from the card at low/mid, 32 up: its own 16 px on top of the sheet\'s';
 export const VIEW_EXCEPTIONS = {
   home: {
-    U2: 'the onboarding card starts 8 px from the card\'s edge',
+    U2: 'the Places row starts 8 px from the card\'s edge at low/mid (its scroller reaches out 10 px so a held circle is not cut)',
     U3: 'Places are 48 px circles (see the static U3)',
     U4: 'home has no title row: the search field heads it (Apple Maps does the same; the rule may need a home case)',
     U5: 'same: low is the search row',

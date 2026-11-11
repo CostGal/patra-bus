@@ -403,9 +403,9 @@ html.sheet-dragging .toast-host { transition: none; }
    The system replaces our colours, so LIVE vs SCHEDULED must differ by something else: the LIVE badge is filled (Highlight) with a
    visible dot, SCHEDULED stays an outline (dashed); the live stripe is thick, the scheduled one thin; the chosen filter chip is filled. */
 @media (forced-colors: active) {
-  :root .atile-flag, :root .nb-flag, :root .pl-flag, :root .ex-chip { border: 1px dashed CanvasText; background: Canvas; color: CanvasText; }
-  :root .atile-live .atile-flag, :root .nb-flag-live, :root .pl-flag.is-live, :root .ex-chip-live { forced-color-adjust: none; border: 1px solid Highlight; background: Highlight; color: HighlightText; }
-  :root .atile-dot, :root .nb-dot, :root .pl-dot, :root .ex-chip-dot { forced-color-adjust: none; background: HighlightText; }
+  :root .atile-flag, :root .nb-flag, :root .ex-chip { border: 1px dashed CanvasText; background: Canvas; color: CanvasText; }
+  :root .atile-live .atile-flag, :root .nb-flag-live.is-live, :root .ex-chip-live { forced-color-adjust: none; border: 1px solid Highlight; background: Highlight; color: HighlightText; }
+  :root .atile-dot, :root .nb-dot, :root .ex-chip-dot { forced-color-adjust: none; background: HighlightText; }
   :root .atile { border-left-width: 2px; border-left-style: dashed; }
   :root .atile-live, :root .nb-hero-live, :root .nb-mini-live { border-left-width: 8px; border-left-style: solid; }
   :root .atile-live.atile-aged { border-left-width: 2px; border-left-style: dashed; }
@@ -440,16 +440,3 @@ html.sheet-dragging .toast-host { transition: none; }
 .map-capsule { position: relative; display: flex; flex-direction: column; width: 48px; border-radius: 24px; background: var(--material-bg); box-shadow: var(--shadow-1); }
 .map-capsule > .fab { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 24px; }
 
-/* first-run guide card / install hint under the home card (js/app.js mountHome). Surface: .material (§4); press: .press (§1);
-   entrance: .card-in (css/nearby.css, opacity-only under reduced motion); leave: the same path back, fade + lift. */
-.guide-hint { display: flex; align-items: center; margin-top: var(--space-2); padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius-card); }
-.guide-hint-go { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; color: var(--foreground); font-weight: 600; font-size: var(--text-md); line-height: 1.25; text-decoration: none; }
-.guide-hint-go .icon { color: var(--primary); }
-.guide-hint-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-foreground); cursor: pointer; }
-.guide-hint-x .icon { --icon: 18px; }
-.guide-hint.is-leaving { animation: guide-hint-out .18s var(--spring-ease) both; pointer-events: none; }
-@keyframes guide-hint-out { to { opacity: 0; transform: translateY(-4px); } }
-@media (prefers-reduced-motion: reduce) {
-  .guide-hint.is-leaving { animation: guide-hint-out-reduced .12s linear both; }
-}
-@keyframes guide-hint-out-reduced { to { opacity: 0; } }

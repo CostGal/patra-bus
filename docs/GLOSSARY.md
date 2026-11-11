@@ -168,7 +168,7 @@ Where it shows up in Telematica: the floating search bar and bottom sheet (`.mat
 My words:
 
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
-Where it shows up in Telematica: `#/stop/1011`, `#/plan`, `#/settings` (`web/js/app.js`, `route.js`).
+Where it shows up in Telematica: `#/stop/1011`, `#/lines`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
 
 **Headless browser**: a real browser that runs without a visible window, so a script can open pages and take screenshots, like a robot using the browser for you.
@@ -184,7 +184,7 @@ Where it shows up in Telematica: the `hp` field in the problem report (`web/js/r
 My words:
 
 **Hook** (SessionStart hook): a command Claude Code runs by itself at a fixed moment, like a checklist taped inside the project folder that gets done every time the folder is opened.
-Where it shows up in Telematica: `.claude/settings.json` runs `scripts/cloud-session-start.mjs` when a session starts; in a cloud session it installs packages and Chromium, locally it does nothing.
+Where it shows up in Telematica: `.claude/settings.json` runs `scripts/session-start.mjs` when a session starts; it runs `npm ci` when `node_modules` is missing (a new worktree), and in a cloud session it also installs Chromium.
 My words:
 
 **i18n** (internationalisation): preparing an app so text can be shown in several languages, like menus printed in two languages.
@@ -236,7 +236,11 @@ Where it shows up in Telematica: the `[[migrations]]` blocks `v1`–`v3` in `wor
 My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
-Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Block from Notion (`/block` refreshes it; `/sprint` is kept as an alias).
+Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Blocks from Notion (there can be two) (`/block` refreshes it; `/sprint` is kept as an alias).
+My words:
+
+**npm ci**: installs the packages exactly as `package-lock.json` lists them, like stocking a new desk with exactly the tools on the old desk's list.
+Where it shows up in Telematica: the CI runs it, and the SessionStart hook (`scripts/session-start.mjs`) runs it when a session starts without `node_modules`.
 My words:
 
 **OSRM**: a free service that works out walking or driving routes, like asking a local for directions.
@@ -264,7 +268,7 @@ Where it shows up in Telematica: `.github/pull_request_template.md`; only Kostas
 My words:
 
 **Push subscription**: the address of one phone's notification inbox, which a server uses to send it a message, like a postal address for notifications.
-Where it shows up in Telematica: the phone gives it to the Worker when booking a reminder (`web/js/push.js`, `worker/src/reminders.js`).
+Where it shows up in Telematica: the phone gives it to the Worker when booking a reminder (`worker/src/reminders.js`; the web client was removed in TEL-270).
 My words:
 
 **PWA** (progressive web app): a website that can be installed and work like an app, even partly offline, like a bookmark with superpowers.
@@ -273,6 +277,10 @@ My words:
 
 **Rate limit**: a cap on how many requests are allowed in a time window, like "one coffee per person per minute".
 Where it shows up in Telematica: 15 s minimum between live requests per stop; per-IP limits on reminders and reports (`worker/src/index.js`).
+My words:
+
+**Registry**: the one central list where every item has exactly one entry and a permanent number, like a town's register of residents.
+Where it shows up in Telematica: `scripts/ui-map.mjs` lists every UI element with its ID (S7) and nick (countdown) for the UI map and the explorer (TEL-198, TEL-230).
 My words:
 
 **Required check**: a test or status that must be green on a pull request before GitHub lets anyone merge it, like a signature a form needs before it is accepted.
@@ -295,8 +303,12 @@ My words:
 Where it shows up in Telematica: the `test` job in `.github/workflows/test.yml`, allowlist in `.gitleaks.toml`.
 My words:
 
+**Selector** (CSS selector): the "address" that tells the browser which elements of the page we mean, like a street and house number (`.atile-badge` = every element with that class).
+Where it shows up in Telematica: the CSS files, and the `sel` of each entry in `scripts/ui-map.mjs`; when the app's markup changes, a selector can stop matching and the legend shows "—".
+My words:
+
 **Service worker**: a helper script the browser runs in the background for a site, like a doorman who answers for you when you're out.
-Where it shows up in Telematica: `web/sw.js` keeps the app working offline; `web/sw-push.js` shows notifications.
+Where it shows up in Telematica: `web/sw.js` keeps the app working offline.
 My words:
 
 **Skill** (slash command): a saved set of instructions Claude Code loads when you type its name, like a recipe card you hand the cook.
@@ -364,7 +376,7 @@ Where it shows up in Telematica: the founders' proposal (TEL-1) suggests 4 years
 My words:
 
 **Web Push**: the standard way a server sends a notification to a phone even when the app is closed, like a postal delivery to your door.
-Where it shows up in Telematica: `web/js/push.js`, `web/sw-push.js`, `worker/src/push.js`.
+Where it shows up in Telematica: `worker/src/push.js` (the web client was removed in TEL-270).
 My words:
 
 **WebKit**: the browser engine inside Safari and every iPhone browser, like the engine block that all iPhone browsers share.

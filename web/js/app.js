@@ -17,12 +17,7 @@ import { searchPlaces } from './geocode.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
 
-// Install-as-app helper (js/install-guide.js, docs/GUIDE.md). Started here, in parallel with boot and never awaited by it,
-// so it cannot delay the first paint; captureInstallPrompt() keeps `beforeinstallprompt` for the guide's Install button.
-let installP = null;
-const installGuide = () => (installP ||= import('./install-guide.js').catch((err) => { installP = null; throw err; }));
-installGuide().then((m) => m.captureInstallPrompt()).catch(() => {});
-// Was the page opened on the home view (not a deep link)? Only then the first-run setup / guide / install hint may appear.
+// Was the page opened on the home view (not a deep link)? Only then the first-run setup may appear.
 const bootHome = parseHash(location.hash).path === '/';
 // First-run setup (js/setup.js, TEL-74): fetched in parallel with boot, opened just before the first route.
 const setupP = import('./setup.js').catch(() => null);
@@ -61,8 +56,7 @@ const parsePt = (s) => {
   const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(s || '');
   return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
 };
-const ptStr = (p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
-const planHash = (to, name) => cityHash(`#/plan?to=${ptStr(to)}${name ? `&name=${encodeURIComponent(name)}` : ''}`);
+const pinHash = (to) => cityHash(`#/pin?lat=${to.lat.toFixed(5)}&lng=${to.lng.toFixed(5)}`);
 const msgEl = (text) => h('p', { class: 'state-msg' }, text);
 const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, t('Δοκίμασε ξανά')));
 const backBtn = (to = '#/') => h('a', { class: 'btn round', href: cityHash(to), 'aria-label': t('Πίσω') }, icon('back'));
@@ -80,7 +74,7 @@ function stopRow(stop, meters) {
     h('span', { class: 'chev' }, icon('chevron')));
 }
 function placeRow(p) {
-  return h('a', { class: 'stop-row', href: planHash(p, p.name) },
+  return h('a', { class: 'stop-row', href: pinHash(p) },
     h('span', { class: 'stop-ico' }, icon('pin')),
     h('span', { class: 'stop-main' },
       h('div', { class: 'stop-name' }, p.name),
@@ -171,7 +165,6 @@ function buildMenu() {
     item('#/', 'home', t('Αρχική')),
     item('#/favorites', 'star', t('Αγαπημένες στάσεις')),
     item('#/lines', 'bus', t('Γραμμές')),
-    item('#/plan', 'route', t('Διαδρομή')),
     h('div', { class: 'pop-sep' }),
     h('div', { class: 'pop-head', id: 'theme-label' }, t('Θέμα')),
     h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' },
@@ -180,7 +173,6 @@ function buildMenu() {
         'aria-label': t(label), title: t(label), onclick: () => setSetting('theme', value),
       }, icon(ico)))),
     h('div', { class: 'pop-sep' }),
-    item('#/guide', 'info', t('Οδηγός')),
     item('#/report', 'bug', t('Αναφορά προβλήματος')),
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
   paintThemeRow();
@@ -406,7 +398,7 @@ function choosePlace(p) {
   if (p.kind === 'stop' && p.stopCode && data.stopByCode.has(String(p.stopCode))) { chooseStop(data.stopByCode.get(String(p.stopCode))); return; }
   addRecent('place', { name: p.name, subtitle: p.subtitle || '', lat: p.lat, lng: p.lng });
   closeSearch();
-  ctx.navigate(planHash(p, p.name));
+  ctx.navigate(pinHash(p));
 }
 const srHead = (text) => h('div', { class: 'sr-head', role: 'presentation' }, text);
 
@@ -436,8 +428,6 @@ function renderSearch(keepActive = false) {
       out.push(srHead(t('Κοντινές στάσεις')), ...near.map(({ stop: s, meters }) =>
         srRow(`sr-${n++}`, 'bus', s.displayName, [fmtDist(meters), ...lineBadges(s, 4)], () => chooseStop(s))));
     }
-    // One quiet, always-present way into "address → address" planning (From + To), not just destination search.
-    out.push(srRow(`sr-${n++}`, 'route', t('Διαδρομή'), t('Διάλεξε αφετηρία και προορισμό'), () => { closeSearch(); ctx.navigate('#/plan'); }));
   } else {
     const stops = searchStops(data, q, 6);
     if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops));
@@ -593,26 +583,19 @@ document.addEventListener('pointerdown', (e) => {
 }, true);
 
 // ---------------------------------------------------------------- views owned by the shell
-// Home (TEL-232, Apple Maps search mode): low = the search alone; mid = Places (round buttons), the first-run hint, then the
-// recents (the sheet ends 20% into the 2nd one: [data-mid-end]); up = the favourites with their next arrival live, and
-// my routines (js/home-view.js). The active onboard trip sits above Places while there is one.
+// Home (TEL-232, Apple Maps search mode): low = the search alone; mid = Places (round buttons), then the recents (the
+// sheet ends 20% into the 2nd one: [data-mid-end]); up = the favourites with their next arrival live (js/home-view.js).
 function mountHome(container, c) {
-  const onboard = h('div', { class: 'home-onboard' });
   const places = h('section', { class: 'home-section home-places' });
-  const hint = h('div', { class: 'guide-hint', hidden: true }); // first-run guide card / install hint, under the places
   const recents = h('div', { class: 'home-recents' });
   const favs = h('div', { class: 'home-favs' });
-  const routines = h('div', { class: 'home-routines' });
-  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), onboard, places, hint, recents, favs, routines);
+  container.replaceChildren(h('h1', { class: 'visually-hidden' }, title()), places, recents, favs);
   const views = [];
   const offs = [];
   let dead = false;
-  const LEAVE_MS = 180;
   const add = (p) => p.then((v) => { if (dead) v?.destroy?.(); else if (v) views.push(v); }).catch((err) => console.error('[home]', err));
-  add(import('./onboard.js').then((m) => m.mountOnboardCard(onboard, c)));
   add(import('./home-view.js').then((m) => m.mountPlacesRow(places, c)));
   add(import('./home-view.js').then((m) => m.mountFavoritesLive(favs, c, stopRow)));
-  add(import('./home-view.js').then((m) => m.mountRoutinesHome(routines, c)));
 
   // Recents: stops, then places. The first row whole, the second one 20% into it, is where mid ends.
   const paint = () => {
@@ -625,39 +608,9 @@ function mountHome(container, c) {
   paint();
   offs.push(onChange(paint));
 
-  // One small card, once: "first time here?" until the guide was opened or dismissed; after that, on a phone browser tab,
-  // a one-time "add to home screen" hint. Never both, never on a deep-link boot (bootHome). Either action stores its flag.
-  let hintTimer = 0;
-  const paintHint = async () => {
-    if (!bootHome) return;
-    let spec = null;
-    if (!getSettings().guideSeen) {
-      spec = { flag: 'guideSeen', ico: 'info', href: '#/guide', text: t('Πρώτη φορά εδώ; Δες τον οδηγό') };
-    } else if (!getSettings().installHintDismissed) {
-      let ih = null;
-      try { ih = (await installGuide()).installHint(); } catch { /* no install helper: no hint */ }
-      if (ih && !getSettings().installHintDismissed) {
-        spec = { flag: 'installHintDismissed', ico: 'home', href: '#/guide?section=install', text: t('Βάλε την εφαρμογή στην αρχική οθόνη') };
-      }
-    }
-    if (!spec || dead) return;
-    const done = () => setSetting(spec.flag, true);
-    const go = h('a', { class: 'guide-hint-go press', href: cityHash(spec.href), onclick: done }, icon(spec.ico), h('span', {}, spec.text));
-    const x = h('button', { type: 'button', class: 'guide-hint-x press', 'aria-label': t('Κλείσιμο'), onclick: () => {
-      done();
-      hint.classList.add('is-leaving');
-      hintTimer = setTimeout(() => { hint.hidden = true; hint.replaceChildren(); }, reduceMotion.matches ? 0 : LEAVE_MS);
-    } }, icon('close'));
-    hint.className = 'guide-hint material card-in';
-    hint.replaceChildren(go, x);
-    hint.hidden = false;
-  };
-  paintHint();
-
   return {
     destroy() {
       dead = true;
-      clearTimeout(hintTimer);
       offs.forEach((f) => f?.());
       views.forEach((v) => v?.destroy?.());
     },
@@ -686,8 +639,6 @@ function mountPin(container, c, p) {
   if (fix) sub.push(t('{d} από εσένα', { d: fmtDist(haversine(fix, p)) }));
   container.replaceChildren(
     h('div', { class: 'view-head' }, backBtn(), h('h1', {}, pinName(), h('span', { class: 'sub' }, sub.join(' · ')))),
-    h('div', { class: 'btn-row' },
-      h('a', { class: 'btn primary', href: planHash(p, pinName()) }, icon('route'), t('Διαδρομή ως εδώ'))),
     h('section', { class: 'home-section' },
       h('h2', {}, t('Κοντινές στάσεις')),
       near.length ? h('div', { class: 'list' }, near.map((n) => stopRow(n.stop, n.meters)))
@@ -704,7 +655,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', bus: 'half', plan: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', guide: 'full', report: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -719,31 +670,11 @@ function teardown() {
   map.highlightStop(null);
   map.clearMarkers('pin');
 }
-
-// A notification link (`#/notif?routine=…|ref=…&stop=…`, js/notif-link.js) → the hash it stands for on this device.
-async function resolveNotifLink(params) {
-  const stop = params.stop && data.stopByCode.has(String(params.stop)) ? `#/stop/${encodeURIComponent(params.stop)}` : '#/';
-  try {
-    const [nl, rt, pl] = await Promise.all([import('./notif-link.js'), import('./routines.js'), import('./places.js')]);
-    return nl.resolveNotif(params, { routines: rt.getRoutines(), places: pl.getPlaces(), links: nl.createLinks(), hasStop: (c) => data.stopByCode.has(c) });
-  } catch (err) {
-    console.error('[notif]', err);
-    return stop;
-  }
-}
-
 async function route() {
   const token = ++routeToken;
   const { city: hashCity, rel, parts, params } = parseHash(location.hash);
   // A link into the other city (pasted, shared, history): the page is per city, so remember it and reload on that hash.
   if (hashCity && hashCity !== cityId()) { setSetting('city', hashCity); location.reload(); return; }
-  if (parts[0] === 'notif') {
-    const to = await resolveNotifLink(params);
-    if (token !== routeToken) return;
-    try { history.replaceState(history.state, '', cityHash(to)); } catch { /* ignore */ }
-    route();
-    return;
-  }
   // Canonical form: prefix for every city but the default (an unprefixed hash means "this city" while running).
   const canon = formatHash(rel);
   if ((location.hash || '#/') !== canon) { try { history.replaceState(history.state, '', canon); } catch { /* ignore */ } }
@@ -801,12 +732,6 @@ async function route() {
       document.title = `${t('Διαδρομή οχήματος')} · ${title()}`;
       await mount(() => import('./bus-view.js'), (m) => m.mountBus(content, ctx, { vehicleCode: String(arg), route: params.route || undefined, stop: params.stop || undefined }));
       break;
-    case 'plan':
-      document.title = `${t('Διαδρομή')} · ${title()}`;
-      await mount(() => import('./planner-view.js'), (m) => m.mountPlanner(content, ctx, {
-        to: parsePt(params.to) || undefined, from: parsePt(params.from) || undefined, name: params.name || undefined,
-      }));
-      break;
     case 'lines':
       document.title = `${t('Γραμμές')} · ${title()}`;
       await mount(() => import('./lines-view.js'), (m) => m.mountLines(content, ctx));
@@ -823,16 +748,6 @@ async function route() {
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
       await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx }));
       break;
-    case 'guide': {
-      document.title = `${t('Οδηγός')} · ${title()}`;
-      // The install tutorial is optional: without install-guide.js the guide simply has no install section.
-      let install = null;
-      try { install = await installGuide(); } catch { /* the guide still works */ }
-      if (token !== routeToken) break;
-      ctx.renderInstall = install ? () => install.renderInstallSection() : undefined;
-      await mount(() => import('./guide-view.js'), (m) => m.mountGuide(content, ctx, { section: params.section || undefined }));
-      break;
-    }
     case 'favorites':
       document.title = `${t('Αγαπημένες στάσεις')} · ${title()}`;
       view = mountFavorites(content, ctx);

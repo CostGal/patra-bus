@@ -87,7 +87,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   or your location on home) to the centre of the part left above the sheet, as in Apple Maps. Legibility comes
   from heavier text and a soft halo in the surface colour, not from frosting. **Tinted** = surfaces inside the sheet
   (45% card colour, no blur of their own; `.material` there drops it). **Exception to "never stack":** the sticky
-  headers in the sheet (stop line chips, planner head) have no band at rest; once the list scrolls under them a blur
+  headers in the sheet (stop line chips) have no band at rest; once the list scrolls under them a blur
   layer fades in behind them, feathered at the bottom (no edge, no line), like iOS bars. The line chips are small glass
   pills. **Menu:** morphs out of the ☰ button: pressed, ☰ is a whiter glass circle;
   as the menu opens, its glass starts clear over that circle and its blur grows with it, so the ☰ lines blur out through
@@ -106,7 +106,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   round button: Σπίτι, Δουλειά, your own, "+"; a place not set yet has a dimmed icon and opens the Settings on it, until
   its own panel in the sheet replaces that), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
   60% of the screen, so the rows above stay compact); up = favourites with their next arrival (LIVE / ΠΡΟΓΡ., polled only while up,
-  4 stops, the rest "Δες αφίξεις") and my routines. The active trip sits above Places while there is one. No saved-place chips float over the map any more: Places show only in the sheet, at mid and up.
+  4 stops, the rest "Δες αφίξεις"). A set place opens the stops around it. No saved-place chips float over the map any more: Places show only in the sheet, at mid and up.
 
 ### Liquid Glass learnings (TEL-83, from Kostas's phone reviews)
 - Glass is **clear, not frosted**: low tint (≈20–30%) and light blur (10–14px); legibility from heavier text and a soft
@@ -138,8 +138,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Countdowns use `font-variant-numeric: tabular-nums` so digits don't jitter.
 
 ## 6. Feedback (multimodal, sparingly)
-- Haptics (`navigator.vibrate`) only for meaningful moments: sheet snaps to a new detent, reminder set, "leave now", alight alert.
-  Same frame as the visual change. Never on every tap.
+- Haptics (`navigator.vibrate`) only for meaningful moments. Today: a long-press on the map (`map.js`) and a reminder
+  that fires (`notify.js`). Same frame as the visual change. Never on every tap.
 - Four kinds of feedback: status, completion, warning, error — short, inline.
 
 ## 7. Reduced motion
@@ -155,26 +155,31 @@ craft (deliberate spacing/timing values from tokens, nothing random).
 ## 9. UI review: the numbered UI map (TEL-198)
 Every element has one **permanent ID**: a letter for the **area** of the app (not the screen) and a number. The same
 element keeps its ID on every screen and in every session, so feedback from one review still means the same thing in
-the next one. Registry: `scripts/ui-map.mjs`.
+the next one. Each element also has a **nick** (TEL-230): a short English name to say out loud (`grabber`, `badge`,
+`countdown`, `stripe`). Registry: `scripts/ui-map.mjs`.
 
 | Letter | Area | Letter | Area |
 |---|---|---|---|
 | N | Search bar (top) | E | Home |
 | M | Map (locate, attribution, markers) | F | Favourites / stop lists |
 | P | Sheet and every view's header (☆ ⋯ ✕ ←) | L | Lines |
-| O | Menus and popovers (☰, ⋯, i) | R | Route planner |
+| O | Menus and popovers (☰, ⋯, i) | R | Route planner (removed, TEL-217) |
 | S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
-| G | Settings and guide | D | Dialogs and forms (setup, welcome, report) |
+| G | Settings | D | Dialogs and forms (setup, welcome, report) |
 
-- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; add `--map` etc. as for any sweep).
-  It boxes every element with its ID on its own set of screens (menus open, vehicle, search…) into `shots/ui-map/`,
-  plus `LEGEND.md`: the whole registry with the screens each ID appears on.
-- Feedback is one line per element: `ID — τώρα: … / θέλω: …` (one of many alike: `S2 (606)`), with a phone screenshot
-  where it helps. Everything else: «τα υπόλοιπα ΟΚ».
+- Run `npm run shots -- --annotate` (iPhone 15 · el · light by default; the sweep flags in `docs/TESTING.md` apply).
+  It boxes every element with its nick and ID on its own set of screens (menus open, vehicle, search…) into
+  `shots/ui-map/`, plus `LEGEND.md` (a nick → ID dictionary and the whole registry with the screens each ID appears on)
+  and `explorer.html`: the clean screens, where a click on an element shows its nick, ID and description, with a
+  quiz to learn the names. To share it, publish that folder (page + `screens/`) as an artifact.
+- Feedback is one line per element: `nick — τώρα: … / θέλω: …` (or the ID; one of many alike: `chip (606)`), with a
+  phone screenshot where it helps. Everything else: «τα υπόλοιπα ΟΚ».
 - Per element check three things: **at rest** (legible, distinct), **touch & hold**, **tap** (does what you expect,
   open/close motion).
-- **Never renumber or reuse an ID.** A new element takes the next free number of its area; a removed one stays in the
-  registry with `gone: true`. A red `?` box (listed at the end of `LEGEND.md`) is something pressable that is not in
+- **Never renumber or reuse an ID or a nick.** A new element takes the next free number of its area and a nick of its
+  own (English, lower case, one or two words, unique: `tests/ui-map.test.mjs` checks it); a removed one stays in the
+  registry with `gone: true`. Something that is not an element of its own (the stripe is a tile's left border) gets
+  `edge: 'left'`. A red `?` box (listed at the end of `LEGEND.md`) is something pressable that is not in
   the registry: add it in the same PR. An ID whose selector stops matching shows "—" in the legend: fix its selector.
 
 ## 10. The stop card style (LOCKED, TEL-227, Kostas 2026-10-31)

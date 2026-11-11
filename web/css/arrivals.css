@@ -118,7 +118,7 @@
 .atile-live .atile-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; animation: atile-pulse 1.6s ease-out infinite; }
 @keyframes atile-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(3.2); opacity: 0; } }
 
-/* compact variant (nearby card, planner) */
+/* compact variant (nearby card) */
 .atile-compact { gap: 10px; padding: var(--space-2) var(--space-3) var(--space-2) 10px; border-left-width: 4px; }
 .atile-compact .badge { font-size: .9rem; }
 .atile-compact .atile-dest { font-size: .92rem; -webkit-line-clamp: 1; }

@@ -37,7 +37,7 @@ test('setup: English pairs exist for every string and are merged into EN', () =>
 
 test('setup wiring: flags on show, opened before the first route, welcome after it, files precached', () => {
   const src = read('js/setup.js');
-  assert.match(src, /if \(!preview\) \{[^}]*setSetting\('setupDone', true\);\s*setSetting\('guideSeen', true\);/);
+  assert.match(src, /if \(!preview\) \{[^}]*setSetting\('setupDone', true\);/);
   const app = read('js/app.js');
   assert.ok(app.indexOf('maybeSetup(') < app.indexOf('await route();\n  booted = true;'), 'setup opens before the home mounts');
   assert.ok(app.indexOf('Promise.resolve(setupClosed)') < app.indexOf("import('./welcome.js')"), 'welcome waits for the setup');

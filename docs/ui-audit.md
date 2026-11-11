@@ -1,5 +1,7 @@
 # UI and accessibility audit (TEL-19)
 
+> TEL-217: the route planner (planner JS files, `planner.css`, `#/plan`) was removed. Findings about it below are historical.
+
 Audit, not redesign: people use Telematica at a bus stop, in sunlight, one-handed. Visual style stays as it is.
 P1 items are fixed in the TEL-19 PR. P2 and P3 items are proposals for new tasks.
 

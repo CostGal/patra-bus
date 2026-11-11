@@ -1,6 +1,5 @@
-/* The home in the sheet (TEL-232, owner: shell): Places, recents, favourites and routines. Rules: docs/DESIGN.md §4 and §10
+/* The home in the sheet (TEL-232, owner: shell): Places, recents and favourites. Rules: docs/DESIGN.md §4 and §10
    (one 16 px inset comes from the sheet's content padding; Places are the card style's glass circles, .g-circle, at 48 px). */
-.home-onboard:not(:empty) { margin-bottom: var(--space-3); }
 .home-places { margin-top: var(--space-2); } /* mid is capped at 60% of the screen: the 2nd recent must still peek in */
 .home-places > h2 { margin: 0 0 var(--space-1); }
 .hm-places { display: flex; gap: var(--space-3); overflow-x: auto; padding: 10px 10px 4px; margin: -6px -10px -2px; scrollbar-width: none; } /* room for a held circle to grow (~16 px): a scroller clips what overflows it */

@@ -89,8 +89,8 @@ const REMOVED = ['bg', 'surface', 'surface-2', 'text', 'text-2', 'accent', 'acce
 test('removed legacy token names are not declared or used', () => {
   const re = new RegExp(`--(${REMOVED.join('|')})(?![\\w-])`);
   assert.equal(Object.keys(light).filter((k) => re.test(k)).length, 0, 'declared in tokens.css');
-  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
-    'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css', 'js/lines-view.js', 'js/bus-view.js', 'index.html'];
+  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/nearby.css',
+    'css/places.css', 'css/report.css', 'css/welcome.css', 'js/lines-view.js', 'js/bus-view.js', 'index.html'];
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     assert.doesNotMatch(src, new RegExp(`var\\(${re.source}`), `${f} uses a removed token`);
@@ -99,10 +99,10 @@ test('removed legacy token names are not declared or used', () => {
 
 // Every var(--x) used in the stylesheets is defined in tokens.css, or set locally (custom property declared in a rule or JS).
 test('stylesheets only use tokens that exist', () => {
-  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
-    'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css'];
+  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/nearby.css',
+    'css/places.css', 'css/report.css', 'css/welcome.css'];
   const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--sheet-t', '--panel-w',
-    '--top-inset', '--offline-h', '--chips-fl', '--chips-fr', '--kb']);
+    '--top-inset', '--chips-h', '--offline-h', '--chips-fl', '--chips-fr', '--kb']);
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     for (const m of src.matchAll(/var\((--[\w-]+)/g)) {
@@ -113,8 +113,8 @@ test('stylesheets only use tokens that exist', () => {
 
 // TEL-47: arrival, flag and meta text is at least 13 px (--text-sm). Only these are allowed to be smaller.
 test('no font-size under 13px except the known exceptions', () => {
-  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/guide.css', 'css/install.css', 'css/nearby.css',
-    'css/places.css', 'css/planner.css', 'css/report.css', 'css/welcome.css'];
+  const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/nearby.css',
+    'css/places.css', 'css/report.css', 'css/welcome.css'];
   const allowed = [/\.maplibregl-ctrl-attrib\b/, /\.mk-label\b/, /\.demo-tag\b/, /\.bv-tag\b/];
   const small = (v) => {
     const px = v.match(/^([\d.]+)px$/), rem = v.match(/^([\d.]+)rem$/);

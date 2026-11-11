@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectPlatform, currentPlatform, installHintFor } from '../web/js/platform.js';
+import { detectPlatform, currentPlatform } from '../web/js/platform.js';
 
 const UA = {
   iphoneSafari: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
@@ -99,14 +99,4 @@ test('currentPlatform reads navigator and any app display-mode', () => {
     delete globalThis.matchMedia;
     if (saved) Object.defineProperty(globalThis, 'navigator', saved); else delete globalThis.navigator;
   }
-});
-
-test('installHintFor: only phones/tablets in a browser tab', () => {
-  assert.deepEqual(installHintFor(r('ios', 'browser', 'safari', false)), { os: 'ios', browser: 'safari' });
-  assert.deepEqual(installHintFor(r('android', 'browser', 'samsung', true)), { os: 'android', browser: 'samsung' });
-  assert.deepEqual(installHintFor(r('android', 'browser', 'inapp', false)), { os: 'android', browser: 'inapp' });
-  assert.equal(installHintFor(r('ios', 'app', 'safari', false)), null); // already installed
-  assert.equal(installHintFor(r('android', 'app', 'chrome', false)), null);
-  assert.equal(installHintFor(r('other', 'browser', 'chrome', true)), null); // desktop: no nagging
-  assert.equal(installHintFor(null), null);
 });

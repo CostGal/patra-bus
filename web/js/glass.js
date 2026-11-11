@@ -69,7 +69,7 @@ function addLens() {
 // controls also grow, lean towards the finger and spring back with a wobble.
 const SURFACE = '.fab, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
-const ROW = '.stop-row, .lines-row, .pl-sug'; // full-width list rows: a highlight, no growing
+const ROW = '.stop-row, .lines-row'; // full-width list rows: a highlight, no growing
 const ROUND = '.btn.round, .sb-btn, .fab'; // round buttons grow the most
 const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, ${ROW}`;
 const SPRING = 'cubic-bezier(.34, 1.56, .64, 1)'; // overshoots a little: the "liquid" settle

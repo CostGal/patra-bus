@@ -13,7 +13,7 @@ const STATES = ['peek', 'half', 'full'];
 const HEADROOM = 12; // room above the first row, so a pressed round button can grow without being clipped (css/glass.css)
 const LABEL = { peek: N_('κλειστός'), half: N_('μισός'), full: N_('πλήρης') };
 // the view's first row, which is all the peek state shows
-const HEAD = '.stopv-head, .ex-head, .view-head, .pl-head';
+const HEAD = '.stopv-head, .ex-head, .view-head';
 const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point (docs/DESIGN.md §2)
 // One spring per move (Kostas, TEL-222): up from peek a hint of bounce, down to peek a little more, to and from full
 // none (it darkens and fills the screen instead). After a flick the same spring takes the release velocity.
