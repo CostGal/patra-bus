@@ -97,6 +97,7 @@ App: http://localhost:8080/ · demo without the worker: http://localhost:8080/?d
 
 ## Where to read
 None of these is loaded automatically: open the one for your topic before you start.
+- Product direction and what Kostas decided about features (read before proposing or refusing one): `docs/DECISIONS.md`
 - How the parts connect, where data lives: `docs/ARCHITECTURE.md`
 - Frontend (views, modules, storage on the device, service worker, i18n files): `docs/FRONTEND.md`
 - Worker (routes, caching, KV, Durable Objects, counters, reports, secrets): `docs/WORKER.md`
