@@ -40,7 +40,7 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
    Settings (`settings-view.js`), and the map's own credit on the map (`AttributionControl` in `map.js`).
 6. **The user's location stays on the device.** It is not sent to our worker, not stored (localStorage holds only the
    flag `patra-bus:loc-granted`), and not put in an app URL, share link, reminder or report. Two exceptions, both
-   requests straight from the browser to a third party: **OSRM** (`walk.js`, the "near you" card) gets the start and end
+   requests straight from the browser to a third party: **OSRM** (`walk.js`: the "near you" card and the stop's "Οδηγίες ως εδώ" pill) gets the start and end
    of a walk at 5 decimals (~1 m); **Photon** (`geocode.js`) gets a `lat`/`lon` bias rounded to 2 decimals (~1 km).
    A new location flow to anyone needs this rule updated first.
 7. **No secrets in commits, PRs, issues or comments:** the citybus token, `NOTION_TOKEN`, `NOTION_DB_ID`,

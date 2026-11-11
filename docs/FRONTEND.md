@@ -122,7 +122,8 @@ the usage keys (`KEEP_ON_RESET`, line 35), but no screen calls it today.
 The position stays on the device (CLAUDE.md rule 6). `location.js` does not use the network. Two requests leave the phone:
 - **OSRM** (`walk.js:70`): start and end of a walk with 5 decimals (about 1 m), at most one request per second (`gapMs`, line 34),
   timeout 6 s, a minute of straight-line estimates after three failures or a 429. Without an answer `walkEstimate`
-  (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118`.
+  (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118` and the stop's "Οδηγίες ως εδώ" pill
+  (`arrivals-view.js` `directions()`: on a tap, the walk from the device to that stop, drawn on the map; nothing stored).
 - **Photon** (`geocode.js:218-219`): a bias `lat`/`lon` rounded to 2 decimals (about 1 km), plus the typed text and the city box.
   The search starts 350 ms after typing and needs 3 characters (`app.js:436-453`). Without GPS the map centre is used.
 

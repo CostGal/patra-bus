@@ -9,6 +9,7 @@ import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
 import { shareLink } from './share.js';
 import { t, etaTxt, etaSay } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
+import { fmtDist } from './geo.js';
 
 export { etaTxt as etaText };
 
@@ -155,8 +156,30 @@ export function mountStop(container, ctx, { code }) {
       iconBtn('share', t('Κοινοποίηση'), share),
       h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
-  // The planner it opened is gone (TEL-217). Until the walking route lands (next commit), it shows the stop on the map.
-  const directions = () => ctx.map?.flyTo?.(stop, 17);
+  // "Οδηγίες ως εδώ": the walk from where you are to this stop, drawn on the map, with its distance and time.
+  // CLAUDE.md rule 6: the position is read on the device; only the two ends of the walk go to OSRM (js/walk.js), as for
+  // the "near you" card. Nothing is stored and nothing goes into the URL. Without a routed path only the estimate shows.
+  let walkAbort = null;
+  async function directions() {
+    walkAbort?.abort();
+    const ac = walkAbort = new AbortController();
+    try {
+      let fix = ctx.location?.current;
+      if (!fix) { ctx.location?.start(); fix = await ctx.location?.waitForFix(10000); }
+      if (dead || ac.signal.aborted) return;
+      if (!fix) { ctx.toast(t('Δεν βρέθηκε η τοποθεσία σου. Δοκίμασε ξανά.')); return; }
+      const { walkRoute } = await import('./walk.js');
+      const r = await walkRoute(fix, stop, { signal: ac.signal });
+      if (dead || ac.signal.aborted) return;
+      if (r.geometry?.length > 1) {
+        ctx.map?.setOverlay('stop-walk', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: r.geometry } }] }, { kind: 'walk' });
+      } else ctx.map?.clearOverlay('stop-walk');
+      ctx.map?.fitTo([fix, stop], { maxZoom: 17 });
+      ctx.toast(t('{d} · {min} με τα πόδια', { d: fmtDist(r.meters), min: `${Math.max(1, Math.round(r.seconds / 60))}′` }));
+    } catch (err) {
+      if (err?.name !== 'AbortError') console.warn('[directions]', err);
+    }
+  }
   const acts = h('div', { class: 'stopv-acts' },
     h('button', { type: 'button', class: 'stopv-pill g-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
     star);
@@ -489,8 +512,9 @@ export function mountStop(container, ctx, { code }) {
       sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
       sheetEl?.removeEventListener('sheet:settle', onSettle);
       document.fonts?.removeEventListener('loadingdone', fitName);
+      walkAbort?.abort();
       poller.destroy();
-      mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
+      mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.clearOverlay('stop-walk'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();
     },
   };
