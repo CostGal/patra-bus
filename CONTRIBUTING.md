@@ -1,7 +1,7 @@
 # Ξεκινώντας στο patra-bus (Telematica)
 
 Στόχος: από το μηδέν σε app + worker τοπικά και πρώτο PR σε ~15 λεπτά. Ποιος δουλεύει πού και οι κανόνες της ομάδας:
-`CLAUDE.md` → «Ομάδα και τομείς». Η ροή μιας κάρτας από την αρχή ως το merge: `docs/WORKFLOW.md`.
+`CLAUDE.md` → «Team and areas» και «Hard rules». Η ροή μιας κάρτας από την αρχή ως το merge: `docs/WORKFLOW.md`.
 
 ## 1. Μία φορά (~10′)
 Χρειάζεσαι: **Node 22**, **git**, πρόσβαση write στο repo (σου τη δίνει ο Kostas) και Claude Code desktop.
@@ -69,4 +69,4 @@ git push -u origin <όνομα>/TEL-<id>-<slug>
 ```
 Μετά άνοιξε PR προς `main` και συμπλήρωσε το template. Ο Kostas μπαίνει μόνος του ως reviewer (CODEOWNERS).
 Το CI (`test`) πρέπει να είναι πράσινο. **Δεν κάνεις merge**: το κάνει ο Kostas (Δευ–Παρ 08:30–17:30 τα merges
-περιμένουν, βλ. merge window στο `CLAUDE.md`). Ένα PR = μία κάρτα, μικρό (≤ ~3 αρχεία ή ένα θέμα).
+περιμένουν, βλ. merge window στο `docs/CI-AND-DEPLOY.md`). Ένα PR = μία κάρτα, μικρό (≤ ~3 αρχεία ή ένα θέμα).

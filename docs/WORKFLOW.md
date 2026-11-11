@@ -23,6 +23,11 @@
   κώδικα (Business Tasks) και το Weekly δεν αγγίζονται από τα skills.
 - **Κολλημένο** = κάρτα In progress / In review πάνω από 7 μέρες από το `Started on`. Τα `Started on` και
   `Completed on` τα γεμίζει μόνο του το Notion.
+- **Pane «Block»:** το mod `.claude/skills/tel-sprint/` ανοίγει στο Claude Code ένα pane με τις ανοιχτές κάρτες του
+  συνδεδεμένου χρήστη του Notion στα τρέχοντα Blocks (χωρίς Done, Not now, Covered) και σημαδεύει τα Κολλημένα. Μόνο
+  διάβασμα, μέσω του Notion connector, κάθε 5′ και με `/block` (το `/sprint` μένει ως alias). Σε τοπικό session του
+  Claude desktop ο connector είναι server με id ανά χρήστη· σε auto mode ο καθένας επιτρέπει μία φορά τα δύο read tools
+  στο `.claude/settings.local.json` (gitignored): `mcp__<id>__notion-get-self`, `mcp__<id>__notion-query-data-sources`.
 - Ό,τι βρίσκουμε μέσα σε ένα session (bug, ιδέα, «αυτό θέλει αλλαγή») δεν διορθώνεται εκεί. Σημειώνεται (F1, F2…) και στο
   τέλος του session γίνεται **κάρτα** (Not started, λεπτομέρειες στο σώμα της κάρτας). **Καμία κάρτα δεν μένει χωρίς Block:**
   τα findings μπαίνουν στο Block **Backlog** (Κατάσταση = Αργότερα, δεν κλείνει ποτέ), πάντα σε ένα **Group**: σε υπάρχον
@@ -41,7 +46,7 @@ issues και PRs με **έναν κοινό** μετρητή (#74 issue, #75 PR
   `/plan-week` του φτιάχνει κάρτα), device test με checklist (κανόνας 9 στο CLAUDE.md), συζήτηση με τρίτους. Η κάρτα
   έχει το link του issue στο πεδίο `PR`.
 - **PR: ένα ανά κάρτα.** Τίτλος `TEL-<id>: …`, branch `<ποιος γράφει τον κώδικα>/TEL-<id>-<slug>` (`claude/…`,
-  `kostas/…`, `fanis/…`). Αν υπάρχει issue, η περιγραφή γράφει `Closes #N`, ώστε το GitHub να το κλείσει στο merge.
+  `kostas/…`, `amarildo/…`, `fanis/…`). Αν υπάρχει issue, η περιγραφή γράφει `Closes #N`, ώστε το GitHub να το κλείσει στο merge.
 - Με το TEL-id στο branch ή στον τίτλο, το Notion βάζει μόνο του το link της κάρτας στο PR και δείχνει το PR στην κάρτα.
 
 **Τι αλλάζει ο Claude στο Notion χωρίς να ρωτήσει** (μόνιμη άδεια του Kostas, 2026-10-17):
@@ -78,9 +83,10 @@ issues και PRs με **έναν κοινό** μετρητή (#74 issue, #75 PR
 3. **Υλοποίηση.** Κάρτα → In progress, branch, αλλαγές, `npm test` + `npm run check:i18n`, `npm run shots` για ό,τι
    φαίνεται στην οθόνη. Draft PR με το template και τις 3 γραμμές explain-back. Κάρτα → In review, `PR` = link.
 4. **Έλεγχος από τον Kostas.** Βήμα-βήμα (ενότητα 3), μόνο για ό,τι δεν δείχνει το `shots` (κανόνας 9 στο CLAUDE.md).
-5. **Merge.** Μόνο ο Kostas. Το CI το τσεκάρει ο Kostas στο PR (ενότητα 0)· ο Claude δίνει μόνο το link. Δευ–Παρ 08:30–17:30 (merge
+5. **Merge.** Μόνο ο Kostas αποφασίζει. Ο Claude κάνει merge μόνο στο session του Kostas, όταν εκείνος γράψει «merge»
+   στο chat για το συγκεκριμένο PR και αφού περάσουν οι έλεγχοι· σε session άλλου, ποτέ. Το CI το τσεκάρει ο Kostas στο PR (ενότητα 0)· ο Claude δίνει μόνο το link. Δευ–Παρ 08:30–17:30 (merge
    window, TEL-182) το `merge-window` είναι κίτρινο: ο Claude δίνει βήμα «Enable auto-merge» αντί για «Merge», και το
-   PR γίνεται merge μόνο του μετά τις 17:30.
+   PR γίνεται merge μόνο του μετά τις 17:30. Αργίες και άνοιγμα αμέσως: `docs/CI-AND-DEPLOY.md`.
 6. **Κλείσιμο.** Κάρτα → Done (το `Completed on` το βάζει το Notion), findings → κάρτες, σύνοψη: τι έγινε, τι μένει, πρόταση για το
    επόμενο task.
 
@@ -121,5 +127,5 @@ issues και PRs με **έναν κοινό** μετρητή (#74 issue, #75 PR
 - Χωρίς ερώτηση (αναφέρει το αποτέλεσμα): διάβασμα κώδικα και docs, τεστ, `npm run shots`, commits και push στο δικό
   του branch, draft PR, διορθώσεις CI στο δικό του PR, κάρτες Notion όπως στην ενότητα 1.
 - Πάντα με έγκριση: το σχέδιο πριν τον κώδικα, κλείσιμο ή αλλαγή issues, αλλαγές εκτός του task.
-- Ποτέ: merge, push στο `main`, deploy του worker σε production ή από τον υπολογιστή (production μόνο από το Action
+- Ποτέ: merge χωρίς να το πει ο Kostas στο chat (βλ. `/task`, βήμα 5), push στο `main`, deploy του worker σε production ή από τον υπολογιστή (production μόνο από το Action
   «Worker deploy» με έγκριση του Kostas· staging επιτρέπεται από το ίδιο Action), secrets σε αρχεία.
