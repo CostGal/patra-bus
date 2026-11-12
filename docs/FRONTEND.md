@@ -56,6 +56,8 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
 - **Location and nearby**: `location.js` (the one GPS service), `geo.js` (distances, bearing, `inArea`), `walk.js` (walking time,
   OSRM), `nearby.js` (the "near you" card: not mounted on the home since TEL-232, section 12), `city-detect.js` (offers the other city when GPS is inside its box).
 - **Search and places**: `geocode.js` (stops first, then Photon), `places.js` (saved home/work places, see section 5).
+  When Photon finds nothing, `geocode.js` asks once more: without the house number (one street result with
+  `approx: true`), or a Latin query in Greek letters. Never more than two requests per search.
 - **Lines and vehicle**: `lines-view.js`, `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
 - **Storage, settings, share**: `store.js` (the main blob), `settings-view.js`, `share.js` (Web Share, else clipboard),
   `notify.js` (local reminder timers; today its only user is the test button and the list in Settings, `settings-view.js:4,148`;
@@ -124,7 +126,7 @@ The position stays on the device (CLAUDE.md rule 6). `location.js` does not use 
   timeout 6 s, a minute of straight-line estimates after three failures or a 429. Without an answer `walkEstimate`
   (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118` and the stop's "Οδηγίες ως εδώ" pill
   (`arrivals-view.js` `directions()`: on a tap, the walk from the device to that stop, drawn on the map; nothing stored).
-- **Photon** (`geocode.js:218-219`): a bias `lat`/`lon` rounded to 2 decimals (about 1 km), plus the typed text and the city box.
+- **Photon** (`fetchFeatures` in `geocode.js`): a bias `lat`/`lon` rounded to 2 decimals (about 1 km), plus the typed text and the city box.
   The search starts 350 ms after typing and needs 3 characters (`app.js:436-453`). Without GPS the map centre is used.
 
 ## 8. Names and accents
