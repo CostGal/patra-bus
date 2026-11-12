@@ -1,10 +1,13 @@
 name: Worker deploy
 
 # The only way the API worker gets deployed (nobody deploys from their own computer).
-# - staging: anyone with write access, from any branch: Actions → Worker deploy → Run workflow → pick the branch,
-#   target "staging". Goes to the separate worker "patra-bus-staging" (own KV, Durable Objects and secrets).
-# - production: only from main. Runs by itself after a merge that touches the worker (or by hand on main), then waits
-#   in the GitHub Environment "production" until CostGal approves it.
+# - staging: the separate worker "patra-bus-staging" (own KV, Durable Objects and secrets). Runs by itself after a
+#   merge to main that touches the worker, so staging follows main. Also by hand, from any branch, by anyone with write
+#   access: Actions → Worker deploy → Run workflow → pick the branch, target "staging".
+# - production (TEL-211): only from a published GitHub Release whose tag looks like v0.9.1 and whose commit is in main.
+#   A pre-release deploys nothing. The run then waits in the GitHub Environment "production" until CostGal approves it.
+#   By hand it works only from such a tag (Run workflow → "Use workflow from" → Tags → target "production"): that is
+#   the rollback to an older release. A merge to main no longer reaches production.
 # Secrets live in the two GitHub Environments, never in the repo: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
 # Worker secrets (VAPID, Notion, STATS_TOKEN) stay in Cloudflare; `wrangler deploy` does not change them.
 on:
@@ -18,10 +21,12 @@ on:
       - 'web/js/notif-link.js'
       - 'web/js/report.js'
       - 'web/js/route.js'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       target:
-        description: 'Where to deploy (production only works from main and needs approval)'
+        description: 'Where to deploy (production only works from a release tag like v0.9.1 and needs approval)'
         type: choice
         options: [staging, production]
         default: staging
@@ -29,24 +34,55 @@ on:
 permissions:
   contents: read
 
-# One deploy per target at a time; a newer one waits instead of cancelling a deploy halfway.
-concurrency:
-  group: worker-deploy-${{ github.event_name == 'push' && 'production' || inputs.target }}
-  cancel-in-progress: false
-
 jobs:
+  # Decides where this run goes, and refuses a production run that is not a release tag on main before the deploy job
+  # asks for approval. A pre-release skips this job, and the deploy job with it.
+  check:
+    if: github.event_name != 'release' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      target: ${{ steps.target.outputs.target }}
+    env:
+      TARGET: ${{ github.event_name == 'release' && 'production' || github.event_name == 'push' && 'staging' || inputs.target }}
+    steps:
+      - id: target
+        run: |
+          case "$TARGET" in
+            staging|production) echo "target=$TARGET" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Unknown target '$TARGET'"; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+        if: env.TARGET == 'production'
+        with:
+          fetch-depth: 0 # all branches and tags, to see whether the tag's commit is in main
+      - name: Production only from a release tag (vX.Y.Z) that is in main
+        if: env.TARGET == 'production'
+        run: |
+          tag=${GITHUB_REF#refs/tags/}
+          if [ "$tag" = "$GITHUB_REF" ] || ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Production deploys only from a release tag like v0.9.1 (this run is on $GITHUB_REF)"; exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Tag $tag points to a commit that is not in main"; exit 1
+          fi
+          echo "OK: $tag is a release tag on main"
+
   deploy:
-    # Production is refused off main before it can even ask for approval.
-    if: github.event_name == 'push' || inputs.target == 'staging' || github.ref == 'refs/heads/main'
+    needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # One deploy per target at a time; a newer one waits instead of cancelling a deploy halfway.
+    concurrency:
+      group: worker-deploy-${{ needs.check.outputs.target }}
+      cancel-in-progress: false
     environment:
-      name: ${{ github.event_name == 'push' && 'production' || inputs.target }}
-      url: ${{ (github.event_name == 'push' || inputs.target == 'production') && 'https://patra-bus.patra-bus.workers.dev/health' || 'https://patra-bus-staging.patra-bus.workers.dev/health' }}
+      name: ${{ needs.check.outputs.target }}
+      url: ${{ needs.check.outputs.target == 'production' && 'https://patra-bus.patra-bus.workers.dev/health' || 'https://patra-bus-staging.patra-bus.workers.dev/health' }}
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      TARGET: ${{ github.event_name == 'push' && 'production' || inputs.target }}
+      TARGET: ${{ needs.check.outputs.target }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
