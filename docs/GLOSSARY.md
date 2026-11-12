@@ -343,6 +343,10 @@ My words:
 Where it shows up in Telematica: `/health` returns it per city, read from the KV key `token/{city}`; it is `null` when no token is saved (`worker/src/index.js`).
 My words:
 
+**Transliteration**: writing a word with the letters of another alphabet, like your name in Latin letters on a passport.
+Where it shows up in Telematica: the Latin-to-Greek conversion of a search query in `web/js/geocode.js` ("Korinthou" → "κορινθου"), used only for the request to Photon, never shown.
+My words:
+
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
 My words:
