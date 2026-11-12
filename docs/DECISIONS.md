@@ -4,6 +4,10 @@ Product decisions by Kostas that a session cannot read from the code. Newest fir
 decided, and what it means for the work. A decision changes only with a new entry here; the Notion card is the history.
 The list of features (keep / cut / later) is the Notion card TEL-216.
 
+## 2026-11-12: the trip planner's spare time before the bus is a fixed 2 minutes
+- In the new trip planner the spare time before the bus is a fixed 2 minutes and is not read from Settings (card
+  TEL-290, `LIMITS.bufferSec` in `web/js/trip.js`). The spare-time setting is a feature to rework later, in the B1 Block.
+
 ## 2026-11-11: Telematica is a navigation app for the bus; the trip planner is a beta feature
 - **Direction.** The app should feel like a navigation app, as Google Maps and Apple Maps do, but focused on travelling
   by bus instead of travelling in general: you say where you are going and it takes you there by bus.
