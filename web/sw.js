@@ -72,6 +72,7 @@ const SHELL = [
   'js/boot-city.js',
   'js/geo.js',
   'js/walk.js',
+  'js/trip.js',
   'js/nearby.js',
   'js/geocode.js',
   'js/store.js',
