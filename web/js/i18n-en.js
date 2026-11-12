@@ -3,6 +3,7 @@
 import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 import { PAIRS as WELCOME_PAIRS } from './i18n-en-welcome.js';
 import { PAIRS as SETUP_PAIRS } from './i18n-en-setup.js';
+import { PAIRS as HOME_PAIRS } from './i18n-en-home.js';
 
 const PAIRS = [
   // ---- shared: arrivals, status, common controls ----
@@ -18,6 +19,7 @@ const PAIRS = [
   ['Πίσω', 'Back'],
   ['Κλείσιμο', 'Close'],
   ['Κοινοποίηση', 'Share'],
+  ['Οδηγίες ως εδώ', 'Directions here'],
   ['Περισσότερα', 'More'],
   ['Δοκίμασε ξανά', 'Try again'],
   ['Ανανέωση', 'Refresh'],
@@ -221,7 +223,6 @@ const PAIRS = [
   ['Αναζήτηση τόπων…', 'Search places…'],
   ['Δεν ήταν δυνατή η αναζήτηση τόπων.', 'Could not search places.'],
   ['Κανένα αποτέλεσμα', 'No results'],
-  ['Δεν φορτώθηκε η ενότητα «κοντά σου».', 'The “nearby” section did not load.'],
   ['Δεν έχεις αγαπημένες στάσεις ακόμα. Άνοιξε μια στάση και πάτα το αστέρι για να την προσθέσεις.', 'You have no favorite stops yet. Open a stop and tap the star to add it.'],
   ['{d} από εσένα', '{d} from you'],
   ['Κοντινές στάσεις', 'Nearby stops'],
@@ -350,4 +351,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);
+export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS, ...HOME_PAIRS]);

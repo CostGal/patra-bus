@@ -1,5 +1,7 @@
 // Screenshot sweep: key screens × phone/tablet sizes × light/dark × Greek/English -> shots/ (PNG + SUMMARY.md).
 // Run: npm run shots [-- --device="iPhone SE,Pixel 7" --lang=el --theme=dark --screen=stop,settings --base=https://<preview> --web=<other checkout>/web]
+//      --map: let OpenFreeMap through so the map is drawn behind the chrome
+//      (tiles only: no location, no user data; every other third party stays blocked)
 //      --annotate: numbered UI map for UI reviews (TEL-198): every element boxed with its permanent ID from scripts/ui-map.mjs,
 //      -> shots/ui-map/ + LEGEND.md + explorer.html (click an element, see its nick); its own screens (menus open, vehicle…),
 //      default iPhone 15 · el · light
@@ -85,13 +87,14 @@ const scrollerInfo = () => {
 
 async function shoot(page, file) { await page.screenshot({ path: file }); }
 
+
 async function capture(context, base, screen, dir, summary) {
   const page = await context.newPage();
   const problems = [];
   page.on('pageerror', (e) => problems.push(`error: ${e.message}`));
   await page.goto(base + screen.url);
   await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !/Φόρτωση…|Loading…/.test(c.textContent || ''); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(args.map ? 2500 : 500); // --map: give the tiles time to draw
   if (ANNOTATE) {
     if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
     // first a clean JPEG with the boxes as data (explorer.html), then the boxed PNG
@@ -142,6 +145,8 @@ try {
       const context = await browser.newContext({ ...desc, locale: lang === 'el' ? 'el-GR' : 'en-GB', timezoneId: 'Europe/Athens', colorScheme: theme, reducedMotion: 'reduce', serviceWorkers: 'block' });
       await context.addInitScript(seed(lang));
       await mockNetwork(context, base);
+      // registered after the mocks, so it wins for this host only
+      if (args.map) await context.route((u) => u.hostname === 'tiles.openfreemap.org', (route) => route.continue());
       for (const screen of screens) await capture(context, base, screen, dir, summary);
       await context.close();
       console.log(`${device} · ${lang} · ${theme} (${engine}): ${screens.length} screens`);
@@ -157,7 +162,7 @@ if (ANNOTATE) {
   const one = summary.every((s) => s.dir === summary[0]?.dir);
   const results = summary.map((s) => ({ screen: one ? s.screen : `${rel(s.dir).replace('ui-map/', '')}/${s.screen}`, file: `${rel(s.dir).replace('ui-map/', '')}/${s.screen}.png`, ids: s.ids, unknown: s.unknown }));
   const flagged = summary.filter((s) => s.problems.length);
-  const meta = `Base: ${base}/ · ${new Date().toISOString()} · ${wantDevices.join(', ')} · ${wantLangs.join(', ')} · ${wantThemes.join(', ')}${[...notes].map((n) => `\n\n> **Note:** ${n}`).join('')}${flagged.map((s) => `\n\n> **Problem** \`${rel(s.dir)}/${s.screen}\`: ${s.problems.join('; ')}`).join('')}`;
+  const meta = `Base: ${base}/ · ${new Date().toISOString()} · ${wantDevices.join(', ')} · ${wantLangs.join(', ')} · ${wantThemes.join(', ')}${args.map ? ' · map tiles from OpenFreeMap' : ''}${[...notes].map((n) => `\n\n> **Note:** ${n}`).join('')}${flagged.map((s) => `\n\n> **Problem** \`${rel(s.dir)}/${s.screen}\`: ${s.problems.join('; ')}`).join('')}`;
   await writeFile(`${outDir}LEGEND.md`, legend(results, meta));
   // explorer.html per device/lang/theme: the clean screenshots with every box clickable (scripts/ui-explorer.html)
   const template = await readFile(`${ROOT}scripts/ui-explorer.html`, 'utf8');
@@ -174,7 +179,7 @@ if (ANNOTATE) {
   console.log(`Explorer (click an element to see its name): ${explorers.map((f) => `shots/${f}`).join(', ')}`);
   process.exit(0);
 }
-const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', 'Layout only (demo data, map tiles blocked). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as `device-test` issues.', ''];
+const lines = ['# Screenshot sweep', '', `Base: ${base}/ · ${new Date().toISOString()}`, '', `Layout only (demo data, ${args.map ? 'map tiles from OpenFreeMap' : 'map tiles blocked'}). Fonts come from this computer, not the phone, so letter shapes and thickness differ from a real iPhone/Android. Real-phone checks stay as \`device-test\` issues.`, ''];
 for (const n of notes) lines.push(`> **Note:** ${n}`, '');
 const flagged = summary.filter((s) => s.problems.length);
 lines.push(`## Problems found by the script (${flagged.length})`, '');

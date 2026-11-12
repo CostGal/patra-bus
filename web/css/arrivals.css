@@ -1,19 +1,40 @@
 /* Stop view (.stopv-*) and arrival tiles (.atile-*). Colours come from tokens.css only.
    LIVE vs SCHEDULED: LIVE = solid green badge + pulsing dot + green stripe/countdown; SCHEDULED = outlined neutral badge + clock icon + timetable time. */
 
-.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) var(--space-4) var(--space-6); font-family: var(--font); color: var(--foreground); }
+.stopv { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-6); /* sides: .sheet-inset (css/ui-kit.css) */ font-family: var(--font); color: var(--foreground); }
 .stopv .icon, .atile .icon { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .stopv .badge, .atile .badge { display: inline-block; min-width: 2.7em; padding: .25em .5em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-base); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
 
-/* ---- header ---- */
-.stopv-head { display: flex; flex-direction: column; gap: 10px; }
-.stopv-top { display: flex; align-items: flex-start; gap: var(--space-2); }
-.stopv-titles { flex: 1; min-width: 0; }
-.stopv-name { margin: 0; font-size: var(--text-xl); line-height: 1.2; font-weight: 700; overflow-wrap: anywhere; }
-.stopv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) 10px; margin: 6px 0 0; color: var(--muted-foreground); font-size: .85rem; }
-.stopv-actions { position: relative; display: flex; flex: none; gap: 2px; margin: -6px -8px 0 0; }
+/* ---- header (TEL-227: an Apple Maps place card) ---- */
+/* share · name · close on one 38 px row. At low the name sits at its top and the line badges right under it, so the
+   two are as tall as the buttons; at mid the name is centred on the buttons (css/glass.css moves it by --l); at up it
+   has its own row under them. 17 px on one line at low and mid (js/arrivals-view.js shrinks a long one down to 14 px
+   before it is cut with "…"), 20 px and up to two lines at up. The stop's number is at the very bottom (.stopv-code) */
+.stopv-head { display: flex; flex-direction: column; margin-bottom: -6px; } /* the chips 6 px under it, not 12 */
+/* the row is the kit's .card-head and the name its .card-title (css/ui-kit.css); here only what is the stop's own */
+.stopv-top { margin: -5px 0 0; } /* 13 px from the card's top at low (locked) */
+.stopv-titles { position: relative; min-width: 0; text-align: center; }
+/* low ends here (js/sheet.js): the badges' line under the name (18 px, to the buttons' bottom), and 8 px more */
+/* 18 px of badges, + 3 + 8 px less the home bar: the card's bottom margin is max(8 px, home bar), and sheet.js adds the home bar to low, so
+   this keeps the room under the row equal to the room above it, in a browser and as the installed app */
+.stopv-peek { position: absolute; left: 0; top: 100%; width: 1px; height: calc(21px + max(0px, 8px - env(safe-area-inset-bottom, 0px))); pointer-events: none; }
+/* up: the name on its own row under the buttons, up to two lines */
+/* no line badges (no arrivals, or one line): directions and ☆ a little lower, so low does not show their top edge */
+.stopv-head:not(.has-lines) ~ .stopv-acts { margin-top: 14px; }
+.stopv-head.is-up .stopv-titles { grid-column: 1 / -1; grid-row: 2; padding-bottom: 9px; } /* the same gap to the chips as at mid */
+.stopv-head.is-up .stopv-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; line-height: 29px; white-space: normal; overflow-wrap: break-word; }
+.stopv-code { margin: 0; color: var(--muted-foreground); font-size: .85rem; text-align: center; }
 
-/* "⋯" menu: share, directions */
+/* share, ✕ and ☆ are the card's round button, .g-circle (css/ui-kit.css) */
+.stopv-star.on { color: var(--warning); }
+.stopv-star.on .icon { fill: currentColor; }
+
+/* from mid, under the line chips: directions (wide) and ☆ */
+.stopv-acts { display: flex; align-items: center; gap: var(--space-2); }
+.stopv-acts > .btn.round.g-circle { margin: 0; }
+/* directions is the card's wide pill, .g-pill (css/ui-kit.css) */
+
+/* "⋯" menu: no longer on the stop (TEL-227); kept for the coming island of the stop card (☆ ⋯), see js/glass.js */
 .stopv-menu { position: absolute; z-index: 5; top: 100%; right: 8px; display: flex; flex-direction: column; min-width: 200px; padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius); background: var(--popover); color: var(--popover-foreground); box-shadow: var(--shadow-2); }
 .stopv-menu[hidden] { display: none; }
 .stopv-item { display: flex; align-items: center; gap: 10px; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -23,8 +44,6 @@
 .stopv-item .icon-walk { fill: currentColor; stroke: none; }
 
 .stopv-chip:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.btn.stopv-star.on { color: var(--warning); }
-.stopv-star.on .icon { fill: currentColor; }
 .stopv-small { --hit: -5px 0; }
 .stopv-more { align-self: center; margin-top: var(--space-1); padding: 0 10px; min-width: var(--control-h); }
 
@@ -35,13 +54,22 @@
 .stopv-chipbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 12px; background: linear-gradient(var(--card), transparent); pointer-events: none; }
 .stopv-chips { display: flex; gap: var(--space-2); overflow-x: auto; padding: 2px var(--space-4); scrollbar-width: none; }
 .stopv-chips::-webkit-scrollbar { display: none; }
+/* more chips than fit: the row fades out at the edge it can still scroll to, instead of cutting a chip in half
+   (scroll-driven: no fade when everything fits; without support, a fixed fade on the right) */
+.stopv-chips { --chips-fl: 0px; --chips-fr: 28px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--chips-fl), #000 calc(100% - var(--chips-fr)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--chips-fl), #000 calc(100% - var(--chips-fr)), transparent); }
+@property --chips-fl { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --chips-fr { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@supports (animation-timeline: scroll(x)) {
+  .stopv-chips { --chips-fr: 0px; animation: chips-edge linear both; animation-timeline: scroll(self x); }
+}
+@keyframes chips-edge { 0% { --chips-fl: 0px; --chips-fr: 28px; } 10% { --chips-fl: 28px; } 90% { --chips-fr: 28px; } 100% { --chips-fl: 28px; --chips-fr: 0px; } }
 .stopv-chipbar[hidden], .stopv-banner[hidden] { display: none; }
 .stopv-chip { --hit: -3px 0; display: inline-flex; flex: none; align-items: center; min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--foreground); font: inherit; font-weight: 600; cursor: pointer; }
 .stopv-chip .badge { font-size: .85rem; min-width: 2.4em; padding: .15em .45em; }
 .stopv-chip.on { background: var(--primary-soft); border-color: var(--primary); }
 
 /* ---- banner / states ---- */
-.stopv-banner { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--warning-muted); color: var(--warning); font-size: .88rem; line-height: 1.35; }
+.stopv-banner { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--warning); font-size: .88rem; line-height: 1.35; }
 .stopv-banner-text { flex: 1; min-width: 0; }
 .stopv-banner .stopv-small { color: var(--warning); border: 1px solid currentColor; flex: none; }
 
@@ -66,7 +94,7 @@
 .atile-age::before { content: '·'; margin-right: 6px; }
 
 /* ---- arrival tile ---- */
-.atile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) 14px var(--space-3) var(--space-3); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); }
+.atile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) 14px var(--space-3) var(--space-3); border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: var(--radius-card); background: var(--card); color: var(--card-foreground); }
 .atile-live { border-left-color: var(--live); }
 .atile-live.atile-now { background: var(--live-muted); }
 .atile-badge { display: flex; }

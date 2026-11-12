@@ -28,7 +28,7 @@ with an optional city prefix: `#/corfu/stop/801`.
 
 | Hash | Module | Shows | `app.js` |
 |---|---|---|---|
-| `#/` | `app.js` (`mountHome`) + `nearby.js` | the "next bus near you" card; favourites and recents when the sheet is open | 730, 508 |
+| `#/` | `app.js` (`mountHome`) + `home-view.js` | the search in the sheet; Places and recents at mid, favourites with their next arrival at up (section 12) | 730, 508 |
 | `#/stop/{code}` | `arrivals-view.js` | arrival tiles for one stop (LIVE or ΠΡΟΓΡ.) | 684 |
 | `#/bus/{vehicleCode}?route=&stop=` | `bus-view.js` | one bus as a timeline of stops, anchored on the stop it was opened from | 697 |
 | `#/lines` | `lines-view.js` | searchable list of lines | 701 |
@@ -48,20 +48,23 @@ and a left panel from 900 px.
 Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
 
 - **Shell and map**: `app.js` (boot, router, search box, menu, locate button), `sheet.js` (the sheet), `map.js` (MapLibre
-  wrapper, markers, follow mode), `ui.js` (`h()` DOM helper, icons, toast, line badge), `motion.js` (spring engine), `color.js`
+  wrapper, markers, follow mode), `ui.js` (`h()` DOM helper, icons, toast, line badge), `motion.js` (spring engine), `home-view.js` (the home's Places row and
+  live favourites), `glass.js` (the glass effects; loaded by `index.html`, nothing imports it), `color.js`
   (makes line colours readable), `index.html` and `app.css` outside `js/`.
 - **Live data**: `arrivals.js` **(W)** (live vs scheduled, ETA text), `api.js` (`fetchLive`, poller, stats), `arrivals-view.js`
   (stop view and the tile), `demo.js` (`?demo` data).
 - **Location and nearby**: `location.js` (the one GPS service), `geo.js` (distances, bearing, `inArea`), `walk.js` (walking time,
-  OSRM), `nearby.js` (the home card), `city-detect.js` (offers the other city when GPS is inside its box).
+  OSRM), `nearby.js` (the "near you" card: not mounted on the home since TEL-232, section 12), `city-detect.js` (offers the other city when GPS is inside its box).
 - **Search and places**: `geocode.js` (stops first, then Photon), `places.js` (saved home/work places, see section 5).
+  When Photon finds nothing, `geocode.js` asks once more: without the house number (one street result with
+  `approx: true`), or a Latin query in Greek letters. Never more than two requests per search.
 - **Lines and vehicle**: `lines-view.js`, `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
 - **Storage, settings, share**: `store.js` (the main blob), `settings-view.js`, `share.js` (Web Share, else clipboard),
   `notify.js` (local reminder timers; today its only user is the test button and the list in Settings, `settings-view.js:4,148`;
   `app.js:18` imports it so persisted reminders re-arm), `usage.js` (anonymous counts).
 - **First run, welcome, report**: `setup.js`, `welcome.js`, `report-view.js`, `report.js` **(W)** (validation and diagnostics
   whitelist), `platform.js` (iOS/Android, installed or browser).
-- **Language and text**: `i18n.js` (`t`, `tn`, `N_`, `lang`), `i18n-en.js` + `i18n-en-report|welcome|setup.js`, `text.js`
+- **Language and text**: `i18n.js` (`t`, `tn`, `N_`, `lang`), `i18n-en.js` + `i18n-en-report|welcome|setup|home.js`, `text.js`
   (`titleCase`, `searchKey`), `accents.js` (word list).
 - **City and routing**: `cities.js` **(W)** (city table), `route.js`, `boot-city.js`.
 - **Shared with the Worker, no other use in the app**: `notif-link.js` **(W)** (`isPrivateUrl`; the Worker uses it to drop
@@ -121,8 +124,9 @@ the usage keys (`KEEP_ON_RESET`, line 35), but no screen calls it today.
 The position stays on the device (CLAUDE.md rule 6). `location.js` does not use the network. Two requests leave the phone:
 - **OSRM** (`walk.js:70`): start and end of a walk with 5 decimals (about 1 m), at most one request per second (`gapMs`, line 34),
   timeout 6 s, a minute of straight-line estimates after three failures or a 429. Without an answer `walkEstimate`
-  (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118`.
-- **Photon** (`geocode.js:218-219`): a bias `lat`/`lon` rounded to 2 decimals (about 1 km), plus the typed text and the city box.
+  (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118` and the stop's "Οδηγίες ως εδώ" pill
+  (`arrivals-view.js` `directions()`: on a tap, the walk from the device to that stop, drawn on the map; nothing stored).
+- **Photon** (`fetchFeatures` in `geocode.js`): a bias `lat`/`lon` rounded to 2 decimals (about 1 km), plus the typed text and the city box.
   The search starts 350 ms after typing and needs 3 characters (`app.js:436-453`). Without GPS the map centre is used.
 
 ## 8. Names and accents
@@ -163,5 +167,80 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
 CLAUDE.md rule 5 says these stay visible.
 - **Settings → Σχετικά → Πηγές και άδειες** (`settings-view.js:11-19,245-248`): © OpenStreetMap contributors, OpenFreeMap,
   MapLibre GL JS, OSRM / FOSSGIS routing, Photon by komoot, and the active city's citybus.gr site.
-- **Map**: MapLibre's attribution control, compact, bottom right (`map.js:91`). It sits behind an (i) button and is kept closed
-  until tapped (`map.js:92-104`); its text comes from the map style (OpenFreeMap and OpenStreetMap).
+- **Map**: MapLibre's attribution control, always open as one line of text just above the sheet (`#map-attrib`; `map.js`
+  `AttributionControl({ compact: false })`, moved there by `attribInto`). No (i) button on the glass branch; its text comes
+  from the map style (OpenFreeMap and OpenStreetMap).
+
+## 12. Glass UI, UI kit, sheet and home (branch `claude/TEL-83-glass-prototype`)
+This section exists only on the glass branch until it lands on `main`. The `app.js` line numbers elsewhere in this file
+are main's and are refreshed then. The look and its rules: `docs/DESIGN.md` §4 and §10, `docs/UI-PROTOCOL.md`.
+
+**Home (TEL-232, Apple Maps search mode)** = map + the search in the sheet. Low: the search alone. Mid: Places
+(`mountPlacesRow`: Σπίτι, Δουλειά, up to 3 own places, "+") and the recents (mid ends 20% into the 2nd). Up: favourites with
+their next arrival live (`mountFavoritesLive`, polls only while the sheet is up). `js/home-view.js` + `css/home.css`;
+`mountHome` in `app.js` lays them out. A set place opens the stops around it (`#/pin`), an empty one opens
+`#/settings?section=home`. `mountNearby` is not mounted on the home.
+
+**UI kit (TEL-268): `web/css/ui-kit.css`.** The shared pieces of the locked stop card style (`docs/DESIGN.md` §10,
+rules in `docs/UI-PROTOCOL.md`): `.g-circle`, `.g-pill`, `.card-head` + `.card-title`, `.sheet-inset`, each with its plain
+and its `html.glass` rules. It loads right after `glass.css` (so it wins over module CSS of the same weight); a view adds
+the class next to its own (`stopv-top card-head`) and keeps only what is its own in its CSS.
+
+**Glass (TEL-83): `web/css/glass.css` + `web/js/glass.js`.** The CSS loads always and is active only under
+`html.glass`, which `index.html` sets in its markup (glass is on for everyone since 2026-10-29); `index.html` also loads
+`js/glass.js` as a module (app.js never imports it).
+All rules use `--g-*` variables; inside `.sheet` it overrides `--card` with a translucent tint, so every card-coloured
+surface there turns tinted without touching module CSS. The fallbacks only reset the `--g-*` variables.
+`glass.js` (no exports): on Chromium (`navigator.userAgentData`) appends two SVG displacement filters (`#g-lens`,
+`#g-lens-lg`, map drawn on a canvas) and sets `html.glass-lens`; on pointerdown puts `.g-press` on the
+control under the finger (`button, a[href], [role=button], summary, label, .atile-link`; its round `.sb-btn` buttons on
+their own; else the glass surface), grows it with a Web Animation on the `scale` property (so module transforms are
+untouched; ~16 px for round buttons, ~10 px for the rest; never the sheet, menu, dialogs, sheet handle or full-width list
+rows, which get a CSS highlight instead), leans it via `translate` while held, and springs it back on pointerup/cancel.
+No finger light (removed in review 2). Round buttons get `z-index` while pressed and `.sheet-content` gets
+`--g-headroom` (12 px) of padding-top, which `sheet.js` also adds to the peek height, so the scroller never cuts them.
+The locate button gets `.g-ping` on click (a ring). **Sheet (TEL-222):** `sheet.js` has three states, as in Apple
+Maps: `peek` = low (handle + the view's first row: the first `.stopv-head, .ex-head, .view-head` in the content,
+or home's `.sheet-search`; a view can end low further down with `[data-peek-end]`, as the stop's line under its name does, TEL-224/227;
+unless `setPeek()` gives a height; a ResizeObserver on the content keeps low and mid in step as rows appear, except while
+held or up), `half` = mid (default: half the screen, or where the view marks `[data-mid-end="<share>"]`: the stop a third into its second
+arrival, home under its card; kept to 35–60% of the screen, TEL-224), `full` = up. It writes `--sheet-t` (0 at peek, 1 at half, 2 at
+full) every frame; `glass.css` draws the sheet from it on `.sheet::before` (the sheet box stays full width and clear): a
+floating rounded card with a margin at peek/half (tint from `--g-sheet-a0` to `--g-sheet-a1`), edge to edge, to the
+bottom and solid at full (`--g-up`, cards `--g-up-card`); `.sheet-body` is clipped to the card. A release lands on the
+nearest state with half pulling harder (`HALF_PULL`, 0.85), and a flick moves one state, two (up <-> low) when it is fast
+(`FAST_FLICK`, ≥ 1200 px/s) or the finger itself passed the middle one. **Search (TEL-223):** `#menu-btn` (`.menu-fab`) is a fixed round button at the top left, outside the sheet; `#searchbar`
+(`.sheet-search`, sticky) and `#search-panel` are the first children of `#sheet-body`. `app.js` shows the search on home
+only (`route()`); opening it adds `.searching` to `#app` (CSS hides `#sheet-content` and `#map-note`) and snaps the sheet
+to `full`; a close by the user (the ✕ `#search-close` next to the field, Escape, tap outside; ☰ also ends it before opening
+the menu) snaps it back to the state it had. On phones, home's sheet reaches `--safe-top` at full and the ☰ slides
+down into the search row (its `top` follows `--sheet-t`, which `sheet.js` also writes on `<html>`). An empty field lists
+recent searches, then up to 4 stops within 800 m of the device's last fix (`nearestStops`, on the device only). A touch tap on the field while the sheet
+is not up focuses a hidden `.kb-proxy` input at the top first (the keyboard must open inside the tap), and hands the focus
+to the field 320 ms later, once the sheet is up: focusing it low would make iOS pan the page above the keyboard. A
+`visualViewport` listener writes `--kb` (keyboard height) for the results' bottom padding; it never scrolls the page (with the
+keyboard open, a programmatic scroll shifts iOS's hit-testing of fixed elements and taps miss). `.menu-fab` has its own
+layer (`translateZ(0)`), or iOS hands taps on it to the sheet's scroller underneath at full. The map's top padding
+is measured from the ☰ (the saved-place chips that shared its row are gone since TEL-232: the places are in the sheet). The map does not follow the sheet: `map.setPadding()` only stores the padding for the next
+fit or fly. Only when a snap goes between peek and half (not a drag, not to or from full, not a snap from `route()`)
+`app.js` calls `map.recenter(focusPt)`: the stop or pin of the view, or on home the user's location if the map has it
+(Apple Maps). One spring per move
+(`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:settle` when it comes to rest (`glass.js` re-places the chip lens then, except at low),
+`sheet:leave-full` when it starts down from up (the stop puts its two-line name back to one line, TEL-227; then `snap()`
+measures low and mid, which are not measured while up) and `sheet:stop`
+while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
+touch strip (`::after`); its pill is the iOS grabber, 36 × 5 px, 8 px from the top. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
+sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
+opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
+in two phases (a circle swelling around the ☰
+button's centre, then opening into the panel's box; also `--g-morph` on the button, which blurs its lines out) (disconnects while writing; adds `html.glass-morph`, which keeps the shell
+opaque and fades the items by `--g-morph`); not with reduced motion. Adds a ✕ (`icon('close')` from `ui.js`, class `.g-x`) to
+`#menu-btn` and puts it back whenever app.js redraws the button (☰ ↔ back); CSS crossfades ☰ → ✕ by `--g-morph`.
+Sets `html.glass-fx`. Other morphs, with their own timing (Web Animations on `clip-path`/`translate`/`opacity`): one
+MutationObserver on `hidden`/`class` catches the stop's `.stopv-menu` and MapLibre's `maplibregl-compact-show`; on
+open it plays circle → panel, on close it puts the popover back on screen, plays it back into its button and hides it
+at the end (a WeakSet marks its own changes). ⋯ gets a stacked ˄ (`.g-morph-btn`, `.g-open`). Chips: a `.g-lens` in
+`.stopv-chipbar` (outside the row the view rebuilds) placed on `.stopv-chip.on` after every rebuild, animated from the
+chip that was selected at pointerdown, and kept in place on horizontal scroll. Does nothing with reduced transparency or more contrast; with
+reduced motion nothing grows, moves or ticks (no `scale`/`translate`/ping). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
+`npm run shots -- --map`. Rules in DESIGN.md §4.

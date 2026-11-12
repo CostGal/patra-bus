@@ -79,6 +79,14 @@ My words:
 Where it shows up in Telematica: `.github/CODEOWNERS` (`* @CostGal`).
 My words:
 
+**Computed style**: the final value the browser uses for a CSS property after every matching rule has had its say, like the bill after all the discounts and extras.
+Where it shows up in Telematica: `tests/e2e/ui-protocol.spec.mjs` (TEL-269) reads it (`getComputedStyle`) to check sizes, opacity and transitions against the UI protocol.
+My words:
+
+**Concentric corners**: rounded corners that nest like rings of a tree: anything sitting inside a rounded box gets a smaller roundness than the box, so the curves look parallel instead of bumping into each other.
+Where it shows up in Telematica: the sheet (28 px) → cards in it (20 px) → blocks inside a card (12 px), from the tokens `--radius-sheet/-card/-inner` in `web/css/tokens.css` (TEL-225).
+My words:
+
 **Copyleft**: a kind of license (GPL, AGPL) that lets anyone use your code but requires their own work built on it to be shared openly too, like a recipe you may cook from only if you publish your own recipe as well.
 Where it shows up in Telematica: not used; it is one of the options compared in the founders' proposal (TEL-1).
 My words:
@@ -99,12 +107,28 @@ My words:
 Where it shows up in Telematica: `scripts/shots.mjs` uses Playwright's device list (iPhone SE, iPhone 15, Pixel 7, iPad Mini); touch feel, push, GPS and speed still need a real phone.
 My words:
 
+**Location mode / search mode**: the two modes of the sheet, as in Apple Maps. Search mode is home: the sheet starts with the search. Location mode is when you have picked something (a stop, a line, a bus, a route): the sheet starts with its header and a ✕ back home. Each has the three states low, mid and up, like a drawer that is either "looking for something" or "showing the thing you found".
+Where it shows up in Telematica: `docs/DESIGN.md` §4; the stop header (TEL-227) is location mode, home's search (TEL-223) is search mode.
+My words:
+
+**Snap point (stop)**: a position a sheet likes to rest at, like the notches of a dimmer switch. A drag ends at the nearest one.
+Where it shows up in Telematica: the bottom sheet has three: peek (low), half (mid) and full (up) (`web/js/sheet.js`, TEL-222). The bar you drag it by is the **grabber**.
+My words:
+
+**Displacement map**: a picture whose colours tell a filter how far to shift each pixel of what lies behind, like looking through the thick rim of a glass. Browsers can use one inside `backdrop-filter` only in Chrome-based browsers, not Safari.
+Where it shows up in Telematica: the lens bend at the edges of the glass UI (`web/js/glass.js`, TEL-83).
+My words:
+
 **Durable Object**: a small box of memory on Cloudflare that has an ID and can wake itself up later, like a labelled locker with its own alarm clock.
 Where it shows up in Telematica: one per push reminder and routine, plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
 My words:
 
 **ES module**: a JavaScript file that declares what it shares (`export`) and what it borrows (`import`), like a kitchen drawer with a label.
 Where it shows up in Telematica: all of `web/js/` loads as modules directly in the browser, with no build step.
+My words:
+
+**Exception list** (ratchet): a list of known breaks a test lets through for now, which may only get shorter, like a ratchet spanner that turns one way only: a new break fails the test, and so does a listed one that has been fixed but not removed.
+Where it shows up in Telematica: `tests/ui-protocol-exceptions.mjs` (TEL-269): what breaks the UI protocol today, per view and rule; empty = UI protocol v1.
 My words:
 
 **Fallback**: a second way to do something when the first way doesn't work, like taking the stairs when the lift is broken.
@@ -137,6 +161,10 @@ My words:
 
 **GITHUB_TOKEN**: a temporary key GitHub hands to each Action run, which opens only what the workflow's `permissions:` list allows, like a one-day visitor pass limited to certain rooms.
 Where it shows up in Telematica: `.github/workflows/watch-same-bus.yml` uses it (permission `issues: write`) to comment on the watch issue; nothing is stored.
+My words:
+
+**Glassmorphism** (backdrop blur): a see-through panel that blurs whatever lies behind it, like frosted glass in front of the map. The blur costs work from the phone's graphics chip, more so on cheap Android phones.
+Where it shows up in Telematica: the floating search bar and bottom sheet (`.material` in `app.css`); the fuller glass look is in `css/glass.css` (TEL-83).
 My words:
 
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
@@ -287,12 +315,20 @@ My words:
 Where it shows up in Telematica: `/plan-week` and `/task TEL-<id>` in `.claude/skills/`, both following `docs/WORKFLOW.md`.
 My words:
 
+**Specificity** (CSS): how CSS picks a winner when two rules set the same thing on one element: the more precise rule wins, and between two equally precise ones the later one wins, like two notes on the fridge where the more detailed one counts, or else the newer one.
+Where it shows up in Telematica: in TEL-268, moving the `.g-circle` rules into `css/ui-kit.css` (which loads later) let them beat `.stopv .btn.round .icon`, and the stop card's icons went from 22 px to the 20 px of rule U3.
+My words:
+
 **SQLite**: a tiny database stored in a single file, like a spreadsheet with strict columns.
 Where it shows up in Telematica: the storage inside each Durable Object (`new_sqlite_classes` in `worker/wrangler.toml`).
 My words:
 
 **Staging**: a full copy of the server that only the team uses, with its own data and keys, where a change is tried before real users get it, like a dress rehearsal on the real stage before opening night.
 Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging.
+My words:
+
+**Static check**: a test that reads the code as text without running it, like a proofreader reading the manuscript before anything is printed.
+Where it shows up in Telematica: `tests/ui-protocol.test.mjs` (TEL-269) reads the CSS, `sheet.js` and `index.html` for the UI protocol rules a file can show on its own; `scripts/check-i18n.mjs` is another one.
 My words:
 
 **Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.
@@ -307,8 +343,16 @@ My words:
 Where it shows up in Telematica: `/health` returns it per city, read from the KV key `token/{city}`; it is `null` when no token is saved (`worker/src/index.js`).
 My words:
 
+**Transliteration**: writing a word with the letters of another alphabet, like your name in Latin letters on a passport.
+Where it shows up in Telematica: the Latin-to-Greek conversion of a search query in `web/js/geocode.js` ("Korinthou" → "κορινθου"), used only for the request to Photon, never shown.
+My words:
+
 **TTL** (time to live): how long a saved item stays valid before it is thrown away, like the expiry date on milk.
 Where it shows up in Telematica: 15 s for live answers, 24 h for stops/lines, token life in KV (`worker/src/index.js`).
+My words:
+
+**UI kit**: one file with the shared building blocks of the look, like a box of Lego pieces every model is built from.
+Where it shows up in Telematica: `web/css/ui-kit.css` (TEL-268): the card's round button, wide pill, header row and inset; each view takes them from there.
 My words:
 
 **Upsert**: "update the row if it exists, otherwise create it", in one step, like a tally sheet where you add a stroke to a line or start the line if it is new.
@@ -325,6 +369,10 @@ My words:
 
 **vehicleCode**: the ID of one bus trip that citybus.gr sends with each arrival, like a booking number.
 Where it shows up in Telematica: it links a bus across stops and views (`#/bus/…`, onboard alerts) and decides whether a live and a scheduled row are the same bus (`web/js/arrivals.js`).
+My words:
+
+**Visual viewport**: the part of the page you actually see; when the phone keyboard opens it shrinks, and iOS may slide it to keep the field you type in visible, like a window blind that comes down over the bottom of the window.
+Where it shows up in Telematica: `app.js` (search in the sheet: `--kb` and undoing the pan, TEL-223).
 My words:
 
 **Vesting**: earning your share of a company step by step over time, instead of owning it all on day one, like getting the office key a month at a time.

@@ -25,38 +25,40 @@ export const AREAS = {
 export const COLORS = { N: '#4363d8', M: '#3cb44b', P: '#911eb4', O: '#f58231', S: '#008080', E: '#9a6324', F: '#800000', L: '#000075', R: '#808000', V: '#e6194b', G: '#469990', D: '#f032e6' };
 
 export const UI = [
-  { id: 'N1', nick: 'searchbar', name: 'Μπάρα αναζήτησης', sel: '#searchbar' },
-  { id: 'N2', nick: 'menu', name: '☰ Μενού / πίσω / κλείσιμο αναζήτησης', sel: '#menu-btn' },
+  { id: 'N1', nick: 'searchbar', name: 'Αναζήτηση (στο φύλλο, μόνο αρχική)', sel: '#searchbar' },
+  { id: 'N2', nick: 'menu', name: '☰ Μενού (μόνο του πάνω αριστερά· στο up μέσα στη γραμμή του search)', sel: '#menu-btn' },
   { id: 'N3', nick: 'search field', name: 'Πεδίο αναζήτησης', sel: '#search-input' },
   { id: 'N4', nick: 'clear', name: '✕ Καθαρισμός αναζήτησης', sel: '#search-clear' },
   { id: 'N5', nick: 'results head', name: 'Επικεφαλίδα αποτελεσμάτων', sel: '.sr-head', all: true },
   { id: 'N6', nick: 'result', name: 'Αποτέλεσμα αναζήτησης', sel: '.sr', all: true },
   { id: 'N7', nick: 'demo tag', name: 'Σήμα DEMO', sel: '#demo-tag' },
+  { id: 'N8', nick: 'search close', name: '✕ Κλείσιμο αναζήτησης', sel: '#search-close' },
 
   { id: 'M1', nick: 'locate', name: 'Εντοπισμός τοποθεσίας', sel: '#locate-btn' },
-  { id: 'M2', nick: 'attrib button', name: 'i (attribution)', sel: '.maplibregl-ctrl-attrib-button' },
-  { id: 'M3', nick: 'attribution line', name: 'Πλαίσιο attribution', sel: '.maplibregl-ctrl-attrib' },
+  { id: 'M2', nick: 'attrib button', name: 'i (attribution)', sel: '.maplibregl-ctrl-attrib-button', gone: true }, // glass: the attribution is an open line (#map-attrib), no i button
+  { id: 'M3', nick: 'attribution line', name: 'Γραμμή attribution', sel: '#map-attrib' },
   { id: 'M4', nick: 'attrib link', name: 'Σύνδεσμος attribution', sel: '.maplibregl-ctrl-attrib a', all: true },
   { id: 'M5', nick: 'marker', name: 'Marker στον χάρτη', sel: '.mk', all: true },
+  { id: 'M6', nick: 'map capsule', name: 'Κάψουλα κουμπιών χάρτη', sel: '#map-capsule' },
 
   { id: 'P1', nick: 'sheet', name: 'Φύλλο (sheet / side panel)', sel: '#sheet' },
   { id: 'P2', nick: 'grabber', name: 'Λαβή φύλλου', sel: '#sheet-handle' },
-  { id: 'P3', nick: 'header', name: 'Κεφαλίδα view', sel: '#sheet :is(.stopv-head, .ex-head, .view-head, .pl-head)' },
+  { id: 'P3', nick: 'header', name: 'Κεφαλίδα view', sel: '#sheet :is(.stopv-head, .ex-head, .view-head)' },
   { id: 'P4', nick: 'back', name: '← Πίσω', sel: '#sheet .btn.round:has(> .icon-back)' },
   { id: 'P5', nick: 'close', name: '✕ Κλείσιμο', sel: '#sheet :is(.stopv-head, .ex-head) .btn.round:has(> .icon-close)' },
   { id: 'P6', nick: 'more', name: '⋯ Περισσότερα', sel: '#sheet :is(.stopv-head, .ex-head) .btn.round[aria-expanded]' },
-  { id: 'P7', nick: 'star', name: '☆ Αγαπημένο', sel: '.stopv-star' },
-  { id: 'P8', nick: 'share', name: 'Κοινοποίηση (κεφαλίδα)', sel: '#sheet .ex-head .btn.round:has(> .icon-share)' },
-  { id: 'P9', nick: 'title', name: 'Τίτλος view (π.χ. όνομα στάσης)', sel: '#sheet :is(.stopv-head, .ex-head, .view-head, .pl-head) h1' },
-  { id: 'P10', nick: 'subtitle', name: 'Υπότιτλος (π.χ. «Στάση 1011»)', sel: '.stopv-sub' },
+  { id: 'P7', nick: 'star', name: '☆ Αγαπημένο', sel: '.stopv-star' }, // stop: in the row of pills since TEL-227
+  { id: 'P8', nick: 'share', name: 'Κοινοποίηση (κεφαλίδα)', sel: '#sheet :is(.stopv-head, .ex-head) .btn.round:has(> .icon-share)' },
+  { id: 'P9', nick: 'title', name: 'Τίτλος view (π.χ. όνομα στάσης)', sel: '#sheet :is(.stopv-head, .ex-head, .view-head) h1' },
+  { id: 'P10', nick: 'subtitle', name: 'Υπότιτλος (π.χ. «Στάση 1011»)', sel: '.stopv-sub', gone: true }, // TEL-227: the stop's number moved to the bottom of the card
 
   { id: 'O1', nick: 'menu panel', name: 'Μενού ☰', sel: '#menu-pop' },
   { id: 'O2', nick: 'city switch', name: 'Αλλαγή πόλης (μενού)', sel: '#menu-pop .pop-city' },
   { id: 'O3', nick: 'menu item', name: 'Στοιχείο μενού', sel: '#menu-pop a.pop-item:not(.pop-city)', all: true },
   { id: 'O4', nick: 'theme row', name: 'Θέμα (μενού)', sel: '#menu-pop .theme-row' },
   { id: 'O5', nick: 'theme option', name: 'Επιλογή θέματος', sel: '#menu-pop .theme-opt', all: true },
-  { id: 'O6', nick: 'more panel', name: 'Μενού ⋯ στάσης', sel: '.stopv-menu' },
-  { id: 'O7', nick: 'more item', name: 'Στοιχείο μενού ⋯', sel: '.stopv-item', all: true },
+  { id: 'O6', nick: 'more panel', name: 'Μενού ⋯ στάσης', sel: '.stopv-menu', gone: true }, // TEL-227: the stop has no ⋯ menu (share is in the header)
+  { id: 'O7', nick: 'more item', name: 'Στοιχείο μενού ⋯', sel: '.stopv-item', all: true, gone: true },
   { id: 'O8', nick: 'info', name: 'i (πληροφορίες)', sel: '.ex-info', all: true },
   { id: 'O9', nick: 'bus more', name: 'Περισσότερα ⋯ οχήματος', sel: '.bv-more' },
 
@@ -74,13 +76,22 @@ export const UI = [
   { id: 'S12', nick: 'status line', name: 'Γραμμή κατάστασης (ηλικία · επόμενη ανανέωση)', sel: '.stopv-foot-text' },
   { id: 'S13', nick: 'refresh', name: 'Ανανέωση', sel: '.stopv-refresh' },
   { id: 'S14', nick: 'show all', name: 'Εμφάνιση όλων (αφίξεις)', sel: '.stopv-more' },
+  { id: 'S15', nick: 'action row', name: 'Σειρά κουμπιών στάσης (pills)', sel: '.stopv-acts' }, // TEL-227 (S8 on the glass branch before it took main)
+  { id: 'S16', nick: 'directions', name: 'Οδηγίες ως εδώ (pill)', sel: '.stopv-pill.primary' }, // was S9 there
 
-  { id: 'E1', nick: 'nearby card', name: 'Κάρτα «κοντά σου»', sel: '.nb' },
-  { id: 'E2', nick: 'find stop', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary' },
-  { id: 'E3', nick: 'nearby how', name: 'Περισσότερα («κοντά σου»)', sel: '.nb-how > summary' },
-  { id: 'E4', nick: 'nearby second', name: 'Δεύτερο κουμπί («κοντά σου»)', sel: '.nb .btn.ghost' },
+  { id: 'E1', nick: 'nearby card', name: 'Κάρτα «κοντά σου»', sel: '.nb', gone: true },
+  { id: 'E2', nick: 'find stop', name: 'Βρες τη στάση μου', sel: '.nb .btn.primary', gone: true },
+  { id: 'E3', nick: 'nearby how', name: 'Περισσότερα («κοντά σου»)', sel: '.nb-how > summary', gone: true },
+  // E1–E4: TEL-232, the home no longer mounts the "near you" card. E5–E7: the guide card, cut on main (TEL-271)
+  { id: 'E4', nick: 'nearby second', name: 'Δεύτερο κουμπί («κοντά σου»)', sel: '.nb .btn.ghost', gone: true },
+
+  { id: 'E5', nick: 'guide card', name: 'Κάρτα «Πρώτη φορά εδώ;»', sel: '.guide-hint', gone: true },
+  { id: 'E6', nick: 'guide open', name: 'Άνοιγμα οδηγού (κάρτα)', sel: '.guide-hint-go', gone: true },
+  { id: 'E7', nick: 'guide close', name: '✕ Κλείσιμο κάρτας οδηγού', sel: '.guide-hint-x', gone: true },
 
   { id: 'F1', nick: 'stop row', name: 'Γραμμή στάσης (λίστα)', sel: 'a.stop-row', all: true },
+  { id: 'F2', nick: 'place', name: 'Μέρη (στρογγυλά κουμπιά, αρχική)', sel: '.hm-place', all: true }, // TEL-232
+  { id: 'F3', nick: 'fav arrival', name: 'Επόμενη άφιξη αγαπημένης (αρχική, up)', sel: '.hm-fav .atile', all: true },
 
   { id: 'L1', nick: 'line search', name: 'Αναζήτηση γραμμής', sel: '.ex-search' },
   { id: 'L2', nick: 'line row', name: 'Γραμμή (λίστα)', sel: 'a.lines-row', all: true },
@@ -119,11 +130,10 @@ export const UI = [
 // Screens of the annotated sweep (hash appended to <base>/?demo…). `act` puts the screen in its state (menu open…).
 export const UI_SCREENS = [
   { id: 'stop', url: '/?demo#/stop/1011' },
-  { id: 'stop-scrolled', url: '/?demo#/stop/1011', act: async (p) => { // sheet full, then to the end (status line, refresh)
-    await p.click('#sheet-handle'); await p.waitForTimeout(600);
-    await p.evaluate(() => { const el = document.getElementById('sheet-body'); el.scrollTop = el.scrollHeight; });
-  } },
-  { id: 'stop-more', url: '/?demo#/stop/1011', act: (p) => p.click('.stopv-more-btn') },
+  // the sheet's three states on the stop (TEL-227): low and up too, so every element of the stop card has its ID
+  { id: 'stop-low', url: '/?demo&debug#/stop/1011', act: async (p) => { await p.evaluate(() => window.__app.sheet.snap('peek')); await p.waitForTimeout(900); } },
+  { id: 'stop-up', url: '/?demo&debug#/stop/1011', act: async (p) => { await p.evaluate(() => window.__app.sheet.snap('full')); await p.waitForTimeout(900); } },
+  { id: 'stop-scrolled', url: '/?demo#/stop/1011', act: (p) => p.evaluate(() => { const el = document.getElementById('sheet-body'); el.scrollTop = el.scrollHeight; }) }, // to the end (status line, refresh)
   { id: 'menu', url: '/?demo#/stop/1011', act: (p) => p.click('#menu-btn') },
   { id: 'search', url: '/?demo#/', act: async (p) => { await p.click('#search-input'); await p.fill('#search-input', 'παν'); } },
   { id: 'home', url: '/?demo#/' },
