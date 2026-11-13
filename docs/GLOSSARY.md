@@ -175,6 +175,10 @@ My words:
 Where it shows up in Telematica: Playwright runs Chromium this way for the smoke tests and for `npm run shots`.
 My words:
 
+**Headway**: how often buses of one line pass a stop, like the "every 15 minutes" on a timetable.
+Where it shows up in Telematica: when the second bus of a change is not listed yet, `trip.js` uses the gap between the listed buses to show "wait up to about N′" (TEL-292).
+My words:
+
 **Health check**: a small address a service answers with "I'm alive, and this is my state", like a nurse who takes your pulse before the doctor comes in.
 Where it shows up in Telematica: `GET /health` of the Worker (`worker/src/index.js`) returns `ok`, the time and `tokenExp` per city.
 My words:

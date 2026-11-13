@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   LIMITS, candidateTrips, shortlist, chooseDeparture, rideFor, departuresAt, retime, leaveState, rankItineraries,
-  planTrips, walkItinerary,
+  planTrips, walkItinerary, transferCandidates, shortlistTransfers, buildTransfer, hideWeakTransfers,
 } from '../web/js/trip.js';
 import { haversine } from '../web/js/geo.js';
 
@@ -442,4 +442,328 @@ test('guard: no itinerary id contains a coordinate of the start', async () => {
       for (const n of [a.lat, a.lng]) for (const d of [2, 3, 4, 5]) assert.ok(!it.id.includes(n.toFixed(d)), `${it.id} has ${n.toFixed(d)}`);
     }
   }
+});
+
+// ================================================================ transfers (TEL-292)
+// Line 601 runs p0→p3, line 201 runs p3→q3 (stops 600 m apart on one road): only a change links the two ends.
+const S = (code, x, y = 0) => ({ code, name: code, displayName: code, ...pt(x, y), key: code });
+function mkNet(stops, routes) {
+  const routesByStop = new Map();
+  for (const r of routes) for (const c of r.stops) (routesByStop.get(c) || routesByStop.set(c, []).get(c)).push(r);
+  return { stops, routes, routesByStop, stopByCode: new Map(stops.map((x) => [x.code, x])), routeByCode: new Map(routes.map((r) => [r.code, r])) };
+}
+const netStops = () => [S('p0', 0), S('p1', 600), S('p2', 1200), S('p3', 1800), S('q1', 2400), S('q2', 3000), S('q3', 3600)];
+const net = (o = {}) => mkNet([...netStops(), ...(o.stops || [])], [
+  mkRoute('T1', '601', ['p0', 'p1', 'p2', 'p3']),
+  mkRoute('T2', '201', o.t2 || ['p3', 'q1', 'q2', 'q3']),
+  ...(o.routes || []),
+]);
+const XFROM = pt(0, 100), XTO = pt(3600, 100);   // ≈100 m from p0 and from q3, 3.6 km apart
+const a1 = (eta, o = {}) => veh('T1', eta, { lineCode: '601', vehicleCode: 'V1', ...o });
+const b1 = (eta, o = {}) => veh('T2', eta, { lineCode: '201', ...o });
+const xplan = (data, live, o = {}) => planTrips(data, XFROM, XTO, { now: NOW, ...o, deps: mkDeps({ live, ...(o.deps || {}) }) });
+const xferOf = (out) => out.itineraries.find((i) => i.kind === 'transfer');
+const busA = (it) => it.legs.filter((l) => l.kind === 'bus')[0];
+const busB = (it) => it.legs.filter((l) => l.kind === 'bus')[1];
+const near = (a, b, tol = 1.5) => assert.ok(Math.abs(a - b) <= tol, `${a} ≉ ${b}`);
+
+// ---- kept from the old planner tests
+test('transferCandidates: finds the change when no single bus links the ends', () => {
+  const data = net();
+  assert.deepEqual(candidateTrips(data, XFROM, XTO), []);
+  const c = transferCandidates(data, XFROM, XTO);
+  assert.equal(c.length, 1);
+  assert.deepEqual([c[0].a.route.code, c[0].a.board.code, c[0].x1.code, c[0].x2.code, c[0].b.route.code, c[0].b.alight.code], ['T1', 'p0', 'p3', 'p3', 'T2', 'q3']);
+  assert.equal(c[0].xferMeters, 0);
+  assert.equal(c[0].a.nStops + c[0].b.nStops, 6);
+});
+
+test('transferCandidates: skips trips a single bus already makes, and "changes" between routes of one line', () => {
+  assert.deepEqual(transferCandidates(mkData(), FROM, TO), [], 'A1 serves both ends');
+  const sameLine = net();
+  sameLine.routeByCode.get('T2').lineCode = '601';
+  assert.deepEqual(transferCandidates(sameLine, XFROM, XTO), []);
+});
+
+test('transferCandidates: walk between stops only within ~300 m; low-confidence routes cost more', () => {
+  const c = transferCandidates(net({ stops: [S('h2', 1800, 150)], t2: ['h2', 'q1', 'q2', 'q3'] }), XFROM, XTO);
+  assert.equal(c.length, 1);
+  assert.equal(c[0].x2.code, 'h2');
+  near(c[0].xferMeters, 150, 3);
+  assert.deepEqual(transferCandidates(net({ stops: [S('h2', 1800, 450)], t2: ['h2', 'q1', 'q2', 'q3'] }), XFROM, XTO), []);
+  const two = net({ routes: [mkRoute('T3', '202', ['p3', 'q1', 'q2', 'q3'])] });
+  two.routeByCode.get('T2').confidence = 0.3; // shaky route
+  assert.deepEqual(transferCandidates(two, XFROM, XTO).map((x) => x.b.route.code), ['T3', 'T2']);
+});
+
+test('shortlistTransfers: stays inside the shared live budget of 5 stops', () => {
+  const c = transferCandidates(net(), XFROM, XTO);
+  assert.equal(shortlistTransfers(c).length, 1);
+  assert.equal(shortlistTransfers(c, new Set(['a', 'b', 'c', 'd', 'e'])).length, 0, 'no room for two more stops');
+  assert.equal(shortlistTransfers(c, new Set(['a', 'b', 'c', 'p0'])).length, 1, 'p0 is already asked, only p3 is new');
+});
+
+test('planTrips: transfer-only network → a two-bus itinerary with exact timing when bus B is listed', async () => {
+  const out = await xplan(net(), { p0: res([a1(600)]), p3: res([b1(1500)]) });
+  assert.equal(out.itineraries.length, 1);
+  const it = out.itineraries[0];
+  assert.equal(it.kind, 'transfer');
+  assert.equal(it.transfers, 1);
+  assert.equal(it.id, 'T1:p0:p3~T2:p3:q3');
+  assert.deepEqual(it.legs.map((l) => l.kind), ['walk', 'bus', 'bus', 'walk'], 'same stop: no walk between the buses');
+  assert.deepEqual([busA(it).routeCode, busA(it).lineCode, busA(it).board.code, busA(it).alight.code], ['T1', '601', 'p0', 'p3']);
+  assert.deepEqual([busB(it).routeCode, busB(it).lineCode, busB(it).board.code, busB(it).alight.code], ['T2', '201', 'p3', 'q3']);
+  assert.equal(it.transfer.stop.code, 'p3');
+  assert.equal(it.transfer.toStop, it.transfer.stop);
+  assert.equal(it.transfer.sameStop, true);
+  assert.equal(it.transfer.walkSec, 0);
+  near(it.leaveInSec, 600 - it.legs[0].seconds - 120);           // first bus: same rule as a direct trip
+  assert.equal(it.leaveSource, 'live');
+  assert.equal(leaveState(it, NOW).kind, 'later');
+  assert.equal(busA(it).rideSec, 180);                            // 3 legs × 60 s (estimate)
+  assert.equal(busA(it).rideSource, 'estimate');
+  assert.equal(it.transfer.arriveAt, NOW + 780 * 1000);           // at the change stop
+  assert.equal(it.transfer.arriveSource, 'estimated');
+  assert.equal(it.transfer.waitSec, 720);                         // B at +1500 s
+  assert.equal(it.transfer.waitMaxSec, null);
+  assert.equal(it.transfer.waitSource, 'live');
+  assert.equal(busB(it).departAt, NOW + 1500 * 1000);
+  assert.equal(busB(it).departSource, 'live');
+  near(it.arriveAt, NOW + (1500 + 180 + it.legs[3].seconds) * 1000, 5);
+  assert.equal(it.estimated, false);
+  assert.equal(it.rankPenaltySec, 300);
+});
+
+test('transfer: a missed connection moves on to the next bus B, transfer.missed is filled', async () => {
+  const it = xferOf(await xplan(net(), { p0: res([a1(600)]), p3: res([b1(800, { vehicleCode: 'W1' }), b1(1500, { live: false })]) }));
+  assert.equal(busB(it).departAt, NOW + 1500 * 1000, 'B due at +800 leaves before we are ready (+780 +78 margin)');
+  assert.equal(busB(it).departSource, 'scheduled');
+  assert.equal(it.transfer.waitSource, 'scheduled');
+  assert.deepEqual(it.transfer.missed, { departAt: NOW + 800 * 1000, source: 'live' });
+  // margin boundary: ready at 780 + 60 + 18 (10 % of an estimated 180 s ride) = 858 s
+  assert.equal(busB(xferOf(await xplan(net(), { p0: res([a1(600)]), p3: res([b1(858), b1(2000)]) }))).departAt, NOW + 858 * 1000);
+  assert.equal(busB(xferOf(await xplan(net(), { p0: res([a1(600)]), p3: res([b1(857), b1(2000)]) }))).departAt, NOW + 2000 * 1000);
+});
+
+test('transfer: same stop → bus A is listed there too, so the ride time is exact (live-match)', async () => {
+  const it = xferOf(await xplan(net(), { p0: res([a1(600)]), p3: res([a1(900), b1(1700)]) }));
+  assert.equal(busA(it).rideSource, 'live-match');
+  assert.equal(busA(it).rideSec, 300);
+  assert.equal(it.transfer.arriveAt, NOW + 900 * 1000);
+  assert.equal(it.transfer.arriveSource, 'live');
+  assert.equal(it.transfer.waitSec, 800);                         // 1700 − 900
+  assert.equal(busB(it).departAt, NOW + 1700 * 1000);             // margin is only 60 s now
+});
+
+test('transfer: across the road the walk comes before the wait; live is asked at the stop bus B leaves from', async () => {
+  const data = net({ stops: [S('h2', 1800, 150)], t2: ['h2', 'q1', 'q2', 'q3'] });
+  const deps = mkDeps({ live: { p0: res([a1(600)]), h2: res([b1(1500)]) } });
+  const it = xferOf(await planTrips(data, XFROM, XTO, { now: NOW, deps }));
+  assert.deepEqual(it.legs.map((l) => l.kind), ['walk', 'bus', 'walk', 'bus', 'walk']);
+  assert.deepEqual([it.transfer.stop.code, it.transfer.toStop.code, it.transfer.sameStop], ['p3', 'h2', false]);
+  near(it.transfer.walkSec, 150, 3);
+  assert.equal(it.legs[2].source, 'estimate', 'no OSRM call for the walk between the change stops');
+  near(it.transfer.waitSec, 1500 - 780 - it.transfer.walkSec, 1);
+  assert.deepEqual([...deps.calls.live].sort(), ['h2', 'p0']);
+  const tight = xferOf(await xplan(data, { p0: res([a1(600)]), h2: res([b1(900), b1(2100)]) }));
+  assert.equal(busB(tight).departAt, NOW + 2100 * 1000);
+  assert.equal(tight.transfer.missed.departAt, NOW + 900 * 1000);
+});
+
+test('transfer: retime picks the next bus A and re-derives bus B', async () => {
+  const live = { p0: res([a1(600), a1(1800, { vehicleCode: 'V2', live: false })]), p3: res([b1(1500), b1(2400)]) };
+  const it = xferOf(await xplan(net(), live));
+  assert.equal(busB(it).departAt, NOW + 1500 * 1000);
+  const later = NOW + 520 * 1000; // first bus (+600) is out of reach: 80 s left < the 100 s walk
+  assert.equal(leaveState(it, later).kind, 'missed');
+  retime(it, later);
+  assert.equal(busA(it).vehicleCode, 'V2');
+  assert.equal(it.leaveSource, 'scheduled');
+  assert.equal(it.transfer.arriveAt, NOW + (1800 + 180) * 1000);
+  assert.equal(busB(it).departAt, NOW + 2400 * 1000);             // 1500 is gone; ready at 1980 + 78
+  assert.equal(it.missed.departAt, NOW + 600 * 1000);
+});
+
+test('planTrips: direct and transfer side by side — the earlier arrival is first', async () => {
+  const live = { p0: res([a1(600), veh('D1', 700, { lineCode: '301' })]), p3: res([b1(1500)]) };
+  const slow = await xplan(net({ routes: [mkRoute('D1', '301', ['p0', 'p2', 'q2', 'q3'], 900)] }), live); // 30′ ride to q2
+  assert.deepEqual(slow.itineraries.map((i) => i.kind), ['transfer', 'direct']);
+  const fast = await xplan(net({ routes: [mkRoute('D1', '301', ['p0', 'p2', 'q2', 'q3'], 200)] }), live);
+  assert.equal(fast.itineraries[0].kind, 'direct', 'direct arrives first');
+});
+
+test('rankItineraries: a transfer carries a 5′ handicap and a direct bus wins a tie; unknown arrival last', () => {
+  const mk = (kind, arriveMin, id, pen = 0) => ({
+    id, kind, rankPenaltySec: pen, arriveAt: arriveMin == null ? null : NOW + arriveMin * 60000,
+    legs: [{ kind: 'walk', seconds: 0 }, { kind: 'bus', rideSec: 0, departSource: 'live' }, { kind: 'walk', seconds: 0 }],
+  });
+  const order = (xs) => rankItineraries(xs).map((x) => x.id);
+  assert.deepEqual(order([mk('transfer', 20, 'x', 300), mk('direct', 24, 'd')]), ['d', 'x'], 'direct 24 < transfer 20 + 5');
+  assert.deepEqual(order([mk('transfer', 18, 'x', 300), mk('direct', 24, 'd')]), ['x', 'd'], 'transfer 18 + 5 < 24');
+  assert.deepEqual(order([mk('transfer', 20, 'x', 300), mk('direct', 25, 'd')]), ['d', 'x'], 'tie → direct');
+  assert.deepEqual(order([mk('direct', 25, 'd'), mk('transfer', 20, 'x', 300)]), ['d', 'x'], 'tie → direct, input order irrelevant');
+  assert.deepEqual(order([mk('transfer', 18, 'est', 600), mk('transfer', 20, 'sure', 300)]), ['sure', 'est'], 'estimated wait ranks lower');
+  assert.deepEqual(order([mk('transfer', null, 'unknown', 600), mk('direct', 90, 'd')]), ['d', 'unknown']);
+});
+
+// ---- new: the three wait cases
+test('transfer case 2: two listed buses 15′ apart, none after the ready time → wait range, estimated', async () => {
+  // bus A at +1200 s reaches p3 at +1380; ready at +1458. B listed at +100 and +1000 only.
+  const it = xferOf(await xplan(net(), { p0: res([a1(1200)]), p3: res([b1(100), b1(1000)]) }));
+  assert.equal(it.transfer.waitSource, 'estimated');
+  assert.equal(it.transfer.waitSec, 450);
+  assert.equal(it.transfer.waitMaxSec, 900);
+  assert.equal(busB(it).departSource, 'estimated');
+  assert.equal(busB(it).departAt, NOW + (1380 + 450) * 1000);
+  assert.equal(it.estimated, true);
+  assert.equal(it.arriveSource, 'estimated');
+  assert.equal(it.rankPenaltySec, 600);
+  assert.equal(typeof it.leaveInSec, 'number');
+  assert.equal(it.leaveSource, 'live', '"leave in" still comes from bus A');
+});
+
+test('transfer case 3: one or zero listed buses → wait unknown, no departure and no arrival', async () => {
+  for (const p3 of [res([b1(300)]), res([])]) {
+    const it = xferOf(await xplan(net(), { p0: res([a1(600)]), p3 }));
+    assert.ok(it, 'shown when there is no direct trip');
+    assert.equal(it.transfer.waitSec, null);
+    assert.equal(it.transfer.waitMaxSec, null);
+    assert.equal(it.transfer.waitSource, 'estimated');
+    assert.equal(busB(it).departAt, null);
+    assert.equal(busB(it).departSource, 'estimated');
+    assert.equal(it.arriveAt, null);
+    assert.equal(it.estimated, true);
+    assert.equal(typeof it.leaveInSec, 'number');
+    assert.equal(it.leaveSource, 'live');
+    // no flat wait: nothing equals "arrival at the change + 600 s"
+    const flat = it.transfer.arriveAt + 600 * 1000;
+    for (const l of it.legs) for (const v of [l.departAt, l.arriveAt, l.startAt, l.endAt]) assert.notEqual(v, flat);
+    assert.notEqual(it.arriveAt, flat);
+  }
+});
+
+test('transfer: with no bus A listed there is no "leave in" and the plan drops it', async () => {
+  const data = net();
+  const cand = transferCandidates(data, XFROM, XTO)[0];
+  const w = { seconds: 100, meters: 130, geometry: null, source: 'estimate' };
+  const it = buildTransfer(cand, { boardRes: res([]), changeRes: res([b1(1500)]), walkTo: w, walkFrom: w, from: XFROM, to: XTO, now: NOW });
+  assert.equal(it.status, 'none');
+  assert.equal(it.leaveInSec, null);
+  assert.equal(it.leaveSource, null);
+  assert.equal(it.transfer.waitSec, null);
+  assert.equal(it.transfer.waitSource, 'estimated');
+  assert.equal(xferOf(await xplan(data, { p0: res([]), p3: res([b1(1500)]) })), undefined);
+});
+
+// ---- new: when a transfer is hidden
+const mkD = (arriveMin, o = {}) => ({
+  id: o.id || `d${arriveMin}`, kind: 'direct', arriveAt: arriveMin == null ? null : NOW + arriveMin * 60000,
+  confidence: o.confidence ?? 1, estimated: (o.confidence ?? 1) < 0.7, rankPenaltySec: 0,
+  legs: [{ kind: 'walk', seconds: 0 }, { kind: 'bus', rideSec: 0, departSource: 'live' }, { kind: 'walk', seconds: 0 }],
+});
+const mkT = (arriveMin, waitSource, o = {}) => ({
+  ...mkD(arriveMin, { id: o.id || `t${arriveMin}` }), kind: 'transfer', confidence: o.confidence ?? 1,
+  estimated: waitSource === 'estimated', rankPenaltySec: 300, transfer: { waitSource },
+});
+const shown = (directs, transfers) => hideWeakTransfers(directs, transfers).map((t) => t.id);
+
+test('hideWeakTransfers case 1 (known wait): a direct 4′ later hides it, 6′ later does not', () => {
+  assert.deepEqual(shown([mkD(24)], [mkT(20, 'live')]), []);
+  assert.deepEqual(shown([mkD(26)], [mkT(20, 'scheduled')]), ['t20']);
+});
+
+test('hideWeakTransfers case 2 (wait range): a direct 9′ later hides it, 11′ later does not', () => {
+  assert.deepEqual(shown([mkD(29)], [mkT(20, 'estimated')]), []);
+  assert.deepEqual(shown([mkD(31)], [mkT(20, 'estimated')]), ['t20']);
+});
+
+test('hideWeakTransfers case 3 (wait unknown): any direct bus hides it; with no direct trip it is shown', () => {
+  assert.deepEqual(shown([mkD(90)], [mkT(null, 'estimated')]), []);
+  assert.deepEqual(shown([], [mkT(null, 'estimated', { id: 'u' })]), ['u']);
+  assert.deepEqual(shown([mkD(null)], [mkT(null, 'estimated', { id: 'u' })]), ['u'], 'a direct trip with no bus is no rival');
+});
+
+test('hideWeakTransfers: a low-confidence direct trip does not hide a transfer on two good routes; at most 2 shown', () => {
+  assert.deepEqual(shown([mkD(21, { confidence: 0.5 })], [mkT(20, 'live', { confidence: 0.9 })]), ['t20']);
+  assert.deepEqual(shown([mkD(21, { confidence: 0.5 })], [mkT(20, 'live', { confidence: 0.5 })]), []);
+  assert.deepEqual(shown([], [mkT(30, 'live'), mkT(20, 'live'), mkT(25, 'live')]), ['t20', 't25']);
+});
+
+// ---- new: guards with transfers
+// Six boarding stops near the start, six lines to a hub, six lines out of it: many more options than the budgets allow.
+function hubNet() {
+  const stops = [], routes = [], live = {};
+  for (let i = 0; i < 6; i++) {
+    stops.push(S(`b${i}`, i * 60, 40), S(`x${i}`, 1800 + i * 40, 60), S(`a${i}`, 3600 - i * 60, 40));
+    routes.push(mkRoute(`R${i}`, `5${i}`, [`b${i}`, `x${i}`]), mkRoute(`Q${i}`, `7${i}`, [`x${i}`, `a${i}`]));
+    live[`b${i}`] = res([veh(`R${i}`, 600 + i * 30, { lineCode: `5${i}` })]);
+    live[`x${i}`] = res([veh(`Q${i}`, 1500 + i * 30, { lineCode: `7${i}` })]);
+  }
+  return { data: mkNet(stops, routes), live };
+}
+
+test('guard: never two changes — every itinerary has at most 2 bus legs', async () => {
+  const { data, live } = hubNet();
+  const out = await planTrips(data, pt(0, 100), pt(3600, 100), { now: NOW, deps: mkDeps({ live }) });
+  assert.ok(out.itineraries.some((i) => i.kind === 'transfer'));
+  for (const it of out.itineraries) {
+    assert.ok(it.legs.filter((l) => l.kind === 'bus').length <= 2);
+    assert.ok([0, 1].includes(it.transfers));
+  }
+});
+
+test('guard: with transfers, at most 3 results, 5 distinct live stops each once, 6 OSRM calls, 2 transfers', async () => {
+  const { data, live } = hubNet();
+  const deps = mkDeps({ live });
+  const out = await planTrips(data, pt(0, 100), pt(3600, 100), { now: NOW, deps });
+  assert.ok(out.itineraries.length > 0 && out.itineraries.length <= LIMITS.maxResults);
+  assert.ok(deps.calls.live.length > 0 && deps.calls.live.length <= LIMITS.maxLiveStops, deps.calls.live.join());
+  assert.equal(new Set(deps.calls.live).size, deps.calls.live.length);
+  assert.ok(deps.calls.walk <= LIMITS.maxOsrmLegs);
+  assert.ok(out.itineraries.filter((i) => i.kind === 'transfer').length <= LIMITS.maxTransfers);
+});
+
+test('guard: every bus leg and the transfer object carry sources from the allowed list', async () => {
+  const cases = [
+    { p0: res([a1(600)]), p3: res([a1(900), b1(1700)]) },                          // case 1, live-match
+    { p0: res([a1(600, { live: false })]), p3: res([b1(1500, { live: false })]) }, // case 1, scheduled
+    { p0: res([a1(1200)]), p3: res([b1(100), b1(1000)]) },                         // case 2
+    { p0: res([a1(600)]), p3: res([]) },                                           // case 3
+  ];
+  for (const live of cases) {
+    const it = xferOf(await xplan(net(), live));
+    assert.ok([null, 'live', 'scheduled'].includes(it.leaveSource));
+    assert.ok(['live', 'estimated'].includes(it.arriveSource));
+    for (const l of it.legs) {
+      if (l.kind === 'walk') assert.ok(['osrm', 'estimate'].includes(l.source));
+      else {
+        assert.ok([null, 'live', 'scheduled', 'estimated'].includes(l.departSource));
+        assert.ok(['live', 'estimated'].includes(l.arriveSource));
+        assert.ok(['live-match', 'estimate'].includes(l.rideSource));
+      }
+    }
+    assert.ok(['live', 'scheduled', 'estimated'].includes(it.transfer.waitSource));
+    assert.ok(['live', 'estimated'].includes(it.transfer.arriveSource));
+    if (it.transfer.waitMaxSec != null || it.transfer.waitSec == null) assert.equal(it.transfer.waitSource, 'estimated', 'an estimated wait never gets a row source');
+  }
+});
+
+test('guard: codes with leading zeros survive in the transfer id and legs', async () => {
+  const stops = [S('001', 0), S('002', 600), S('003', 1200), S('004', 1800), S('010', 2400), S('011', 3000), S('012', 3600)];
+  const data = mkNet(stops, [mkRoute('0601', '060', ['001', '002', '003', '004']), mkRoute('0201', '020', ['004', '010', '011', '012'])]);
+  const deps = mkDeps({ live: { '001': res([veh('0601', 600, { lineCode: '060', vehicleCode: '0412' })]), '004': res([veh('0201', 1500, { lineCode: '020' })]) } });
+  const it = xferOf(await planTrips(data, XFROM, XTO, { now: NOW, deps }));
+  assert.equal(it.id, '0601:001:004~0201:004:012');
+  assert.deepEqual([busA(it).routeCode, busA(it).lineCode, busA(it).board.code, busA(it).vehicleCode], ['0601', '060', '001', '0412']);
+  assert.deepEqual([busB(it).routeCode, busB(it).lineCode, busB(it).alight.code], ['0201', '020', '012']);
+  assert.equal(it.transfer.stop.code, '004');
+  for (const c of deps.calls.live) assert.equal(typeof c, 'string');
+  assert.deepEqual([...deps.calls.live].sort(), ['001', '004']);
+});
+
+test('planTrips: neither a direct nor a transfer option → reason no-route', async () => {
+  const lonely = mkNet(netStops(), [mkRoute('T1', '601', ['p0', 'p1', 'p2']), mkRoute('T2', '201', ['q1', 'q2', 'q3'])]);
+  const out = await xplan(lonely, {});
+  assert.deepEqual(out.itineraries, []);
+  assert.equal(out.reason, 'no-route');
 });
