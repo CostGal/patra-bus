@@ -5,15 +5,16 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  searchPlaces, mapPhoton, queryNumber, stripNumber, numberMatches, latinToGreek, streetPlace,
+  searchPlaces, mapPhoton, queryNumber, stripNumber, numberMatches, latinToGreek, streetPlace, rankExact,
 } from '../web/js/geocode.js';
+import { searchKey } from '../web/js/text.js';
 import { city } from '../web/js/cities.js';
 import { haversine } from '../web/js/geo.js';
 
 const near = city().center;
-const feat = ({ name, street, housenumber, osm_key = 'highway', lat, lng }) => ({
+const feat = ({ name, street, housenumber, osm_key = 'highway', osm_value, lat, lng }) => ({
   geometry: { type: 'Point', coordinates: [lng, lat] },
-  properties: { name, street, housenumber, osm_key, city: 'Πάτρα' },
+  properties: { name, street, housenumber, osm_key, osm_value, city: 'Πάτρα' },
 });
 // Five segments of one street along a line (the middle one is index 2) plus one of another street.
 const segments = (name, lat0 = 38.24, lng0 = 21.73) =>
@@ -27,6 +28,12 @@ const FEATURES = {
   'Lidl': [feat({ name: 'Lidl', osm_key: 'shop', lat: 38.26, lng: 21.75 })],
   'αγιου νικολαου': segments('Αγίου Νικολάου', 38.247, 21.732),
   'Ερμού': segments('Ερμού', 38.243, 21.731),
+  // TEL-161 (iPhone in Patras, 2026-10-19): what Photon answers, plus an OSM bus stop like those of TEL-172.
+  'Άγιος Ανδρέας': [
+    feat({ name: 'Αγγλικανική Εκκλησία - Άγιος Ανδρέας', osm_key: 'amenity', osm_value: 'place_of_worship', lat: 38.2518, lng: 21.7378 }),
+    feat({ name: 'ΑΓΙΟΣ ΑΝΔΡΕΑΣ', osm_key: 'highway', osm_value: 'bus_stop', lat: 38.2401, lng: 21.7262 }),
+    feat({ name: 'Άγιος Ανδρέας', osm_key: 'amenity', osm_value: 'place_of_worship', lat: 38.2423, lng: 21.7279 }),
+  ],
 };
 
 let urls = [];
@@ -154,6 +161,28 @@ test('request shape: only q, lat, lon, limit, bbox; position at 2 decimals', asy
     assert.match(u.searchParams.get('lat'), /^-?\d+\.\d{2}$/);
     assert.match(u.searchParams.get('lon'), /^-?\d+\.\d{2}$/);
   }
+});
+
+test('TEL-161: the landmark named like the query comes before a look-alike stop; OSM bus stops are dropped', async () => {
+  const stop = { code: '529', key: searchKey('ΝΟΣ. ΑΓΙΟΣ ΑΝΔΡΕΑΣ'), displayName: 'Νοσ. Άγιος Ανδρέας', lat: 38.2367, lng: 21.7458, lineCodes: ['601'] };
+  const out = await searchPlaces('Άγιος Ανδρέας', { data: { stops: [stop] }, near });
+  assert.equal(out[0].name, 'Άγιος Ανδρέας');
+  assert.equal(out[0].exact, true);
+  assert.ok(out.some((p) => p.kind === 'stop' && p.stopCode === '529'), 'the stop is still offered');
+  assert.ok(!out.some((p) => p.name === 'ΑΓΙΟΣ ΑΝΔΡΕΑΣ'), 'no OSM bus stop');
+  assert.equal(out.find((p) => p.name.startsWith('Αγγλικανική')).exact, undefined);
+});
+
+test('rankExact: approximate places and stops never count as exact; order otherwise kept', () => {
+  const places = [
+    { kind: 'stop', name: 'Ερμού', stopCode: '1' },
+    { kind: 'place', name: 'Ερμού', approx: true },
+    { kind: 'place', name: 'Πλατεία Ερμού' },
+    { kind: 'place', name: 'Ερμού 5' },
+  ];
+  const out = rankExact('Ερμού', places);
+  assert.deepEqual(out.map((p) => p.name), ['Ερμού 5', 'Ερμού', 'Ερμού', 'Πλατεία Ερμού']);
+  assert.deepEqual(out.map((p) => !!p.exact), [true, false, false, false]);
 });
 
 test('cache: the street request is shared by two unknown numbers', async () => {

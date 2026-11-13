@@ -113,10 +113,12 @@ export function latinToGreek(s) {
 // `queryNumber`: when given and the feature's housenumber does not match it, the place is flagged
 // `approx: true` — a street-level or nearby-POI result standing in for an exact address (never silent).
 // `approx: true` forces the flag (the street fallback of photon()).
+// OpenStreetMap bus stops are dropped (TEL-161): our own stops already cover them, with the official names.
 export function mapPhoton(f, { queryNumber: qNum = null, approx: forceApprox = false } = {}) {
   const p = f?.properties || {};
   const [lng, lat] = f?.geometry?.coordinates || [];
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !inArea({ lat, lng })) return null;
+  if (p.osm_key === 'highway' && p.osm_value === 'bus_stop') return null;
   const street = [p.street, p.housenumber].filter(Boolean).join(' ');
   const name = p.name || street;
   if (!name) return null;
@@ -222,7 +224,16 @@ export async function searchPlaces(q, { near, signal, data, limit = 8 } = {}) {
   if (q.length >= 3) {
     try { remote = await photon(q, near, signal); } catch (e) { if (isAbort(e)) throw e; offline = true; }
   }
-  const places = mergePlaces(local, remote).slice(0, limit);
+  const places = rankExact(q, mergePlaces(local, remote)).slice(0, limit);
   places.offline = offline;
   return places;
+}
+
+// TEL-161: a Photon place whose name is the query (or starts with it) gets `exact: true` and goes before the
+// stops that only look like it ("Άγιος Ανδρέας" the church before the stop "Νοσ. Άγιος Ανδρέας"), so the
+// limit never cuts it. Approximate places (street fallback) never count as exact. Order is otherwise kept.
+export function rankExact(q, places) {
+  const k = searchKey(q);
+  const marked = places.map((p) => (k && p.kind === 'place' && !p.approx && searchKey(p.name).startsWith(k) ? { ...p, exact: true } : p));
+  return [...marked.filter((p) => p.exact), ...marked.filter((p) => !p.exact)];
 }
