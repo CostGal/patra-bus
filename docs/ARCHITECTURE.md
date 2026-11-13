@@ -39,7 +39,7 @@ the Worker still carries code for them that nothing in the app calls (see [WORKE
 
 Third-party services (free, no key). Credits: Settings → Σχετικά lists OpenStreetMap, OpenFreeMap, MapLibre, OSRM / FOSSGIS, Photon and citybus.gr; the map shows the OpenFreeMap / OpenStreetMap attribution behind its (i) button:
 - **OpenFreeMap**: map pictures. The phone fetches them directly.
-- **OSRM / FOSSGIS**: walking time and route. Receives the start and end point of a walk from the phone (about 1 m precision).
+- **OSRM / FOSSGIS**: walking time and route. Receives the start and end point of a walk from the phone (about 1 m precision): the "near you" card, the walk to a stop and the walking legs of a trip.
 - **Photon (komoot)**: searching for places by name. Receives your typed text and a rounded location (about 1 km).
 - **citybus.gr**: the real bus data. Only the Worker (and the maintenance scripts) talk to it.
 
@@ -52,6 +52,7 @@ Third-party services (free, no key). Credits: Settings → Σχετικά lists 
 | Map | `web/js/map.js` |
 | "Next bus near me" | `web/js/nearby.js`, `location.js`, `walk.js` |
 | Place search | `web/js/geocode.js` |
+| Trip planner A → B (beta) | `web/js/trip.js`: direct and one-transfer trips as plain data, no network and no screen; imports only `geo.js` (TEL-290, TEL-292). Not yet wired into a screen |
 | Local reminder timers | `web/js/notify.js`: only the test button and the list in Settings use it today, and `app.js` loads it to re-arm saved ones. The Worker side (`worker/src/reminders.js`, `push.js`, `routines.js`) has no client in the app |
 | Vehicle page (one bus as a timeline) | `web/js/bus-view.js` |
 | Saved places (home, work) | `web/js/places.js`, shown in Settings; nothing else reads them yet |
