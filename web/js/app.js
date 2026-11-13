@@ -3,6 +3,7 @@
 import './boot-city.js'; // must stay first: picks the active city before any other module reads it
 import { h, icon, toast, lineBadge } from './ui.js';
 import { loadData, searchStops } from './data.js';
+import { bootScreen } from './boot.js';
 import { createMap } from './map.js';
 import { createSheet } from './sheet.js';
 import { createSpringLoop } from './motion.js';
@@ -694,6 +695,7 @@ async function route() {
   if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
   content.replaceChildren();
+  content.removeAttribute('aria-busy'); // set in index.html until the first view
   sheet.scrollToTop();
   if (!reduceMotion.matches) { content.classList.remove('enter'); void content.offsetWidth; content.classList.add('enter'); }
   document.title = title();
@@ -847,6 +849,8 @@ async function boot() {
   } catch (err) {
     console.error('[data]', err);
     sheet.content.replaceChildren(errorState(t('Δεν φορτώθηκαν τα δεδομένα στάσεων.'), () => location.reload()));
+    sheet.content.removeAttribute('aria-busy');
+    bootScreen.finish();
     return;
   }
   map.setStops(data.stops);
@@ -865,12 +869,14 @@ async function boot() {
   onLangChange(() => { localizeChrome(); route(); });
   // Opened before the home view mounts, so the home's "first time here?" card already sees the flags the setup sets.
   let setupClosed = null;
-  try { setupClosed = (await setupP)?.maybeSetup({ bootHome, ctx }) ?? null; } catch (err) { console.error('[setup]', err); }
+  // The setup sets its flags now and opens once the boot screen starts to leave (TEL-255).
+  try { setupClosed = (await setupP)?.maybeSetup({ bootHome, ctx, after: bootScreen.leaving }) ?? null; } catch (err) { console.error('[setup]', err); }
   await route();
   booted = true;
+  bootScreen.finish();
   // One-time thank-you for the testers, only when opened as an installed app (or with ?welcome to preview). Never blocks boot.
-  // After the first-run setup, when both apply (first launch of the installed app).
-  Promise.resolve(setupClosed).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
+  // After the first-run setup, when both apply (first launch of the installed app), and never under the boot screen.
+  Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
   // Anonymous daily open/install count (CLAUDE.md rule 4): off the boot path, silent on failure.
   import('./usage.js').then((m) => m.reportUsage()).catch(() => {});
 
@@ -883,4 +889,6 @@ async function boot() {
 boot().catch((err) => {
   console.error('[boot]', err);
   sheet?.content.replaceChildren(errorState(t('Κάτι πήγε στραβά.'), () => location.reload()));
+  sheet?.content.removeAttribute('aria-busy');
+  bootScreen.finish();
 });

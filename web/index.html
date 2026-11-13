@@ -42,18 +42,89 @@
   <link rel="stylesheet" href="css/glass.css">
   <link rel="stylesheet" href="css/ui-kit.css">
   <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/boot.css">
   <script>
-    // Apply a forced theme before first paint (best effort; app.js owns the real logic).
-    try {
-      var t = ((JSON.parse(localStorage.getItem('patra-bus:v2')) || {}).settings || {}).theme;
-      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
-    } catch (e) { /* ignore */ }
+    // Before first paint (best effort; app.js owns the real logic): forced theme, page language, boot screen.
+    (function () {
+      var d = document.documentElement, s = {};
+      try { s = (JSON.parse(localStorage.getItem('patra-bus:v2')) || {}).settings || {}; } catch (e) { /* ignore */ }
+      if (s.theme === 'light' || s.theme === 'dark') d.dataset.theme = s.theme;
+      // Same rule as resolveLang (i18n.js), so nothing is read out in the wrong language before the app has loaded (#32).
+      var nl = ''; try { nl = navigator.language || (navigator.languages || [])[0] || ''; } catch (e) { /* ignore */ }
+      d.lang = s.lang === 'el' || s.lang === 'en' ? s.lang : (String(nl).toLowerCase().indexOf('el') === 0 ? 'el' : 'en');
+      // Boot screen (TEL-255, css/boot.css, js/boot.js): once per tab or app process, on a cold start that lands on home.
+      // ?boot forces it on any hash (and leaves the key alone); ?boot=hold also keeps the last frame until a tap.
+      var cities = ['patra', 'corfu'];
+      var p = new URLSearchParams(location.search), force = p.has('boot'), show = force;
+      var segs = location.hash.replace(/^#/, '').split('?')[0].split('/').filter(Boolean);
+      if (segs.length && cities.indexOf(segs[0]) >= 0) segs.shift();
+      if (!force) {
+        try { show = !sessionStorage.getItem('patra-bus:boot'); sessionStorage.setItem('patra-bus:boot', '1'); } catch (e) { show = true; }
+        if (segs.length) show = false;
+      }
+      if (!show) return;
+      d.classList.add('boot');
+      var B = window.__boot = { t0: performance.now(), hold: p.get('boot') === 'hold', out: false, cbs: [] };
+      B.on = function (f) { if (B.out) f(); else B.cbs.push(f); };
+      // Starts the exit (200 ms; 180 ms with reduced motion), then removes #boot. A tap calls it before any module has loaded.
+      B.leave = function () {
+        if (B.out) return;
+        B.out = true;
+        d.classList.add('boot-out');
+        document.removeEventListener('pointerdown', tap, true);
+        var rm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        setTimeout(function () {
+          var el = document.getElementById('boot');
+          if (el) el.remove();
+          d.classList.remove('boot', 'boot-out', 'boot-hold');
+        }, rm ? 180 : 200);
+        B.cbs.splice(0).forEach(function (f) { try { f(); } catch (e) { /* ignore */ } });
+      };
+      function tap(e) { if (e.target && e.target.closest && e.target.closest('#boot')) B.leave(); }
+      document.addEventListener('pointerdown', tap, true);
+      // will-change only while the bus drives in
+      document.addEventListener('animationend', function end(e) {
+        if (e.animationName === 'boot-drive') { e.target.style.willChange = 'auto'; document.removeEventListener('animationend', end); }
+      });
+      if (B.hold) d.classList.add('boot-hold');
+    })();
   </script>
-  <script src="vendor/maplibre-gl/maplibre-gl.js"></script>
+  <script defer src="vendor/maplibre-gl/maplibre-gl.js"></script>
   <script type="module" src="js/app.js"></script>
   <script type="module" src="js/glass.js"></script> <!-- glass UI (TEL-83, css/glass.css): the light effects and morphs -->
 </head>
 <body>
+  <!-- Boot screen (TEL-255): shown only when the head script sets html.boot. Same artwork as icon.svg (change both). -->
+  <div id="boot" aria-hidden="true">
+    <div class="boot-mark">
+      <div class="boot-logo">
+        <span class="boot-ring"></span>
+        <div class="boot-tile">
+          <svg class="boot-art" viewBox="0 0 512 512" focusable="false">
+            <rect width="512" height="512" fill="#0b5394"/>
+            <g class="boot-bus">
+              <g class="boot-body">
+                <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff"/>
+                <rect x="146" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
+                <rect x="262" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
+                <circle class="boot-light" cx="164" cy="300" r="18" fill="#0b5394"/>
+                <circle class="boot-light" cx="348" cy="300" r="18" fill="#0b5394"/>
+              </g>
+              <g class="boot-wheel">
+                <circle cx="178" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
+                <path class="boot-spokes" d="M178 346v52M152 372h52" stroke="#0b5394" stroke-width="6" stroke-linecap="round"/>
+              </g>
+              <g class="boot-wheel">
+                <circle cx="334" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
+                <path class="boot-spokes" d="M334 346v52M308 372h52" stroke="#0b5394" stroke-width="6" stroke-linecap="round"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <div class="boot-name"><span class="boot-word">Telematica</span><span class="boot-beta">BETA</span></div>
+    </div>
+  </div>
   <div id="app" class="app">
     <div id="map" class="map"></div>
 
@@ -90,8 +161,9 @@
           <div id="search-list" class="search-list" role="listbox" aria-label="Αποτελέσματα αναζήτησης"></div>
         </div>
         <p id="map-note" class="map-note" hidden></p>
-        <div class="sheet-content" id="sheet-content">
-          <p class="state-msg">Φόρτωση…</p>
+        <!-- text-free until the first view mounts (no text in the wrong language, issue #32); app.js clears aria-busy -->
+        <div class="sheet-content" id="sheet-content" aria-busy="true">
+          <div class="boot-skel" aria-hidden="true"><span class="skel skel-line"></span><span class="skel skel-line"></span><span class="skel skel-line short"></span></div>
         </div>
       </div>
     </section>

@@ -26,7 +26,7 @@ test('setup: three steps, language switch, then never again', async ({ page }) =
   await expect(dlg).toBeHidden();
   expect(await settings(page)).toMatchObject({ lang: 'en', setupDone: true });
   await page.reload();
-  await expect(page.locator('#sheet-content')).not.toContainText('Loading…');
+  await expect(page.locator('#sheet-content')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('.su')).toHaveCount(0);
 });
 

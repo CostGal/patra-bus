@@ -15,7 +15,7 @@ for (const [id, c] of Object.entries(CITY)) {
     await page.goto(c.home);
     await expect(page.getByText(`Telematica · ${c.name}`)).toBeVisible();
     await expect(page.locator('#search-input')).toBeVisible();
-    await expect(page.locator('#sheet-content')).not.toContainText('Φόρτωση…');
+    await expect(page.locator('#sheet-content')).not.toHaveAttribute('aria-busy', 'true');
   });
 
   test(`${id}: stop search finds the stop`, async ({ page }) => {

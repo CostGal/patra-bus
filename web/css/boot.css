@@ -1,0 +1,70 @@
+/* Boot screen (TEL-255): the logo in motion on a cold start at home. Shown only while <html> has the class `boot`
+   (set by the inline head script in index.html); js/boot.js and the head script end it with `boot-out`.
+   Motion values: Notion card TEL-255, "Build brief". Only transform, opacity, visibility and fill are animated. */
+
+#boot { display: none; }
+html.boot #boot {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  background: var(--background); color: var(--foreground);
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none;
+  /* failsafe: a broken module never leaves the app covered */
+  animation: boot-failsafe 1ms linear 5s forwards;
+}
+.boot-mark { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.boot-logo { position: relative; width: 96px; height: 96px; }
+.boot-tile { position: relative; width: 100%; height: 100%; border-radius: 22px; overflow: hidden; background: #0b5394; }
+.boot-art { display: block; width: 100%; height: 100%; }
+.boot-ring { position: absolute; inset: 0; border-radius: 22px; border: 2px solid var(--live); opacity: 0; }
+.boot-name { display: flex; align-items: center; gap: 8px; }
+.boot-word { font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--foreground); }
+.boot-beta {
+  padding: 2px 8px; border-radius: var(--radius-full, 999px); font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  line-height: 1.4; color: var(--muted-foreground); background: var(--muted);
+}
+
+/* 0–420 ms drive in (the tile clips it), 420–600 ms brake: the body 3% past and back, the wheels stay */
+html.boot .boot-bus { will-change: transform; animation: boot-drive 420ms cubic-bezier(.2, .8, .2, 1) both; }
+html.boot .boot-body { animation: boot-brake 180ms cubic-bezier(.34, 1.56, .64, 1) 420ms both; }
+/* two spokes per wheel turn 540° while it moves, then fade out by 600 ms: the resting frame is exactly the icon */
+.boot-spokes { opacity: 0; transform-box: fill-box; transform-origin: center; }
+html.boot .boot-spokes {
+  opacity: .35;
+  animation: boot-spin 420ms cubic-bezier(.2, .8, .2, 1) both, boot-spokes-out 180ms linear 420ms forwards;
+}
+/* 520–700 ms headlights blink twice */
+html.boot .boot-light { animation: boot-blink 90ms steps(1, end) 520ms 2; }
+/* 560–760 ms wordmark rises; 640–800 ms BETA pops */
+html.boot .boot-word { animation: boot-rise 200ms var(--spring-ease) 560ms both; }
+html.boot .boot-beta { animation: boot-pop 160ms cubic-bezier(.34, 1.56, .64, 1) 640ms both; }
+/* still loading at 800 ms: the app's "live" ring pulses out of the tile until finish() */
+html.boot .boot-ring { animation: boot-ring 1.2s var(--spring-ease) 800ms infinite; }
+html.boot-hold .boot-ring, html.boot-out .boot-ring { animation: none; opacity: 0; }
+html.boot-hold #boot { animation: none; } /* ?boot=hold (screenshots, review): no failsafe */
+
+/* exit, 200 ms */
+html.boot.boot-out #boot { animation: boot-exit 200ms ease-out forwards; pointer-events: none; }
+html.boot.boot-out .boot-tile { animation: boot-grow 200ms ease-out forwards; }
+
+/* the app's loading placeholder under it (index.html, #sheet-content): text-free rows */
+.boot-skel { display: grid; gap: var(--space-2, 8px); padding: var(--space-4, 16px) 0; }
+
+@keyframes boot-drive { from { transform: translateX(-120%); } to { transform: translateX(0); } }
+@keyframes boot-brake { 0% { transform: translateX(0); } 50% { transform: translateX(3%); } 100% { transform: translateX(0); } }
+@keyframes boot-spin { from { transform: rotate(0deg); } to { transform: rotate(540deg); } }
+@keyframes boot-spokes-out { to { opacity: 0; } }
+@keyframes boot-blink { 0% { fill: #ffd866; } 50% { fill: #0b5394; } }
+@keyframes boot-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes boot-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes boot-ring { 0% { opacity: .55; transform: scale(.8); } 100% { opacity: 0; transform: scale(2); } }
+@keyframes boot-exit { to { opacity: 0; } }
+@keyframes boot-grow { to { transform: scale(1.08); } }
+@keyframes boot-failsafe { to { opacity: 0; visibility: hidden; } }
+
+/* Reduced motion: the last frame from the start, no drive, spokes, blink, pop or ring; exit = 180 ms linear fade */
+@media (prefers-reduced-motion: reduce) {
+  html.boot .boot-bus, html.boot .boot-body, html.boot .boot-spokes, html.boot .boot-light,
+  html.boot .boot-word, html.boot .boot-beta, html.boot .boot-ring, html.boot.boot-out .boot-tile { animation: none; }
+  html.boot .boot-bus { will-change: auto; }
+  html.boot .boot-spokes, html.boot .boot-ring { opacity: 0; }
+  html.boot.boot-out #boot { animation: boot-exit 180ms linear forwards; }
+}

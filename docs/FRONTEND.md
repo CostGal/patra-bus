@@ -94,8 +94,13 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
 | `patra-bus:reminders` | Pending local reminders (only the Settings test creates them) | `notify.js:9` |
 | `patra-bus:loc-granted` | `'1'` once a GPS fix worked, so the app may start location without a prompt | `location.js:14,126` |
 
-Every access is wrapped so a blocked or full storage falls back to memory. The old `favs` key is migrated and removed
-(`store.js:128-132`). `index.html:45` reads the theme from the blob before first paint.
+| Key (`sessionStorage`) | Holds | Where |
+|---|---|---|
+| `patra-bus:boot` | `'1'` once this tab or app process has started: the boot screen shows only before it is set | inline head script of `index.html` |
+
+Every access is wrapped so a blocked or full storage falls back to memory (a blocked `sessionStorage` shows the boot screen).
+The old `favs` key is migrated and removed (`store.js:128-132`). The inline head script of `index.html` reads the theme
+and the language from the blob before first paint.
 
 Favourites, recents, places and reminders each carry a `city`; an item without one is Patras. Lists show only the active city.
 
@@ -149,14 +154,24 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
   (`sw.js:225`) serves the notifications `notify.js` can show.
 - `app.js:836-839` registers it after load. A page offline shows a pill (`app.js:296-309`).
 
-## 10. First run, welcome, problem report
+## 10. Boot screen, first run, welcome, problem report
+- **Boot screen** (TEL-255; `index.html` `#boot` and its inline head script, `css/boot.css`, `boot.js`): about 1 s of the
+  logo in motion (the bus drives in, brakes, blinks, then «Telematica» and BETA) on a cold start that lands on home. Never
+  on a deep link, not again in the same tab or app process (`sessionStorage` `patra-bus:boot`), so not after the reload of
+  a city change or on return from the background. The head script decides before first paint, sets `<html lang>` (same
+  rule as `resolveLang`) and owns the state (`window.__boot`), so a tap skips it before any module loads. `app.js` calls
+  `bootScreen.finish()` after the first `route()` and on both error paths; the exit starts at the later of that and 800 ms
+  (500 ms with reduced motion). Still loading then: a pulsing `--live` ring. A CSS failsafe hides it at 5 s. The setup
+  opens on `bootScreen.leaving`, the welcome after the setup and the boot screen. `?boot` forces it on any hash,
+  `?boot=hold` keeps the last frame until a tap. The artwork is `icon.svg`'s: a rebranding changes both.
+  Until the first view mounts, `#sheet-content` holds three text-free skeleton rows with `aria-busy="true"` (issue #32).
 - **Setup** (`setup.js`, `css/setup.css`): three steps on the first start that lands on the home view (language, city, what LIVE
-  and ΠΡΟΓΡ. mean). `app.js:827` opens it before the first `route()`. `setupDone` is set when it opens, so a reload does not
+  and ΠΡΟΓΡ. mean). `app.js` opens it before the first `route()`; the dialog appears once the boot screen starts to leave. `setupDone` is set when it opens, so a reload does not
   bring it back. The language applies at once, the city on close (a new city reloads). «Παράλειψη» or Esc closes it.
   `?setup` previews without the flag.
 - **Welcome** (`welcome.js`, `css/welcome.css`): a one-time thank-you for the first testers, only when the app runs installed
-  (`platform.js` `mode === 'app'`), after the setup closes (`app.js:832`). `welcomeSeen` is set when it opens, not when it
-  closes. It links to `#/report`. `?welcome` previews it without the flag. Motion: a spring for the card, keyframes for the
+  (`platform.js` `mode === 'app'`), after the setup closes and the boot screen has left (`app.js`, `boot()`). `welcomeSeen` is set when it opens, not when it
+  closes. Its emblem is the logo (`icon.svg`). It links to `#/report`. `?welcome` previews it without the flag. Motion: a spring for the card, keyframes for the
   decorations; with reduced motion a fade of at most 180 ms.
 - **Problem report** (`report-view.js`, `report.js`): category, text (10 to 2000 characters), optional email, a hidden honeypot field and
   the diagnostics shown before sending. Sent as `POST /api/report` with only the typed text plus `diag`. `diag` is a whitelist
