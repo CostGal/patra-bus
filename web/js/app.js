@@ -13,7 +13,7 @@ import { t, tn, N_, onLangChange, lang, APP_NAME } from './i18n.js';
 import { CITIES, city, cityId, cityName, isCity } from './cities.js';
 import { cityToOffer } from './city-detect.js';
 import { parseHash, formatHash, cityHash } from './route.js';
-import { searchPlaces } from './geocode.js';
+import { searchPlaces, withoutShownStops } from './geocode.js';
 import { searchKey } from './text.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
@@ -431,9 +431,7 @@ function renderSearch(keepActive = false) {
     }
   } else {
     const stops = searchStops(data, q, 6);
-    const seen = new Set(stops.map((s) => s.code));
-    const found = places.q === q
-      ? places.results.filter((p) => !(p.kind === 'stop' && seen.has(String(p.stopCode)))) : [];
+    const found = places.q === q ? withoutShownStops(places.results, stops, 6) : [];
     const stopPart = () => { if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops)); };
     const placePart = () => {
       if (found.length) out.push(srHead(t('Τόποι')), ...found.map((p) => srRow(`sr-${n++}`, p.kind === 'stop' ? 'bus' : 'pin', p.name, p.subtitle, () => choosePlace(p))));
@@ -477,7 +475,7 @@ function schedulePlaces(q) {
       const near = locationService.current ? { lat: locationService.current.lat, lng: locationService.current.lng } : map.getCenter();
       const results = await searchPlaces(q, { near, signal: ctl.signal, data });
       if (ctl.signal.aborted) return;
-      places = { q, loading: false, results: (results || []).slice(0, 6), failed: false };
+      places = { q, loading: false, results: results || [], failed: false };
     } catch (err) {
       if (ctl.signal.aborted || err?.name === 'AbortError') return;
       places = { q, loading: false, results: [], failed: true };
