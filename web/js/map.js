@@ -406,6 +406,10 @@ export function createMap(container, opts = {}) {
     d.append(el('veh-ring'), b);
     return d;
   }
+  // The ring pulses a couple of beats and rests (app.css, TEL-304); a new position plays it again.
+  function pingVeh(node) {
+    for (const a of node.querySelector('.veh-ring')?.getAnimations?.() ?? []) { a.currentTime = 0; a.play(); }
+  }
   const pickKey = (v) => v.key ?? v.vehicleCode ?? v.id ?? null;
   function updateVehEl(it, v) {
     it.node.style.setProperty('--c', v.color || '#757575');
@@ -547,6 +551,7 @@ export function createMap(container, opts = {}) {
           }
         }
         if (it) {
+          if (metersBetween(it.to, p) > 1) pingVeh(it.node);
           updateVehEl(it, v);
           moveItem(it, p, 4000);
         } else {

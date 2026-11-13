@@ -113,9 +113,10 @@
 .atile-live .atile-num { color: var(--live); }
 .atile-now .atile-num { font-size: 1.5rem; }
 
-/* pulsing live dot: drawn in the badge's text colour, because it sits on the solid LIVE fill */
+/* pulsing live dot: drawn in the badge's text colour, because it sits on the solid LIVE fill.
+   Three beats, then it rests (TEL-304): the list is rebuilt on every refresh, so the pulse replays with fresh data. */
 .atile-dot { position: relative; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.atile-live .atile-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; animation: atile-pulse 1.6s ease-out infinite; }
+.atile-live .atile-dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; animation: atile-pulse 1.6s ease-out 3 both; }
 @keyframes atile-pulse { from { transform: scale(1); opacity: .6; } to { transform: scale(3.2); opacity: 0; } }
 
 /* compact variant (nearby card) */
