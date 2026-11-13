@@ -203,6 +203,14 @@ My words:
 Where it shows up in Telematica: the likely permanent legal form for the software company (TEL-1); nothing is registered yet.
 My words:
 
+**Interpolation**: guessing a missing value from the known ones on each side, like guessing house 15 sits halfway between 11 and 19.
+Where it shows up in Telematica: considered for house numbers missing from OpenStreetMap (TEL-287 research); low value today, since most streets have zero or one known number.
+My words:
+
+**Itinerary**: one complete way to get from A to B, made of legs one after the other, like a printed travel plan: walk, bus, walk.
+Where it shows up in Telematica: each result of the trip planner (`web/js/trip.js`, TEL-290); at most 3 per search.
+My words:
+
 **JWT** (JSON Web Token): a signed pass with an expiry time written inside, like a concert wristband with a printed date.
 Where it shows up in Telematica: the citybus token is a JWT valid 48 h; the Worker reads its expiry (`jwtExp` in `worker/src/index.js`).
 My words:
@@ -217,6 +225,10 @@ My words:
 
 **Leaver** (good leaver / bad leaver): someone who leaves the company. A good leaver keeps what they already earned; a bad leaver loses part of it, like leaving a job with notice versus walking out mid-shift.
 Where it shows up in Telematica: the founders' proposal (TEL-1) defines both cases for vesting.
+My words:
+
+**Leg**: one piece of an itinerary done one way, on foot or on one bus, like one stage of a relay race.
+Where it shows up in Telematica: `trip.js` builds walk and bus legs; the walking legs may ask OSRM for the real route (CLAUDE.md rule 6).
 My words:
 
 **License**: a text that tells everyone what they may do with your code, like a sign in a park ("you may walk", "no picking flowers"). Permissive licenses (MIT, Apache-2.0) allow almost anything; copyleft ones (GPL) require sharing back; with no license, nobody has permission.
@@ -353,6 +365,10 @@ My words:
 
 **tokenExp**: the moment the saved citybus token stops working, like the expiry date printed on a visitor badge.
 Where it shows up in Telematica: `/health` returns it per city, read from the KV key `token/{city}`; it is `null` when no token is saved (`worker/src/index.js`).
+My words:
+
+**Transfer**: getting off one bus and onto another to finish a trip, like changing trains at a station.
+Where it shows up in Telematica: the planner allows direct trips or one transfer, no more (`trip.js`, TEL-292); the walk between the two stops is short or none.
 My words:
 
 **Transliteration**: writing a word with the letters of another alphabet, like your name in Latin letters on a passport.
