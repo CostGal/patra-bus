@@ -58,6 +58,9 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
 - **Search and places**: `geocode.js` (stops first, then Photon), `places.js` (saved home/work places, see section 5).
   When Photon finds nothing, `geocode.js` asks once more: without the house number (one street result with
   `approx: true`), or a Latin query in Greek letters. Never more than two requests per search.
+  OpenStreetMap bus stops from Photon are dropped (our stops cover them). A Photon place whose name starts with
+  the query gets `exact: true` and goes first; then the search list shows «Τόποι» above «Στάσεις», unless a
+  stop's name starts with the query or its code is the query (TEL-161).
 - **Lines and vehicle**: `lines-view.js`, `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
 - **Storage, settings, share**: `store.js` (the main blob), `settings-view.js`, `share.js` (Web Share, else clipboard),
   `notify.js` (local reminder timers; today its only user is the test button and the list in Settings, `settings-view.js:4,148`;

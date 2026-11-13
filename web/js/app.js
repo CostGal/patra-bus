@@ -14,6 +14,7 @@ import { CITIES, city, cityId, cityName, isCity } from './cities.js';
 import { cityToOffer } from './city-detect.js';
 import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces } from './geocode.js';
+import { searchKey } from './text.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import './notify.js'; // re-arms persisted reminders after a reload
 
@@ -430,13 +431,18 @@ function renderSearch(keepActive = false) {
     }
   } else {
     const stops = searchStops(data, q, 6);
-    if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops));
     const seen = new Set(stops.map((s) => s.code));
     const found = places.q === q
       ? places.results.filter((p) => !(p.kind === 'stop' && seen.has(String(p.stopCode)))) : [];
-    if (found.length) {
-      out.push(srHead(t('Τόποι')), ...found.map((p) => srRow(`sr-${n++}`, p.kind === 'stop' ? 'bus' : 'pin', p.name, p.subtitle, () => choosePlace(p))));
-    }
+    const stopPart = () => { if (stops.length) out.push(srHead(t('Στάσεις')), ...stopRows(stops)); };
+    const placePart = () => {
+      if (found.length) out.push(srHead(t('Τόποι')), ...found.map((p) => srRow(`sr-${n++}`, p.kind === 'stop' ? 'bus' : 'pin', p.name, p.subtitle, () => choosePlace(p))));
+    };
+    // TEL-161: a place named like the query goes above stops that only look like it; a stop whose name
+    // starts with the query (or its code) keeps the top.
+    const k = searchKey(q);
+    const stopFirst = !found[0]?.exact || stops.some((s) => s.code === q || s.key.startsWith(k));
+    if (stopFirst) { stopPart(); placePart(); } else { placePart(); stopPart(); }
     if (places.q === q && places.loading) out.push(msg(t('Αναζήτηση τόπων…')));
     else if (places.q === q && places.failed && !found.length) out.push(msg(t('Δεν ήταν δυνατή η αναζήτηση τόπων.')));
     else if (!stops.length && !found.length && q.length >= 3 && places.q === q) out.push(msg(t('Κανένα αποτέλεσμα')));
