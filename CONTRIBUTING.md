@@ -52,8 +52,9 @@ node -e "crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign
 
 Το staging έχει δικό του KV, Durable Objects και secrets: δεν αγγίζει ποτέ τους χρήστες. Μοιράζεται όμως το ημερήσιο
 όριο του δωρεάν πλάνου του Cloudflare με το production (100.000 requests/ημέρα, 1.000 εγγραφές KV/ημέρα), οπότε όχι
-load tests. Production: **μόνο** από το `main`, με το ίδιο Action, μετά από έγκριση του Kostas. Ποτέ `wrangler deploy`
-από τον υπολογιστή σου.
+load tests. Μετά από κάθε merge στο `main` που αγγίζει τον worker, το staging παίρνει μόνο του το `main`. Production:
+**μόνο** από δημοσιευμένο GitHub Release (tag όπως `v0.9.1`), με το ίδιο Action, μετά από έγκριση του Kostas
+(`docs/CI-AND-DEPLOY.md`, ενότητα 9). Ποτέ `wrangler deploy` από τον υπολογιστή σου.
 
 Για το frontend δεν χρειάζεται deploy: κάθε PR παίρνει μόνο του preview (σχόλιο του Cloudflare στο PR,
 `https://<branch>-patra-bus-dev.patra-bus.workers.dev`). Το preview μιλά στον **production** worker.

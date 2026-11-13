@@ -120,7 +120,8 @@ Where it shows up in Telematica: when the browser sends it (`navigator.globalPri
 My words:
 
 **GitHub Environment**: a named target (`staging`, `production`) in the repo settings that holds its own secrets and can require a named person to approve before a job uses them, like a locked door with its own key and a guard who must nod.
-Where it shows up in Telematica: `.github/workflows/worker-deploy.yml`; `production` waits for CostGal's approval, `staging` does not.
+Where it shows up in Telematica: `.github/workflows/worker-deploy.yml`; `production` waits for CostGal's approval, `staging` does not. The site has its own, `github-pages` (`pages.yml`).
+Each one can also list which branches and tags may use it; a release runs from a tag, so the tag pattern `v*` must be allowed there (TEL-211).
 My words:
 
 **Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
@@ -132,7 +133,7 @@ Where it shows up in Telematica: place search with Photon in `web/js/geocode.js`
 My words:
 
 **GitHub Pages**: free hosting for a website's files straight from a GitHub repo, like a noticeboard that always shows the latest posted sheet.
-Where it shows up in Telematica: it serves the `web/` folder at costgal.github.io/patra-bus (`.github/workflows/pages.yml`).
+Where it shows up in Telematica: it serves the `web/` folder at costgal.github.io/patra-bus (`.github/workflows/pages.yml`); a new sheet goes up only when a Release is published (TEL-211).
 My words:
 
 **GITHUB_TOKEN**: a temporary key GitHub hands to each Action run, which opens only what the workflow's `permissions:` list allows, like a one-day visitor pass limited to certain rooms.
@@ -255,8 +256,16 @@ My words:
 Where it shows up in Telematica: `scripts/ui-map.mjs` lists every UI element with its ID (S7) and nick (countdown) for the UI map and the explorer (TEL-198, TEL-230).
 My words:
 
+**Release** (GitHub Release): a named, numbered snapshot of the code that someone publishes on purpose, like printing a new edition of a book instead of handing out every page as it is written. A draft is not published yet; a pre-release is a trial edition.
+Where it shows up in Telematica: users get a change only when a Release with a tag like `v0.9.1` is published; then `pages.yml` and `worker-deploy.yml` run (TEL-211, `docs/CI-AND-DEPLOY.md` section 9). A pre-release deploys nothing.
+My words:
+
 **Required check**: a test or status that must be green on a pull request before GitHub lets anyone merge it, like a signature a form needs before it is accepted.
 Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
+My words:
+
+**Rollback**: putting the previous working version back after a bad release, like putting the old poster back up when the new one has a mistake.
+Where it shows up in Telematica: run Pages and Worker deploy by hand from the older tag (`docs/CI-AND-DEPLOY.md` section 9).
 My words:
 
 **Ruleset** (branch protection): rules GitHub enforces on a branch, such as "only through a pull request" or "needs one approval", like house rules pinned at the entrance.
@@ -292,7 +301,11 @@ Where it shows up in Telematica: the storage inside each Durable Object (`new_sq
 My words:
 
 **Staging**: a full copy of the server that only the team uses, with its own data and keys, where a change is tried before real users get it, like a dress rehearsal on the real stage before opening night.
-Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging.
+Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging, and by itself after a merge to `main` that touches the worker (TEL-211).
+My words:
+
+**Tag** (git tag): a fixed name stuck on one exact commit, like a bookmark that never moves. A branch moves forward with every commit; a tag stays.
+Where it shows up in Telematica: every Release has a tag, `v` and three numbers (`v0.9.1`); production deploys only from such a tag whose commit is in `main` (TEL-211).
 My words:
 
 **Teardown**: a careful study of a rival product from the outside, screen by screen, like a mechanic looking over a competitor's car without opening the engine.
