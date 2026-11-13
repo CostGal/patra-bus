@@ -1,7 +1,7 @@
 // Destination search (owner: geocode): local stops first, then Photon (OSM geocoder, no key).
-// Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode? }
+// Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode?, approx? }
 import { loadData, searchStops } from './data.js';
-import { t } from './i18n.js';
+import { t, N_, lang } from './i18n.js';
 import { searchKey } from './text.js';
 import { haversine, inArea } from './geo.js';
 import { city } from './cities.js';
@@ -45,6 +45,66 @@ export function stopPlaces(data, q, { near, limit = 4 } = {}) {
   return places.slice(0, limit).map((x) => x.place);
 }
 
+// What a Photon result is, from its OSM tag (`osm_key/osm_value`), so the rider can tell the church from the
+// stop next to it (TEL-175). A short curated list: an unknown tag shows no type rather than a guess.
+// The full OSM preset list (about 1,100 types) is TEL-307.
+const PLACE_TYPES = {
+  'amenity/place_of_worship': N_('Ναός'),
+  'amenity/hospital': N_('Νοσοκομείο'),
+  'amenity/clinic': N_('Κλινική'),
+  'amenity/doctors': N_('Ιατρείο'),
+  'amenity/pharmacy': N_('Φαρμακείο'),
+  'amenity/kindergarten': N_('Νηπιαγωγείο'),
+  'amenity/school': N_('Σχολείο'),
+  'amenity/college': N_('Σχολή'),
+  'amenity/university': N_('Πανεπιστήμιο'),
+  'amenity/library': N_('Βιβλιοθήκη'),
+  'amenity/cafe': N_('Καφέ'),
+  'amenity/restaurant': N_('Εστιατόριο'),
+  'amenity/fast_food': N_('Γρήγορο φαγητό'),
+  'amenity/bar': N_('Μπαρ'),
+  'amenity/bank': N_('Τράπεζα'),
+  'amenity/post_office': N_('Ταχυδρομείο'),
+  'amenity/police': N_('Αστυνομία'),
+  'amenity/townhall': N_('Δημαρχείο'),
+  'amenity/theatre': N_('Θέατρο'),
+  'amenity/cinema': N_('Κινηματογράφος'),
+  'amenity/fuel': N_('Βενζινάδικο'),
+  'amenity/parking': N_('Πάρκινγκ'),
+  'amenity/marketplace': N_('Αγορά'),
+  'amenity/bus_station': N_('Σταθμός λεωφορείων'),
+  'amenity/ferry_terminal': N_('Σταθμός πλοίων'),
+  'highway/bus_stop': N_('Στάση λεωφορείου'),
+  'railway/station': N_('Σιδηροδρομικός σταθμός'),
+  'aeroway/aerodrome': N_('Αεροδρόμιο'),
+  'shop/supermarket': N_('Σουπερμάρκετ'),
+  'shop/bakery': N_('Φούρνος'),
+  'shop/mall': N_('Εμπορικό κέντρο'),
+  'tourism/hotel': N_('Ξενοδοχείο'),
+  'tourism/museum': N_('Μουσείο'),
+  'tourism/attraction': N_('Αξιοθέατο'),
+  'historic/castle': N_('Κάστρο'),
+  'leisure/park': N_('Πάρκο'),
+  'leisure/stadium': N_('Στάδιο'),
+  'leisure/sports_centre': N_('Αθλητικό κέντρο'),
+  'natural/beach': N_('Παραλία'),
+  'place/square': N_('Πλατεία'),
+  'place/city': N_('Πόλη'),
+  'place/town': N_('Πόλη'),
+  'place/village': N_('Χωριό'),
+  'place/suburb': N_('Περιοχή'),
+  'place/quarter': N_('Περιοχή'),
+  'place/neighbourhood': N_('Περιοχή'),
+};
+// Photon `type` for results without a known tag: a street, or a bare address (an unnamed house).
+export function placeType(p = {}) {
+  const k = PLACE_TYPES[`${p.osm_key}/${p.osm_value}`];
+  if (k) return k;
+  if (p.type === 'street') return N_('Οδός');
+  if (p.type === 'house' && !p.name && p.housenumber) return N_('Διεύθυνση');
+  return null;
+}
+
 // A housenumber-looking token in the user's own query ("Κορίνθου 121" -> "121"), to tell an exact
 // address match from a street/nearby-POI fallback (Greek housenumber coverage in OSM is patchy).
 const queryNumber = (q) => (String(q || '').match(/\d+/) || [])[0] || null;
@@ -60,8 +120,9 @@ export function mapPhoton(f, { queryNumber: qNum = null } = {}) {
   const name = p.name || street;
   if (!name) return null;
   const area = p.locality || cleanArea(p.city) || cleanArea(p.district);
-  const parts = [p.name ? street : '', area].filter((x) => x && x !== name);
   const approx = !!qNum && p.housenumber !== qNum;
+  const type = placeType(p);
+  const parts = [type ? t(type) : '', approx ? t('κατά προσέγγιση') : '', p.name ? street : '', area].filter((x) => x && x !== name);
   return { kind: 'place', name, subtitle: [...new Set(parts)].join(' · '), lat, lng, ...(approx ? { approx: true } : {}) };
 }
 
@@ -81,7 +142,7 @@ export function mergePlaces(local, remote) {
 
 async function photon(q, near, signal) {
   const ref = near || city().center;
-  const key = `${searchKey(q)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
+  const key = `${lang()}|${searchKey(q)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.places;
   const url = new URL(PHOTON);
