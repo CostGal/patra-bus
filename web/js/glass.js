@@ -270,14 +270,17 @@ function watchPopovers() {
 }
 
 // ---- line filter chips: one glass lens marks the selected chip and slides to the next one, stretching over both
-// on the way (the chips are rebuilt on every change, so the lens lives in their bar, outside the rebuilt row)
+// on the way (the chips are rebuilt on every change, so the lens lives in their bar, outside the rebuilt row).
+// The same lens for the stop's line chips and the trip's option chips (TEL-293): bar > row > chip, chip.on chosen.
+const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tripv-opts'], CHIP = '.stopv-chip, .tripv-opt';
+const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
 function watchChips() {
   let from = null;
   const rel = (el, bar) => { const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height }; };
   const place = (bar, animate) => {
     let lens = bar.querySelector(':scope > .g-lens');
     if (!lens) { lens = document.createElement('div'); lens.className = 'g-lens'; lens.setAttribute('aria-hidden', 'true'); bar.prepend(lens); }
-    const on = bar.querySelector('.stopv-chip.on');
+    const on = bar.querySelector(CHIP_ON);
     if (!on) { lens.hidden = true; return; }
     lens.hidden = false;
     const to = rel(on, bar);
@@ -296,17 +299,17 @@ function watchChips() {
     from = null;
   };
   document.addEventListener('pointerdown', (e) => {
-    const chip = e.target instanceof Element && e.target.closest('.stopv-chip');
-    const bar = chip?.closest('.stopv-chipbar');
-    const on = bar?.querySelector('.stopv-chip.on');
+    const chip = e.target instanceof Element && e.target.closest(CHIP);
+    const bar = chip?.closest(CHIP_BAR);
+    const on = bar?.querySelector(CHIP_ON);
     from = on ? rel(on, bar) : null;
   }, { capture: true, passive: true });
   new MutationObserver((recs) => {
-    const bars = new Set(recs.map((r) => r.target).filter((t) => t instanceof Element && t.classList.contains('stopv-chips')).map((t) => t.closest('.stopv-chipbar')));
+    const bars = new Set(recs.map((r) => r.target).filter((t) => t instanceof Element && CHIP_ROW.some((c) => t.classList.contains(c))).map((t) => t.closest(CHIP_BAR)));
     for (const bar of bars) if (bar) place(bar, true);
   }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('scroll', (e) => {
-    const bar = e.target instanceof Element && e.target.classList.contains('stopv-chips') && e.target.closest('.stopv-chipbar');
+    const bar = e.target instanceof Element && CHIP_ROW.some((c) => e.target.classList.contains(c)) && e.target.closest(CHIP_BAR);
     if (bar) place(bar, false);
   }, { capture: true, passive: true });
   // the chips change shape with the sheet (flat pills at low, TEL-224): once it comes to rest, the lens follows them
@@ -314,7 +317,7 @@ function watchChips() {
   // measured there it would sit in the wrong place on the way up)
   document.getElementById('sheet')?.addEventListener('sheet:settle', (e) => {
     if (e.currentTarget.dataset.state === 'peek') return;
-    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden])')) place(bar, false);
+    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden]), .tripv-optbar:not([hidden])')) place(bar, false);
   });
 }
 

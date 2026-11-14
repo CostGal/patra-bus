@@ -4,6 +4,7 @@ import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 import { PAIRS as WELCOME_PAIRS } from './i18n-en-welcome.js';
 import { PAIRS as SETUP_PAIRS } from './i18n-en-setup.js';
 import { PAIRS as HOME_PAIRS } from './i18n-en-home.js';
+import { PAIRS as TRIP_PAIRS } from './i18n-en-trip.js';
 
 const PAIRS = [
   // ---- shared: arrivals, status, common controls ----
@@ -351,4 +352,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS, ...HOME_PAIRS]);
+export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS, ...HOME_PAIRS, ...TRIP_PAIRS]);
