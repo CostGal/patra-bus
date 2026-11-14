@@ -9,6 +9,7 @@ import { corsOriginFor, isAllowedOrigin, isPatternOrigin } from './origin.js';
 import { MAX_REPORT_BYTES, ForwardError, forwardReport, takeDailySlot } from './report.js';
 import { validateReport, isHoneypot } from '../../web/js/report.js';
 import { CITIES, DEFAULT_CITY, apiBase, isCity } from '../../web/js/cities.js';
+import { versionBody } from './version.js';
 
 const TOKEN_MARGIN_MS = 5 * 60 * 1000;
 
@@ -364,6 +365,7 @@ export default {
         for (const id of Object.keys(CITIES)) cities[id] = { tokenExp: (await env.KV.get(`token/${id}`, 'json'))?.exp ?? null };
         return json(cors, { ok: true, tokenExp: cities[DEFAULT_CITY]?.tokenExp ?? null, cities, now: Date.now() });
       }
+      if (pathname === '/version') return json(cors, versionBody(), 200, { 'Cache-Control': 'no-store' });
       const route = parseRoute(pathname);
       if (!route) return json(cors, { error: 'not_found' }, 404);
       const c = CITIES[route.city];
