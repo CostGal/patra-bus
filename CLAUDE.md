@@ -80,6 +80,8 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
 - When the session is Kostas's (`git config user.name` = CostGal): write in a dyslexia-friendly way. Few, simple
   words. Short sentences. One step at a time, and say exactly what you need from him. Short lists instead of long
   paragraphs. No tables unless he asks.
+- When Kostas writes «κινητό» (e.g. `/task TEL-249 κινητό`), the session runs in phone mode: plan and check go to him
+  as pages with buttons. How: `docs/WORKFLOW.md`, «Λειτουργία κινητού».
 - New technical terms go in `docs/GLOSSARY.md`. When how the parts connect changes, update `docs/ARCHITECTURE.md`.
 
 ## Commands
