@@ -53,3 +53,40 @@ test('setup: not over a shared link, Esc skips and keeps Greek', async ({ page }
   expect(s.setupDone).toBe(true);
   expect(s.lang).toBeUndefined(); // the default (Greek) applies
 });
+
+test('setup: kit header, same card height on every step, button on screen on a small phone (TEL-247)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/');
+  const dlg = page.getByRole('dialog');
+  await expect(dlg).toBeVisible();
+  const card = dlg.locator('.su-card');
+  await expect(card.locator('.su-head .g-circle')).toHaveCount(2);
+  const back = dlg.locator('.su-back');
+  await expect(back).toBeHidden(); // keeps its place, not shown on step 1
+  await expect(dlg.getByRole('button', { name: 'Παράλειψη' })).toBeVisible();
+  const heights = [];
+  for (let i = 0; i < 3; i++) {
+    await expect(dlg.getByText(`Βήμα ${i + 1} από 3`)).toHaveCount(1);
+    await page.waitForTimeout(450); // the card's rise and the step's slide settle
+    heights.push((await card.boundingBox()).height);
+    const next = dlg.locator('.su-next');
+    const box = await next.boundingBox();
+    expect(box.y + box.height, `next button inside the screen on step ${i + 1}`).toBeLessThanOrEqual(568);
+    if (i === 1) await expect(back).toBeVisible();
+    if (i < 2) await next.click();
+  }
+  expect(new Set(heights.map(Math.round)).size, `card heights ${heights}`).toBe(1);
+});
+
+test.describe('setup on a phone that is not in Greek (TEL-247, D1)', () => {
+  test.use({ locale: 'en-US' });
+  test('opens in the phone\'s language; Esc keeps English', async ({ page }) => {
+    await page.goto('/');
+    const dlg = page.getByRole('dialog');
+    await expect(dlg).toContainText('Step 1 of 3');
+    await expect(dlg.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.su')).toHaveCount(0);
+    expect(await settings(page)).toMatchObject({ lang: 'en', setupDone: true });
+  });
+});
