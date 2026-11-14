@@ -30,3 +30,30 @@ jobs:
           path: web
       - id: deployment
         uses: actions/deploy-pages@v4
+      # TEL-215: one Slack message per deploy, successful or failed (a cancelled run says nothing).
+      # The webhook is the repository secret SLACK_DEPLOY_WEBHOOK (not an Environment secret: every deploy job must
+      # see it). A missing secret or a Slack error never fails the deploy. Details: docs/CI-AND-DEPLOY.md, section 9.
+      - name: Slack message
+        if: success() || failure()
+        continue-on-error: true
+        env:
+          SLACK_DEPLOY_WEBHOOK: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
+          WHAT: site
+          TARGET: production # the site has no staging
+          STATUS: ${{ job.status }}
+          ACTOR: ${{ github.triggering_actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SLACK_DEPLOY_WEBHOOK" ]; then echo "No SLACK_DEPLOY_WEBHOOK secret: no Slack message"; exit 0; fi
+          version=$(jq -r '.version // "?"' package.json 2>/dev/null) || version='?'
+          if [ "$STATUS" = success ]; then
+            title=":white_check_mark: Ανέβηκε: *$WHAT* → *$TARGET*"
+          else
+            title=":x: ΑΠΕΤΥΧΕ το deploy: *$WHAT* → *$TARGET*"
+          fi
+          text="$title
+          Έκδοση $version · \`$GITHUB_REF_NAME\` · commit \`${GITHUB_SHA::7}\` · το ξεκίνησε: $ACTOR
+          <$RUN_URL|Άνοιγμα του run>"
+          jq -n --arg text "$text" '{text: $text}' |
+            curl -sS --fail --max-time 10 -o /dev/null -H 'Content-Type: application/json' --data @- "$SLACK_DEPLOY_WEBHOOK" ||
+            echo "::warning::The Slack message was not sent"

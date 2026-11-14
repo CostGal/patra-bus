@@ -335,6 +335,10 @@ My words:
 Where it shows up in Telematica: `worker/src/push.js` (the web client was removed in TEL-270).
 My words:
 
+**Webhook** (Slack incoming webhook): a secret web address that accepts a message and drops it into one place, like a private letterbox slot: whoever knows the address can post through it.
+Where it shows up in Telematica: the last step of `worker-deploy.yml` and `pages.yml` posts to Slack through the repository secret `SLACK_DEPLOY_WEBHOOK` after every deploy (TEL-215, `docs/CI-AND-DEPLOY.md` section 9).
+My words:
+
 **WebKit**: the browser engine inside Safari and every iPhone browser, like the engine block that all iPhone browsers share.
 Where it shows up in Telematica: `npm run shots` can render the app with WebKit to get closer to how it looks on an iPhone.
 My words:

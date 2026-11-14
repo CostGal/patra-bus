@@ -11,8 +11,8 @@ All files are in `.github/workflows/`.
 | `test.yml` (Test) | every PR, or by hand | Checks out full history, then: secret scan of every commit with gitleaks (config `.gitleaks.toml`), `npm ci`, installs Chromium, `npm test` (unit + Playwright smoke), `npm run check:i18n`, and `wrangler deploy --dry-run` for the worker (builds it, deploys nothing). Language is set to Greek because tests read Greek text. | No comment. On failure it uploads `playwright-results` (14 days). |
 | `lighthouse.yml` (Lighthouse) | every PR, or by hand | Serves `web/` and runs Lighthouse 11.7.1 on `?demo` home and stop 1011 (performance, accessibility, PWA). Report only: low scores never fail it, a crash does. | Posts or updates one PR comment with the scores (not on fork PRs). Uploads `lighthouse-reports` (14 days). |
 | `merge-window.yml` (Merge window) | PR opened/updated/reopened/ready, on a schedule, or by hand | Sets the commit status `merge-window` (section 3). | None. |
-| `pages.yml` (Pages) | push to `main`, or by hand | Stamps the service worker cache, uploads `web/`, deploys GitHub Pages. | None. |
-| `worker-deploy.yml` (Worker deploy) | push to `main` that touches worker files, or by hand | Deploys the API worker (section 6). | None. |
+| `pages.yml` (Pages) | push to `main`, or by hand | Stamps the service worker cache, uploads `web/`, deploys GitHub Pages, then posts to Slack (section 9). | None. |
+| `worker-deploy.yml` (Worker deploy) | push to `main` that touches worker files, or by hand | Deploys the API worker (section 6), then posts to Slack (section 9). | None. |
 | `watch-same-bus.yml` (Same-bus watch) | every 30 min in daytime, or by hand | Runs `scripts/watch-same-bus.mjs` (section 8). | Comments on one standing issue. |
 
 ## 2. Required checks before a merge
@@ -70,3 +70,15 @@ The only way the API worker is deployed is the Action "Worker deploy". Nobody ru
 ## 8. Same-bus watcher
 
 `watch-same-bus.yml` looks for a live and a scheduled row of the same line that could be one bus, and reports on the issue "Same-bus watch (TEL-145)". It makes a few live requests per run with a token scraped on the fly, and it runs only from `main`. To pause it, disable the workflow in the Actions tab. Details are in `docs/ARCHITECTURE.md`.
+
+## 9. Slack message on every deploy (TEL-215)
+
+The last step of `worker-deploy.yml` and of `pages.yml` posts one message to the team's Slack channel, so everyone sees when the worker or the site changed and knows where to look if something breaks.
+
+- The message says: what was deployed (`worker` or `site`), where (`staging` or `production`; the site is always `production`), the version from `package.json`, the branch or tag, the short commit, who started the run, and a link to the run.
+- A successful deploy starts with ✅ «Ανέβηκε». A failed one starts with ❌ «ΑΠΕΤΥΧΕ το deploy». A cancelled run posts nothing. A production worker deploy posts only after Kostas approves it and the job runs.
+- The address is a Slack incoming webhook, stored as the **repository** secret `SLACK_DEPLOY_WEBHOOK` (Settings, Secrets and variables, Actions, Repository secrets). Not an Environment secret: the deploy jobs run in three Environments (`staging`, `production`, `github-pages`) and each would need its own copy.
+- The address is never written in the repo, a PR, an issue or a log (CLAUDE.md rule 7). Anyone who has it can post in the channel. If it leaks, delete the webhook in Slack, make a new one and replace the secret.
+- The message never breaks a deploy. Without the secret the step prints "No SLACK_DEPLOY_WEBHOOK secret: no Slack message" and passes. If Slack does not answer, the step shows a warning and the job keeps its own result.
+- To test: run "Worker deploy" on a branch with target `staging` and look at the channel. The site has no staging, so its message is first seen on a real site deploy.
+- To change the channel: make a new webhook for the other channel and replace the secret. No code change.
