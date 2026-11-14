@@ -234,9 +234,12 @@ export function mountStop(container, ctx, { code }) {
   };
   const upRow = () => (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
     && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5; // halfway from mid to up
-  // sheet.js writes --sheet-t on every frame of a drag or a spring
+  // sheet.js writes --sheet-t on every frame of a drag or a spring, and says when it crosses that point (sheet:upper);
+  // the observer only watches the state and the drag starting or ending (TEL-305)
   const tMO = new MutationObserver(() => setUp(upRow()));
-  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
+  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+  const onUpper = () => setUp(upRow());
+  sheetEl?.addEventListener('sheet:upper', onUpper);
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
   const onSettle = () => placeChips(); // measured again at rest
@@ -509,6 +512,7 @@ export function mountStop(container, ctx, { code }) {
       unsubStore();
       chipRO.disconnect();
       tMO.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
       sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
       sheetEl?.removeEventListener('sheet:settle', onSettle);
       document.fonts?.removeEventListener('loadingdone', fitName);

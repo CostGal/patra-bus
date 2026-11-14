@@ -5,6 +5,8 @@
 // Desktop: static panel, snap() is remembered but has no visual effect.
 // onSnap({state, visible, desktop}) fires when a target is chosen (padding for the map);
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
+// follow: elements outside the sheet that draw from --sheet-t (the ☰). The number is written on them, not on <html>:
+// a custom property on the root makes the browser restyle the whole page on every frame (TEL-305).
 import { t, N_, onLangChange } from './i18n.js';
 import { createSpringLoop, rubberband, project } from './motion.js';
 // Three states, as in Apple Maps (TEL-222): peek = "low" (the view's first row only), half = "mid" (the default), full =
@@ -28,7 +30,7 @@ const HALF_PULL = 0.85; // distances to half count 85%: half wins a close call, 
 const FAST_FLICK = 1200; // px/s: a flick this fast may skip half (full <-> peek in one go)
 const springFor = (from, to) => SPRINGS[`${from}>${to}`] || SETTLE;
 
-export function createSheet(root, { onSnap, onMove } = {}) {
+export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   const handle = root.querySelector('.sheet-handle');
   const body = root.querySelector('.sheet-body');
   const content = root.querySelector('.sheet-content');
@@ -81,6 +83,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   const yFor = (s) => H - SZ[s];
 
   // glass: tell the handle when a drag passes a stop (it gives a small "tick", css/glass.css)
+  let upper = false; // past halfway from half to full (sheet:upper fires when it flips)
   let lastStop = 0;
   function tick(v) {
     if (!dragging) return;
@@ -98,7 +101,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
     const st = Math.max(0, Math.min(2, tt)).toFixed(3);
     root.style.setProperty('--sheet-t', st);
-    docEl.style.setProperty('--sheet-t', st); // for chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
+    for (const f of follow) f.style.setProperty('--sheet-t', st); // chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
+    // views listen to this instead of watching the style attribute on every frame (TEL-305)
+    if ((tt > 1.5) !== upper) { upper = tt > 1.5; root.dispatchEvent(new CustomEvent('sheet:upper', { detail: { upper } })); }
     // floating UI (FABs, toast) rides on the sheet up to the half point, then fades out (the attribution line stays
     // glued to the sheet's edge all the way: app.js uses `visible` for it)
     const lift = Math.min(vis, SZ.half);
@@ -140,7 +145,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (inert()) {
       root.style.removeProperty('--sheet-y');
       root.style.setProperty('--sheet-t', fixed ? '2' : '1'); // plain page = the full look; side panel = the half look
-      docEl.style.setProperty('--sheet-t', '1');
+      for (const f of follow) f.style.setProperty('--sheet-t', '1');
       onMove?.({ visible: 0, lift: 0, opacity: 1 });
       onSnap?.({ state, visible: 0, desktop: isDesktop() });
       return;

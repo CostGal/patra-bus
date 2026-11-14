@@ -215,8 +215,12 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
   };
   const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
     && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  // the observer only watches the state and the drag starting or ending; sheet.js says when --sheet-t crosses 1.5
+  // (sheet:upper), so nothing runs on every frame of a drag (TEL-305)
   const tMO = new MutationObserver(() => setUp(upRow()));
-  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
+  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+  const onUpper = () => setUp(upRow());
+  sheetEl?.addEventListener('sheet:upper', onUpper);
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
   // the sheet comes to rest at low or mid after it moved there: the trip fits the part of the map above it (U13).
@@ -471,6 +475,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       clearTimeout(sayTimer);
       document.removeEventListener('visibilitychange', onVisibility);
       tMO.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
       sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
       sheetEl?.removeEventListener('sheet:settle', onSettleMap);
       try { if (ctx.map) clearTrip(ctx.map); } catch (err) { console.warn('[trip map]', err); }
