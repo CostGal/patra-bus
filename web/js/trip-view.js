@@ -1,7 +1,9 @@
 // Trip sheet (TEL-293): when to leave, the options, and the steps in order, for the itineraries of js/trip.js
 // (shape on card TEL-290). Styles: css/trip.css (prefix .tripv-). The stop card (js/arrivals-view.js) is the model.
 // It finds no trips itself and sends nothing: the wiring card hands in plan(), which calls trip.planTrips().
-// Every time on screen says where it comes from: LIVE, ΠΡΟΓΡ. (timetable) or ~ with ΕΚΤΙΜ. (we computed it).
+// Every time on screen says where it comes from: LIVE, ΠΡΟΓΡ. (timetable), or an estimate (we computed it): grey with
+// the orange (*) mark, and ΕΚΤΙΜ. on a bus (TEL-294, Kostas: the mark replaced the ~). The model carries the source;
+// the view draws the mark.
 // Imports: ui, i18n, geo, arrivals-view (arrivalTile) and trip (retime, leaveState) only (guard: tests/trip-view.test.mjs).
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { t, tn, etaTxt } from './i18n.js';
@@ -17,7 +19,6 @@ const MIN_LAST_WALK_M = 25; // a last walk shorter than this is not a step
 
 const EST = new Set(['estimated', 'estimate']); // times use 'estimated'; walk legs and rideSource use 'estimate'
 const srcOf = (s) => (EST.has(s) ? 'estimated' : s || null);
-const tilde = (text, source) => (srcOf(source) === 'estimated' ? `~${text}` : text);
 
 // Minutes rounded up: "7′"; from 60 minutes on "1 ώ 05′".
 export function dur(sec) {
@@ -25,8 +26,10 @@ export function dur(sec) {
   if (m < 60) return `${m}′`;
   return `${Math.floor(m / 60)} ${t('ώ')} ${String(m % 60).padStart(2, '0')}′`;
 }
-const timeOf = (ms, source) => (ms == null ? null : { text: tilde(fmtClock(ms), source), source: srcOf(source) });
-const durOf = (sec, source) => (sec == null ? null : { text: tilde(dur(sec), source), source: srcOf(source) });
+const timeOf = (ms, source) => (ms == null ? null : { text: fmtClock(ms), source: srcOf(source) });
+const durOf = (sec, source) => (sec == null ? null : { text: dur(sec), source: srcOf(source) });
+// The chip: in how many minutes you arrive, from `now` (the view ticks it every second).
+export const etaOf = (it, now = Date.now()) => (it?.arriveAt == null ? null : durOf(Math.max(0, (it.arriveAt - now) / 1000), it.arriveSource));
 
 const busLegs = (it) => it.legs.filter((l) => l.kind === 'bus');
 const walkSec = (it) => it.legs.reduce((s, l) => s + (l.kind === 'walk' ? l.seconds || 0 : 0), 0);
@@ -59,7 +62,7 @@ export function tripModel(it, now = Date.now(), dest = '') {
   const total = totalOf(it);
   // the chip shows the arrival clock (it differs between options more than the total does; TEL-294, Kostas)
   const arrive = timeOf(it.arriveAt, it.arriveSource);
-  const chip = { kind: it.kind, lines: buses.map((b) => String(b.lineCode)), total, arrive };
+  const chip = { kind: it.kind, lines: buses.map((b) => String(b.lineCode)), total, arrive, eta: etaOf(it, now) };
   const first = buses[0] || null;
   const peek = { lines: chip.lines, flag: first ? flagOf(first) : null, text: t('προς {dest}', { dest }) };
 
@@ -74,8 +77,8 @@ export function tripModel(it, now = Date.now(), dest = '') {
   const ws = walkSec(it);
   if (ws > 0 && it.kind !== 'walk') {
     const wsrc = anyEst(it.legs.filter((l) => l.kind === 'walk'));
-    parts.push(t('{dur} περπάτημα', { dur: tilde(dur(ws), wsrc) }));
-    stats.push({ key: 'walk', icon: 'walk', value: { text: tilde(dur(ws), wsrc), source: srcOf(wsrc) }, label: t('περπάτημα') });
+    parts.push(t('{dur} περπάτημα', { dur: dur(ws) }));
+    stats.push({ key: 'walk', icon: 'walk', value: { text: dur(ws), source: srcOf(wsrc) }, label: t('περπάτημα') });
   }
   if (arrive) {
     parts.push(srcOf(it.arriveSource) === 'estimated' ? t('άφιξη περίπου {clock}', { clock: fmtClock(it.arriveAt) }) : t('άφιξη {clock}', { clock: fmtClock(it.arriveAt) }));
@@ -94,13 +97,15 @@ export function tripModel(it, now = Date.now(), dest = '') {
     const prev = it.legs[i - 1], last = i === it.legs.length - 1;
     if (leg.kind === 'walk') {
       const time = timeOf(leg.startAt, 'estimated'); // walk times are always estimates
-      const d = tilde(dur(leg.seconds), leg.source);
+      const d = dur(leg.seconds);
+      // the walk's minutes inside the sentence: the view puts the (*) mark on them when they are a straight-line estimate
+      const inText = { text: d, source: srcOf(leg.source) };
       if (leg.from?.stopCode && leg.to?.stopCode) {
-        steps.push({ kind: 'change', icon: 'swap', text: t('Αλλαγή: περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), sub: fmtDist(leg.meters), time });
+        steps.push({ kind: 'change', icon: 'swap', text: t('Αλλαγή: περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), inText, sub: fmtDist(leg.meters), time });
       } else if (leg.to?.stopCode) {
-        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), sub: fmtDist(leg.meters), time });
+        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), inText, sub: fmtDist(leg.meters), time });
       } else if (!(last && it.kind !== 'walk' && (leg.meters ?? 0) < MIN_LAST_WALK_M)) {
-        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως «{dest}»', { dur: d, dest }), sub: fmtDist(leg.meters), time });
+        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως «{dest}»', { dur: d, dest }), inText, sub: fmtDist(leg.meters), time });
       }
       return;
     }
@@ -217,8 +222,23 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
 
   // ---- drawing ----
-  const timeEl = (tm, extra = '') => (tm ? h('span', { class: `tripv-time tabular${tm.source === 'estimated' ? ' is-est' : ''}${extra}` },
-    h('span', { 'aria-hidden': 'true' }, tm.text), h('span', { class: 'visually-hidden' }, ` ${SAY_SRC()[tm.source] || ''}`)) : h('span', { class: 'tripv-time' }));
+  // an estimate: grey, with the orange (*) mark on its top-right corner (TEL-294); a screen reader hears «Εκτίμηση»
+  const isEst = (v) => v?.source === 'estimated';
+  const mark = () => h('span', { class: 'tripv-mark', 'aria-hidden': 'true' }, '*');
+  const numEl = (v) => h('span', { class: `tripv-num${isEst(v) ? ' is-est' : ''}` }, v.text, isEst(v) ? mark() : null);
+  const timeEl = (tm, extra = '') => (tm ? h('span', { class: `tripv-time tabular${isEst(tm) ? ' is-est' : ''}${extra}` },
+    h('span', { 'aria-hidden': 'true' }, numEl(tm)), h('span', { class: 'visually-hidden' }, ` ${SAY_SRC()[tm.source] || ''}`)) : h('span', { class: 'tripv-time' }));
+  // a step's sentence; the walk's minutes in it carry the mark when they are an estimate
+  const stepText = (s) => {
+    const i = isEst(s.inText) ? s.text.indexOf(s.inText.text) : -1;
+    if (i < 0) return [s.text];
+    return [s.text.slice(0, i), numEl(s.inText), h('span', { class: 'visually-hidden' }, ` (${SAY_SRC().estimated})`), s.text.slice(i + s.inText.text.length)];
+  };
+  // the option chip: the line pill points into the time pill, in the line's colour (Kostas, TEL-294: design «M»)
+  const chipLabel = (n, eta, total) => (eta
+    ? (isEst(eta) ? t('Επιλογή {n}: φτάνεις σε περίπου {dur}', { n, dur: eta.text }) : t('Επιλογή {n}: φτάνεις σε {dur}', { n, dur: eta.text }))
+    : t('Επιλογή {n}: {dur} συνολικά', { n, dur: total ? total.text : '–' }));
+  let chipPills = []; // [{ pill, btn, it, n, total }]: their minutes tick every second
 
   function stepEl(s, now) {
     if (s.tile) {
@@ -229,7 +249,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       tiles.push(el);
       return h('li', { class: 'tripv-step tripv-step-tile' }, h('span', { class: 'tripv-ico' }, icon('bus')), h('div', { class: 'tripv-body' }, el));
     }
-    const text = h('span', { class: 'tripv-text' }, s.text); // a bus row says «Γραμμή 609 …» in words: no badge too
+    const text = h('span', { class: 'tripv-text' }, ...stepText(s)); // a bus row says «Γραμμή 609 …» in words: no badge too
     return h('li', { class: `tripv-step tripv-step-${s.kind}` },
       h('span', { class: 'tripv-ico' }, icon(s.icon)),
       h('div', { class: 'tripv-body' }, text, s.sub ? h('span', { class: 'tripv-sub' }, s.sub) : null),
@@ -300,16 +320,26 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
 
     // chips: one per option, the chosen one under the lens; focus stays on the same chip after a rebuild
     const focused = opts.contains(document.activeElement) ? document.activeElement.dataset.key : null;
+    chipPills = [];
     opts.replaceChildren(...models.map((x, i) => {
       const on = x.id === m.id;
-      const kids = x.chip.kind === 'walk' ? [icon('walk')] : x.chip.lines.flatMap((c, j) => (j ? [h('span', { class: 'tripv-sep', 'aria-hidden': 'true' }, '›'), badge(c)] : [badge(c)]));
-      const shown = x.chip.arrive || x.chip.total; // the arrival clock; the total only when there is no arrival
-      const label = x.chip.arrive
-        ? t('Επιλογή {n}: άφιξη {clock}, {dur} συνολικά', { n: i + 1, clock: x.chip.arrive.text, dur: x.chip.total ? x.chip.total.text : '–' })
-        : t('Επιλογή {n}: {dur} συνολικά', { n: i + 1, dur: x.chip.total ? x.chip.total.text : '–' });
-      return h('button', { type: 'button', role: 'tab', class: `tripv-opt${on ? ' on' : ''}`, 'aria-selected': String(on), 'data-key': x.id, tabindex: on ? '0' : '-1',
-        'aria-label': label, onclick: () => choose(x.id) },
-      ...kids, shown ? h('span', { class: `tripv-opt-dur tabular${shown.source === 'estimated' ? ' is-est' : ''}` }, shown.text) : null);
+      const shown = x.chip.eta || x.chip.total; // in how many minutes you arrive; the total only when there is no arrival
+      const pill = shown ? h('span', { class: `tripv-tp tabular${isEst(shown) ? ' is-est' : ''}${x.chip.kind === 'walk' ? ' solo' : ''}` }, shown.text) : null;
+      let kids;
+      if (x.chip.kind === 'walk') {
+        kids = [icon('walk'), pill];
+      } else {
+        const lines = x.chip.lines;
+        const last = lines[lines.length - 1];
+        const lastBadge = badge(last);
+        const duo = h('span', { class: 'tripv-duo' }, lastBadge, pill);
+        duo.style.setProperty('--lc', lastBadge.style.background || 'var(--border)');
+        kids = [...lines.slice(0, -1).flatMap((c) => [badge(c), h('span', { class: 'tripv-sep', 'aria-hidden': 'true' }, '›')]), duo];
+      }
+      const btn = h('button', { type: 'button', role: 'tab', class: `tripv-opt${on ? ' on' : ''}`, 'aria-selected': String(on), 'data-key': x.id, tabindex: on ? '0' : '-1',
+        'aria-label': chipLabel(i + 1, x.chip.eta, x.chip.total), onclick: () => choose(x.id) }, ...kids.filter(Boolean));
+      if (pill && x.chip.eta) chipPills.push({ pill, btn, it: its[i], n: i + 1, total: x.chip.total });
+      return btn;
     }));
     if (focused) [...opts.children].find((c) => c.dataset.key === focused)?.focus({ preventScroll: true });
     optBar.hidden = false;
@@ -320,7 +350,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       h('p', { class: 'visually-hidden' }, m.summary.text),
       h('div', { class: 'tripv-stats', 'aria-hidden': 'true' }, m.summary.stats.map((s) => h('div', { class: `tripv-stat tripv-stat-${s.key}` },
         icon(s.icon),
-        h('span', { class: `tripv-stat-n${s.value.source === 'estimated' ? ' is-est' : ''}` }, s.value.text),
+        h('span', { class: `tripv-stat-n${isEst(s.value) ? ' is-est' : ''}` }, numEl(s.value)),
         h('span', { class: 'tripv-stat-l' }, s.label)))),
       m.summary.estimated ? estFlag() : null].filter((x) => x != null)); // (replaceChildren would print a null as "null")
 
@@ -331,7 +361,8 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
     if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.33' : '1';
     body.replaceChildren(...[steps,
       m.notes.length ? h('ul', { class: 'tripv-notes' }, m.notes.map((n) => h('li', {}, icon('info'), h('span', {}, n)))) : null,
-      h('p', { class: 'tripv-legend' }, t('LIVE = το λεωφορείο φαίνεται τώρα · ΠΡΟΓΡ. = ώρα από το πρόγραμμα · ~ = εκτίμηση, μπορεί να διαφέρει'))].filter(Boolean));
+      h('p', { class: 'tripv-legend' }, t('LIVE = το λεωφορείο φαίνεται τώρα · ΠΡΟΓΡ. = ώρα από το πρόγραμμα'), ' · ',
+        h('span', { class: 'tripv-legend-mark' }, mark()), t('= εκτίμηση, μπορεί να διαφέρει'))].filter(Boolean));
     lastTitle = m.title.text;
     // spoken when the option or the kind of leave line changes, not on every minute of the countdown
     const sayKey = `${m.title.kind}|${m.id}`;
@@ -384,6 +415,10 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
     const text = titleOf(it, now).text;
     if (text !== lastTitle) { lastTitle = text; title.textContent = text; }
     for (const el of tiles) el.tick(now);
+    for (const c of chipPills) { // the chips' minutes count down with the clock
+      const eta = etaOf(c.it, now);
+      if (eta && c.pill.textContent !== eta.text) { c.pill.textContent = eta.text; c.btn.setAttribute('aria-label', chipLabel(c.n, eta, c.total)); }
+    }
   }
   // the next plan() 20 s after the last one, only while the page is visible
   function schedule() {

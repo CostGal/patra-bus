@@ -39,6 +39,8 @@ export const PAIRS = [
   ['Χωρίς σύνδεση δεν μπορώ να δω πότε περνάει το λεωφορείο.', 'Without a connection I cannot see when the bus comes.'],
   ['Επιλογές διαδρομής', 'Trip options'],
   ['Επιλογή {n}: {dur} συνολικά', 'Option {n}: {dur} in total'],
-  ['Επιλογή {n}: άφιξη {clock}, {dur} συνολικά', 'Option {n}: arrive {clock}, {dur} in total'],
-  ['LIVE = το λεωφορείο φαίνεται τώρα · ΠΡΟΓΡ. = ώρα από το πρόγραμμα · ~ = εκτίμηση, μπορεί να διαφέρει', 'LIVE = the bus is seen now · SCHED. = time from the timetable · ~ = estimate, may differ'],
+  ['Επιλογή {n}: φτάνεις σε {dur}', 'Option {n}: you arrive in {dur}'],
+  ['Επιλογή {n}: φτάνεις σε περίπου {dur}', 'Option {n}: you arrive in about {dur}'],
+  ['LIVE = το λεωφορείο φαίνεται τώρα · ΠΡΟΓΡ. = ώρα από το πρόγραμμα', 'LIVE = the bus is seen now · SCHED. = time from the timetable'],
+  ['= εκτίμηση, μπορεί να διαφέρει', '= estimate, may differ'],
 ];

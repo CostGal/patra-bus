@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 // Browser globals the modules touch; set before the dynamic import (as tests/i18n.test.mjs does).
 globalThis.document = { documentElement: {} };
 Object.defineProperty(globalThis, 'navigator', { value: { language: 'el-GR' }, configurable: true, writable: true });
-const { tripModel, optionsModel, dur } = await import('../web/js/trip-view.js');
+const { tripModel, optionsModel, dur, etaOf } = await import('../web/js/trip-view.js');
 const { setLang } = await import('../web/js/i18n.js');
 
 // ---- sample itineraries, by hand, in the shape of card TEL-290 (and the transfer fields of TEL-292) ----
@@ -83,31 +83,48 @@ test('scheduled first bus also gives the countdown', () => {
   assert.equal(tripModel(direct({ leaveSource: 'scheduled' }, { departSource: 'scheduled' }), NOW).title.text, 'Φύγε σε 4′');
 });
 
-// ---- the ~ rule ----
-test('every estimated time starts with ~; live and scheduled never do', () => {
+// ---- the estimate rule (TEL-294: the view draws an orange (*) mark from the source; no ~ in any text) ----
+test('every time carries its source; no text has a ~', () => {
   for (const it of [direct(), direct({ leaveSource: 'scheduled' }, { departSource: 'scheduled' }), transfer(), transfer({ sameStop: true }), walkOnly(600, 'estimate')]) {
     const m = tripModel(it, NOW, 'Σπίτι');
     for (const tm of allTimes(m)) {
-      if (tm.source === 'estimated') assert.ok(tm.text.startsWith('~'), `${it.id}: ${tm.text}`);
-      else assert.ok(!tm.text.includes('~'), `${it.id}: ${tm.text}`);
+      assert.ok(['live', 'scheduled', 'estimated', 'osrm'].includes(tm.source), `${it.id}: ${tm.source}`);
+      assert.ok(!tm.text.includes('~'), `${it.id}: ${tm.text}`);
     }
+    for (const s of m.steps) assert.ok(!s.text.includes('~'), `${it.id}: ${s.text}`);
+    assert.ok(!m.summary.text.includes('~'), m.summary.text);
   }
   const m = tripModel(direct(), NOW, 'Σπίτι');
   const busStep = m.steps.find((s) => s.kind === 'bus');
-  assert.equal(busStep.time.source, 'live');
-  assert.ok(!busStep.time.text.startsWith('~'), 'the first bus of a direct trip has no ~');
-  assert.ok(m.chip.total.text.startsWith('~'), 'the total follows the estimated arrival');
+  assert.equal(busStep.time.source, 'live', 'the first bus of a direct trip is not an estimate');
+  assert.equal(m.chip.total.source, 'estimated', 'the total follows the estimated arrival');
   assert.match(m.summary.text, /άφιξη περίπου/);
 });
 
-test('the ~ and ΕΚΤΙΜ. also in English', () => {
+test('the chip: minutes to arrival, counted from now', () => {
+  const it = direct(); // arrives at NOW + 22 min
+  assert.deepEqual(tripModel(it, NOW).chip.eta, { text: '22′', source: 'estimated' });
+  assert.equal(etaOf(it, NOW + 10 * MIN).text, '12′');
+  assert.equal(etaOf(it, NOW + 30 * MIN).text, '0′', 'never below zero');
+  assert.equal(tripModel(direct({}, { departAt: null, arriveAt: null }), NOW).chip.eta, null);
+});
+
+test('the walk minutes in a sentence carry their own source', () => {
+  const x = tripModel(transfer(), NOW, 'Σπίτι');
+  const change = x.steps.find((s) => s.kind === 'change');
+  assert.deepEqual(change.inText, { text: '2′', source: 'estimated' });
+  assert.ok(change.text.includes(change.inText.text));
+  assert.equal(x.steps[0].inText.source, 'osrm');
+});
+
+test('ΕΚΤΙΜ. and the estimate source also in English', () => {
   setLang('en');
   try {
     const m = tripModel(transfer(), NOW, 'Home');
     assert.equal(m.title.text, 'Leave in 4′');
     const second = m.steps.filter((s) => s.kind === 'bus')[1];
     assert.equal(second.flag, 'estimated');
-    assert.ok(second.time.text.startsWith('~'));
+    assert.equal(second.time.source, 'estimated');
     assert.match(m.summary.text, /arrive about/);
     assert.ok(m.notes.includes('The time of the second bus is an estimate.'));
   } finally { setLang('el'); }
@@ -136,7 +153,7 @@ test('a transfer: walk, bus, ride, change, bus, ride, walk, arrival (walk betwee
   const order = ['walk', 'bus', 'ride', 'change', 'bus', 'ride', 'walk', 'arrive'];
   const m = tripModel(transfer(), NOW, 'Σπίτι');
   assert.deepEqual(m.steps.map((s) => s.kind), order);
-  assert.equal(m.steps[3].text, 'Αλλαγή: περπάτα ~2′ ως τη στάση «Γούναρη»');
+  assert.equal(m.steps[3].text, 'Αλλαγή: περπάτα 2′ ως τη στάση «Γούναρη»');
   assert.match(m.summary.text, /1 αλλαγή/);
   const same = tripModel(transfer({ sameStop: true }), NOW, 'Σπίτι');
   assert.deepEqual(same.steps.map((s) => s.kind), order);
@@ -181,11 +198,10 @@ test('summary tiles: total, walking, arrival, and the change of a transfer', () 
   assert.deepEqual(d.summary.stats.map((s) => s.label), ['σύνολο', 'περπάτημα', 'άφιξη']);
   assert.equal(d.summary.stats[0].value, d.chip.total);
   assert.equal(d.summary.stats[2].value.source, 'estimated');
-  assert.ok(d.summary.stats[2].value.text.startsWith('~'), 'an estimated arrival keeps its ~');
-  assert.equal(d.summary.stats[1].value.text, '6′', 'walks from OSRM have no ~');
+  assert.equal(d.summary.stats[1].value.source, 'osrm', 'walks from OSRM are not estimates');
   const x = tripModel(transfer(), NOW, 'Σπίτι');
   assert.deepEqual(x.summary.stats.map((s) => s.key), ['total', 'walk', 'arrive', 'change']);
-  assert.equal(x.summary.stats[1].value.text, '~8′', 'a straight-line walk is an estimate');
+  assert.deepEqual(x.summary.stats[1].value, { text: '8′', source: 'estimated' }, 'a straight-line walk is an estimate');
   const w = tripModel(walkOnly(), NOW, 'Σπίτι');
   assert.deepEqual(w.summary.stats.map((s) => s.key), ['total', 'arrive'], 'a walk has no separate walking tile');
   const none = tripModel(direct({}, { departAt: null, arriveAt: null }), NOW, 'Σπίτι');
