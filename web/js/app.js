@@ -954,7 +954,7 @@ function buildChrome() {
 }
 
 async function boot() {
-  sheet = createSheet($('sheet'), { onSnap, onMove });
+  sheet = createSheet($('sheet'), { onSnap, onMove, follow: [$('menu-btn')] });
   buildChrome();
   map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
