@@ -370,7 +370,9 @@ html.sheet-dragging .toast-host { transition: none; }
   min-width: 30px; height: 30px; padding: 0 7px; border-radius: var(--radius-full); border: 2px solid #fff; background: var(--c); color: var(--t);
   font: 700 13px/26px var(--font); text-align: center; box-shadow: 0 1px 5px rgba(0, 0, 0, .5);
 }
-.veh-ring { position: absolute; inset: -3px; border-radius: var(--radius-full); border: 2px solid var(--c); opacity: 0; animation: veh-ping 2.2s ease-out infinite; }
+/* Two beats, then it rests (TEL-304); map.js replays it when the bus gets a new position. `both` keeps the finished
+   animation on the element (invisible, opacity 0) so it can be replayed. */
+.veh-ring { position: absolute; inset: -3px; border-radius: var(--radius-full); border: 2px solid var(--c); opacity: 0; animation: veh-ping 2.2s ease-out 2 both; }
 @keyframes veh-ping { 0% { opacity: .75; transform: scale(.9); } 100% { opacity: 0; transform: scale(1.5); } }
 
 .user-mk { width: 80px; height: 80px; color: #1a73e8; }
