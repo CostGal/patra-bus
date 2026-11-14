@@ -1,6 +1,22 @@
-/* Boot screen (TEL-255): the logo in motion on a cold start at home. Shown only while <html> has the class `boot`
-   (set by the inline head script in index.html); js/boot.js and the head script end it with `boot-out`.
-   Motion values: Notion card TEL-255, "Build brief". Only transform, opacity, visibility and fill are animated. */
+/* Boot screen (TEL-255, variant C «Σήμα LIVE», Kostas 2026-11-13): the LIVE dot pulses, opens into the logo tile, the
+   bus rises in, then «Telematica» and BETA. About 1.5 s. Shown only while <html> has the class `boot` (set by the inline
+   head script in index.html); js/boot.js and the head script end it with `boot-out`.
+   Only transform and opacity (and visibility for the failsafe) are animated, on HTML layers, so the compositor runs the
+   motion while the main thread loads the app. Springs are CSS linear() curves, with cubic-bezier fallbacks. */
+
+:root {
+  --boot-bouncy: cubic-bezier(.34, 1.56, .64, 1);
+  --boot-soft: cubic-bezier(.3, 1.3, .5, 1);
+  --boot-smooth: cubic-bezier(.22, 1, .36, 1);
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    /* underdamped springs, damping ratio .45 / .62 / .9, settled at the end of the duration */
+    --boot-bouncy: linear(0, 0.053, 0.188, 0.37, 0.567, 0.755, 0.918, 1.045, 1.134, 1.186, 1.205, 1.198, 1.173, 1.137, 1.097, 1.057, 1.023, 0.995, 0.975, 0.963, 0.958, 0.959, 0.963, 0.97, 0.979, 0.987, 0.994, 1, 1.004, 1.007, 1.008, 1.009, 1.008, 1.006, 1.005, 1.003, 1.001, 1, 0.999, 0.999, 1);
+    --boot-soft: linear(0, 0.028, 0.101, 0.203, 0.32, 0.443, 0.562, 0.674, 0.773, 0.857, 0.927, 0.982, 1.024, 1.053, 1.071, 1.081, 1.084, 1.081, 1.075, 1.066, 1.057, 1.046, 1.036, 1.027, 1.019, 1.012, 1.006, 1.001, 0.998, 0.996, 0.994, 0.993, 0.993, 0.993, 0.994, 0.994, 0.995, 0.996, 0.997, 0.998, 1);
+    --boot-smooth: linear(0, 0.013, 0.048, 0.098, 0.158, 0.223, 0.291, 0.359, 0.425, 0.488, 0.547, 0.602, 0.653, 0.699, 0.74, 0.777, 0.81, 0.839, 0.864, 0.886, 0.905, 0.921, 0.935, 0.947, 0.957, 0.966, 0.973, 0.979, 0.984, 0.988, 0.991, 0.993, 0.996, 0.997, 0.998, 0.999, 1, 1.001, 1.001, 1.001, 1);
+  }
+}
 
 #boot { display: none; }
 html.boot #boot {
@@ -12,32 +28,47 @@ html.boot #boot {
 }
 .boot-mark { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .boot-logo { position: relative; width: 96px; height: 96px; }
-.boot-tile { position: relative; width: 100%; height: 100%; border-radius: 22px; overflow: hidden; background: #0b5394; }
+.boot-squash { position: absolute; inset: 0; }
+.boot-tile {
+  position: absolute; inset: 0; border-radius: 22px; overflow: hidden; background: #0b5394;
+  forced-color-adjust: none; /* the logo keeps its colours in high-contrast modes */
+}
+.boot-drive { position: absolute; inset: 0; }
 .boot-art { display: block; width: 100%; height: 100%; }
+/* headlights over icon.svg's (r18 at 164|348, 300 of 512), scaled to 96 px */
+.boot-lamp { position: absolute; top: 52.9px; width: 6.75px; height: 6.75px; border-radius: 50%; background: #ffd866; opacity: 0; }
+.boot-lamp-l { left: 27.4px; }
+.boot-lamp-r { left: 61.9px; }
+/* the LIVE dot and its two pulses, centred on the tile */
+.boot-dot, .boot-pulse { position: absolute; left: 41px; top: 41px; width: 14px; height: 14px; border-radius: 50%; opacity: 0; box-sizing: border-box; }
+.boot-dot { background: var(--live); }
+.boot-pulse { border: 2px solid var(--live); }
+/* the waiting ring (still loading after the intro) */
 .boot-ring { position: absolute; inset: 0; border-radius: 22px; border: 2px solid var(--live); opacity: 0; }
 .boot-name { display: flex; align-items: center; gap: 8px; }
-.boot-word { font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--foreground); }
+.boot-clip { display: block; overflow: hidden; padding-block: 2px; }
+.boot-word { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--foreground); white-space: nowrap; }
 .boot-beta {
   padding: 2px 8px; border-radius: var(--radius-full, 999px); font-size: 11px; font-weight: 700; letter-spacing: .08em;
   line-height: 1.4; color: var(--muted-foreground); background: var(--muted);
 }
 
-/* 0–420 ms drive in (the tile clips it), 420–600 ms brake: the body 3% past and back, the wheels stay */
-html.boot .boot-bus { will-change: transform; animation: boot-drive 420ms cubic-bezier(.2, .8, .2, 1) both; }
-html.boot .boot-body { animation: boot-brake 180ms cubic-bezier(.34, 1.56, .64, 1) 420ms both; }
-/* two spokes per wheel turn 540° while it moves, then fade out by 600 ms: the resting frame is exactly the icon */
-.boot-spokes { opacity: 0; transform-box: fill-box; transform-origin: center; }
-html.boot .boot-spokes {
-  opacity: .35;
-  animation: boot-spin 420ms cubic-bezier(.2, .8, .2, 1) both, boot-spokes-out 180ms linear 420ms forwards;
-}
-/* 520–700 ms headlights blink twice */
-html.boot .boot-light { animation: boot-blink 90ms steps(1, end) 520ms 2; }
-/* 560–760 ms wordmark rises; 640–800 ms BETA pops */
-html.boot .boot-word { animation: boot-rise 200ms var(--spring-ease) 560ms both; }
-html.boot .boot-beta { animation: boot-pop 160ms cubic-bezier(.34, 1.56, .64, 1) 640ms both; }
-/* still loading at 800 ms: the app's "live" ring pulses out of the tile until finish() */
-html.boot .boot-ring { animation: boot-ring 1.2s var(--spring-ease) 800ms infinite; }
+/* Timeline (ms from the first paint of #boot); the exit starts at 1500 (js/boot.js) and takes 200. */
+/* 0–670 the LIVE dot pops in, holds, then opens and fades as the tile takes its place; two pulses at 70 and 290 */
+html.boot .boot-dot { animation: boot-dot 670ms both; }
+html.boot .boot-pulse { animation: boot-pulse 770ms var(--boot-smooth) 70ms both; }
+html.boot .boot-pulse + .boot-pulse { animation-delay: 290ms; }
+/* 360–1030 the tile springs open from the dot */
+html.boot .boot-squash { animation: boot-tile 670ms var(--boot-bouncy) 360ms both; }
+/* 560–1230 the bus rises into the tile (the tile clips it) */
+html.boot .boot-drive { will-change: transform; animation: boot-bus 670ms var(--boot-soft) 560ms both; }
+/* 1030–1210 the headlights blink twice */
+html.boot .boot-lamp { animation: boot-blink 90ms steps(1, end) 1030ms 2; }
+/* 840–1460 the wordmark slides up out of its line; 1080–1610 BETA pops */
+html.boot .boot-word { animation: boot-word 620ms var(--boot-smooth) 840ms both; }
+html.boot .boot-beta { animation: boot-pop 530ms var(--boot-bouncy) 1080ms both; }
+/* still loading at 1500: the app's "live" ring pulses out of the tile until finish() */
+html.boot .boot-ring { animation: boot-ring 1.2s var(--boot-smooth) 1500ms infinite; }
 html.boot-hold .boot-ring, html.boot-out .boot-ring { animation: none; opacity: 0; }
 html.boot-hold #boot { animation: none; } /* ?boot=hold (screenshots, review): no failsafe */
 
@@ -48,23 +79,27 @@ html.boot.boot-out .boot-tile { animation: boot-grow 200ms ease-out forwards; }
 /* the app's loading placeholder under it (index.html, #sheet-content): text-free rows */
 .boot-skel { display: grid; gap: var(--space-2, 8px); padding: var(--space-4, 16px) 0; }
 
-@keyframes boot-drive { from { transform: translateX(-120%); } to { transform: translateX(0); } }
-@keyframes boot-brake { 0% { transform: translateX(0); } 50% { transform: translateX(3%); } 100% { transform: translateX(0); } }
-@keyframes boot-spin { from { transform: rotate(0deg); } to { transform: rotate(540deg); } }
-@keyframes boot-spokes-out { to { opacity: 0; } }
-@keyframes boot-blink { 0% { fill: #ffd866; } 50% { fill: #0b5394; } }
-@keyframes boot-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@keyframes boot-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes boot-dot {
+  0% { opacity: 0; transform: scale(0); animation-timing-function: var(--boot-bouncy); }
+  35% { opacity: 1; transform: scale(1); animation-timing-function: cubic-bezier(.5, 0, .7, .4); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(3.2); } }
+@keyframes boot-pulse { from { opacity: .7; transform: scale(1); } to { opacity: 0; transform: scale(5.5); } }
+@keyframes boot-tile { 0% { opacity: 0; transform: scale(.25); } 30% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes boot-bus { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes boot-blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes boot-word { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes boot-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
 @keyframes boot-ring { 0% { opacity: .55; transform: scale(.8); } 100% { opacity: 0; transform: scale(2); } }
 @keyframes boot-exit { to { opacity: 0; } }
 @keyframes boot-grow { to { transform: scale(1.08); } }
 @keyframes boot-failsafe { to { opacity: 0; visibility: hidden; } }
 
-/* Reduced motion: the last frame from the start, no drive, spokes, blink, pop or ring; exit = 180 ms linear fade */
+/* Reduced motion: the last frame from the start (tile, bus, wordmark, BETA), no dot, pulses, blink, pop or ring;
+   at least 500 ms, then a 180 ms linear fade, no scale */
 @media (prefers-reduced-motion: reduce) {
-  html.boot .boot-bus, html.boot .boot-body, html.boot .boot-spokes, html.boot .boot-light,
+  html.boot .boot-dot, html.boot .boot-pulse, html.boot .boot-squash, html.boot .boot-drive, html.boot .boot-lamp,
   html.boot .boot-word, html.boot .boot-beta, html.boot .boot-ring, html.boot.boot-out .boot-tile { animation: none; }
-  html.boot .boot-bus { will-change: auto; }
-  html.boot .boot-spokes, html.boot .boot-ring { opacity: 0; }
+  html.boot .boot-drive { will-change: auto; }
   html.boot.boot-out #boot { animation: boot-exit 180ms linear forwards; }
 }

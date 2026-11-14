@@ -82,9 +82,9 @@
       };
       function tap(e) { if (e.target && e.target.closest && e.target.closest('#boot')) B.leave(); }
       document.addEventListener('pointerdown', tap, true);
-      // will-change only while the bus drives in
+      // will-change only while the bus rises in
       document.addEventListener('animationend', function end(e) {
-        if (e.animationName === 'boot-drive') { e.target.style.willChange = 'auto'; document.removeEventListener('animationend', end); }
+        if (e.animationName === 'boot-bus') { e.target.style.willChange = 'auto'; document.removeEventListener('animationend', end); }
       });
       if (B.hold) d.classList.add('boot-hold');
     })();
@@ -94,35 +94,31 @@
   <script type="module" src="js/glass.js"></script> <!-- glass UI (TEL-83, css/glass.css): the light effects and morphs -->
 </head>
 <body>
-  <!-- Boot screen (TEL-255): shown only when the head script sets html.boot. Same artwork as icon.svg (change both). -->
+  <!-- Boot screen (TEL-255, variant C): shown only when the head script sets html.boot. Each moving part is its own HTML
+       layer so the phone's compositor runs it while the app loads. Artwork copied from icon.svg (a rebranding changes both). -->
   <div id="boot" aria-hidden="true">
     <div class="boot-mark">
       <div class="boot-logo">
+        <span class="boot-pulse"></span><span class="boot-pulse"></span><span class="boot-dot"></span>
         <span class="boot-ring"></span>
-        <div class="boot-tile">
-          <svg class="boot-art" viewBox="0 0 512 512" focusable="false">
-            <rect width="512" height="512" fill="#0b5394"/>
-            <g class="boot-bus">
-              <g class="boot-body">
+        <div class="boot-squash">
+          <div class="boot-tile">
+            <div class="boot-drive">
+              <svg class="boot-art" viewBox="0 0 512 512" focusable="false">
                 <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff"/>
                 <rect x="146" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
                 <rect x="262" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-                <circle class="boot-light" cx="164" cy="300" r="18" fill="#0b5394"/>
-                <circle class="boot-light" cx="348" cy="300" r="18" fill="#0b5394"/>
-              </g>
-              <g class="boot-wheel">
+                <circle cx="164" cy="300" r="18" fill="#0b5394"/>
+                <circle cx="348" cy="300" r="18" fill="#0b5394"/>
                 <circle cx="178" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
-                <path class="boot-spokes" d="M178 346v52M152 372h52" stroke="#0b5394" stroke-width="6" stroke-linecap="round"/>
-              </g>
-              <g class="boot-wheel">
                 <circle cx="334" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
-                <path class="boot-spokes" d="M334 346v52M308 372h52" stroke="#0b5394" stroke-width="6" stroke-linecap="round"/>
-              </g>
-            </g>
-          </svg>
+              </svg>
+              <span class="boot-lamp boot-lamp-l"></span><span class="boot-lamp boot-lamp-r"></span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="boot-name"><span class="boot-word">Telematica</span><span class="boot-beta">BETA</span></div>
+      <div class="boot-name"><span class="boot-clip"><span class="boot-word">Telematica</span></span><span class="boot-beta">BETA</span></div>
     </div>
   </div>
   <div id="app" class="app">

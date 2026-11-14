@@ -155,12 +155,14 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
 - `app.js:836-839` registers it after load. A page offline shows a pill (`app.js:296-309`).
 
 ## 10. Boot screen, first run, welcome, problem report
-- **Boot screen** (TEL-255; `index.html` `#boot` and its inline head script, `css/boot.css`, `boot.js`): about 1 s of the
-  logo in motion (the bus drives in, brakes, blinks, then «Telematica» and BETA) on a cold start that lands on home. Never
+- **Boot screen** (TEL-255, variant C «Σήμα LIVE»; `index.html` `#boot` and its inline head script, `css/boot.css`,
+  `boot.js`): about 1.5 s of the logo in motion (the LIVE dot pulses and opens into the tile, the bus rises in, the
+  headlights blink, then «Telematica» and BETA) on a cold start that lands on home. Each moving part is its own HTML
+  layer animated with `transform`/`opacity` only, so the compositor runs it while the app loads. Never
   on a deep link, not again in the same tab or app process (`sessionStorage` `patra-bus:boot`), so not after the reload of
   a city change or on return from the background. The head script decides before first paint, sets `<html lang>` (same
   rule as `resolveLang`) and owns the state (`window.__boot`), so a tap skips it before any module loads. `app.js` calls
-  `bootScreen.finish()` after the first `route()` and on both error paths; the exit starts at the later of that and 800 ms
+  `bootScreen.finish()` after the first `route()` and on both error paths; the exit starts at the later of that and 1500 ms
   (500 ms with reduced motion). Still loading then: a pulsing `--live` ring. A CSS failsafe hides it at 5 s. The setup
   opens on `bootScreen.leaving`, the welcome after the setup and the boot screen. `?boot` forces it on any hash,
   `?boot=hold` keeps the last frame until a tap. The artwork is `icon.svg`'s: a rebranding changes both.

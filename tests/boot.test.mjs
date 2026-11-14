@@ -75,14 +75,22 @@ test('boot assets: precached, linked, #boot hidden from screen readers, no "Φό
   assert.ok(html.indexOf('href="css/boot.css"') < html.indexOf('<script>'), 'boot.css loads before the head script');
 });
 
-test('boot.css: a reduced-motion block, a failsafe, and only transform, opacity, visibility, fill animated', () => {
+test('boot.css: a reduced-motion block, a failsafe, and only transform, opacity, visibility animated', () => {
   const css = read('css/boot.css');
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /boot-failsafe[^;]*5s/);
-  const frames = [...css.matchAll(/@keyframes [\w-]+ \{(.*)\}$/gm)].map((m) => m[1]);
-  assert.ok(frames.length >= 8);
+  // each @keyframes block, braces balanced; animation-timing-function inside a keyframe is allowed (it is not animated)
+  const frames = [];
+  for (const m of css.matchAll(/@keyframes [\w-]+ \{/g)) {
+    let i = m.index + m[0].length, depth = 1;
+    while (depth && i < css.length) { if (css[i] === '{') depth++; else if (css[i] === '}') depth--; i++; }
+    frames.push(css.slice(m.index + m[0].length, i - 1));
+  }
+  assert.ok(frames.length >= 10);
   for (const f of frames) {
-    for (const [, prop] of f.matchAll(/([a-z-]+)\s*:/g)) assert.ok(['transform', 'opacity', 'visibility', 'fill'].includes(prop), `animates ${prop}`);
+    for (const [, prop] of f.matchAll(/([a-z-]+)\s*:/g)) {
+      assert.ok(['transform', 'opacity', 'visibility', 'animation-timing-function'].includes(prop), `animates ${prop}`);
+    }
   }
   assert.doesNotMatch(css, /transition\s*:/, 'keyframes only');
 });

@@ -147,9 +147,11 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   Feedback stays, motion doesn't.
 - Theme changes ease (no abrupt brightness jumps).
 
-**Boot screen** (TEL-255, `css/boot.css`): the one place where the app plays a fixed animation instead of a spring: about
-1 s of keyframes on `transform`, `opacity` and `fill` only (drive-in, brake, headlights, wordmark, BETA), over an opaque
-`--background` that joins Android's splash. A tap always skips it, and it never covers a deep link. With reduced motion:
+**Boot screen** (TEL-255, `css/boot.css`, variant C chosen by Kostas 2026-11-13): the one place where the app plays a
+fixed timeline: about 1.5 s of keyframes on `transform` and `opacity` only, on separate HTML layers so the compositor runs
+them while the app loads (the LIVE dot pulses and opens into the tile, the bus rises in, headlights, wordmark, BETA). The
+springs are CSS `linear()` curves with `cubic-bezier` fallbacks. It sits over an opaque `--background` that joins
+Android's splash. A tap always skips it, and it never covers a deep link. With reduced motion:
 the last frame, at least 500 ms, then a 180 ms fade. Its artwork copies `icon.svg`.
 
 ## 8. Principles we check every screen against

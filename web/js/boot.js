@@ -3,8 +3,8 @@
 // this module only decides when it leaves. With no boot screen, `leaving` is already resolved and finish() is a no-op.
 const B = globalThis.__boot;
 
-// The exit never starts before the animation has played (800 ms; 500 ms of the still logo with reduced motion).
-const MIN_MS = 800;
+// The exit never starts before the intro has played (1500 ms; 500 ms of the still logo with reduced motion).
+const MIN_MS = 1500;
 const MIN_REDUCED_MS = 500;
 
 export const bootScreen = {

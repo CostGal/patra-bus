@@ -5,11 +5,11 @@ test.use({ boot: true });
 
 const isBoot = (page) => page.evaluate(() => document.documentElement.classList.contains('boot'));
 
-test('boot: shows on home, leaves within 2 s, the app is usable', async ({ page }) => {
+test('boot: shows on home, leaves within 2.5 s, the app is usable', async ({ page }) => {
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#boot')).toBeVisible();
   await expect(page.locator('#boot .boot-word')).toHaveText('Telematica');
-  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2000 });
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2500 });
   expect(await isBoot(page)).toBe(false);
   await expect(page.locator('#sheet-content')).not.toHaveAttribute('aria-busy', 'true');
   await page.locator('#menu-btn').click();
@@ -34,7 +34,7 @@ test('boot: never on a deep link', async ({ page }) => {
 test('boot: not again after a reload in the same tab', async ({ page }) => {
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#boot')).toBeVisible();
-  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2000 });
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2500 });
   await page.reload();
   expect(await page.evaluate(() => window.__boot)).toBeUndefined();
   expect(await isBoot(page)).toBe(false);
@@ -44,7 +44,7 @@ test('boot: an error is not left covered (data fails to load)', async ({ page })
   await page.route(/\/data\/stops\.json/, (route) => route.abort());
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#boot')).toBeVisible();
-  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2000 });
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2500 });
   await expect(page.locator('#sheet-content .btn')).toBeVisible(); // the error state's retry button
 });
 
