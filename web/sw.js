@@ -75,6 +75,7 @@ const SHELL = [
   'js/geo.js',
   'js/walk.js',
   'js/trip.js',
+  'js/trip-map.js',
   'js/trip-view.js',
   'js/nearby.js',
   'js/geocode.js',

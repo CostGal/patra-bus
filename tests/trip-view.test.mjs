@@ -240,7 +240,7 @@ test('durations: minutes rounded up, «1 ώ 05′» from an hour', () => {
 test('trip-view.js imports nothing from reminders, places, storage or the network', () => {
   const src = readFileSync(new URL('../web/js/trip-view.js', import.meta.url), 'utf8');
   const imports = [...src.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
-  assert.deepEqual(imports, ['./arrivals-view.js', './geo.js', './i18n.js', './trip.js', './ui.js']);
+  assert.deepEqual(imports, ['./arrivals-view.js', './geo.js', './i18n.js', './trip-map.js', './trip.js', './ui.js']);
   for (const name of ['notify', 'onboard', 'store', 'planner', 'walk', 'api', 'geocode']) {
     assert.ok(!new RegExp(`from '\\./${name}\\.js'|import\\(['"]\\./${name}`).test(src), name);
   }

@@ -228,7 +228,7 @@ export function createMap(container, opts = {}) {
       map.addLayer({
         id: `${src}-line`, type: 'line', source: src, filter: lineFilter,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': color, 'line-width': widthExpr(w) },
+        paint: { 'line-color': color, 'line-width': widthExpr(w), ...(o.style.estimated ? { 'line-opacity': 0.55 } : {}) }, // a guessed stop order (TEL-295)
       }, before);
     }
   }
@@ -575,7 +575,7 @@ export function createMap(container, opts = {}) {
 
     setOverlay(id, fc, style = {}) {
       if (styleReady) removeOverlayFromMap(id);
-      overlays.set(id, { fc, style: { kind: style.kind || 'route', color: style.color } });
+      overlays.set(id, { fc, style: { kind: style.kind || 'route', color: style.color, estimated: !!style.estimated } });
       if (styleReady) addOverlay(id);
     },
     clearOverlay(id) {

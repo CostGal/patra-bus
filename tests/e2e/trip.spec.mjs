@@ -109,3 +109,62 @@ test.describe('trip, no location', () => {
     expect(page.url()).not.toMatch(START);
   });
 });
+
+// TEL-295: the chosen trip drawn on the map. The map may be the no-map stand-in here (no WebGL, tiles blocked), so the
+// test records what the view asks of window.__app.map (?debug) instead of looking at pixels.
+test.describe('trip on the map', () => {
+  test.use({ permissions: ['geolocation'], geolocation: { latitude: 38.2466123, longitude: 21.7346123 } });
+
+  const spyMap = (page) => page.evaluate(() => {
+    const m = window.__app.map;
+    const calls = (window.__mapCalls = []);
+    for (const k of ['setOverlay', 'clearOverlay', 'setMarkers', 'clearMarkers', 'fitTo']) {
+      const f = m[k].bind(m);
+      m[k] = (...a) => { calls.push({ k, id: typeof a[0] === 'string' ? a[0] : null, fc: k === 'setOverlay' ? JSON.stringify(a[1]) : null }); return f(...a); };
+    }
+  });
+  const calls = (page) => page.evaluate(() => window.__mapCalls);
+  const open = async (page) => {
+    await page.goto('/?demo&debug#/');
+    await page.waitForFunction(() => window.__app?.map);
+    await spyMap(page);
+    await page.evaluate(() => { location.hash = '#/trip?stop=1011'; });
+    await expect(chips(page).first()).toBeVisible();
+    await expect.poll(async () => (await calls(page)).some((c) => c.k === 'setMarkers' && c.id === 'trip')).toBe(true);
+  };
+
+  test('opening a trip draws trip- overlays and the trip markers, and fits the map once', async ({ page, net }) => {
+    await open(page);
+    const c = await calls(page);
+    expect(c.some((x) => x.k === 'setOverlay' && /^trip-\d+$/.test(x.id))).toBe(true);
+    expect(c.filter((x) => x.k === 'fitTo').length).toBe(1);
+    // the drawing asks nothing of anyone: no new blocked request once the plan is on screen
+    const before = net.blocked.length;
+    await page.waitForTimeout(500);
+    expect(net.blocked.slice(before).filter((u) => !/routing\.openstreetmap\.de|openfreemap/.test(u))).toEqual([]);
+  });
+
+  test('a tap on the second option redraws the trip and fits again', async ({ page }) => {
+    await open(page);
+    test.skip(await chips(page).count() < 2, 'one option only');
+    const rides = async () => (await calls(page)).filter((x) => x.k === 'setOverlay').map((x) => x.fc).join('|');
+    const n = (await calls(page)).length;
+    const was = await rides();
+    await chips(page).nth(1).click();
+    await expect.poll(async () => (await calls(page)).slice(n).some((x) => x.k === 'fitTo')).toBe(true);
+    const after = (await calls(page)).slice(n);
+    expect(after.some((x) => x.k === 'setMarkers' && x.id === 'trip')).toBe(true);
+    expect(await rides()).not.toBe(was);
+  });
+
+  test('leaving the trip clears every trip- overlay and the trip markers', async ({ page }) => {
+    await open(page);
+    const drawn = new Set((await calls(page)).filter((x) => x.k === 'setOverlay' && /^trip-/.test(x.id)).map((x) => x.id));
+    const n = (await calls(page)).length;
+    await page.evaluate(() => { location.hash = '#/'; });
+    await expect(page.locator('.tripv')).toHaveCount(0);
+    const after = (await calls(page)).slice(n);
+    for (const id of drawn) expect(after.some((x) => x.k === 'clearOverlay' && x.id === id), id).toBe(true);
+    expect(after.some((x) => x.k === 'clearMarkers' && x.id === 'trip')).toBe(true);
+  });
+});
