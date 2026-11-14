@@ -10,6 +10,7 @@ import { t, tn, etaTxt } from './i18n.js';
 import { fmtDist } from './geo.js';
 import { arrivalTile } from './arrivals-view.js';
 import { retime, leaveState } from './trip.js';
+import { drawTrip, clearTrip } from './trip-map.js';
 
 const MAX_OPTS = 3; // option chips
 const PLAN_MS = 20000; // plan() again every 20 s while the page is visible, never faster (CLAUDE.md: live ≥ 15 s)
@@ -218,6 +219,16 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
   if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['style', 'class', 'data-state'] });
   const onLeaveUp = () => setUp(false);
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
+  // the sheet comes to rest at low or mid after it moved there: the trip fits the part of the map above it (U13).
+  // Not when only its content changed height (same state), and never while it is up.
+  let settledAt = sheetEl?.dataset.state || '';
+  const onSettleMap = () => {
+    const st = sheetEl.dataset.state;
+    if (st === settledAt) return;
+    settledAt = st;
+    if ((st === 'peek' || st === 'half') && ctx.map) try { fit(); } catch (err) { console.warn('[trip map]', err); }
+  };
+  sheetEl?.addEventListener('sheet:settle', onSettleMap);
 
   // ---- drawing ----
   // an estimate shows only on the option chips: grey, with the orange (*) mark (TEL-294). Tiles and steps look like any
@@ -256,12 +267,32 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
   }
 
   // The chosen itinerary changed: the first result, a tap on a chip, a new result (or the same bus re-timed).
-  // The one place where the chosen trip is set and drawn. TEL-295 hooks the map drawing here.
-  function choose(id) {
+  // The one place where the chosen trip is set and drawn, on the sheet and on the map (TEL-295).
+  // tap: the user picked a chip, so the map fits the trip again.
+  function choose(id, tap = false) {
     if (dead) return;
     const it = its.find((x) => x.id === id) || its[0] || null;
     chosenId = it ? it.id : null;
     draw();
+    mapTrip(it, tap);
+  }
+
+  // ---- map: the chosen trip drawn (js/trip-map.js); the map moves only on the first draw, a chip tap and a sheet
+  // that comes to rest at another height. Never on the 20 s refresh (Kostas, TEL-222). ----
+  let mapKey = ''; // what is drawn: redrawn only when the trip or its walking geometry changes, not the times
+  let fitPts = null, fitted = false;
+  const tripKey = (it) => `${it.id}|` + it.legs.map((l) => (l.kind === 'bus'
+    ? `b${l.routeCode}:${l.boardIndex}-${l.alightIndex}${l.orderEstimated ? '~' : ''}`
+    : `w${l.geometry?.length || 0}`)).join(',');
+  const fit = () => { if (fitPts?.length) ctx.map.fitTo(fitPts, { maxZoom: 16 }); };
+  function mapTrip(it, tap) {
+    if (!ctx.map) return; // #app.no-map: the list works on its own
+    try {
+      if (!it) { if (mapKey) { clearTrip(ctx.map); mapKey = ''; fitPts = null; } return; }
+      const key = tripKey(it);
+      if (key !== mapKey) { mapKey = key; fitPts = drawTrip(ctx.map, it, ctx.data).points; }
+      if (tap || !fitted) { fitted = true; fit(); }
+    } catch (err) { console.warn('[trip map]', err); }
   }
 
   function stateBlock(ico, titleText, sub, btnText, onclick) {
@@ -329,7 +360,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
         kids = [...lines.slice(0, -1).flatMap((c) => [badge(c), h('span', { class: 'tripv-sep', 'aria-hidden': 'true' }, '›')]), duo];
       }
       const btn = h('button', { type: 'button', role: 'tab', class: `tripv-opt${on ? ' on' : ''}`, 'aria-selected': String(on), 'data-key': x.id, tabindex: on ? '0' : '-1',
-        'aria-label': chipLabel(i + 1, x.chip.eta, x.chip.total), onclick: () => choose(x.id) }, ...kids.filter(Boolean));
+        'aria-label': chipLabel(i + 1, x.chip.eta, x.chip.total), onclick: () => choose(x.id, true) }, ...kids.filter(Boolean));
       if (pill && x.chip.eta) chipPills.push({ pill, btn, it: its[i], n: i + 1, total: x.chip.total });
       return btn;
     }));
@@ -441,6 +472,8 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       document.removeEventListener('visibilitychange', onVisibility);
       tMO.disconnect();
       sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      sheetEl?.removeEventListener('sheet:settle', onSettleMap);
+      try { if (ctx.map) clearTrip(ctx.map); } catch (err) { console.warn('[trip map]', err); }
       root.remove();
     },
   };
