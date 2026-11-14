@@ -109,14 +109,6 @@ test('the chip: minutes to arrival, counted from now', () => {
   assert.equal(tripModel(direct({}, { departAt: null, arriveAt: null }), NOW).chip.eta, null);
 });
 
-test('the walk minutes in a sentence carry their own source', () => {
-  const x = tripModel(transfer(), NOW, 'Σπίτι');
-  const change = x.steps.find((s) => s.kind === 'change');
-  assert.deepEqual(change.inText, { text: '2′', source: 'estimated' });
-  assert.ok(change.text.includes(change.inText.text));
-  assert.equal(x.steps[0].inText.source, 'osrm');
-});
-
 test('ΕΚΤΙΜ. and the estimate source also in English', () => {
   setLang('en');
   try {

@@ -1,9 +1,9 @@
 // Trip sheet (TEL-293): when to leave, the options, and the steps in order, for the itineraries of js/trip.js
 // (shape on card TEL-290). Styles: css/trip.css (prefix .tripv-). The stop card (js/arrivals-view.js) is the model.
 // It finds no trips itself and sends nothing: the wiring card hands in plan(), which calls trip.planTrips().
-// Every time on screen says where it comes from: LIVE, ΠΡΟΓΡ. (timetable), or an estimate (we computed it): grey with
-// the orange (*) mark, and ΕΚΤΙΜ. on a bus (TEL-294, Kostas: the mark replaced the ~). The model carries the source;
-// the view draws the mark.
+// A bus says where its time comes from: LIVE, ΠΡΟΓΡ. (timetable) or ΕΚΤΙΜ. (we computed it). Every time in the model
+// carries its source; on screen only the option chips mark an estimate (grey, orange (*)); tiles and steps show plain
+// numbers, as Google Maps does (TEL-294, Kostas). No ~ anywhere.
 // Imports: ui, i18n, geo, arrivals-view (arrivalTile) and trip (retime, leaveState) only (guard: tests/trip-view.test.mjs).
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { t, tn, etaTxt } from './i18n.js';
@@ -98,14 +98,12 @@ export function tripModel(it, now = Date.now(), dest = '') {
     if (leg.kind === 'walk') {
       const time = timeOf(leg.startAt, 'estimated'); // walk times are always estimates
       const d = dur(leg.seconds);
-      // the walk's minutes inside the sentence: the view puts the (*) mark on them when they are a straight-line estimate
-      const inText = { text: d, source: srcOf(leg.source) };
       if (leg.from?.stopCode && leg.to?.stopCode) {
-        steps.push({ kind: 'change', icon: 'swap', text: t('Αλλαγή: περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), inText, sub: fmtDist(leg.meters), time });
+        steps.push({ kind: 'change', icon: 'swap', text: t('Αλλαγή: περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), sub: fmtDist(leg.meters), time });
       } else if (leg.to?.stopCode) {
-        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), inText, sub: fmtDist(leg.meters), time });
+        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως τη στάση «{stop}»', { dur: d, stop: leg.to.name }), sub: fmtDist(leg.meters), time });
       } else if (!(last && it.kind !== 'walk' && (leg.meters ?? 0) < MIN_LAST_WALK_M)) {
-        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως «{dest}»', { dur: d, dest }), inText, sub: fmtDist(leg.meters), time });
+        steps.push({ kind: 'walk', icon: 'walk', text: t('Περπάτα {dur} ως «{dest}»', { dur: d, dest }), sub: fmtDist(leg.meters), time });
       }
       return;
     }
@@ -222,18 +220,12 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
   sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
 
   // ---- drawing ----
-  // an estimate: grey, with the orange (*) mark on its top-right corner (TEL-294); a screen reader hears «Εκτίμηση»
+  // an estimate shows only on the option chips: grey, with the orange (*) mark (TEL-294). Tiles and steps look like any
+  // other time, as in Google Maps (Kostas); a screen reader still hears where each step's time comes from.
   const isEst = (v) => v?.source === 'estimated';
   const mark = () => h('span', { class: 'tripv-mark', 'aria-hidden': 'true' }, '*');
-  const numEl = (v) => h('span', { class: `tripv-num${isEst(v) ? ' is-est' : ''}` }, v.text, isEst(v) ? mark() : null);
-  const timeEl = (tm, extra = '') => (tm ? h('span', { class: `tripv-time tabular${isEst(tm) ? ' is-est' : ''}${extra}` },
-    h('span', { 'aria-hidden': 'true' }, numEl(tm)), h('span', { class: 'visually-hidden' }, ` ${SAY_SRC()[tm.source] || ''}`)) : h('span', { class: 'tripv-time' }));
-  // a step's sentence; the walk's minutes in it carry the mark when they are an estimate
-  const stepText = (s) => {
-    const i = isEst(s.inText) ? s.text.indexOf(s.inText.text) : -1;
-    if (i < 0) return [s.text];
-    return [s.text.slice(0, i), numEl(s.inText), h('span', { class: 'visually-hidden' }, ` (${SAY_SRC().estimated})`), s.text.slice(i + s.inText.text.length)];
-  };
+  const timeEl = (tm, extra = '') => (tm ? h('span', { class: `tripv-time tabular${extra}` },
+    h('span', { 'aria-hidden': 'true' }, tm.text), h('span', { class: 'visually-hidden' }, ` ${SAY_SRC()[tm.source] || ''}`)) : h('span', { class: 'tripv-time' }));
   // the option chip: the line pill points into the time pill, in the line's colour (Kostas, TEL-294: design «M»)
   const chipLabel = (n, eta, total) => (eta
     ? (isEst(eta) ? t('Επιλογή {n}: φτάνεις σε περίπου {dur}', { n, dur: eta.text }) : t('Επιλογή {n}: φτάνεις σε {dur}', { n, dur: eta.text }))
@@ -249,7 +241,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       tiles.push(el);
       return h('li', { class: 'tripv-step tripv-step-tile' }, h('span', { class: 'tripv-ico' }, icon('bus')), h('div', { class: 'tripv-body' }, el));
     }
-    const text = h('span', { class: 'tripv-text' }, ...stepText(s)); // a bus row says «Γραμμή 609 …» in words: no badge too
+    const text = h('span', { class: 'tripv-text' }, s.text); // a bus row says «Γραμμή 609 …» in words: no badge too
     return h('li', { class: `tripv-step tripv-step-${s.kind}` },
       h('span', { class: 'tripv-ico' }, icon(s.icon)),
       h('div', { class: 'tripv-body' }, text, s.sub ? h('span', { class: 'tripv-sub' }, s.sub) : null),
@@ -350,7 +342,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       h('p', { class: 'visually-hidden' }, m.summary.text),
       h('div', { class: 'tripv-stats', 'aria-hidden': 'true' }, m.summary.stats.map((s) => h('div', { class: `tripv-stat tripv-stat-${s.key}` },
         icon(s.icon),
-        h('span', { class: `tripv-stat-n${isEst(s.value) ? ' is-est' : ''}` }, numEl(s.value)),
+        h('span', { class: 'tripv-stat-n' }, s.value.text),
         h('span', { class: 'tripv-stat-l' }, s.label)))),
       m.summary.estimated ? estFlag() : null].filter((x) => x != null)); // (replaceChildren would print a null as "null")
 
