@@ -12,6 +12,10 @@ export const PAIRS = [
   ['άφιξη {clock}', 'arrive {clock}'],
   ['άφιξη περίπου {clock}', 'arrive about {clock}'],
   ['1 αλλαγή', '1 change'],
+  ['σύνολο', 'total'],
+  ['περπάτημα', 'walking'],
+  ['άφιξη', 'arrival'],
+  ['αλλαγή', 'change'],
   ['ΕΚΤΙΜ.', 'EST.'],
   ['Ζωντανή ώρα', 'Live time'],
   ['Ώρα από το πρόγραμμα', 'Time from the timetable'],
@@ -35,5 +39,6 @@ export const PAIRS = [
   ['Χωρίς σύνδεση δεν μπορώ να δω πότε περνάει το λεωφορείο.', 'Without a connection I cannot see when the bus comes.'],
   ['Επιλογές διαδρομής', 'Trip options'],
   ['Επιλογή {n}: {dur} συνολικά', 'Option {n}: {dur} in total'],
+  ['Επιλογή {n}: άφιξη {clock}, {dur} συνολικά', 'Option {n}: arrive {clock}, {dur} in total'],
   ['LIVE = το λεωφορείο φαίνεται τώρα · ΠΡΟΓΡ. = ώρα από το πρόγραμμα · ~ = εκτίμηση, μπορεί να διαφέρει', 'LIVE = the bus is seen now · SCHED. = time from the timetable · ~ = estimate, may differ'],
 ];

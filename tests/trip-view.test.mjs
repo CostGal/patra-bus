@@ -174,6 +174,34 @@ test('liveError and «walking is faster» notes', () => {
   assert.ok(!optionsModel([walkOnly(600)], NOW)[0].notes.includes('Με τα πόδια φτάνεις πιο γρήγορα.'), 'not when it is the only option');
 });
 
+// ---- summary tiles and the chip's arrival clock (TEL-294) ----
+test('summary tiles: total, walking, arrival, and the change of a transfer', () => {
+  const d = tripModel(direct(), NOW, 'Σπίτι');
+  assert.deepEqual(d.summary.stats.map((s) => s.key), ['total', 'walk', 'arrive']);
+  assert.deepEqual(d.summary.stats.map((s) => s.label), ['σύνολο', 'περπάτημα', 'άφιξη']);
+  assert.equal(d.summary.stats[0].value, d.chip.total);
+  assert.equal(d.summary.stats[2].value.source, 'estimated');
+  assert.ok(d.summary.stats[2].value.text.startsWith('~'), 'an estimated arrival keeps its ~');
+  assert.equal(d.summary.stats[1].value.text, '6′', 'walks from OSRM have no ~');
+  const x = tripModel(transfer(), NOW, 'Σπίτι');
+  assert.deepEqual(x.summary.stats.map((s) => s.key), ['total', 'walk', 'arrive', 'change']);
+  assert.equal(x.summary.stats[1].value.text, '~8′', 'a straight-line walk is an estimate');
+  const w = tripModel(walkOnly(), NOW, 'Σπίτι');
+  assert.deepEqual(w.summary.stats.map((s) => s.key), ['total', 'arrive'], 'a walk has no separate walking tile');
+  const none = tripModel(direct({}, { departAt: null, arriveAt: null }), NOW, 'Σπίτι');
+  assert.deepEqual(none.summary.stats.map((s) => s.key), ['walk'], 'no bus now: no total, no arrival');
+});
+
+test('the chip carries the arrival clock, as the arrival tile', () => {
+  const d = tripModel(direct(), NOW, 'Σπίτι');
+  assert.deepEqual(d.chip.arrive, d.summary.stats.find((s) => s.key === 'arrive').value);
+  assert.equal(tripModel(direct({}, { departAt: null, arriveAt: null }), NOW).chip.arrive, null);
+  setLang('en');
+  try {
+    assert.deepEqual(tripModel(transfer(), NOW, 'Home').summary.stats.map((s) => s.label), ['total', 'walking', 'arrival', 'change']);
+  } finally { setLang('el'); }
+});
+
 // ---- chips ----
 test('five itineraries in, three chips out', () => {
   const its = [1, 2, 3, 4, 5].map((n) => ({ ...direct(), id: `r${n}` }));
