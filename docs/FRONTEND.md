@@ -169,8 +169,10 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
   Until the first view mounts, `#sheet-content` holds three text-free skeleton rows with `aria-busy="true"` (issue #32).
 - **Setup** (`setup.js`, `css/setup.css`): three steps on the first start that lands on the home view (language, city, what LIVE
   and ΠΡΟΓΡ. mean). `app.js` opens it before the first `route()`; the dialog appears once the boot screen starts to leave. `setupDone` is set when it opens, so a reload does not
-  bring it back. The language applies at once, the city on close (a new city reloads). «Παράλειψη» or Esc closes it.
-  `?setup` previews without the flag.
+  bring it back. The language applies at once, the city on close (a new city reloads). «Παράλειψη» (the ✕ circle) or Esc
+  closes it. On a phone that is not in Greek it first switches to the phone's language (`initialLang`, D1 of TEL-247), so
+  that language is stored even if the setup is skipped. Look (TEL-247): the stop card's glass card and kit header (back ·
+  progress · skip), same height on every step (only the step scrolls). `?setup` previews without the flag or the D1 switch.
 - **Welcome** (`welcome.js`, `css/welcome.css`): a one-time thank-you for the first testers, only when the app runs installed
   (`platform.js` `mode === 'app'`), after the setup closes and the boot screen has left (`app.js`, `boot()`). `welcomeSeen` is set when it opens, not when it
   closes. Its emblem is the logo (`icon.svg`). It links to `#/report`. `?welcome` previews it without the flag. Motion: a spring for the card, keyframes for the

@@ -126,6 +126,7 @@ export const UI = [
   { id: 'D10', nick: 'email', name: 'Email (αναφορά)', sel: '.rp-input[type=email]' },
   { id: 'D11', nick: 'send', name: 'Αποστολή (αναφορά)', sel: '.rp-submit' },
   { id: 'D12', nick: 'boot screen', name: 'Οθόνη εκκίνησης (λογότυπο σε κίνηση, TEL-255)', sel: '#boot' },
+  { id: 'D13', nick: 'setup back', name: 'Πίσω (setup, TEL-247)', sel: '.su-back' },
 ];
 
 // Screens of the annotated sweep (hash appended to <base>/?demo…). `act` puts the screen in its state (menu open…).
