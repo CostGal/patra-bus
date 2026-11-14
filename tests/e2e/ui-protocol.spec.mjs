@@ -16,6 +16,7 @@ const VIEWS = {
   line: '#/line/101',
   bus: null, // a live bus from the stop's arrivals (the demo's vehicle codes change with the clock)
   favorites: '#/favorites',
+  trip: '#/trip?stop=1011',
   settings: '#/settings',
   report: '#/report',
 };

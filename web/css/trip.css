@@ -39,20 +39,47 @@
 .tripv-opt:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .tripv-opt .icon { width: 18px; height: 18px; }
 .tripv-sep { color: var(--muted-foreground); }
-.tripv-opt-dur { white-space: nowrap; font-weight: var(--weight-bold); }
+/* the chip's time (TEL-294, design «M»): the line pill points into an outlined pill with the minutes to arrival, in the
+   line's colour (--lc, set by js/trip-view.js); an estimate is grey with the orange (*) mark on its top-right corner */
+.tripv-duo { display: inline-flex; align-items: stretch; min-width: 0; }
+.tripv-duo > .badge { position: relative; z-index: 1; min-width: 0; padding-right: 8px; border-radius: var(--radius-md) 0 0 var(--radius-md);
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%); }
+.tripv-tp { position: relative; display: inline-flex; align-items: center; margin-left: -6px; padding: 0 6px 0 8px; border: 1px solid var(--lc, var(--border));
+  border-left: 0; border-radius: 0 var(--radius-full) var(--radius-full) 0; background: var(--card); color: var(--foreground);
+  font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1.2; white-space: nowrap; }
+.tripv-tp.solo { margin-left: 0; padding-left: 6px; border-left: 1px solid var(--border); border-radius: var(--radius-full); }
+.tripv-tp.is-est { color: var(--muted-foreground); font-weight: var(--weight-medium); }
+.tripv-tp.is-est::after { content: '*'; position: absolute; top: -6px; right: -5px; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--warning); color: var(--card); box-shadow: 0 0 0 1.5px var(--card);
+  font-size: 11px; font-weight: var(--weight-bold); line-height: 15px; text-align: center; }
+@media (max-width: 374.98px) { /* narrow phones: the chips give up some room */
+  .tripv-opt { gap: 2px; padding: 0 var(--space-1); }
+  .tripv-opt .badge { min-width: 0; padding: .1em .3em; }
+  .tripv-duo > .badge { padding-right: 7px; }
+}
+
+/* the same mark in the legend line, which explains it */
+.tripv-legend-mark { display: inline-block; margin-right: 3px; vertical-align: -1px; }
+.tripv-mark { display: block; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--warning); color: var(--card); font-size: 11px; font-weight: var(--weight-bold); line-height: 15px; text-align: center; }
 [data-sheet="peek"] .tripv-opt { pointer-events: none; }
 html.glass .tripv-opt { background: color-mix(in srgb, var(--g-chip) calc(var(--l, 1) * 100%), transparent); border-color: color-mix(in srgb, var(--foreground) 10%, transparent); box-shadow: inset 0 1px 0 var(--g-edge); }
 html.glass .tripv-opt.on { background: var(--g-chip-on); border-color: color-mix(in srgb, var(--primary) 65%, transparent); }
 html.glass-fx .tripv-opts { position: relative; z-index: 1; }
 html.glass-fx .tripv-opt.on { background: transparent; border-color: transparent; }
 
-/* ---- summary ---- */
-.tripv-sum { margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); text-align: center; }
+/* ---- summary: small tiles, a number over a short word (TEL-294); the ΕΚΤΙΜ. flag under them ---- */
+.tripv-sum { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); text-align: center; }
 .tripv-sum[hidden] { display: none; }
+.tripv-stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); width: 100%; }
+.tripv-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
+.tripv-stat .icon { width: 16px; height: 16px; color: var(--muted-foreground); }
+.tripv-stat-n { font-size: var(--text-lg); font-weight: var(--weight-bold); line-height: 1.2; color: var(--foreground); white-space: nowrap; }
+.tripv-stat-l { font-size: var(--text-2xs); line-height: 1.3; color: var(--muted-foreground); }
 
-/* ---- times: live / scheduled bold in the text colour; an estimate (~) lighter and muted, never the big bold style ---- */
+/* ---- times: bold in the text colour, whatever their source (only the option chips mark an estimate, TEL-294) ---- */
 .tripv-time { font-weight: var(--weight-bold); color: var(--foreground); white-space: nowrap; }
-.tripv-time.is-est, .tripv-opt-dur.is-est { font-weight: var(--weight-medium); color: var(--muted-foreground); }
 
 /* the estimated flag: dashed outline in the warning colour, the same height as LIVE / ΠΡΟΓΡ. */
 .tripv-est, .tripv-flag { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-md); font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: .05em; line-height: 1.5; white-space: nowrap; vertical-align: middle; }

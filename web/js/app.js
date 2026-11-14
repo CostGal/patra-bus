@@ -8,7 +8,7 @@ import { createMap } from './map.js';
 import { createSheet } from './sheet.js';
 import { createSpringLoop } from './motion.js';
 import locationService from './location.js';
-import { DEMO } from './api.js';
+import { DEMO, fetchLive } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
 import { t, tn, N_, onLangChange, lang, APP_NAME } from './i18n.js';
 import { CITIES, city, cityId, cityName, isCity } from './cities.js';
@@ -59,6 +59,12 @@ const parsePt = (s) => {
   return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
 };
 const pinHash = (to) => cityHash(`#/pin?lat=${to.lat.toFixed(5)}&lng=${to.lng.toFixed(5)}`);
+// The trip to a stop or a place (TEL-294). City-relative. Only the destination is in it, never the start (CLAUDE.md rule 6).
+const tripHash = (dest) => {
+  if (dest.stopCode != null) return `#/trip?stop=${encodeURIComponent(String(dest.stopCode))}`;
+  const name = String(dest.name || '').trim().slice(0, 80);
+  return `#/trip?lat=${dest.lat.toFixed(5)}&lng=${dest.lng.toFixed(5)}${name ? `&name=${encodeURIComponent(name)}` : ''}`;
+};
 const msgEl = (text) => h('p', { class: 'state-msg' }, text);
 const errorState = (text, retry) => h('div', {}, msgEl(text), h('button', { type: 'button', class: 'btn primary', onclick: retry }, t('Δοκίμασε ξανά')));
 const backBtn = (to = '#/') => h('a', { class: 'btn round', href: cityHash(to), 'aria-label': t('Πίσω') }, icon('back'));
@@ -76,7 +82,7 @@ function stopRow(stop, meters) {
     h('span', { class: 'chev' }, icon('chevron')));
 }
 function placeRow(p) {
-  return h('a', { class: 'stop-row', href: pinHash(p) },
+  return h('a', { class: 'stop-row', href: cityHash(tripHash({ lat: p.lat, lng: p.lng, name: p.name })) },
     h('span', { class: 'stop-ico' }, icon('pin')),
     h('span', { class: 'stop-main' },
       h('div', { class: 'stop-name' }, p.name),
@@ -400,7 +406,7 @@ function choosePlace(p) {
   if (p.kind === 'stop' && p.stopCode && data.stopByCode.has(String(p.stopCode))) { chooseStop(data.stopByCode.get(String(p.stopCode))); return; }
   addRecent('place', { name: p.name, subtitle: p.subtitle || '', lat: p.lat, lng: p.lng });
   closeSearch();
-  ctx.navigate(pinHash(p));
+  ctx.navigate(tripHash({ lat: p.lat, lng: p.lng, name: p.name }));
 }
 const srHead = (text) => h('div', { class: 'sr-head', role: 'presentation' }, text);
 
@@ -652,6 +658,80 @@ function mountPin(container, c, p) {
   return { destroy() { c.map.clearMarkers('pin'); } };
 }
 
+// ---------------------------------------------------------------- trip (TEL-294)
+// plan() is the only place that knows the start (your location). The start goes only to OSRM, through walk.js, as the
+// end of a walking leg; the worker gets stop codes only. It is never put in the hash, history.state, the title, a toast,
+// a log line, reportCtx or storage (CLAUDE.md rule 6).
+const TRIP_WAIT_MS = 10000; // how long a trip waits for a first fix
+const TRIP_KEEP_M = 50; // a new fix this close to the last start keeps the last start (the walk cache hits)
+const NO_LOC = new Set(['denied', 'unavailable', 'insecure', 'timeout']);
+let tripCtl = null; // the running plan() call; teardown() aborts it
+let searchAfterRoute = false; // «Άλλος προορισμός»: open the search once home is on screen
+const abortError = () => new DOMException('trip closed', 'AbortError');
+
+// A fix, or null after TRIP_WAIT_MS, when the location cannot be had, or when the trip closes.
+function waitTripFix(signal) {
+  if (locationService.current) return Promise.resolve(locationService.current);
+  if (NO_LOC.has(locationService.status) && locationService.status !== 'timeout') return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let off = null;
+    const done = (v) => { clearTimeout(timer); off?.(); signal.removeEventListener('abort', onAbort); resolve(v); };
+    const onAbort = () => done(null);
+    const timer = setTimeout(() => done(null), TRIP_WAIT_MS);
+    signal.addEventListener('abort', onAbort);
+    off = locationService.subscribe((fix, status) => { if (fix) done(fix); else if (NO_LOC.has(status)) done(null); });
+  });
+}
+
+// dest = { lat, lng, name }; back = the city-relative hash of the stop or the place view.
+function makeTripPlan(dest, back) {
+  const walkCache = new Map();
+  const prefer = new Map(); // the "sticky bus" of each itinerary
+  let start = null;
+  return async function plan({ onUpdate } = {}) {
+    tripCtl?.abort();
+    const ctl = (tripCtl = new AbortController());
+    const { signal } = ctl;
+    let fix = locationService.current;
+    if (!fix && DEMO) fix = city().center; // the demo start, no prompt
+    if (!fix) {
+      if (!NO_LOC.has(locationService.status) || locationService.status === 'timeout') locationService.start();
+      fix = await waitTripFix(signal);
+    }
+    if (signal.aborted) throw abortError();
+    if (!fix) {
+      toast(t('Δεν βρέθηκε η τοποθεσία σου. Δοκίμασε ξανά.'));
+      history.replaceState(null, '', cityHash(back)); // so the browser's Back does not loop into the trip
+      route();
+      throw abortError();
+    }
+    if (!start || haversine(start, fix) >= TRIP_KEEP_M) start = { lat: fix.lat, lng: fix.lng };
+    const [{ planTrips }, walk] = await Promise.all([import('./trip.js'), import('./walk.js')]);
+    if (signal.aborted) throw abortError();
+    const res = await planTrips(data,
+      { lat: start.lat, lng: start.lng, name: null },
+      { lat: dest.lat, lng: dest.lng, name: dest.name },
+      {
+        deps: { fetchLive: (code) => fetchLive(code), walkRoute: walk.walkRoute, walkEstimate: walk.walkEstimate },
+        signal, walkCache, prefer, onUpdate,
+      });
+    prefer.clear();
+    for (const it of res.itineraries || []) {
+      const key = it.legs?.find((l) => l.kind === 'bus')?.key;
+      if (key) prefer.set(it.id, key);
+    }
+    return res;
+  };
+}
+
+// «Άλλος προορισμός»: home with the search open. The hidden field takes the focus now, inside the tap, so the phone
+// keyboard opens (as the search's touchend handler does); route() hands it to the real field.
+function tripOtherDest() {
+  kbProxy.focus({ preventScroll: true });
+  searchAfterRoute = true;
+  navigate('#/');
+}
+
 // ---------------------------------------------------------------- router
 let view = null;
 let routeToken = 0;
@@ -660,7 +740,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', settings: 'full', report: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -672,11 +752,15 @@ function switchCity(id) {
 function teardown() {
   try { view?.destroy?.(); } catch (err) { console.error('[view destroy]', err); }
   view = null;
+  tripCtl?.abort();
+  tripCtl = null;
   map.highlightStop(null);
   map.clearMarkers('pin');
 }
 async function route() {
   const token = ++routeToken;
+  const wantSearch = searchAfterRoute;
+  searchAfterRoute = false;
   const { city: hashCity, rel, parts, params } = parseHash(location.hash);
   // A link into the other city (pasted, shared, history): the page is per city, so remember it and reload on that hash.
   if (hashCity && hashCity !== cityId()) { setSetting('city', hashCity); location.reload(); return; }
@@ -767,8 +851,41 @@ async function route() {
       focusPt = p;
       break;
     }
+    case 'trip': {
+      let dest, back;
+      if (params.stop != null) {
+        const stop = data.stopByCode.get(String(params.stop));
+        if (!stop) {
+          content.replaceChildren(h('div', { class: 'view-head' }, backBtn(), h('h1', {}, t('Η στάση δεν βρέθηκε'))));
+          break;
+        }
+        dest = { lat: stop.lat, lng: stop.lng, name: stop.displayName };
+        back = `#/stop/${encodeURIComponent(stop.code)}`;
+        map.highlightStop(stop.code);
+      } else {
+        const p = parsePt(`${params.lat},${params.lng}`);
+        if (!p) { ctx.navigate('#/'); break; }
+        dest = { ...p, name: String(params.name || '').trim().slice(0, 80) || pinName() };
+        back = `#/pin?lat=${p.lat.toFixed(5)}&lng=${p.lng.toFixed(5)}`;
+        map.setMarkers('pin', [{ ...p, kind: 'pin' }]); // teardown() clears it
+      }
+      document.title = `${t('Διαδρομή')} · ${title()}`;
+      map.flyTo(dest, 16); // once; focusPt stays null until TEL-295 fits the whole trip
+      const plan = makeTripPlan(dest, back);
+      const lineFor = (code) => data.lineByCode.get(String(code));
+      await mount(() => import('./trip-view.js'), (m) => m.mountTrip(content, ctx, {
+        dest: dest.name, plan, lineFor, onBack: () => navigate(back), onOtherDest: tripOtherDest,
+      }));
+      break;
+    }
     default:
       view = mountHome(content, ctx);
+  }
+  if (wantSearch && currentHead === '' && token === routeToken) {
+    openSearch();
+    clearTimeout(kbHandoff);
+    kbHandoff = setTimeout(() => searchInput.focus({ preventScroll: true }), 320); // the sheet's up spring has settled
+    return;
   }
   if (booted && (document.activeElement === document.body || !document.activeElement)) sheet.body.focus({ preventScroll: true });
 }

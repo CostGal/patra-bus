@@ -31,6 +31,7 @@ const SCREENS = [
   { id: 'stop-nosvc', url: '/?demo=nosvc#/stop/1011' },
   { id: 'corfu-stop', url: '/?demo#/corfu/stop/801' },
   { id: 'lines', url: '/?demo#/lines', scroll: 1 },
+  { id: 'trip', url: '/?demo#/trip?stop=1011', scroll: 1 },
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
   { id: 'report', url: '/?demo#/report', scroll: 1 },
