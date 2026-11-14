@@ -52,12 +52,18 @@ export const SKIP_SETUP = () => {
   } catch { /* no storage */ }
 };
 
+// The boot screen (TEL-255) would add ~1 s to every test that opens home: mark it as seen for this tab.
+// `test.use({ boot: true })` leaves it out, for the boot screen's own tests.
+export const SKIP_BOOT = () => { try { sessionStorage.setItem('patra-bus:boot', '1'); } catch { /* no storage */ } };
+
 // `net` is set up before the page exists, so even the first request is covered. Uncaught page errors fail the test.
 export const test = base.extend({
   firstRun: [false, { option: true }],
+  boot: [false, { option: true }],
   net: async ({ context, baseURL }, use) => { await use(await mockNetwork(context, baseURL)); },
-  page: async ({ page, net, firstRun }, use) => {
+  page: async ({ page, net, firstRun, boot }, use) => {
     if (!firstRun) await page.addInitScript(SKIP_SETUP);
+    if (!boot) await page.addInitScript(SKIP_BOOT);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await use(page);

@@ -37,7 +37,7 @@ export function openWelcome() {
   const card = h('div', { class: 'wl-card' },
     h('div', { class: 'wl-emblem', 'aria-hidden': 'true' },
       h('span', { class: 'wl-ring', style: '--i:0' }), h('span', { class: 'wl-ring', style: '--i:1' }), h('span', { class: 'wl-ring', style: '--i:2' }),
-      h('span', { class: 'wl-disc' }, icon('bus')),
+      h('img', { class: 'wl-logo', src: 'icon.svg', alt: '', width: '84', height: '84' }),
       h('span', { class: 'wl-heart' }, icon('heart'))),
     h('p', { ...stagger(0), class: 'wl-in wl-kicker' }, t('Πρώτοι δοκιμαστές')),
     h('h2', { ...stagger(1), class: 'wl-in wl-title', id: 'wl-title' }, t('Ευχαριστούμε που είσαι εδώ')),

@@ -125,6 +125,7 @@ export const UI = [
   { id: 'D9', nick: 'text', name: 'Κείμενο (αναφορά)', sel: '.rp-text' },
   { id: 'D10', nick: 'email', name: 'Email (αναφορά)', sel: '.rp-input[type=email]' },
   { id: 'D11', nick: 'send', name: 'Αποστολή (αναφορά)', sel: '.rp-submit' },
+  { id: 'D12', nick: 'boot screen', name: 'Οθόνη εκκίνησης (λογότυπο σε κίνηση, TEL-255)', sel: '#boot' },
 ];
 
 // Screens of the annotated sweep (hash appended to <base>/?demo…). `act` puts the screen in its state (menu open…).
@@ -149,6 +150,7 @@ export const UI_SCREENS = [
   { id: 'report', url: '/?demo#/report' },
   { id: 'setup', url: '/?demo&setup#/' },
   { id: 'welcome', url: '/?demo&welcome#/' },
+  { id: 'boot', url: '/?demo&boot=hold#/' },
 ];
 
 // Runs in the page. Finds every visible match of the registry and anything pressable that is not in it (red "?").

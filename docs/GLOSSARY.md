@@ -43,6 +43,10 @@ My words:
 Where it shows up in Telematica: the Blocks database in Notion (e.g. «B0 · Θεμέλια»); the one with Κατάσταση = Τρέχον is the current one, and the `/block` pane, `/quick-task` and `/plan-week` all read it (TEL-201). It replaced two-week sprints on 2026-10-28.
 My words:
 
+**Boot screen** (splash): the short picture an app shows while it starts, like the logo before a film begins.
+Where it shows up in Telematica: about 1 s of the logo in motion on a cold start at home (`#boot`, `css/boot.css`, `boot.js`, TEL-255).
+My words:
+
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
 Where it shows up in Telematica: each city's area in `web/js/cities.js`; `inArea()` in `geo.js` checks a point against it, e.g. to drop a live bus position that lands outside the city (`api.js`); `cityAt()` in `web/js/city-detect.js` uses the boxes to tell which city the user is in (TEL-142).
 My words:
@@ -329,6 +333,10 @@ My words:
 
 **Skill** (slash command): a saved set of instructions Claude Code loads when you type its name, like a recipe card you hand the cook.
 Where it shows up in Telematica: `/plan-week` and `/task TEL-<id>` in `.claude/skills/`, both following `docs/WORKFLOW.md`.
+My words:
+
+**sessionStorage**: like localStorage, but the note is thrown away when the tab or the app is closed.
+Where it shows up in Telematica: `patra-bus:boot`, so the boot screen shows once per start and not after a reload (TEL-255).
 My words:
 
 **Specificity** (CSS): how CSS picks a winner when two rules set the same thing on one element: the more precise rule wins, and between two equally precise ones the later one wins, like two notes on the fridge where the more detailed one counts, or else the newer one.

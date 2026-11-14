@@ -43,13 +43,14 @@ export const STEPS = 3;
 const SETTLE = { damping: 1, response: 0.4 };
 
 // Resolves when the setup closes; null when it does not show. ctx: { data } for the sample tiles' line colours.
-export function maybeSetup({ bootHome, ctx } = {}) {
+export function maybeSetup({ bootHome, ctx, after } = {}) {
   const preview = /[?&]setup\b/.test(globalThis.location?.search || '');
   if (!shouldSetup({ seen: getSettings().setupDone === true, preview, bootHome })) return null;
   if (!preview) { // set on show, not on close: a reload mid-way must not bring it back.
     setSetting('setupDone', true);
   }
-  return new Promise((resolve) => openSetup({ ctx, onClosed: resolve }));
+  // `after` (the boot screen leaving, TEL-255): the flags above are set at once, the dialog opens when it resolves.
+  return Promise.resolve(after).then(() => new Promise((resolve) => openSetup({ ctx, onClosed: resolve })));
 }
 
 export function openSetup({ ctx = {}, onClosed } = {}) {
