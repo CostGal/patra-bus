@@ -79,6 +79,9 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   (`.g-circle`): 38 px, 41% white (dark: 10.5%), a bright top edge and rim, a faint shadow (light 14%, dark 25%), blur
   3.4 px at low growing to 3.9 px from mid (saturate 180%). Elsewhere (not yet aligned to this target): the floating
   controls 7 px, menus and dialogs 9 px.
+  **Setup dialog** (TEL-247) follows the target: the stop card's 16 px inset, radii 28 → 20 → 12, the kit's header
+  (back `.g-circle` · progress pill · skip `.g-circle`) and one full-width `.g-pill.primary`, no divider line. The card
+  rises from below the screen's bottom edge on the shared spring and never fades (U12); only the scrim does.
   **Mid fits the view** (TEL-224, TEL-227): on a stop it ends a third into the second arrival (the first whole, about
   30–35% of the next card says the list goes on, as in Apple Maps); on home, under its card; 35–60% of the screen, and
   it follows as the content loads.
@@ -146,6 +149,13 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - `prefers-reduced-motion: reduce` → springs become short opacity cross-fades (≤ 200 ms), no overshoot, no sliding/parallax.
   Feedback stays, motion doesn't.
 - Theme changes ease (no abrupt brightness jumps).
+
+**Boot screen** (TEL-255, `css/boot.css`, variant C chosen by Kostas 2026-11-13): the one place where the app plays a
+fixed timeline: about 1.5 s of keyframes on `transform` and `opacity` only, on separate HTML layers so the compositor runs
+them while the app loads (the LIVE dot pulses and opens into the tile, the bus rises in, headlights, wordmark, BETA). The
+springs are CSS `linear()` curves with `cubic-bezier` fallbacks. It sits over an opaque `--background` that joins
+Android's splash. A tap always skips it, and it never covers a deep link. With reduced motion:
+the last frame, at least 500 ms, then a 180 ms fade. Its artwork copies `icon.svg`.
 
 ## 8. Principles we check every screen against
 Purpose (every element earns its place), simplicity over minimalism (common path first, advanced one level deeper),

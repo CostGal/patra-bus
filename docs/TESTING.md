@@ -37,7 +37,7 @@ Specs in `tests/e2e/`:
 
 `tests/e2e/mock.mjs` routes every request. The `web/` static origin is real. `http://localhost:8787/api/{city}/live/{code}` is answered from the fixture, passed through the same `normalizeLive` as the worker, with `fetchedAt` = now. Any other worker route gets 404. Every other origin (citybus.gr, the deployed worker, OpenFreeMap, OSRM, Photon) is aborted and recorded. After each test it fails if a call to `citybus.gr` or `workers.dev` was attempted, or if the page threw an uncaught error.
 
-`mock.mjs` also writes `setupDone` into the store before the page loads, so the setup does not cover other tests. A spec that wants it uses `test.use({ firstRun: true })`.
+`mock.mjs` also writes `setupDone` into the store before the page loads, so the setup does not cover other tests. A spec that wants it uses `test.use({ firstRun: true })`. In the same way it sets `sessionStorage['patra-bus:boot']`, so the boot screen (TEL-255) does not add a second to every test; `boot.spec.mjs` uses `test.use({ boot: true })`. The signal that a screen has loaded is `#sheet-content` without `aria-busy`, not a «Φόρτωση…» text.
 
 ### Fixtures
 
@@ -56,13 +56,14 @@ Open `http://localhost:8080/` after `npm run dev:web`. No worker is needed.
 - `/?demo#/stop/1011`: simulated arrivals for every stop.
 - `?demo=nosvc`: no service. `?demo=error`: upstream error. `?demo=stale`: answers 90 s old, so LIVE tiles age.
 - `?setup` previews the first-run setup, `?welcome` the testers' welcome. Neither changes the stored flags.
+- `?boot` shows the boot screen on any hash; `?boot=hold` keeps its last frame until a tap (`?boot&setup`, `?boot&welcome` show the order).
 - `?debug` exposes `window.__app`.
 
 ## Screenshots
 
 `npm run shots` takes key screens in `?demo` with the smoke-test mocks, so it checks layout only. Map tiles are blocked (the map area is empty), fonts are the computer's, and touch feel, push, install, GPS and speed still need a real phone (see `CLAUDE.md`).
 
-Flags: `--device="iPhone SE,Pixel 7"`, `--lang=el|en`, `--theme=light|dark`, `--screen=stop,settings`, `--base=<preview URL>`, `--web=<other checkout>/web`, `--chromium=<path>` (or env `CHROMIUM_PATH`). Output goes to `shots/` with `SUMMARY.md`. All combinations take about 6 minutes. The `setup` screen is included.
+Flags: `--device="iPhone SE,Pixel 7"`, `--lang=el|en`, `--theme=light|dark`, `--screen=stop,settings`, `--base=<preview URL>`, `--web=<other checkout>/web`, `--chromium=<path>` (or env `CHROMIUM_PATH`). Output goes to `shots/` with `SUMMARY.md`. All combinations take about 6 minutes. The `setup` and `boot` (held on its last frame) screens are included.
 
 `npm run shots -- --annotate` makes a numbered UI map for reviews: each element has a permanent ID and a nick from `scripts/ui-map.mjs`, output in `shots/ui-map/` with `LEGEND.md` and `explorer.html` (click an element to see its name). Its rules are in `docs/DESIGN.md` section 9.
 

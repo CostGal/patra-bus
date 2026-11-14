@@ -31,10 +31,12 @@ const SCREENS = [
   { id: 'stop-nosvc', url: '/?demo=nosvc#/stop/1011' },
   { id: 'corfu-stop', url: '/?demo#/corfu/stop/801' },
   { id: 'lines', url: '/?demo#/lines', scroll: 1 },
+  { id: 'trip', url: '/?demo#/trip?stop=1011', scroll: 1 },
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
   { id: 'report', url: '/?demo#/report', scroll: 1 },
   { id: 'setup', url: '/?demo&setup#/', steps: 2 },
+  { id: 'boot', url: '/?demo&boot=hold#/' }, // boot screen (TEL-255), held on its last frame
 ];
 
 const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith('--')).map((a) => { const [k, ...v] = a.slice(2).split('='); return [k, v.join('=') || 'true']; }));
@@ -60,7 +62,7 @@ async function startServer() {
 }
 
 // The app picks its language from settings (default 'auto' follows the phone), so the blob is written before the app starts.
-const seed = (lang) => `try { if (!localStorage.getItem('patra-bus:v2')) localStorage.setItem('patra-bus:v2', JSON.stringify({ v: 3, favorites: [], recents: { stop: [], place: [] }, settings: { lang: '${lang}', setupDone: true } })); } catch {}`;
+const seed = (lang) => `try { if (!localStorage.getItem('patra-bus:v2')) localStorage.setItem('patra-bus:v2', JSON.stringify({ v: 3, favorites: [], recents: { stop: [], place: [] }, settings: { lang: '${lang}', setupDone: true } })); } catch {} try { sessionStorage.setItem('patra-bus:boot', '1'); } catch {}`; // no boot screen unless ?boot
 
 const launched = new Map();
 async function browserFor(device, notes) {
@@ -93,7 +95,7 @@ async function capture(context, base, screen, dir, summary) {
   const problems = [];
   page.on('pageerror', (e) => problems.push(`error: ${e.message}`));
   await page.goto(base + screen.url);
-  await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !/Φόρτωση…|Loading…/.test(c.textContent || ''); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
+  await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !c.hasAttribute('aria-busy'); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
   await page.waitForTimeout(args.map ? 2500 : 500); // --map: give the tiles time to draw
   if (ANNOTATE) {
     if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }

@@ -37,7 +37,7 @@ export function stopPlaces(data, q, { near, limit = 4 } = {}) {
     const lines = [...g.lines].sort((a, b) => a.localeCompare(b, 'el', { numeric: true }));
     const shown = lines.slice(0, 5).join(' · ') + (lines.length > 5 ? ' …' : '');
     return {
-      place: { kind: 'stop', name: stop.displayName, subtitle: t('Στάση {code}', { code: stop.code }) + (shown ? ` · ${shown}` : ''), lat: stop.lat, lng: stop.lng, stopCode: stop.code },
+      place: { kind: 'stop', name: stop.displayName, subtitle: t('Στάση {code}', { code: stop.code }) + (shown ? ` · ${shown}` : ''), lat: stop.lat, lng: stop.lng, stopCode: stop.code, stopKey: key },
       prefix: key.startsWith(k) || stop.code === q.trim() ? 0 : 1, dist: haversine(ref, stop),
     };
   });
@@ -227,6 +227,15 @@ export async function searchPlaces(q, { near, signal, data, limit = 8 } = {}) {
   const places = rankExact(q, mergePlaces(local, remote)).slice(0, limit);
   places.offline = offline;
   return places;
+}
+
+// TEL-302: the places to show under «Τόποι» when `stops` are already shown under «Στάσεις». A stop place is
+// dropped when its code or its name (both sides of a road share it) is already there; then the list is cut,
+// so a duplicate never takes a slot.
+export function withoutShownStops(places, stops, limit = 6) {
+  const codes = new Set(stops.map((s) => String(s.code)));
+  const keys = new Set(stops.map((s) => s.key));
+  return places.filter((p) => !(p.kind === 'stop' && (codes.has(String(p.stopCode)) || keys.has(p.stopKey)))).slice(0, limit);
 }
 
 // TEL-161: a Photon place whose name is the query (or starts with it) gets `exact: true` and goes before the

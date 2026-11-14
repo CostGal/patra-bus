@@ -43,6 +43,10 @@ My words:
 Where it shows up in Telematica: the Blocks database in Notion (e.g. «B0 · Θεμέλια»); the one with Κατάσταση = Τρέχον is the current one, and the `/block` pane, `/quick-task` and `/plan-week` all read it (TEL-201). It replaced two-week sprints on 2026-10-28.
 My words:
 
+**Boot screen** (splash): the short picture an app shows while it starts, like the logo before a film begins.
+Where it shows up in Telematica: about 1 s of the logo in motion on a cold start at home (`#boot`, `css/boot.css`, `boot.js`, TEL-255).
+My words:
+
 **Bounding box** (bbox): a rectangle on the map given by four edges (west, south, east, north), like the frame you draw in pencil around a city on a paper map.
 Where it shows up in Telematica: each city's area in `web/js/cities.js`; `inArea()` in `geo.js` checks a point against it, e.g. to drop a live bus position that lands outside the city (`api.js`); `cityAt()` in `web/js/city-detect.js` uses the boxes to tell which city the user is in (TEL-142).
 My words:
@@ -175,6 +179,10 @@ My words:
 Where it shows up in Telematica: Playwright runs Chromium this way for the smoke tests and for `npm run shots`.
 My words:
 
+**Headway**: how often buses of one line pass a stop, like the "every 15 minutes" on a timetable.
+Where it shows up in Telematica: when the second bus of a change is not listed yet, `trip.js` uses the gap between the listed buses to show "wait up to about N′" (TEL-292).
+My words:
+
 **Health check**: a small address a service answers with "I'm alive, and this is my state", like a nurse who takes your pulse before the doctor comes in.
 Where it shows up in Telematica: `GET /health` of the Worker (`worker/src/index.js`) returns `ok`, the time and `tokenExp` per city.
 My words:
@@ -195,6 +203,14 @@ My words:
 Where it shows up in Telematica: the likely permanent legal form for the software company (TEL-1); nothing is registered yet.
 My words:
 
+**Interpolation**: guessing a missing value from the known ones on each side, like guessing house 15 sits halfway between 11 and 19.
+Where it shows up in Telematica: considered for house numbers missing from OpenStreetMap (TEL-287 research); low value today, since most streets have zero or one known number.
+My words:
+
+**Itinerary**: one complete way to get from A to B, made of legs one after the other, like a printed travel plan: walk, bus, walk.
+Where it shows up in Telematica: each result of the trip planner (`web/js/trip.js`, TEL-290); at most 3 per search.
+My words:
+
 **JWT** (JSON Web Token): a signed pass with an expiry time written inside, like a concert wristband with a printed date.
 Where it shows up in Telematica: the citybus token is a JWT valid 48 h; the Worker reads its expiry (`jwtExp` in `worker/src/index.js`).
 My words:
@@ -209,6 +225,10 @@ My words:
 
 **Leaver** (good leaver / bad leaver): someone who leaves the company. A good leaver keeps what they already earned; a bad leaver loses part of it, like leaving a job with notice versus walking out mid-shift.
 Where it shows up in Telematica: the founders' proposal (TEL-1) defines both cases for vesting.
+My words:
+
+**Leg**: one piece of an itinerary done one way, on foot or on one bus, like one stage of a relay race.
+Where it shows up in Telematica: `trip.js` builds walk and bus legs; the walking legs may ask OSRM for the real route (CLAUDE.md rule 6).
 My words:
 
 **License**: a text that tells everyone what they may do with your code, like a sign in a park ("you may walk", "no picking flowers"). Permissive licenses (MIT, Apache-2.0) allow almost anything; copyleft ones (GPL) require sharing back; with no license, nobody has permission.
@@ -315,6 +335,10 @@ My words:
 Where it shows up in Telematica: `/plan-week` and `/task TEL-<id>` in `.claude/skills/`, both following `docs/WORKFLOW.md`.
 My words:
 
+**sessionStorage**: like localStorage, but the note is thrown away when the tab or the app is closed.
+Where it shows up in Telematica: `patra-bus:boot`, so the boot screen shows once per start and not after a reload (TEL-255).
+My words:
+
 **Specificity** (CSS): how CSS picks a winner when two rules set the same thing on one element: the more precise rule wins, and between two equally precise ones the later one wins, like two notes on the fridge where the more detailed one counts, or else the newer one.
 Where it shows up in Telematica: in TEL-268, moving the `.g-circle` rules into `css/ui-kit.css` (which loads later) let them beat `.stopv .btn.round .icon`, and the stop card's icons went from 22 px to the 20 px of rule U3.
 My words:
@@ -341,6 +365,10 @@ My words:
 
 **tokenExp**: the moment the saved citybus token stops working, like the expiry date printed on a visitor badge.
 Where it shows up in Telematica: `/health` returns it per city, read from the KV key `token/{city}`; it is `null` when no token is saved (`worker/src/index.js`).
+My words:
+
+**Transfer**: getting off one bus and onto another to finish a trip, like changing trains at a station.
+Where it shows up in Telematica: the planner allows direct trips or one transfer, no more (`trip.js`, TEL-292); the walk between the two stops is short or none.
 My words:
 
 **Transliteration**: writing a word with the letters of another alphabet, like your name in Latin letters on a passport.

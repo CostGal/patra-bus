@@ -5,7 +5,7 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  searchPlaces, mapPhoton, queryNumber, stripNumber, numberMatches, latinToGreek, streetPlace, rankExact,
+  searchPlaces, mapPhoton, queryNumber, stripNumber, numberMatches, latinToGreek, streetPlace, rankExact, withoutShownStops,
 } from '../web/js/geocode.js';
 import { searchKey } from '../web/js/text.js';
 import { city } from '../web/js/cities.js';
@@ -183,6 +183,26 @@ test('rankExact: approximate places and stops never count as exact; order otherw
   const out = rankExact('Ερμού', places);
   assert.deepEqual(out.map((p) => p.name), ['Ερμού 5', 'Ερμού', 'Ερμού', 'Πλατεία Ερμού']);
   assert.deepEqual(out.map((p) => !!p.exact), [true, false, false, false]);
+});
+
+test('TEL-302: «Τόποι» never repeat a stop shown under «Στάσεις», even from the other side of the road', async () => {
+  const key = searchKey('ΠΑΝΕΠΙΣΤΗΜΙΟΥ & ΑΡΕΘΑ');
+  const sideA = { code: '1011', key, displayName: 'Πανεπιστημίου & Αρέθα', lat: 38.2600, lng: 21.7500, lineCodes: ['201'] };
+  const sideB = { code: '1012', key, displayName: 'Πανεπιστημίου & Αρέθα', lat: 38.2601, lng: 21.7501, lineCodes: ['606'] };
+  const other = { code: '2000', key: searchKey('ΠΑΝΕΠΙΣΤΗΜΙΟΥ'), displayName: 'Πανεπιστημίου', lat: 38.2700, lng: 21.7600, lineCodes: ['609'] };
+  // «Στάσεις» shows side A only; «Τόποι» picks the nearest side, which is B.
+  const places = await searchPlaces('Πανεπιστημίου', { data: { stops: [sideA, sideB, other] }, near: { lat: 38.2602, lng: 21.7502 } });
+  const grouped = places.find((p) => p.stopKey === key);
+  assert.equal(grouped.stopCode, '1012');
+  const shown = withoutShownStops(places, [sideA], 6);
+  assert.ok(!shown.some((p) => p.stopKey === key), 'same name, other code: dropped');
+  assert.ok(shown.some((p) => p.stopCode === '2000'), 'a stop not shown yet stays');
+
+  // The cut comes after the filter: duplicates never take a slot.
+  const many = [{ kind: 'stop', stopCode: '1011', stopKey: key }, ...Array.from({ length: 7 }, (_, i) => ({ kind: 'place', name: `Τόπος ${i}` }))];
+  const cut = withoutShownStops(many, [sideA], 6);
+  assert.equal(cut.length, 6);
+  assert.ok(cut.every((p) => p.kind === 'place'));
 });
 
 test('cache: the street request is shared by two unknown numbers', async () => {
