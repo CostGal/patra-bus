@@ -106,8 +106,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 
 **Home** (TEL-232, Apple Maps search mode, follows §10): low = grabber 5 px from the top, the search 8 px under it and 10 px of room
   under it (70 px card; the side panel keeps its own padding); mid = Places (the card's glass circle, `.g-circle`, at 48 px with its label under it, pressed like every
-  round button: Σπίτι, Δουλειά, your own, "+"; a place not set yet has a dimmed icon and opens the Settings on it, until
-  its own panel in the sheet replaces that), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
+  round button: Σπίτι, Δουλειά, your own, "+"; a place not set yet, and "+", open its own panel in the sheet, up
+  (`#/place`, TEL-239: ✕ · title · blue ✓, the grey search, «Προτάσεις»); touch & hold on a set place: «Διαδρομή / Αλλαγή / Διαγραφή»), then Recents, the 1st whole and the 2nd 20% in (mid is capped at
   60% of the screen, so the rows above stay compact); up = favourites with their next arrival (LIVE / ΠΡΟΓΡ., polled only while up,
   4 stops, the rest "Δες αφίξεις"). A set place opens the stops around it. No saved-place chips float over the map any more: Places show only in the sheet, at mid and up.
 

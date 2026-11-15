@@ -774,7 +774,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', place: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 function switchCity(id) {
@@ -871,6 +871,10 @@ async function route() {
     case 'report':
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
       await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx }));
+      break;
+    case 'place': // TEL-239: set Σπίτι, Δουλειά or a new place in the sheet
+      document.title = `${t('Μέρη')} · ${title()}`;
+      await mount(() => import('./place-view.js'), (m) => m.mountPlace(content, ctx, { id: String(params.id || 'new') }));
       break;
     case 'favorites':
       document.title = `${t('Αγαπημένες στάσεις')} · ${title()}`;
