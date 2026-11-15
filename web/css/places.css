@@ -11,3 +11,20 @@
 .plc-result { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; text-align: left; cursor: pointer; }
 .plc-result:hover { background: var(--card); }
 .plc-result-name { font-weight: 600; }
+
+/* ---- the place panel in the sheet (TEL-239, js/place-view.js): ✕ · title · ✓ (DESIGN.md §10), the grey capsule, results ---- */
+.plc-view { display: grid; gap: var(--space-3); }
+.sheet-content .plc-view .plc-title { text-align: center; } /* two classes: .sheet-content h1 sets the font (DESIGN §10) */
+.plc-head .btn.round.g-circle.plc-ok, html.glass .plc-head .btn.round.g-circle.plc-ok { background: var(--primary); color: var(--primary-foreground); }
+.plc-head .btn.round.g-circle.plc-ok:disabled { opacity: .4; cursor: default; }
+.plc-field { flex: none; }
+.plc-list { margin-inline: calc(-1 * var(--space-4)); }
+.plc-sr { width: 100%; border: 0; background: none; font: inherit; text-align: left; }
+.plc-sr .sr-name, .plc-sr .sr-sub { display: block; }
+.plc-sr[aria-selected="true"] .sr-ico { background: var(--primary); color: var(--primary-foreground); }
+.plc-sr:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+
+/* ---- the touch & hold menu of a set place on the home (TEL-239, js/home-view.js), the app's .pop ---- */
+.hm-place.is-set { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } /* no iOS link preview or text selection on hold */
+.hm-menu { min-width: 200px; }
+.hm-menu .pop-item.is-danger, .hm-menu .pop-item.is-danger .icon { color: var(--destructive); }

@@ -95,6 +95,7 @@ const SHELL = [
   'js/i18n-en-trip.js',
   'js/home-view.js',
   'js/places.js',
+  'js/place-view.js',
   'js/platform.js',
   'js/report.js',
   'js/report-view.js',

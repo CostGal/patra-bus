@@ -35,6 +35,7 @@ with an optional city prefix: `#/corfu/stop/801`.
 | `#/line/{code}?dir=&route=` | `lines-view.js` | one line on the map with its stops | 705 |
 | `#/favorites` | `app.js` (`mountFavorites`) | saved stops | 717 |
 | `#/pin?lat=&lng=` | `app.js` (`mountPin`) | stops within 1.5 km of a long-pressed point | 721 |
+| `#/place?id=home\|work\|new\|<id>` | `place-view.js` | set or change a saved place in the sheet (TEL-239) | — |
 | `#/settings` | `settings-view.js` | settings, data, about, credits | 709 |
 | `#/report` | `report-view.js` | problem report form | 713 |
 
@@ -200,8 +201,8 @@ are main's and are refreshed then. The look and its rules: `docs/DESIGN.md` §4 
 **Home (TEL-232, Apple Maps search mode)** = map + the search in the sheet. Low: the search alone. Mid: Places
 (`mountPlacesRow`: Σπίτι, Δουλειά, up to 3 own places, "+") and the recents (mid ends 20% into the 2nd). Up: favourites with
 their next arrival live (`mountFavoritesLive`, polls only while the sheet is up). `js/home-view.js` + `css/home.css`;
-`mountHome` in `app.js` lays them out. A set place opens the stops around it (`#/pin`), an empty one opens
-`#/settings?section=home`. `mountNearby` is not mounted on the home.
+`mountHome` in `app.js` lays them out. A set place opens the stops around it (`#/pin`), an empty one and "+" open
+`#/place?id=…` (`place-view.js`, TEL-239); touch & hold on a set place opens «Διαδρομή / Αλλαγή / Διαγραφή». `mountNearby` is not mounted on the home.
 
 **UI kit (TEL-268): `web/css/ui-kit.css`.** The shared pieces of the locked stop card style (`docs/DESIGN.md` §10,
 rules in `docs/UI-PROTOCOL.md`): `.g-circle`, `.g-pill`, `.card-head` + `.card-title`, `.sheet-inset`, each with its plain

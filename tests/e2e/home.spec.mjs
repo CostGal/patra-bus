@@ -20,7 +20,8 @@ test('home: Places as round buttons, then recents; mid ends 20% into the second 
   await expect(places).toHaveCount(4); // Σπίτι (set), Δουλειά (empty), Γυμναστήριο, +
   await expect(places.nth(0)).toHaveAttribute('href', /#\/pin\?lat=38\.24660&lng=21\.73460/);
   await expect(places.nth(1)).toHaveClass(/is-empty/);
-  await expect(places.nth(1)).toHaveAttribute('href', /#\/settings\?section=home/);
+  await expect(places.nth(1)).toHaveAttribute('href', /#\/place\?id=work/);
+  await expect(places.nth(3)).toHaveAttribute('href', /#\/place\?id=new/);
   await expect(places.nth(3)).toHaveClass(/is-add/);
   await expect(page.locator('.home-recents .stop-row')).toHaveCount(3);
   await page.evaluate(() => window.__app.sheet.snap('half', { animate: false }));
@@ -35,11 +36,34 @@ test('home: Places as round buttons, then recents; mid ends 20% into the second 
   expect(r.share).toBeLessThan(0.45);
 });
 
-test('home: the empty place opens the settings on the places section', async ({ page }) => {
+test('home: the empty place opens its panel in the sheet; ✓ saves it and goes back home (TEL-239)', async ({ page }) => {
   await seed(page);
   await page.goto('/?demo&debug#/');
   await page.locator('.hm-place.is-empty').click();
-  await expect(page.locator('details.set-sec[data-k="home"]')).toHaveJSProperty('open', true);
+  await expect(page).toHaveURL(/#\/place\?id=work/);
+  await expect(page.locator('.plc-title')).toHaveText('Όρισε τη Δουλειά');
+  const ok = page.locator('.plc-ok');
+  await expect(ok).toBeDisabled();
+  await page.locator('#plc-q').fill('Πανεπιστημίου');
+  await page.locator('.plc-sr').first().click();
+  await expect(ok).toBeEnabled();
+  await ok.click();
+  await expect(page.locator('.hm-place').nth(1)).toHaveClass(/is-set/);
+  const work = await page.evaluate(() => JSON.parse(localStorage.getItem('patra-bus:places')).find((p) => p.id === 'work'));
+  expect(work?.name).toBe('Δουλειά');
+});
+
+test('home: touch & hold on a set place opens «Διαδρομή / Αλλαγή / Διαγραφή» (TEL-239)', async ({ page }) => {
+  await seed(page);
+  await page.goto('/?demo&debug#/');
+  await page.locator('.hm-place.is-set').first().click({ button: 'right' });
+  const items = page.locator('.hm-menu .pop-item');
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(0)).toHaveAttribute('href', /#\/trip\?lat=38\.24660&lng=21\.73460/);
+  await expect(items.nth(1)).toHaveAttribute('href', /#\/place\?id=home/);
+  await items.nth(2).click();
+  await expect(page.locator('.hm-menu')).toHaveCount(0);
+  await expect(page.locator('.hm-place').nth(0)).toHaveClass(/is-empty/);
 });
 
 test('home: favourites show their next arrival only when the sheet is up', async ({ page }) => {

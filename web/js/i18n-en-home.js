@@ -9,4 +9,13 @@ export const PAIRS = [
   ['Όρισε: {name}', 'Set: {name}'],
   ['Καμία άφιξη αυτή την ώρα', 'No arrivals right now'],
   ['Φορτώνει…', 'Loading…'],
+  // TEL-239: the place panel (place-view.js) and the touch & hold menu of a set place
+  ['Όρισε το Σπίτι', 'Set Home'],
+  ['Όρισε τη Δουλειά', 'Set Work'],
+  ['Νέο μέρος', 'New place'],
+  ['Αλλαγή: {name}', 'Change: {name}'],
+  ['Αποθήκευση', 'Save'],
+  ['Προτάσεις', 'Suggestions'],
+  ['Διαγραφή', 'Delete'],
+  ['Διαγράφηκε: {name}', 'Deleted: {name}'],
 ];
