@@ -8,8 +8,12 @@
 .hm-place .btn.round.g-circle { width: 48px; height: 48px; margin: 0; } /* §10's .g-circle, Apple-size for Places */
 .hm-place .btn.round.g-circle .icon { width: 22px; height: 22px; }
 .hm-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); font-weight: var(--weight-medium, 500); }
-.hm-place.is-empty .g-circle .icon { opacity: .45; } /* not set yet: the same glass circle, its icon dimmed */
-.hm-place.is-empty .hm-label, .hm-place.is-add .hm-label { color: var(--muted-foreground); }
+/* TEL-246, as in Apple Maps: a set place is a filled circle in the app's blue, held too (it darkens a little);
+   one not set yet keeps the glass circle and says «Προσθήκη» in blue under its name */
+.hm-place.is-set .btn.round.g-circle, html.glass .hm-place.is-set .btn.round.g-circle { background: var(--primary); color: var(--primary-foreground); }
+html.glass .hm-place.is-set .btn.round.g-circle.g-press { background: color-mix(in srgb, var(--primary) 85%, var(--foreground)); }
+.hm-place.is-add .hm-label { color: var(--muted-foreground); }
+.hm-add { margin-top: -6px; font-size: var(--text-xs, 12px); color: var(--primary); }
 .hm-place:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: var(--radius-md); }
 .home-recents > .home-section { margin-top: var(--space-2); }
 /* favourites: the stop row, its next arrival under it */

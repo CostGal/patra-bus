@@ -15,22 +15,24 @@ const PLACE_ICON = { home: 'home', work: 'briefcase' };
 const placeHash = (p) => cityHash(`#/pin?lat=${p.lat.toFixed(5)}&lng=${p.lng.toFixed(5)}`);
 
 // ---------------------------------------------------------------- Places: round buttons
-// Σπίτι and Δουλειά are always there (dimmed until set: a tap sets them in the settings), then your own places, then "+".
-// Each is the card's round glass button (.g-circle, DESIGN §10) at 48 px, its label under it; js/glass.js presses the circle.
+// Σπίτι and Δουλειά are always there, then your own places, then "+". As in Apple Maps (TEL-246): a set place is a filled
+// circle in the app's blue (.is-set); one not set yet keeps the glass circle and says «Προσθήκη» under its name (a tap
+// sets it in the settings). Each is the card's round button (.g-circle, DESIGN §10) at 48 px; js/glass.js presses the circle.
 export function mountPlacesRow(container) {
   const paint = () => {
     const saved = getPlaces().filter((p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng));
     const byId = new Map(saved.map((p) => [p.id, p]));
     const circle = (cls, ico, label, href, aria) => h('a', { class: `hm-place press ${cls}`, href, 'aria-label': aria || label },
-      h('span', { class: 'btn round g-circle', 'aria-hidden': 'true' }, icon(ico)), h('span', { class: 'hm-label' }, label));
+      h('span', { class: 'btn round g-circle', 'aria-hidden': 'true' }, icon(ico)), h('span', { class: 'hm-label' }, label),
+      cls === 'is-empty' ? h('span', { class: 'hm-add', 'aria-hidden': 'true' }, t('Προσθήκη')) : null);
     const slots = ['home', 'work'].map((id) => {
       const p = byId.get(id);
       const label = id === 'home' ? t('Σπίτι') : t('Δουλειά');
-      return p ? circle('', PLACE_ICON[id], label, placeHash(p), t('Στάσεις κοντά: {name}', { name: label }))
+      return p ? circle('is-set', PLACE_ICON[id], label, placeHash(p), t('Στάσεις κοντά: {name}', { name: label }))
         : circle('is-empty', PLACE_ICON[id], label, SETTINGS_PLACES(), t('Όρισε: {name}', { name: label }));
     });
     const custom = saved.filter((p) => !PLACE_ICON[p.id]);
-    const own = custom.map((p) => circle('', 'pin', placeLabel(p), placeHash(p), t('Στάσεις κοντά: {name}', { name: placeLabel(p) })));
+    const own = custom.map((p) => circle('is-set', 'pin', placeLabel(p), placeHash(p), t('Στάσεις κοντά: {name}', { name: placeLabel(p) })));
     const add = custom.length < MAX_CUSTOM ? [circle('is-add', 'plus', t('Νέο'), SETTINGS_PLACES(), t('Προσθήκη μέρους'))] : [];
     container.replaceChildren(h('h2', {}, t('Μέρη')), h('div', { class: 'hm-places' }, ...slots, ...own, ...add));
   };

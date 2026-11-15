@@ -185,6 +185,11 @@ html.glass .map-capsule > .fab.g-press {
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
 }
 html.glass .map-capsule .fab.g-ping::after { border-radius: inherit; }
+/* TEL-246: with one button (locate alone) the capsule is a circle of its own. Held, the button grows and leans to the
+   finger while the capsule stayed put: two circles. Now the capsule's glass steps aside and the held button is the glass */
+html.glass .map-capsule:has(> .fab:only-child.g-press) {
+  background: transparent; border-color: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
 
 /* the sheet handle: a more reactive pill. Held or dragged it widens, thickens and darkens inside a small glass capsule;
    js/glass.js ticks it each time a drag passes one of the three states (js/sheet.js) */
