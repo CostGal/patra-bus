@@ -52,7 +52,7 @@ jobs:
             staging|production) echo "target=$TARGET" >> "$GITHUB_OUTPUT" ;;
             *) echo "::error::Unknown target '$TARGET'"; exit 1 ;;
           esac
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: env.TARGET == 'production'
         with:
           fetch-depth: 0 # all branches and tags, to see whether the tag's commit is in main
