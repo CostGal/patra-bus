@@ -287,6 +287,7 @@ const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tr
 const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
 const ROW_ON = ':scope > .stopv-chips > .stopv-chip.on, :scope > .tripv-opts > .tripv-opt.on'; // not the bubble's copy
 const MORPH_MS = 240; // bubble -> pill: the lens's own transitions in css/glass.css
+const LENS_PAD = 7; // the lens reaches this much above and below its chip (css/glass.css: the capsule 9 px, 4 px around the lens)
 function watchChips() {
   let from = null; // where the lens was when a chip was pressed: the next rebuild moves it from there
   let bub = null; // the bubble while it is out: { bar, row, lens, copy, x, y, w, h, r, scroll, raf }
@@ -298,11 +299,13 @@ function watchChips() {
     const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); const s = b.width / (bar.offsetWidth || b.width) || 1;
     return { x: (a.left - b.left) / s, y: (a.top - b.top) / s, w: a.width / s, h: a.height / s };
   };
+  // the lens over a chip: 7 px taller above and below (the GitHub pill is 54 px over our 40 px chips, drawn only)
+  const pill = (el, bar) => { const b = rel(el, bar); return { x: b.x, y: b.y - LENS_PAD, w: b.w, h: b.h + 2 * LENS_PAD }; };
   const at = (d) => ({ x: d.x, y: d.y, w: d.w, h: d.h });
   const lensAt = (bar) => {
     if (bub && bub.bar === bar) return at(bub);
     const on = bar.querySelector(ROW_ON);
-    return on ? rel(on, bar) : null;
+    return on ? pill(on, bar) : null;
   };
 
   // the bubble: out of the lens at `pos`
@@ -336,9 +339,9 @@ function watchChips() {
     d.lens.style.translate = `${x}px ${d.y}px`;
     const b = d.lens.clientLeft; // the copy sits inside the lens's border
     d.copy.style.transform = `translate(${d.r.x - x - d.scroll - b}px, ${d.r.y - d.y - b}px)`;
-    // the hole in the row is as wide as the grown bubble (CSS scale 1.14: 7% more on each side)
-    d.row.style.setProperty('--hole-a', `${(x - d.r.x - d.w * 0.07).toFixed(1)}px`);
-    d.row.style.setProperty('--hole-b', `${(x - d.r.x + d.w * 1.07).toFixed(1)}px`);
+    // the hole in the row is as wide as the grown bubble (CSS scale 1.22: 11% more on each side)
+    d.row.style.setProperty('--hole-a', `${(x - d.r.x - d.w * 0.11).toFixed(1)}px`);
+    d.row.style.setProperty('--hole-b', `${(x - d.r.x + d.w * 1.11).toFixed(1)}px`);
   }
   // back into the pill where it is: with `morph`, it shrinks and fills first and the copy and hole go after (MORPH_MS);
   // without, at once (the row is about to be rebuilt, or a new bubble takes over in the same frame)
@@ -402,7 +405,7 @@ function watchChips() {
     const on = bar.querySelector(ROW_ON);
     if (!on) { lens.hidden = true; return; }
     lens.hidden = false;
-    const to = rel(on, bar);
+    const to = pill(on, bar);
     lens.style.width = `${to.w}px`;
     lens.style.height = `${to.h}px`;
     lens.style.translate = `${to.x}px ${to.y}px`;
@@ -412,7 +415,7 @@ function watchChips() {
   // the bubble goes back to the selected chip (a drag let go over it, or nothing was rebuilt after a pick)
   const home = (d) => {
     const on = d.bar.querySelector(ROW_ON);
-    if (on && bub === d) travel(d.bar, at(d), rel(on, d.bar)); else if (bub === d) close(true);
+    if (on && bub === d) travel(d.bar, at(d), pill(on, d.bar)); else if (bub === d) close(true);
   };
 
   document.addEventListener('pointerdown', (e) => {
@@ -423,7 +426,7 @@ function watchChips() {
     const on = bar.querySelector(ROW_ON);
     if (!on || chip !== on || !e.isPrimary || still) return;
     if (bub && bub.bar === bar) close(false); // a trip still running: the finger takes over the bubble
-    if (open(bar, rel(on, bar))) drag = { id: e.pointerId, x0: e.clientX, base: bub.x, moved: false };
+    if (open(bar, pill(on, bar))) drag = { id: e.pointerId, x0: e.clientX, base: bub.x, moved: false };
   }, { capture: true, passive: true });
   const rub = (over) => 14 * (1 - Math.exp(-over / 40)); // past the first or last chip: a few px more, harder and harder
   document.addEventListener('pointermove', (e) => {

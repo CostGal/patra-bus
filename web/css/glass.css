@@ -291,7 +291,7 @@ html.glass-fx .g-lens {
 }
 html.glass-fx .g-lens[hidden] { display: none; }
 html.glass-fx .g-lens.g-held {
-  z-index: 2; scale: 1.14 1.32;
+  z-index: 2; scale: 1.22 1.35; /* as the GitHub app's bubble: 97×54 pt pill -> 119×73 (measured, TEL-315) */
   /* clear, like the GitHub app's tab bar: the real chips under it are cut out of the row (.g-holding below), so only
      the magnified copy shows, never both */
   background: color-mix(in srgb, var(--g-card) 14%, transparent);
@@ -332,7 +332,21 @@ html.glass.glass-fx .stopv-chipbar::after, html.glass.glass-fx .tripv-optbar::af
   content: ''; position: absolute; z-index: -1; inset: 0; height: auto; pointer-events: none; border-radius: var(--radius-full); /* height: the stop bar's old fade below set 12 px */
   background: color-mix(in srgb, var(--g-card) 34%, transparent); border: var(--g-line);
   box-shadow: inset 0 1px 0 var(--g-edge), 0 4px 14px rgba(0, 0, 0, .12); opacity: var(--l, 1);
+  transition: background-color .2s ease;
 }
+/* bubble out: the whole capsule lights up a little (GitHub: rgb 21,25,31 -> 33,37,45) */
+html.glass.glass-fx .g-grown::after { background: color-mix(in srgb, var(--g-card) 58%, transparent); }
+/* sizes from the GitHub app's tab bar (measured in Kostas's recording, 3 px = 1 pt): capsule 62 px tall, the pill 54
+   with 4 px around it, so the pill is tall, not flat. Drawn only: the chips keep their 40 px box (the stop's fold at
+   low and the tap areas stay as they are); the capsule reaches 9 px above and below the bar, and the lens 7 px above
+   and below its chip (LENS_PAD in js/glass.js). Sideways, the first and last chip sit 4 px in from the capsule */
+html.glass.glass-fx .stopv-chipbar::after, html.glass.glass-fx .tripv-optbar::after { inset: -9px 0; }
+html.glass.glass-fx .sheet .stopv-chips { padding-inline: 10px; } /* with its -6 px margins */
+html.glass.glass-fx .tripv-opts { padding-inline: 4px; }
+html.glass.glass-fx .tripv-optbar::after { inset: -11px 0; } /* its bar is 40 px: 62 too */
+/* the line badges 15% bigger from mid, drawn only (scale, U8): at low they keep their size under the stop's name */
+html.glass.glass-fx .stopv-chips > .stopv-chip .badge { scale: calc(1 + var(--l, 1) * .15); }
+html.glass.glass-fx .stopv-chip[data-key="*"] { font-size: 1.0625rem; }
 html.glass.glass-fx .stopv-chips > .stopv-chip, html.glass.glass-fx .stopv-chips > .stopv-chip.on,
 html.glass.glass-fx .tripv-opts > .tripv-opt, html.glass.glass-fx .tripv-opts > .tripv-opt.on {
   background: transparent; border-color: transparent; box-shadow: none; transition: color .2s ease;
