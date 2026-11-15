@@ -40,7 +40,7 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
 | U13 | Between low and mid the map glides to the focus (the user in search mode, the stop or pin in location mode), and following the user stops. | eye |
 | U14 | Up from mid is quicker than the other moves (spring response 0.3). | auto |
 | U15 | The installed app keeps `apple-mobile-web-app-status-bar-style: default`. No `black-translucent` without a fix proven on a real iPhone. | auto |
-| U24 | A chip lens held on the selected chip turns into a clear bubble that follows the finger (`translate` only) and magnifies what is under it; released, it glides to the nearest chip in about 0.3 s and picks it. At rest it is a solid pill. Reduced motion: no bubble, no follow. | eye |
+| U24 | A chip lens held on the selected chip turns into a clear bubble that follows the finger (`translate` only) and magnifies what is under it, drawn as chosen; the real chips under it are hidden, so nothing shows twice; the row grows a little while held and the bubble gives a little past the first and last chip; released, it glides to the nearest chip in about 0.3 s and picks it. At rest it is a solid pill. Reduced motion: no bubble, no follow. | eye |
 
 ### Measuring in JS
 

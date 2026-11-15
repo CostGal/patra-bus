@@ -278,7 +278,11 @@ const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
 const SNAP_MS = 300; // a released drag glides to its chip (U24)
 function watchChips() {
   let from = null;
-  const rel = (el, bar) => { const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height }; };
+  // in the bar's own (unscaled) px: held, the bar grows a little (CSS `scale`), and the lens lives inside it
+  const rel = (el, bar) => {
+    const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); const s = b.width / (bar.offsetWidth || b.width) || 1;
+    return { x: (a.left - b.left) / s, y: (a.top - b.top) / s, w: a.width / s, h: a.height / s };
+  };
   let snap = false; // the next move comes from a released drag: a short glide, no stretch
   const place = (bar, animate) => {
     let lens = bar.querySelector(':scope > .g-lens');
@@ -340,6 +344,7 @@ function watchChips() {
     lens.append(copy);
     lens.style.transform = 'none';
     lens.classList.add('g-held');
+    bar.classList.add('g-holding'); // CSS: the bar grows a little, and the row gets a hole where the bubble is
     drag = { bar, row, lens, copy, id: e.pointerId, x0: e.clientX, base: at.x, x: at.x, y: at.y, w: at.w, h: at.h, r, scroll: row.scrollLeft, moved: false };
     follow(at.x);
   }
@@ -351,24 +356,36 @@ function watchChips() {
     d.lens.style.translate = `${x}px ${d.y}px`;
     const b = d.lens.clientLeft; // the copy sits inside the lens's border
     d.copy.style.transform = `translate(${d.r.x - x - d.scroll - b}px, ${d.r.y - d.y - b}px)`;
+    // the real chips under the bubble are hidden (a hole in the row's mask), so the bubble can stay clear and nothing
+    // shows twice; the hole is as wide as the grown bubble (CSS scale 1.14: 7% more on each side)
+    d.row.style.setProperty('--hole-a', `${(x - d.r.x - d.w * 0.07).toFixed(1)}px`);
+    d.row.style.setProperty('--hole-b', `${(x - d.r.x + d.w * 1.07).toFixed(1)}px`);
   }
+  const rub = (over) => 14 * (1 - Math.exp(-over / 40)); // past the first or last chip: a few px more, harder and harder
   document.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x0;
-    if (Math.abs(dx) > 4 && !drag.moved) { drag.moved = true; drag.bar.classList.add('g-dragging'); }
+    if (Math.abs(dx) > 4 && !drag.moved) {
+      drag.moved = true;
+      drag.bar.classList.add('g-dragging');
+      release(); // the chip it left lets go of its own press look (.g-press, grown): the bubble has moved on
+    }
     if (!drag.moved) return;
     const chips = [...drag.row.querySelectorAll(CHIP)].map((c) => rel(c, drag.bar));
     if (!chips.length) return;
     const min = Math.max(chips[0].x, drag.r.x);
     const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, drag.r.x + drag.r.w) - drag.w;
-    follow(Math.max(min, Math.min(max, drag.base + dx)));
+    const v = drag.base + dx;
+    follow(v > max ? max + rub(v - max) : v < min ? min - rub(min - v) : v);
   }, { passive: true });
   const letGo = (e, cancel) => {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
     d.lens.classList.remove('g-held');
-    d.bar.classList.remove('g-dragging');
+    d.bar.classList.remove('g-dragging', 'g-holding');
+    d.row.style.removeProperty('--hole-a');
+    d.row.style.removeProperty('--hole-b');
     d.copy.remove();
     d.lens.style.translate = '';
     d.lens.style.transform = `translate(${d.x}px, ${d.y}px)`;
