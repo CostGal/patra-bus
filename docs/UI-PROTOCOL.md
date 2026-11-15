@@ -27,6 +27,7 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
 | U5 | Low is one row, centred in the card, as tall as the buttons. Buttons and actions appear from mid. | auto |
 | U6 | Chips fill their row from mid, with the same inset (U2). At low they are the small badges under the name. | eye |
 | U7 | Glass is clear: a light tint and a light blur (DESIGN §4 "Glass target"). Light mode gets a little more shadow on buttons. | eye |
+| U25 | A row where you pick one of a few (the stop's line chips, the trip's options, a segmented control in Settings, the theme row in the menu, a line's directions) is one glass capsule with the lens of U24. The chips have no pill of their own: the lens is the only pill. Capsule 62 px tall, the pill 54, 4 px around it. With reduced transparency or more contrast: separate solid pills, no lens. | eye |
 
 ### Motion
 
@@ -62,7 +63,7 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
 
 ## Checklist for a PR that changes the UI
 
-- [ ] Every rule U1–U24 holds for what this PR touches, or the PR lists the exception and why.
+- [ ] Every rule U1–U25 holds for what this PR touches, or the PR lists the exception and why.
 - [ ] No new size, inset or colour where a kit class or token exists.
 - [ ] Shots attached (U21), elements named from the UI map (U22).
 - [ ] Device checks for Kostas written as a `device-test` issue (U23).
@@ -87,3 +88,4 @@ Kostas may try something that breaks the protocol:
 - **v0.2** (2026-11-10, TEL-269, Kostas): U4 at up lets a long name wrap to two lines (the header grows by that line
   only); low and mid keep the floor and "…".
 - **v0.3** (2026-11-15, TEL-315, Kostas): U24, the chip lens that follows the finger (like the iOS 26 tab bar).
+- **v0.4** (2026-11-15, TEL-334, Kostas): U25, every pick-one row is one glass capsule with the lens (from TEL-315).
