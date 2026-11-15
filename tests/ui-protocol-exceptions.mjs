@@ -19,6 +19,7 @@ export const STATIC_EXCEPTIONS = {
     'css/glass.css: html.glass .sheet::before { bottom }': 'same',
     'css/glass.css: html.glass .sheet-search { padding-left }': 'the search field makes room for ☰ up with padding (TEL-223)',
     'css/glass.css: html.glass .stopv-chip[data-key="*"] { max-width }': 'the stop\'s chips fold into badges at low with sizes and gaps, not with scale (TEL-227)',
+    'css/glass.css: html.glass .stopv-chip[data-key="*"] { min-width }': 'same: «All» is as wide as a line chip from mid (TEL-315) and folds away with them at low',
     'css/glass.css: html.glass .stopv-chip[data-key="*"] { padding-inline }': 'same',
     'css/glass.css: html.glass .stopv-chip[data-key="*"] { margin-right }': 'same',
     'css/glass.css: html.glass .stopv-chip[data-key="*"] { border-width }': 'same',
