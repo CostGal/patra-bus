@@ -345,6 +345,20 @@ html.sheet-dragging .toast-host { transition: none; }
 .view-head.root { margin-left: 0; }
 .view-head.root h1 { padding-left: 0; }
 
+/* Favourites header (TEL-250): the kit's .card-head placed as the vehicle's (css/extras.css .bv-head). Low and mid:
+   one row, the title 17 px centred. Towards up it grows as a transform (--u, U8); at up its own row, 24 px. */
+.fav-head { position: relative; margin: -5px 0 var(--space-2); } /* 13 px from the card's top at low, as the stop */
+/* low as the stop's (TEL-227): the grabber's tight area (css/glass.css), and 13 px under the row: sheet.js adds 10, this
+   3, and the 8 px the floating card's margin takes when there is no home bar */
+html.glass .sheet:has(.fav-view) .sheet-handle { height: 6px; padding-top: 5px; overflow: visible; }
+.fav-peek-end { position: absolute; left: 0; top: 100%; width: 1px; height: calc(3px + max(0px, 8px - env(safe-area-inset-bottom, 0px))); pointer-events: none; }
+.fav-head .fav-title.card-title { align-self: center; text-align: center; transform-origin: 50% 0; transform: scale(calc(1 + min(1, var(--u, 0) * 2) * (24 / 17 - 1))); }
+.fav-head.is-up .fav-title.card-title { grid-column: 1 / -1; grid-row: 2; padding-bottom: 4px; font-size: 1.5rem; line-height: 29px; /* U4: 24 px at up */
+  transform: scale(calc((17 + 7 * min(1, var(--u, 0) * 2)) / 24)); }
+@media (prefers-reduced-motion: reduce) {
+  .fav-head .fav-title.card-title, .fav-head.is-up .fav-title.card-title { transform: none; }
+}
+
 .list { margin: 0 -16px; }
 .stop-row {
   display: flex; align-items: center; gap: 14px; min-height: 60px; padding: var(--space-2) var(--space-4); color: var(--foreground); text-decoration: none;
