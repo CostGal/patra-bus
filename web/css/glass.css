@@ -343,7 +343,7 @@ html.glass.glass-fx .g-grown::after { background: color-mix(in srgb, var(--g-car
    in from the capsule */
 html.glass.glass-fx .sheet .stopv-chipbar { padding-block: 9px; }
 html.glass.glass-fx .tripv-optbar { padding-block: 11px; }
-html.glass.glass-fx .sheet .stopv-chips { padding-inline: 10px 4px; } /* left with its -6 px margin; right it has none from mid */
+html.glass.glass-fx .sheet .stopv-chips { padding-inline: 4px; margin-left: 0; } /* the row is the capsule's box: chips centred, 4 px in */
 html.glass.glass-fx .tripv-opts { padding-inline: 4px; }
 /* the line badges 20% bigger from mid, drawn only (scale, U8): at low they keep their size under the stop's name */
 html.glass.glass-fx .stopv-chips > .stopv-chip .badge { scale: calc(1 + var(--l, 1) * .2); }
