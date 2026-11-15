@@ -11,7 +11,7 @@ This doc covers the Cloudflare Worker `patra-bus` in `worker/`: a proxy and cach
 
 ## 2. Routes
 
-The router is `fetch()` in `worker/src/index.js` (lines 331-391). Path parsing for the read-only routes is `worker/src/routes.js`. `{city}` is `patra` or `corfu`. Without a city prefix the path means Patras, and these aliases are kept on purpose.
+The router is `fetch()` in `worker/src/index.js` (lines 332-393). Path parsing for the read-only routes is `worker/src/routes.js`. `{city}` is `patra` or `corfu`. Without a city prefix the path means Patras, and these aliases are kept on purpose.
 
 | Method and path | Returns | Cache | Notes |
 |---|---|---|---|
@@ -20,6 +20,7 @@ The router is `fetch()` in `worker/src/index.js` (lines 331-391). Path parsing f
 | `GET /api/{city}/lines` | All lines of the city | 24 h | Same. |
 | `GET /api/{city}/stats/:route/:stop` | Delay summary, see section 9 | 10 min | Codes must be 1-8 digits, else 400. |
 | `GET /api/live/:code`, `/api/stops`, `/api/lines`, `/api/stats/:route/:stop` | Same as above, for Patras | same | Aliases. |
+| `GET /version` | `{api, minApp}` | none | Oldest app version this worker serves, section 12. |
 | `GET /health` | `{ok, tokenExp, cities: {id: {tokenExp}}, now}` | none | `tokenExp` is `null` when no token is stored. |
 | `POST /api/report` | `{ok: true}` | none | Problem report, section 7. |
 | `POST /api/count` | `204`, no body | none | Anonymous counter, section 8. |
@@ -40,7 +41,7 @@ Other behaviour:
 
 ## 3. Caching
 
-- The helper is `cachedBody()` in `index.js` (line 114). It uses the Cloudflare Cache API (`caches.default`) with a key that always contains the city: `live/{city}/{code}`, `stats/{city}/{route}/{stop}`, `{city}/stops`, `{city}/lines`. Stop codes repeat between cities, so the city must be in the key.
+- The helper is `cachedBody()` in `index.js` (line 115). It uses the Cloudflare Cache API (`caches.default`) with a key that always contains the city: `live/{city}/{code}`, `stats/{city}/{route}/{stop}`, `{city}/stops`, `{city}/lines`. Stop codes repeat between cities, so the city must be in the key.
 - Fallback: if the Cache API throws (a risk inside Durable Objects), a copy goes to KV as `memo/{key}` for 60 s. This path is not proven in production.
 - The browser always gets `Cache-Control: no-store`, except stats, which sends `public, max-age=600`.
 - Header `X-Cache: HIT|MISS` is on live, stats, stops and lines. On a HIT, `fetchedAt` in the body is the time of the original upstream fetch, not of this request. The app uses it to age the countdowns.
@@ -151,3 +152,15 @@ Names only. Values never go in the repo (CLAUDE.md rule 7).
 - Copy `worker/.dev.vars.example` to `worker/.dev.vars` (ignored by git). Every line is optional; without it only that feature answers `503`.
 - Run locally with `npm run dev:worker` (port 8787, local KV and Durable Objects, nothing reaches Cloudflare). On `localhost` the app calls `http://localhost:8787` (`API_BASE` in `web/js/api.js`).
 - Setup steps are in `CONTRIBUTING.md`. Deploys are in `docs/CI-AND-DEPLOY.md`.
+
+## 12. Compatibility (`/version`)
+
+Installed apps update late (the service worker swaps files on the next visit), so for a while old apps call the new worker. These rules keep them working.
+
+- `GET /version` answers `{api, minApp}` from `worker/src/version.js`. `minApp` is the oldest app version (`APP_VERSION` in `web/js/i18n.js`) this worker still serves. `api` is the contract version, `1` today.
+- **Only add fields.** A field the app reads is never renamed, removed or given another type in the same release. To change one: add the new field next to the old one, ship the app that reads the new one, and remove the old one in a later release.
+- **The worker goes up first.** A release that needs a new worker field deploys the worker (staging, then production) before the web files that read it.
+- **`minApp` goes up only when an older app really breaks**, never just because a new version exists. A test fails if `minApp` is newer than the app in `web/`.
+- **`api` goes up only for a change old apps cannot read**, which the rules above should make rare.
+- The contract test `tests/worker-contract.test.mjs` (part of `npm test`) lists every field the app reads from `/version`, `/health`, live (with and without service), stats and errors. A new field passes; a removed, renamed or retyped one fails. A new field the app starts reading goes into the test's `CONTRACT` in the same PR.
+- The app does not read `/version` yet; showing «update the app» when it is older than `minApp` is a separate card (`web/`).
