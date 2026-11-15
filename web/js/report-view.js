@@ -39,10 +39,33 @@ export function mountReport(container, ctx, params = {}) {
     sw: !!navigator.serviceWorker?.controller, demo: DEMO,
   });
 
-  const first = ['stop', 'line'].includes(params.context?.view) ? 'data' : 'app';
-  const radios = CATS.map(([value, label]) => h('label', { class: 'rp-cat' },
-    h('input', { type: 'radio', name: ids.cat, value, checked: value === first }),
-    h('span', { class: 'rp-cat-pill' }, t(label))));
+  // category (TEL-252, UI-PROTOCOL U25): one pick-one row, the chosen chip under the glass lens (js/glass.js: bar[data-lens]
+  // > row > chip, the chosen one aria-checked). Buttons with role radio, not native radios: the lens copies the row into
+  // its bubble, and a copied radio would join the form's group. The row is rebuilt on every pick (that moves the lens);
+  // the arrow keys move between the chips and pick, as native radios do.
+  let cat = ['stop', 'line'].includes(params.context?.view) ? 'data' : 'app';
+  const cats = h('div', { class: 'rp-cats', role: 'radiogroup', 'aria-labelledby': ids.cat });
+  const catBar = h('div', { class: 'rp-catbar', 'data-lens': true }, cats);
+  const paintCats = (focus) => {
+    cats.replaceChildren(...CATS.map(([value, label]) => {
+      const on = value === cat;
+      return h('button', {
+        type: 'button', role: 'radio', class: `rp-cat${on ? ' on' : ''}`, 'aria-checked': String(on), tabindex: on ? '0' : '-1',
+        'data-key': value, onclick: () => pickCat(value),
+      }, t(label));
+    }));
+    if (focus) cats.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
+  };
+  const pickCat = (value) => { if (value !== cat) { cat = value; paintCats(true); } };
+  cats.addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const i = CATS.findIndex(([value]) => value === cat);
+    const j = step ? (i + step + CATS.length) % CATS.length : e.key === 'Home' ? 0 : e.key === 'End' ? CATS.length - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault();
+    pickCat(CATS[j][0]);
+  });
+  paintCats(false);
 
   const message = h('textarea', {
     id: ids.msg, class: 'rp-input rp-text', rows: 6, maxlength: LIMITS.messageMax, required: true, 'aria-describedby': ids.msgErr,
@@ -83,7 +106,7 @@ export function mountReport(container, ctx, params = {}) {
     e.preventDefault();
     if (busy) return;
     clear();
-    const payload = buildPayload({ category: form.elements[ids.cat].value, message: message.value, email: email.value, hp: trap.value, diag });
+    const payload = buildPayload({ category: cat, message: message.value, email: email.value, hp: trap.value, diag });
     const v = validateReport(payload);
     if (!v.ok) {
       if (v.error === 'email') { fail(mailErr, email, t('Το email δεν φαίνεται σωστό. Άφησέ το κενό αν δεν θέλεις απάντηση.')); email.focus(); }
@@ -104,7 +127,7 @@ export function mountReport(container, ctx, params = {}) {
 
   const form = h('form', { class: 'rp-form', novalidate: true, onsubmit: onSubmit },
     h('p', { class: 'ex-sub rp-intro' }, t('Βρήκες λάθος ή κάτι δεν δουλεύει; Πες μας.')),
-    h('fieldset', { class: 'rp-field' }, h('legend', { class: 'rp-label' }, t('Τι αφορά;')), h('div', { class: 'rp-cats' }, radios)),
+    h('div', { class: 'rp-field' }, h('p', { id: ids.cat, class: 'rp-label' }, t('Τι αφορά;')), catBar),
     h('div', { class: 'rp-field' }, h('label', { class: 'rp-label', for: ids.msg }, t('Τι συνέβη;')), message, msgErr),
     h('div', { class: 'rp-field' },
       h('label', { class: 'rp-label', for: ids.mail }, t('Email'), ' ', h('span', { class: 'rp-opt' }, `(${t('προαιρετικό')})`)),
@@ -122,11 +145,44 @@ export function mountReport(container, ctx, params = {}) {
     h('p', { class: 'ex-sub rp-note' }, t('Στέλνονται μόνο όσα γράφεις εδώ και τα τεχνικά στοιχεία πιο πάνω. Η IP σου δεν αποθηκεύεται. Μην γράψεις προσωπικά στοιχεία που δεν χρειάζονται.')));
   const panel = h('div', { class: 'rp-panel' }, form);
 
-  container.replaceChildren(h('div', { class: 'ex-view rp' },
-    h('header', { class: 'ex-head' },
-      h('button', { type: 'button', class: 'btn round strong press', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
-      h('h1', {}, t('Αναφορά προβλήματος'))),
-    panel));
+  // header (TEL-252, UI-PROTOCOL U2–U5): the kit's .card-head (css/ui-kit.css), placed in css/report.css (rp-head), as
+  // the favourites' (js/app.js): an empty slot · the title, 17 px, centred · ✕. The title is short and fixed, so it is
+  // not shrunk to fit. Halfway from mid to up it moves to its own row, 24 px, in a short blur (U4, U10); towards up it
+  // grows as a transform (U8).
+  const title = h('h1', { class: 'rp-title card-title' }, t('Αναφορά προβλήματος'));
+  const label = t('Κλείσιμο');
+  const closeBtn = h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': label, title: label, onclick: () => ctx.navigate('#/') }, icon('close'));
+  // low ends under this row (js/sheet.js)
+  const head = h('header', { class: 'rp-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, closeBtn);
+  container.replaceChildren(h('div', { class: 'ex-view rp sheet-inset' }, head, panel));
 
-  return { destroy() { dead = true; clearTimeout(timer); } };
+  const sheetEl = document.getElementById('sheet');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  // as js/bus-view.js: up while the sheet is full or dragged past halfway from mid to up; nothing runs per frame
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  const mo = new MutationObserver(onUpper);
+  if (sheetEl) {
+    mo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+    sheetEl.addEventListener('sheet:upper', onUpper);
+    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
+  }
+  setUp(upRow());
+
+  return {
+    destroy() {
+      dead = true;
+      clearTimeout(timer);
+      mo.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+    },
+  };
 }

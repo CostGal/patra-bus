@@ -31,7 +31,7 @@ export const STATIC_EXCEPTIONS = {
   },
   U19: {
     'app.css: .view-head h1': 'old header (favourites): not on the kit\'s .card-head yet',
-    'css/extras.css: .ex-head h1': 'old header (lines, line, bus, settings, report): not on the kit\'s .card-head yet',
+    'css/extras.css: .ex-head h1': 'old header (lines, line, settings): not on the kit\'s .card-head yet',
   },
 };
 
@@ -63,7 +63,9 @@ export const VIEW_EXCEPTIONS = {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop, the trip and the bus (TEL-250)',
   },
   settings: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
-  report: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
+  report: {
+    U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop, the trip, the bus and the favourites (TEL-252)',
+  },
   chrome: {
     U11: 'the toast eases its transform in .3 s (none only while dragging): a programmatic snap leaves it behind',
   },
