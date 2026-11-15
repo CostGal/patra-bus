@@ -137,20 +137,24 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const onMap = (fn) => { mapQ = mapQ.then(() => { try { if (ctx.map) fn(ctx.map); } catch (e) { console.warn('map', e); } }); };
 
   // ---- skeleton ----
-  const root = h('div', { class: 'ex-view bv' });
+  // header (TEL-249, the stop card's: UI-PROTOCOL U2–U5): ⓘ · the route's name, the line badge and LIVE under it · ✕.
+  // The kit's .card-head and .g-circle (css/ui-kit.css); placed in css/extras.css (bv-head).
+  const root = h('div', { class: 'ex-view bv sheet-inset' });
+  const round = (name, label, onclick, attrs = {}) => h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': label, title: label, onclick, ...attrs }, icon(name));
   const badgeBox = h('span', { class: 'bv-badge' });
-  const title = h('h1', {}, t('Διαδρομή οχήματος'));
-  const sub = h('p', { class: 'ex-sub', hidden: true });
+  const title = h('h1', { class: 'bv-title card-title' }, t('Διαδρομή οχήματος'));
   const flagBox = h('span', { class: 'bv-flag' });
-  const closeBtn = h('button', {
-    type: 'button', class: 'btn round strong', 'aria-label': t('Κλείσιμο'), title: t('Κλείσιμο'),
-    onclick: () => ctx.navigate(origin ? `#/stop/${encodeURIComponent(origin)}` : '#/'),
-  }, icon('close'));
-  const moreBtn = h('button', {
-    type: 'button', class: 'btn round strong', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), 'aria-expanded': 'false',
-    onclick: () => { moreOpen = !moreOpen; moreBtn.setAttribute('aria-expanded', String(moreOpen)); more.hidden = !moreOpen; },
-  }, '⋯');
-  const head = h('header', { class: 'ex-head bv-head' }, badgeBox, h('div', { class: 'ex-grow' }, title, sub), flagBox, moreBtn, closeBtn);
+  const closeBtn = round('close', t('Κλείσιμο'), () => ctx.navigate(origin ? `#/stop/${encodeURIComponent(origin)}` : '#/'));
+  // the notes on how the times are made, behind ⓘ
+  const moreBtn = round('info', t('Πληροφορίες'), () => {
+    moreOpen = !moreOpen; moreBtn.setAttribute('aria-expanded', String(moreOpen)); more.hidden = !moreOpen;
+  }, { 'aria-expanded': 'false' });
+  const head = h('header', { class: 'bv-head' },
+    h('div', { class: 'bv-top card-head' },
+      moreBtn,
+      h('div', { class: 'bv-titles' }, title, h('div', { class: 'bv-peek' }, badgeBox, flagBox),
+        h('span', { class: 'bv-peek-end', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
+      closeBtn));
   const banner = h('div', { class: 'bv-banner', role: 'status', hidden: true });
   const summary = h('div', { class: 'bv-summary', 'aria-live': 'polite', hidden: true });
   const caveat = h('p', { class: 'ex-note', role: 'note', hidden: true });
@@ -168,6 +172,59 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   const busName = h('span', { class: 'bv-bus-name' });
   const busRow = h('li', { class: 'bv-row bv-busrow', hidden: true },
     h('span', { class: 'bv-bus-ico', 'aria-hidden': 'true' }, icon('bus')), h('div', { class: 'bv-bus-text' }, busName));
+
+  // ---- the name, as the stop's (js/arrivals-view.js, U4): one line at low and mid, 17 px, shrunk down to 14 px before
+  // it is cut with "…"; at up its own row, 24 px (less if its longest word would not fit), up to two lines. Towards up
+  // it grows as a transform (css/extras.css, by --u: U8); halfway up it moves to its own row in a short blur (U10).
+  // Measured only at low and mid, with transitions off (U16), again when a font arrives (U17).
+  const sheetEl = document.getElementById('sheet');
+  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24;
+  let measureCtx = null;
+  function fitName() {
+    if (dead || head.classList.contains('is-up')) return; // measured again once it is one line
+    title.style.transition = 'none';
+    for (const k of ['--name-px', '--name-n', '--name-up-n']) title.style.removeProperty(k);
+    const room = title.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
+    if (room > 0) {
+      const r = document.createRange();
+      r.selectNodeContents(title);
+      const scale = title.getBoundingClientRect().width / title.offsetWidth || 1; // the growth towards up, if any (U18)
+      const w = r.getBoundingClientRect().width / scale;
+      let n = NAME_PX;
+      if (w > room) {
+        n = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
+        title.style.setProperty('--name-px', `${n}px`);
+        title.style.setProperty('--name-n', String(n));
+      }
+      // up: 24 px, unless its longest word would not fit on a line at that size (it would break inside the word)
+      measureCtx ||= document.createElement('canvas').getContext('2d');
+      const cs = getComputedStyle(title);
+      measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
+      const longest = Math.max(...title.textContent.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
+      const upN = Math.max(n, Math.min(NAME_UP, Math.floor(NAME_PX * (head.clientWidth - 2) / (longest * 1.04 || 1)))); // 4%: rounding
+      if (upN !== NAME_UP) title.style.setProperty('--name-up-n', String(upN));
+    }
+    title.style.transition = '';
+  }
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!on) fitName();
+    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5; // halfway from mid to up
+  // the observer watches only the state and a drag starting or ending; sheet.js says when --sheet-t crosses 1.5
+  // (sheet:upper), so nothing runs on every frame of a drag (TEL-305)
+  const tMO = new MutationObserver(() => setUp(upRow()));
+  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  sheetEl?.addEventListener('sheet:upper', onUpper);
+  sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
+  document.fonts?.ready.then(fitName);
+  document.fonts?.addEventListener('loadingdone', fitName);
 
   // ---- rows (rebuilt only when the route changes) ----
   function buildRows() {
@@ -198,9 +255,9 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     root.style.setProperty('--lc', (l && l.color) || (found && found.v.color) || 'var(--primary)');
     root.style.setProperty('--lc-text', (l && l.textColor) || '#fff');
     badgeBox.replaceChildren(lineBadge(l || { code: found ? found.v.lineCode : route ? route.lineCode : '' }));
-    title.textContent = route ? route.displayName : found ? found.v.routeName : t('Διαδρομή οχήματος');
-    sub.textContent = l ? t('Γραμμή {code} · διαδρομή οχήματος', { code: l.code }) : t('Διαδρομή οχήματος');
-    document.title = `${title.textContent} · ${APP_NAME}`;
+    const name = route ? route.displayName : found ? found.v.routeName : t('Διαδρομή οχήματος');
+    if (title.textContent !== name) { title.textContent = name; title.title = name; fitName(); }
+    document.title = `${name} · ${APP_NAME}`;
     flagBox.replaceChildren();
     if (found && !gone) flagBox.append(found.v.live ? LIVE_FLAG() : h('span', { class: 'ex-chip ex-chip-sched' }, icon('clock'), t('ΠΡΟΓΡ.')));
     else if (gone) flagBox.append(h('span', { class: 'ex-chip ex-chip-sched' }, t('Εκτός live')));
@@ -410,6 +467,10 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
       dead = true;
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
+      tMO.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      document.fonts?.removeEventListener('loadingdone', fitName);
       if (poller) poller.destroy();
       mapQ = mapQ.then(() => {
         try { if (ctx.map) { ctx.map.clearVehicles('bus'); ctx.map.clearOverlay('bus'); ctx.map.clearMarkers('bus-stops'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); }

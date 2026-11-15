@@ -53,10 +53,12 @@ export const VIEW_EXCEPTIONS = {
   trip: {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop (TEL-294, Kostas 2026-11-14)',
   },
+  bus: {
+    U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop and the trip (TEL-249)',
+  },
   lines: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
   line: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD,
     U20: 'a link in the header is covered by the subtitle (p.ex-sub) at its edge' },
-  bus: { U2: OLD_INSET, U3: `close button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
   favorites: { U2: 'the old .view-head starts at the card\'s edge (0 px) at low/mid, 8 px up', U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
   settings: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
   report: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },

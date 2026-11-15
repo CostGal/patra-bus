@@ -164,9 +164,32 @@ a.atile { text-decoration: none; }
 
 /* ---- bus view (#/bus/…): vertical stop timeline in the line's colour ---- */
 .bv { --lc: var(--primary); --lc-text: #fff; }
-.bv-head .bv-badge { display: flex; flex: none; font-size: 1.1rem; }
+/* header (TEL-249): ⓘ · name · ✕ on the kit's .card-head (css/ui-kit.css), placed as the trip's (css/trip.css).
+   Low and mid: the name at the top of the buttons' row, 17 px (or --name-px when js/bus-view.js shrank a long one),
+   the line badge and LIVE small under it. Towards up the name grows as a transform and the small row fades (--u, U8);
+   at up the name has its own row, 24 px (or --name-up-n), up to two lines, the small row under it again. */
+.bv-head { display: flex; flex-direction: column; margin-bottom: var(--space-2); }
+.bv-top { margin: -5px 0 0; } /* 13 px from the card's top at low, as the stop */
+.bv-titles { position: relative; min-width: 0; text-align: center; }
+.bv-head .bv-title.card-title { font-size: var(--name-px, 17px); transform-origin: 50% 0;
+  transform: scale(calc(1 + min(1, var(--u, 0) * 2) * (var(--name-up-n, 24) / var(--name-n, 17) - 1))); }
+.bv-peek { position: absolute; left: 0; right: 0; top: 20px; height: 18px; display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  overflow: hidden; white-space: nowrap; opacity: calc(1 - min(1, var(--u, 0) * 2)); }
+.bv-peek .badge { font-size: var(--text-sm); line-height: 16px; min-width: 2em; padding: 0 .35em; } /* TEL-47: 13 px at least */
 .bv-flag { flex: none; display: inline-flex; }
-.bv-flag .ex-chip .icon { width: 13px; height: 13px; }
+.bv-flag .ex-chip { gap: 4px; padding: 0 6px; font-size: var(--text-sm); line-height: 16px; }
+.bv-flag .ex-chip-dot { width: 6px; height: 6px; }
+.bv-flag .ex-chip .icon { width: 11px; height: 11px; }
+/* low ends here (js/sheet.js): as .stopv-peek, the small row under the name and 8 px more */
+.bv-peek-end { position: absolute; left: 0; top: 100%; width: 1px; height: calc(21px + max(0px, 8px - env(safe-area-inset-bottom, 0px))); pointer-events: none; }
+.bv-head.is-up .bv-titles { grid-column: 1 / -1; grid-row: 2; padding-bottom: 4px; }
+.bv-head.is-up .bv-title.card-title { font-size: calc(var(--name-up-n, 24) * 1px); line-height: 29px; /* U4: 24 px at up */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: break-word;
+  transform: scale(calc((var(--name-n, 17) + (var(--name-up-n, 24) - var(--name-n, 17)) * min(1, var(--u, 0) * 2)) / var(--name-up-n, 24))); }
+.bv-head.is-up .bv-peek { position: static; height: 18px; margin-top: 4px; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .bv-head .bv-title.card-title, .bv-head.is-up .bv-title.card-title { transform: none; }
+}
 .bv-banner { margin: 0 0 var(--space-2); padding: 10px var(--space-3); border-radius: var(--radius-card); background: var(--warning-muted); color: var(--foreground); font-size: .875rem; line-height: 1.4; }
 .bv-banner.is-bad { border-left: 4px solid var(--warning); }
 .bv-summary { display: grid; gap: 2px; margin: 0 0 var(--space-2); padding: 10px var(--space-3); border-radius: var(--radius-card); background: var(--muted); border-left: 5px solid var(--lc); }
