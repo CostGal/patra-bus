@@ -53,9 +53,11 @@ html.glass :is(.sheet, .su-card) .g-pill.primary {
 /* ---- .sheet-inset: one inset in a card, 16 px from its edge (U2) ----
    On a view's root: header circles, chips, buttons and inner cards all line up on it. Outside the sheet it is the
    view's own 16 px; in the sheet the sheet's content padding already gives 16; on a phone the glass card floats 8 px
-   in from the screen's edge, so 8 px more keeps 16 px from the card's edge. */
+   in from the screen's edge, so 8 px more keeps 16 px from the card's edge. At up the card reaches the screen's
+   edges, so the 8 px goes: once, when the sheet snaps to full, not with the drag (U8, TEL-320). */
 .sheet-inset { padding-inline: var(--space-4); }
 .sheet-content .sheet-inset { padding-inline: 0; }
 @media (max-width: 899.98px) {
-  html.glass .sheet .sheet-inset { padding-inline: 8px; }
+  html.glass .sheet .sheet-inset { padding-inline: var(--g-sheet-m); }
+  html.glass .sheet[data-state="full"] .sheet-inset { padding-inline: 0; }
 }
