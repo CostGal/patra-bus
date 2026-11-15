@@ -628,10 +628,36 @@ function mountHome(container, c) {
   };
 }
 
+// Favourites (TEL-250, UI-PROTOCOL U2–U5): the kit's .card-head (css/ui-kit.css), placed in app.css (fav-head):
+// an empty slot · the title, 17 px, centred · ✕. The title is short and fixed, so it is not shrunk to fit. Halfway from
+// mid to up it moves to its own row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (U8).
 function mountFavorites(container, c) {
   const body = h('div');
-  container.replaceChildren(
-    h('div', { class: 'view-head' }, backBtn(), h('h1', {}, t('Αγαπημένες στάσεις'))), body);
+  const title = h('h1', { class: 'fav-title card-title' }, t('Αγαπημένες στάσεις'));
+  const label = t('Κλείσιμο');
+  const closeBtn = h('a', { class: 'btn round g-circle', href: cityHash('#/'), 'aria-label': label, title: label }, icon('close'));
+  // low ends under this row (js/sheet.js)
+  const head = h('header', { class: 'fav-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, closeBtn);
+  container.replaceChildren(h('div', { class: 'fav-view sheet-inset' }, head, body));
+  const sheetEl = document.getElementById('sheet');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  // as js/bus-view.js: up while the sheet is full or dragged past halfway from mid to up; nothing runs per frame
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  const mo = new MutationObserver(onUpper);
+  if (sheetEl) {
+    mo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+    sheetEl.addEventListener('sheet:upper', onUpper);
+    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
+  }
+  setUp(upRow());
   const paint = () => {
     const favs = getFavorites().map((code) => data.stopByCode.get(String(code))).filter(Boolean);
     body.replaceChildren(favs.length
@@ -640,7 +666,14 @@ function mountFavorites(container, c) {
   };
   paint();
   const off = onChange(paint);
-  return { destroy: off };
+  return {
+    destroy() {
+      off?.();
+      mo.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+    },
+  };
 }
 
 function mountPin(container, c, p) {
