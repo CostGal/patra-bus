@@ -286,8 +286,10 @@ function watchPopovers() {
 const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tripv-opts'], CHIP = '.stopv-chip, .tripv-opt';
 const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
 const ROW_ON = ':scope > .stopv-chips > .stopv-chip.on, :scope > .tripv-opts > .tripv-opt.on'; // not the bubble's copy
-const MORPH_MS = 240; // bubble -> pill: the lens's own transitions in css/glass.css
-const LENS_PAD = 7; // the lens reaches this much above and below its chip (css/glass.css: the capsule 9 px, 4 px around the lens)
+const MORPH_MS = 280; // bubble -> pill: the lens's own transitions in css/glass.css
+const LENS_PAD = 7; // the lens reaches this much above and below its chip: 54 px over 40 (css/glass.css: 4 px from the capsule)
+const LENS_PADX = 0; // and this much past each side (0: the lens is as wide as its chip, tests/e2e/glass.spec.mjs)
+const EDGE = 4; // the capsule's inner edge: the lens never shows past it at rest
 function watchChips() {
   let from = null; // where the lens was when a chip was pressed: the next rebuild moves it from there
   let bub = null; // the bubble while it is out: { bar, row, lens, copy, x, y, w, h, r, scroll, raf }
@@ -299,9 +301,15 @@ function watchChips() {
     const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); const s = b.width / (bar.offsetWidth || b.width) || 1;
     return { x: (a.left - b.left) / s, y: (a.top - b.top) / s, w: a.width / s, h: a.height / s };
   };
-  // the lens over a chip: 7 px taller above and below (the GitHub pill is 54 px over our 40 px chips, drawn only)
-  const pill = (el, bar) => { const b = rel(el, bar); return { x: b.x, y: b.y - LENS_PAD, w: b.w, h: b.h + 2 * LENS_PAD }; };
+  // the lens over a chip: taller and a little wider than the chip (GitHub's pill, drawn only: the chip keeps its box)
+  const pill = (el, bar) => { const b = rel(el, bar); return { x: b.x - LENS_PADX, y: b.y - LENS_PAD, w: b.w + 2 * LENS_PADX, h: b.h + 2 * LENS_PAD }; };
   const at = (d) => ({ x: d.x, y: d.y, w: d.w, h: d.h });
+  // at rest the lens shows only inside the capsule (its chip half scrolled out of the row): how much it is cut each side
+  const fit = (bar, lens, pos) => {
+    const cutL = Math.max(0, EDGE - pos.x), cutR = Math.max(0, pos.x + pos.w - (bar.offsetWidth - EDGE));
+    lens.style.clipPath = cutL > 0.5 || cutR > 0.5 ? `inset(-40px ${cutR.toFixed(1)}px -40px ${cutL.toFixed(1)}px)` : '';
+    return [cutL, cutR];
+  };
   const lensAt = (bar) => {
     if (bub && bub.bar === bar) return at(bub);
     const on = bar.querySelector(ROW_ON);
@@ -325,6 +333,7 @@ function watchChips() {
     lens.append(copy);
     lens.style.width = `${pos.w}px`;
     lens.style.height = `${pos.h}px`;
+    lens.style.clipPath = ''; // the bubble may spill past the capsule
     lens.classList.add('g-held');
     bar.classList.add('g-holding', 'g-grown'); // CSS: the row gets a hole where the bubble is, the bar grows a little
     bub = { bar, row, lens, copy, x: pos.x, y: pos.y, w: pos.w, h: pos.h, r: rel(row, bar), scroll: row.scrollLeft, raf: 0 };
@@ -360,6 +369,7 @@ function watchChips() {
       d.row.style.removeProperty('--hole-a');
       d.row.style.removeProperty('--hole-b');
       d.copy.remove();
+      if (!bub && !d.lens.hidden) fit(d.bar, d.lens, at(d)); // back at rest: inside the capsule again
     };
     if (morph && !still) { closing = d; d.timer = setTimeout(d.done, MORPH_MS); } else d.done();
     return d;
@@ -368,22 +378,28 @@ function watchChips() {
   // the row moved under the bubble (scrolled, or the sheet settled): measure it again, keep the bubble where it is
   const refresh = () => { bub.r = rel(bub.row, bub.bar); bub.scroll = bub.row.scrollLeft; follow(bub.x); };
 
-  // the bubble (this one, or a new one at `pos`) travels to `to` on a damped spring (response 0.32 s, damping 0.48: quick,
-  // with an elastic overshoot of ~18%, like the GitHub app's tab bar), then morphs into the pill there
-  function travel(bar, pos, to) {
+  // the bubble (this one, or a new one at `pos`) travels to `to` on a damped spring (response 0.36 s, damping 0.58: quick,
+  // with a soft overshoot of ~10%, like the GitHub app's tab bar). It starts to shrink back into the pill on the last
+  // third of the way, while it still moves (one motion, not "arrive, then morph"), and the copy goes once it has
+  // `el`: the chip it heads for, measured again every frame (the row may scroll it into view meanwhile)
+  function travel(bar, pos, to, el) {
     const d = bub && bub.bar === bar ? bub : open(bar, { x: pos.x, y: to.y, w: to.w, h: to.h });
     if (!d) return;
     drag = null;
     bar.classList.add('g-dragging'); // the chip it heads for looks like the others until the bubble gets there
-    const k = (2 * Math.PI / 0.32) ** 2, c = 2 * 0.48 * Math.sqrt(k);
+    const k = (2 * Math.PI / 0.36) ** 2, c = 2 * 0.58 * Math.sqrt(k);
     let x = d.x, v = 0, last = performance.now();
+    const near = Math.max(6, Math.abs(to.x - d.x) / 3);
+    let shrunk = false;
     cancelAnimationFrame(d.raf);
     const step = (now) => {
       if (bub !== d) return;
       const dt = Math.min(0.032, Math.max(0, now - last) / 1000);
       last = now;
+      if (el?.isConnected) to = pill(el, bar);
       v += (-k * (x - to.x) - c * v) * dt;
       x += v * dt;
+      if (!shrunk && Math.abs(x - to.x) < near) { shrunk = true; d.lens.classList.remove('g-held'); d.bar.classList.remove('g-grown'); }
       if (Math.abs(x - to.x) < 1.5 && Math.abs(v) < 40) { follow(to.x); close(true); return; } // there: the morph takes over
       follow(x);
       d.raf = requestAnimationFrame(step);
@@ -409,13 +425,16 @@ function watchChips() {
     lens.style.width = `${to.w}px`;
     lens.style.height = `${to.h}px`;
     lens.style.translate = `${to.x}px ${to.y}px`;
+    // a chosen chip that is cut by the capsule's edge scrolls into view; the scroll brings the lens along
+    const [cutL, cutR] = fit(bar, lens, to);
+    if (animate && (cutL > 0.5 || cutR > 0.5)) on.parentElement.scrollBy({ left: cutR ? cutR + EDGE : -(cutL + EDGE), behavior: still ? 'auto' : 'smooth' });
     if (!animate || !was || still) return;
-    if (wasOpen || Math.abs(was.x - to.x) > 1) travel(bar, was, to);
+    if (wasOpen || Math.abs(was.x - to.x) > 1) travel(bar, was, to, on);
   };
   // the bubble goes back to the selected chip (a drag let go over it, or nothing was rebuilt after a pick)
   const home = (d) => {
     const on = d.bar.querySelector(ROW_ON);
-    if (on && bub === d) travel(d.bar, at(d), pill(on, d.bar)); else if (bub === d) close(true);
+    if (on && bub === d) travel(d.bar, at(d), pill(on, d.bar), on); else if (bub === d) close(true);
   };
 
   document.addEventListener('pointerdown', (e) => {
@@ -438,10 +457,10 @@ function watchChips() {
       release(); // and lets go of its own press look (.g-press, grown): the bubble has moved on
     }
     if (!drag.moved) return;
-    const chips = [...bub.row.querySelectorAll(CHIP)].map((c) => rel(c, bub.bar));
+    const chips = [...bub.row.querySelectorAll(CHIP)].map((c) => pill(c, bub.bar));
     if (!chips.length) return;
-    const min = Math.max(chips[0].x, bub.r.x);
-    const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, bub.r.x + bub.r.w) - bub.w;
+    const min = Math.max(chips[0].x, EDGE);
+    const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, bub.bar.offsetWidth - EDGE) - bub.w;
     const v = drag.base + dx;
     follow(v > max ? max + rub(v - max) : v < min ? min - rub(min - v) : v);
   }, { passive: true });
