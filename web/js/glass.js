@@ -283,6 +283,9 @@ function watchChips() {
   const place = (bar, animate) => {
     let lens = bar.querySelector(':scope > .g-lens');
     if (!lens) { lens = document.createElement('div'); lens.className = 'g-lens'; lens.setAttribute('aria-hidden', 'true'); bar.prepend(lens); }
+    // «All» as wide as the widest line chip (CSS --chip-w): offsetWidth ignores transforms (U18)
+    const lineChips = bar.querySelectorAll(':scope > .stopv-chips > .stopv-chip:not([data-key="*"])');
+    if (lineChips.length) bar.style.setProperty('--chip-w', `${Math.max(...[...lineChips].map((c) => c.offsetWidth))}px`);
     const on = bar.querySelector(CHIP_ON);
     if (!on) { lens.hidden = true; return; }
     lens.hidden = false;
@@ -352,7 +355,7 @@ function watchChips() {
   document.addEventListener('pointermove', (e) => {
     if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x0;
-    if (Math.abs(dx) > 4) drag.moved = true;
+    if (Math.abs(dx) > 4 && !drag.moved) { drag.moved = true; drag.bar.classList.add('g-dragging'); }
     if (!drag.moved) return;
     const chips = [...drag.row.querySelectorAll(CHIP)].map((c) => rel(c, drag.bar));
     if (!chips.length) return;
@@ -365,6 +368,7 @@ function watchChips() {
     const d = drag;
     drag = null;
     d.lens.classList.remove('g-held');
+    d.bar.classList.remove('g-dragging');
     d.copy.remove();
     d.lens.style.translate = '';
     d.lens.style.transform = `translate(${d.x}px, ${d.y}px)`;
