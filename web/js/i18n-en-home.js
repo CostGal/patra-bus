@@ -3,6 +3,7 @@
 export const PAIRS = [
   ['Μέρη', 'Places'],
   ['Νέο', 'New'],
+  ['Προσθήκη', 'Add'],
   ['Προσθήκη μέρους', 'Add a place'],
   ['Στάσεις κοντά: {name}', 'Stops near: {name}'],
   ['Όρισε: {name}', 'Set: {name}'],
