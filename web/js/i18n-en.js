@@ -240,7 +240,6 @@ const PAIRS = [
   ['Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', 'Old data: updated {age} ago.'],
   ['δεδομένα προσομοίωσης', 'simulated data'],
   ['ενημερώθηκε πριν {age}', 'updated {age} ago'],
-  ['Γραμμή {code} · διαδρομή οχήματος', 'Line {code} · vehicle route'],
   ['Εκτός live', 'No longer live'],
   ['Άνοιξε το όχημα από μια στάση (ή από τον χάρτη) για να δεις τη ζωντανή του θέση.', 'Open the vehicle from a stop (or from the map) to see its live position.'],
   ['Δεν φορτώθηκαν τα δεδομένα.', 'Data did not load.'],
