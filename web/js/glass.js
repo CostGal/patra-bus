@@ -286,7 +286,7 @@ function watchPopovers() {
 const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tripv-opts'], CHIP = '.stopv-chip, .tripv-opt';
 const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
 const ROW_ON = ':scope > .stopv-chips > .stopv-chip.on, :scope > .tripv-opts > .tripv-opt.on'; // not the bubble's copy
-const MORPH_MS = 340; // bubble -> pill: the lens's own transitions in css/glass.css
+const MORPH_MS = 240; // bubble -> pill: the lens's own transitions in css/glass.css
 function watchChips() {
   let from = null; // where the lens was when a chip was pressed: the next rebuild moves it from there
   let bub = null; // the bubble while it is out: { bar, row, lens, copy, x, y, w, h, r, scroll, raf }
@@ -365,14 +365,14 @@ function watchChips() {
   // the row moved under the bubble (scrolled, or the sheet settled): measure it again, keep the bubble where it is
   const refresh = () => { bub.r = rel(bub.row, bub.bar); bub.scroll = bub.row.scrollLeft; follow(bub.x); };
 
-  // the bubble (this one, or a new one at `pos`) travels to `to` on a damped spring (response 0.5 s, damping 0.62: a
-  // little overshoot, like the GitHub app's tab bar), then morphs into the pill there
+  // the bubble (this one, or a new one at `pos`) travels to `to` on a damped spring (response 0.32 s, damping 0.48: quick,
+  // with an elastic overshoot of ~18%, like the GitHub app's tab bar), then morphs into the pill there
   function travel(bar, pos, to) {
     const d = bub && bub.bar === bar ? bub : open(bar, { x: pos.x, y: to.y, w: to.w, h: to.h });
     if (!d) return;
     drag = null;
     bar.classList.add('g-dragging'); // the chip it heads for looks like the others until the bubble gets there
-    const k = (2 * Math.PI / 0.5) ** 2, c = 2 * 0.62 * Math.sqrt(k);
+    const k = (2 * Math.PI / 0.32) ** 2, c = 2 * 0.48 * Math.sqrt(k);
     let x = d.x, v = 0, last = performance.now();
     cancelAnimationFrame(d.raf);
     const step = (now) => {
