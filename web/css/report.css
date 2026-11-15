@@ -1,4 +1,4 @@
-/* Report a problem (owner: extras). Prefix rp-. Builds on the settings view (.ex-view, .ex-head, .set-sec) and the shell's .btn / .press;
+/* Report a problem (owner: extras). Prefix rp-. Builds on the settings view (.ex-view, .set-sec), the kit (.card-head, .g-circle, .sheet-inset) and the shell's .btn / .press;
    tokens only. Inputs are 16 px so iOS does not zoom on focus. */
 
 .rp-form { display: grid; gap: var(--space-4); }
@@ -17,19 +17,31 @@
 .rp-input[aria-invalid="true"] { border-color: var(--destructive); }
 .rp-err { color: var(--destructive); font-size: .875rem; line-height: var(--lead-label); letter-spacing: var(--track-label); }
 
-/* category: native radios (arrow keys, screen readers) drawn as the same pills as the menu's theme buttons */
-.rp-cats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
-.rp-cat { position: relative; display: block; cursor: pointer; }
-.rp-cat input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.rp-cat-pill {
-  display: flex; align-items: center; justify-content: center; min-height: 44px; padding: var(--space-2) var(--space-3); text-align: center;
-  border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--muted-foreground); font-size: var(--text-md);
-  transform: scale(1); transition: transform .1s ease-out;
+/* category (TEL-252, UI-PROTOCOL U25): one pick-one row of four chips (role radio; js/report-view.js). With the glass
+   lens (css/glass.css, js/glass.js) the row is one glass capsule and the lens is the only pill: capsule 62 px, chips
+   40, 4 px in from its ends, as the trip's options. Without it (no glass, reduced transparency, more contrast):
+   separate solid pills, the chosen one in the primary colour. A long label wraps to two lines, never inside a word. */
+.rp-cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
+.rp-cat {
+  display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 44px; padding: 2px var(--space-1); text-align: center;
+  border: 1px solid var(--input); border-radius: var(--radius-full); background: var(--card); color: var(--muted-foreground);
+  font: inherit; font-size: .875rem; font-weight: var(--weight-semibold); line-height: 1.15; cursor: pointer;
 }
-.rp-cat:hover .rp-cat-pill { background: var(--muted); }
-.rp-cat:active .rp-cat-pill { transform: scale(.97); transition: transform 0s; }
-.rp-cat input:checked + .rp-cat-pill { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); font-weight: var(--weight-semibold); }
-.rp-cat input:focus-visible + .rp-cat-pill { outline: 3px solid var(--ring); outline-offset: 2px; }
+.rp-cat:hover { background: var(--muted); }
+.rp-cat[aria-checked="true"] { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+html.glass.glass-fx .rp-catbar { padding-block: 11px; }
+html.glass.glass-fx .rp-cats { gap: 0; padding-inline: 4px; }
+html.glass.glass-fx .rp-cat { min-height: 40px; }
+
+/* header (TEL-252): the kit's .card-head placed as the favourites' (app.css .fav-head). Low and mid: one row, the title
+   17 px centred. Towards up it grows as a transform (--u, U8); at up its own row, 24 px. */
+.rp-head { margin: -5px 0 var(--space-2); } /* 13 px from the card's top at low, as the stop */
+.rp-head .rp-title.card-title { text-align: center; transform-origin: 50% 0; transform: scale(calc(1 + min(1, var(--u, 0) * 2) * (24 / 17 - 1))); }
+.rp-head.is-up .rp-title.card-title { grid-column: 1 / -1; grid-row: 2; padding-bottom: 4px; font-size: 1.5rem; line-height: 29px; /* U4: 24 px at up */
+  transform: scale(calc((17 + 7 * min(1, var(--u, 0) * 2)) / 24)); }
+@media (prefers-reduced-motion: reduce) {
+  .rp-head .rp-title.card-title, .rp-head.is-up .rp-title.card-title { transform: none; }
+}
 
 /* the diagnostics, exactly as sent */
 .rp .set-sec { margin: 0; }
@@ -52,4 +64,4 @@
 .rp-done-title:focus { outline: none; }
 .rp-done .btn { margin-top: var(--space-2); }
 @keyframes rp-in { from { opacity: 0; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .rp-done { animation-duration: .15s; } .rp-cat-pill { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .rp-done { animation-duration: .15s; } }
