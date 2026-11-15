@@ -322,12 +322,25 @@ html.glass-fx .g-holding > .stopv-chips {
   mask-image: linear-gradient(to right, transparent, #000 var(--chips-fl), #000 calc(100% - var(--chips-fr)), transparent), var(--hole);
   -webkit-mask-composite: source-in; mask-composite: intersect;
 }
-/* while the bubble is away from it, the chip it left looks like the others (no frame of its own); the chosen chip's frame
-   comes back with a fade once the bubble has turned into the pill */
-html.glass-fx .stopv-chip, html.glass-fx .tripv-opt { transition: background-color .2s ease, border-color .2s ease; }
-html.glass-fx .g-dragging .stopv-chip.on, html.glass-fx .g-dragging .tripv-opt.on {
-  background: var(--g-chip); border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
+/* one row, like the GitHub app's tab bar (TEL-315, Kostas): the chips sit in one glass capsule (the bar's ::after,
+   under the lens) and have no pill of their own; the lens is the only pill. It fades with the chips at low (--l: paint
+   only, U8), where they are the line badges under the stop's name (TEL-227). The trip's bar gets its own stacking
+   context, so the capsule stays inside it. Only with the lens (glass-fx): without it the chips keep their own pills,
+   or nothing would show which one is chosen */
+html.glass.glass-fx .tripv-optbar { isolation: isolate; }
+html.glass.glass-fx .stopv-chipbar::after, html.glass.glass-fx .tripv-optbar::after {
+  content: ''; position: absolute; z-index: -1; inset: 0; height: auto; pointer-events: none; border-radius: var(--radius-full); /* height: the stop bar's old fade below set 12 px */
+  background: color-mix(in srgb, var(--g-card) 34%, transparent); border: var(--g-line);
+  box-shadow: inset 0 1px 0 var(--g-edge), 0 4px 14px rgba(0, 0, 0, .12); opacity: var(--l, 1);
 }
+html.glass.glass-fx .stopv-chips > .stopv-chip, html.glass.glass-fx .stopv-chips > .stopv-chip.on,
+html.glass.glass-fx .tripv-opts > .tripv-opt, html.glass.glass-fx .tripv-opts > .tripv-opt.on {
+  background: transparent; border-color: transparent; box-shadow: none; transition: color .2s ease;
+}
+/* the chosen chip's label in the primary colour, as GitHub's blue tab; while the bubble is away from it (or still on its
+   way there), it looks like the others */
+html.glass.glass-fx .stopv-chips > .stopv-chip.on, html.glass.glass-fx .tripv-opts > .tripv-opt.on { color: var(--primary); }
+html.glass.glass-fx .g-dragging > .stopv-chips > .stopv-chip.on, html.glass.glass-fx .g-dragging > .tripv-opts > .tripv-opt.on { color: var(--foreground); }
 /* «All» is as wide as the widest line chip (js/glass.js measures --chip-w), so the bubble has one size from any chip;
    with --l it still folds away at low */
 html.glass .stopv-chip[data-key="*"] { min-width: calc(var(--l, 1) * var(--chip-w, 0px)); justify-content: center; }
