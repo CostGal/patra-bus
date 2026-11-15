@@ -636,8 +636,9 @@ function mountFavorites(container, c) {
   const title = h('h1', { class: 'fav-title card-title' }, t('Αγαπημένες στάσεις'));
   const label = t('Κλείσιμο');
   const closeBtn = h('a', { class: 'btn round g-circle', href: cityHash('#/'), 'aria-label': label, title: label }, icon('close'));
-  // low ends under this row (js/sheet.js)
-  const head = h('header', { class: 'fav-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, closeBtn);
+  // the low marker is out of the grid (absolute) and before ✕, which the kit keeps right as the :last-child
+  const head = h('header', { class: 'fav-head card-head' }, h('span', { 'aria-hidden': 'true' }), title,
+    h('span', { class: 'fav-peek-end', 'aria-hidden': 'true', 'data-peek-end': '' }), closeBtn); // low ends under it (js/sheet.js)
   container.replaceChildren(h('div', { class: 'fav-view sheet-inset' }, head, body));
   const sheetEl = document.getElementById('sheet');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
