@@ -287,7 +287,7 @@ html.glass-fx .g-lens {
   position: absolute; z-index: 0; top: 0; left: 0; pointer-events: none; border-radius: var(--radius-full); overflow: hidden;
   background: var(--primary-soft); border: 1px solid color-mix(in srgb, var(--primary) 65%, transparent);
   box-shadow: inset 0 1px 0 var(--g-edge), 0 2px 10px color-mix(in srgb, var(--primary) 25%, transparent);
-  transition: scale .3s cubic-bezier(.34, 1.56, .64, 1), background-color .2s ease-out, box-shadow .2s ease-out;
+  transition: scale .34s cubic-bezier(.3, 1.3, .5, 1), background-color .3s ease, border-color .3s ease, box-shadow .3s ease; /* the morph pill <-> bubble (MORPH_MS in js/glass.js) */
 }
 html.glass-fx .g-lens[hidden] { display: none; }
 html.glass-fx .g-lens.g-held {
@@ -309,10 +309,10 @@ html.glass-fx .g-lens-copy {
 html.glass-fx .g-lens-copy > .stopv-chip, html.glass-fx .g-lens-copy > .tripv-opt {
   background: transparent; border-color: transparent; box-shadow: none; color: var(--primary);
 }
-/* held: the bar grows a little (GitHub ~3%), and the row has a hole where the bubble is (js/glass.js: --hole-a/-b,
+/* bubble out: the bar grows a little (.g-grown, GitHub ~3%), and the row has a hole where the bubble is (.g-holding, js/glass.js: --hole-a/-b,
    in the row's px); the stop's row keeps its own edge fade, intersected with the hole */
 html.glass-fx .stopv-chipbar, html.glass-fx .tripv-optbar { transition: scale .3s cubic-bezier(.34, 1.56, .64, 1); }
-html.glass-fx .g-holding { scale: 1.03; }
+html.glass-fx .g-grown { scale: 1.03; }
 html.glass-fx .g-holding > .stopv-chips, html.glass-fx .g-holding > .tripv-opts {
   --hole: linear-gradient(to right, #000 var(--hole-a, 0px), transparent var(--hole-a, 0px), transparent var(--hole-b, 0px), #000 var(--hole-b, 0px));
   -webkit-mask-image: var(--hole); mask-image: var(--hole);
@@ -322,7 +322,9 @@ html.glass-fx .g-holding > .stopv-chips {
   mask-image: linear-gradient(to right, transparent, #000 var(--chips-fl), #000 calc(100% - var(--chips-fr)), transparent), var(--hole);
   -webkit-mask-composite: source-in; mask-composite: intersect;
 }
-/* while the bubble is away from it, the chip it left looks like the others (no frame of its own) */
+/* while the bubble is away from it, the chip it left looks like the others (no frame of its own); the chosen chip's frame
+   comes back with a fade once the bubble has turned into the pill */
+html.glass-fx .stopv-chip, html.glass-fx .tripv-opt { transition: background-color .25s ease, border-color .25s ease; }
 html.glass-fx .g-dragging .stopv-chip.on, html.glass-fx .g-dragging .tripv-opt.on {
   background: var(--g-chip); border-color: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
