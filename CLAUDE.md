@@ -17,7 +17,8 @@ person's area. If a change needs a file in another area, say so and ask first, o
 
 Kostas is code owner of everything (`.github/CODEOWNERS`). Four `web/js` files are also imported by the worker
 (`arrivals.js`, `cities.js`, `report.js`, `notif-link.js`): a merge that changes them (or `route.js`, which the deploy
-workflow also watches) redeploys the worker, so a change to them touches Amarildo's area as well as Kostas's.
+workflow also watches) redeploys the staging worker (production follows at the next Release), so a change to them
+touches Amarildo's area as well as Kostas's.
 
 ## Hard rules
 Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as they are.
@@ -54,8 +55,10 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
    the expected result as a checklist, devices, cleanup and the PR link. List: `gh issue list --label device-test`.
 
 ## Also binding
-- **Worker deploys** go only through GitHub → Actions → «Worker deploy»: staging from any branch, production only from
-  `main` with Kostas's approval. No `wrangler deploy` from a computer, not even for staging.
+- **Worker deploys** go only through GitHub → Actions → «Worker deploy»: staging from any branch (and by itself after
+  a merge to `main`), production only from a published GitHub Release (tag like `v0.9.1`) with Kostas's approval. The
+  site changes only on a Release too (`docs/CI-AND-DEPLOY.md`, section 9). No `wrangler deploy` from a computer, not
+  even for staging.
 - **citybus.gr:** only the three endpoints in `docs/UPSTREAM-API.md` (`/stops`, `/lines`, `/stops/live/{code}`); no
   probing of other URLs. Live is not polled faster than every 15 s per stop (the frontend polls every 20 s, only
   while the page is visible). The API is unofficial and they can block us.
