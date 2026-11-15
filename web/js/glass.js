@@ -270,118 +270,79 @@ function watchPopovers() {
   }).observe(document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
 }
 
-// ---- line filter chips: one glass lens marks the selected chip and slides to the next one, stretching over both
-// on the way (the chips are rebuilt on every change, so the lens lives in their bar, outside the rebuilt row).
-// The same lens for the stop's line chips and the trip's option chips (TEL-293): bar > row > chip, chip.on chosen.
+// ---- line filter chips: one lens marks the selected chip (the chips are rebuilt on every change, so the lens lives in
+// their bar, outside the rebuilt row). The same lens for the stop's line chips and the trip's option chips (TEL-293):
+// bar > row > chip, chip.on chosen.
+// TEL-315 (UI protocol U24), like the iOS 26 tab bar in the GitHub app: at rest the lens is a solid pill. Out of the
+// pill comes a clear bubble that magnifies the chips under it (a copy of the row inside the bubble, so no SVG filter
+// and Safari too; the real chips under it are cut out of the row, so nothing shows twice):
+// - held on the selected chip: the bubble follows the finger; released, it glides to the nearest chip and picks it.
+//   A swipe that starts on any other chip still scrolls the row (CSS: only the selected chip has touch-action: pan-y);
+// - a tap on another chip: the bubble travels there on a spring (a little bounce), then turns back into the pill.
+// One bubble at a time (`bub`); a rebuild of the row while it is out closes it first, so lens, copy and hole never
+// disagree.
 const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tripv-opts'], CHIP = '.stopv-chip, .tripv-opt';
 const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
+const ROW_ON = ':scope > .stopv-chips > .stopv-chip.on, :scope > .tripv-opts > .tripv-opt.on'; // not the bubble's copy
 const SNAP_MS = 300; // a released drag glides to its chip (U24)
 function watchChips() {
-  let from = null;
-  // in the bar's own (unscaled) px: held, the bar grows a little (CSS `scale`), and the lens lives inside it
+  let from = null; // where the lens was when a chip was pressed: the next rebuild moves it from there
+  let snap = false; // the next move comes from a released drag: a short glide
+  let bub = null; // the bubble while it is out: { bar, row, lens, copy, x, y, w, h, r, scroll, raf }
+  let drag = null; // { id, x0, base, moved }: the finger that holds the bubble
+  let eatClick = 0;
+  // in the bar's own (unscaled) px: while the bubble is out the bar grows a little (CSS `scale`)
   const rel = (el, bar) => {
     const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); const s = b.width / (bar.offsetWidth || b.width) || 1;
     return { x: (a.left - b.left) / s, y: (a.top - b.top) / s, w: a.width / s, h: a.height / s };
   };
-  let snap = false; // the next move comes from a released drag: a short glide, no stretch
-  const place = (bar, animate) => {
-    let lens = bar.querySelector(':scope > .g-lens');
-    if (!lens) { lens = document.createElement('div'); lens.className = 'g-lens'; lens.setAttribute('aria-hidden', 'true'); bar.prepend(lens); }
-    // «All» as wide as the widest line chip (CSS --chip-w): offsetWidth ignores transforms (U18)
-    const lineChips = bar.querySelectorAll(':scope > .stopv-chips > .stopv-chip:not([data-key="*"])');
-    if (lineChips.length) bar.style.setProperty('--chip-w', `${Math.max(...[...lineChips].map((c) => c.offsetWidth))}px`);
-    const on = bar.querySelector(CHIP_ON);
-    if (!on) { lens.hidden = true; return; }
-    lens.hidden = false;
-    const to = rel(on, bar);
-    lens.style.width = `${to.w}px`;
-    lens.style.height = `${to.h}px`;
-    lens.style.transform = `translate(${to.x}px, ${to.y}px)`;
-    if (animate && from && !still && snap) {
-      lens.animate([{ transform: `translate(${from.x}px, ${from.y}px)` }, { transform: `translate(${to.x}px, ${to.y}px)` }], { duration: SNAP_MS, easing: SPRING });
-    } else if (animate && from && !still && Math.abs(from.x - to.x) > 1) {
-      const left = Math.min(from.x, to.x);
-      const right = Math.max(from.x + from.w, to.x + to.w);
-      lens.animate([
-        { width: `${from.w}px`, transform: `translate(${from.x}px, ${from.y}px)` },
-        { width: `${right - left}px`, transform: `translate(${left}px, ${to.y}px) scaleY(.86)`, offset: 0.45 },
-        { width: `${to.w}px`, transform: `translate(${to.x}px, ${to.y}px)` },
-      ], { duration: 480, easing: OUT });
-    }
-    from = null;
-    snap = false;
+  const lensAt = (bar) => {
+    if (bub && bub.bar === bar) return { x: bub.x, y: bub.y, w: bub.w, h: bub.h };
+    const on = bar.querySelector(ROW_ON);
+    return on ? rel(on, bar) : null;
   };
-  document.addEventListener('pointerdown', (e) => {
-    const chip = e.target instanceof Element && e.target.closest(CHIP);
-    const bar = chip?.closest(CHIP_BAR);
-    const on = bar?.querySelector(CHIP_ON);
-    from = on ? rel(on, bar) : null;
-    if (on && chip === on && e.isPrimary && !still) hold(bar, on, e);
-  }, { capture: true, passive: true });
 
-  // TEL-315, like the iOS 26 tab bar (UI protocol U24): pressed on the selected chip, the lens turns into a clear bubble
-  // above the row; dragged, it follows the finger and magnifies the chips under it (a copy of the row inside the
-  // bubble, which grows with it: no SVG filter, so Safari too); released, it glides to the nearest chip and picks it.
-  // A swipe that starts on any other chip still scrolls the row (CSS: only the selected chip has touch-action: pan-y).
-  let drag = null;
-  let eatClick = 0;
-  function hold(bar, on, e) {
+  // the bubble: out of the lens at `at`, closed back into the pill wherever it is
+  function open(bar, at) {
     const lens = bar.querySelector(':scope > .g-lens');
-    const row = on.parentElement;
-    if (!lens || lens.hidden || !row) return;
+    const row = bar.querySelector(':scope > .stopv-chips, :scope > .tripv-opts');
+    if (!lens || lens.hidden || !row) return null;
     for (const a of lens.getAnimations()) a.cancel();
-    const at = rel(on, bar);
-    const r = rel(row, bar);
     const copy = row.cloneNode(true);
-    copy.removeAttribute('id');
-    copy.removeAttribute('role');
-    copy.removeAttribute('aria-label');
+    for (const k of ['id', 'role', 'aria-label']) copy.removeAttribute(k);
     copy.classList.add('g-lens-copy');
     for (const c of copy.querySelectorAll('.on, [id]')) { c.classList.remove('on'); c.removeAttribute('id'); } // the real row stays the only selection
     copy.inert = true;
     copy.style.width = `${row.clientWidth}px`;
     copy.style.margin = '0'; // inline: the sheet's own rule for the row (negative margins) is stronger than glass.css's
     lens.append(copy);
+    lens.style.width = `${at.w}px`;
+    lens.style.height = `${at.h}px`;
     lens.style.transform = 'none';
     lens.classList.add('g-held');
     bar.classList.add('g-holding'); // CSS: the bar grows a little, and the row gets a hole where the bubble is
-    drag = { bar, row, lens, copy, id: e.pointerId, x0: e.clientX, base: at.x, x: at.x, y: at.y, w: at.w, h: at.h, r, scroll: row.scrollLeft, moved: false };
+    bub = { bar, row, lens, copy, x: at.x, y: at.y, w: at.w, h: at.h, r: rel(row, bar), scroll: row.scrollLeft, raf: 0 };
     follow(at.x);
+    return bub;
   }
   function follow(x) {
-    const d = drag;
+    const d = bub;
     d.x = x;
-    // held, the lens moves with the `translate` property: the bubble's `scale` (CSS) then grows it in place, where
-    // with `transform` it would scale the offset too
+    // the lens moves with the `translate` property: the bubble's `scale` (CSS) then grows it in place, where with
+    // `transform` it would scale the offset too
     d.lens.style.translate = `${x}px ${d.y}px`;
     const b = d.lens.clientLeft; // the copy sits inside the lens's border
     d.copy.style.transform = `translate(${d.r.x - x - d.scroll - b}px, ${d.r.y - d.y - b}px)`;
-    // the real chips under the bubble are hidden (a hole in the row's mask), so the bubble can stay clear and nothing
-    // shows twice; the hole is as wide as the grown bubble (CSS scale 1.14: 7% more on each side)
+    // the hole in the row is as wide as the grown bubble (CSS scale 1.14: 7% more on each side)
     d.row.style.setProperty('--hole-a', `${(x - d.r.x - d.w * 0.07).toFixed(1)}px`);
     d.row.style.setProperty('--hole-b', `${(x - d.r.x + d.w * 1.07).toFixed(1)}px`);
   }
-  const rub = (over) => 14 * (1 - Math.exp(-over / 40)); // past the first or last chip: a few px more, harder and harder
-  document.addEventListener('pointermove', (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.x0;
-    if (Math.abs(dx) > 4 && !drag.moved) {
-      drag.moved = true;
-      drag.bar.classList.add('g-dragging');
-      release(); // the chip it left lets go of its own press look (.g-press, grown): the bubble has moved on
-    }
-    if (!drag.moved) return;
-    const chips = [...drag.row.querySelectorAll(CHIP)].map((c) => rel(c, drag.bar));
-    if (!chips.length) return;
-    const min = Math.max(chips[0].x, drag.r.x);
-    const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, drag.r.x + drag.r.w) - drag.w;
-    const v = drag.base + dx;
-    follow(v > max ? max + rub(v - max) : v < min ? min - rub(min - v) : v);
-  }, { passive: true });
-  const letGo = (e, cancel) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag;
+  function close() {
+    const d = bub;
+    if (!d) return null;
+    bub = null;
     drag = null;
+    cancelAnimationFrame(d.raf);
     d.lens.classList.remove('g-held');
     d.bar.classList.remove('g-dragging', 'g-holding');
     d.row.style.removeProperty('--hole-a');
@@ -389,7 +350,85 @@ function watchChips() {
     d.copy.remove();
     d.lens.style.translate = '';
     d.lens.style.transform = `translate(${d.x}px, ${d.y}px)`;
-    if (!d.moved) return; // a plain tap on the selected chip: the chip's own click decides, as before
+    return d;
+  }
+  // the row moved under the bubble (scrolled, or the sheet settled): measure it again, keep the bubble where it is
+  const refresh = () => { bub.r = rel(bub.row, bub.bar); bub.scroll = bub.row.scrollLeft; follow(bub.x); };
+
+  // a tap on another chip: the bubble travels from the old chip to the new one on a spring, then closes into the pill.
+  // A damped spring (response 0.5 s, damping 0.62): it overshoots a little and settles, like the GitHub app's tab bar.
+  function travel(bar, a, to) {
+    const d = open(bar, { x: a.x, y: to.y, w: to.w, h: to.h });
+    if (!d) return;
+    bar.classList.add('g-dragging'); // the chip it heads for looks like the others until the bubble gets there
+    const k = (2 * Math.PI / 0.5) ** 2, c = 2 * 0.62 * Math.sqrt(k);
+    let x = a.x, v = 0, last = performance.now();
+    const step = (now) => {
+      if (bub !== d) return;
+      const dt = Math.min(0.032, Math.max(0, now - last) / 1000);
+      last = now;
+      v += (-k * (x - to.x) - c * v) * dt;
+      x += v * dt;
+      if (Math.abs(x - to.x) < 0.3 && Math.abs(v) < 4) { follow(to.x); close(); return; }
+      follow(x);
+      d.raf = requestAnimationFrame(step);
+    };
+    d.raf = requestAnimationFrame(step);
+  }
+
+  const place = (bar, animate) => {
+    if (bub && bub.bar === bar) close(); // rebuilt under the bubble: put it away first, then place the lens anew
+    let lens = bar.querySelector(':scope > .g-lens');
+    if (!lens) { lens = document.createElement('div'); lens.className = 'g-lens'; lens.setAttribute('aria-hidden', 'true'); bar.prepend(lens); }
+    // «All» as wide as the widest line chip (CSS --chip-w): offsetWidth ignores transforms (U18)
+    const lineChips = bar.querySelectorAll(':scope > .stopv-chips > .stopv-chip:not([data-key="*"])');
+    if (lineChips.length) bar.style.setProperty('--chip-w', `${Math.max(...[...lineChips].map((c) => c.offsetWidth))}px`);
+    const was = from, wasSnap = snap;
+    from = null;
+    snap = false;
+    const on = bar.querySelector(ROW_ON);
+    if (!on) { lens.hidden = true; return; }
+    lens.hidden = false;
+    const to = rel(on, bar);
+    lens.style.width = `${to.w}px`;
+    lens.style.height = `${to.h}px`;
+    lens.style.transform = `translate(${to.x}px, ${to.y}px)`;
+    if (!animate || !was || still || Math.abs(was.x - to.x) <= 1) return;
+    if (wasSnap) lens.animate([{ transform: `translate(${was.x}px, ${was.y}px)` }, { transform: `translate(${to.x}px, ${to.y}px)` }], { duration: SNAP_MS, easing: SPRING });
+    else travel(bar, was, to);
+  };
+
+  document.addEventListener('pointerdown', (e) => {
+    const chip = e.target instanceof Element && e.target.closest(CHIP);
+    const bar = chip?.closest(CHIP_BAR);
+    if (!bar || chip.closest('.g-lens-copy')) return;
+    from = lensAt(bar); // where the lens is right now (also halfway through a trip): the next rebuild moves it from there
+    if (bub && bub.bar === bar) close();
+    const on = bar.querySelector(ROW_ON);
+    if (on && chip === on && e.isPrimary && !still && open(bar, rel(on, bar))) drag = { id: e.pointerId, x0: e.clientX, base: bub.x, moved: false };
+  }, { capture: true, passive: true });
+  const rub = (over) => 14 * (1 - Math.exp(-over / 40)); // past the first or last chip: a few px more, harder and harder
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || !bub || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0;
+    if (Math.abs(dx) > 4 && !drag.moved) {
+      drag.moved = true;
+      bub.bar.classList.add('g-dragging'); // the chip it left looks like the others
+      release(); // and lets go of its own press look (.g-press, grown): the bubble has moved on
+    }
+    if (!drag.moved) return;
+    const chips = [...bub.row.querySelectorAll(CHIP)].map((c) => rel(c, bub.bar));
+    if (!chips.length) return;
+    const min = Math.max(chips[0].x, bub.r.x);
+    const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, bub.r.x + bub.r.w) - bub.w;
+    const v = drag.base + dx;
+    follow(v > max ? max + rub(v - max) : v < min ? min - rub(min - v) : v);
+  }, { passive: true });
+  const letGo = (e, cancel) => {
+    if (!drag || e.pointerId !== drag.id) return; // no finger holds it (or a rebuild already closed it): nothing to pick
+    const moved = drag.moved;
+    const d = close();
+    if (!d || !moved) return; // a plain tap on the selected chip: the chip's own click decides, as before
     eatClick = performance.now() + 400; // the finger lifts over another chip: the browser's click must not toggle the old one
     const mid = d.x + d.w / 2;
     let best = null, gap = Infinity;
@@ -406,20 +445,24 @@ function watchChips() {
     eatClick = 0;
     if (e.target instanceof Element && e.target.closest(CHIP)) { e.preventDefault(); e.stopPropagation(); }
   }, { capture: true });
+
   new MutationObserver((recs) => {
-    const bars = new Set(recs.map((r) => r.target).filter((t) => t instanceof Element && CHIP_ROW.some((c) => t.classList.contains(c))).map((t) => t.closest(CHIP_BAR)));
-    for (const bar of bars) if (bar) place(bar, true);
+    const rows = recs.map((r) => r.target).filter((t) => t instanceof Element && CHIP_ROW.some((c) => t.classList.contains(c)) && !t.closest('.g-lens'));
+    for (const bar of new Set(rows.map((t) => t.closest(CHIP_BAR)))) if (bar) place(bar, true);
   }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('scroll', (e) => {
     const bar = e.target instanceof Element && CHIP_ROW.some((c) => e.target.classList.contains(c)) && e.target.closest(CHIP_BAR);
-    if (bar) place(bar, false);
+    if (!bar) return;
+    if (bub && bub.bar === bar) refresh(); else place(bar, false);
   }, { capture: true, passive: true });
   // the chips change shape with the sheet (flat pills at low, TEL-224): once it comes to rest, the lens follows them
   // (not at low: there the chips are the small badges in the stop's header, TEL-227, and the lens is hidden anyway;
   // measured there it would sit in the wrong place on the way up)
   document.getElementById('sheet')?.addEventListener('sheet:settle', (e) => {
     if (e.currentTarget.dataset.state === 'peek') return;
-    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden]), .tripv-optbar:not([hidden])')) place(bar, false);
+    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden]), .tripv-optbar:not([hidden])')) {
+      if (bub && bub.bar === bar) refresh(); else place(bar, false);
+    }
   });
 }
 
