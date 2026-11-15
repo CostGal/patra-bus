@@ -10,7 +10,8 @@
 // - sticky headers in the sheet: .g-scrolled on the sheet once the list has scrolled (their blur layer shows then);
 // - menu: morphs out of the ☰ button, following app.js's popover spring (clip-path + translate); ☰ turns into ✕;
 // - the stop's ⋯ menu morphs the same way (⋯ → ˄), with its own timing;
-// - line filter chips: a glass lens slides from the selected chip to the next.
+// - line filter chips: a solid pill marks the selected chip and slides to the next; held, it turns into a glass bubble
+//   that follows the finger and magnifies (TEL-315).
 // Nothing is stored or sent. Reduced transparency / more contrast: no lens and no effects (CSS is solid then);
 // reduced motion: no growing, moving or ticking (the press itself still turns the glass more opaque).
 const root = document.documentElement;
@@ -274,9 +275,11 @@ function watchPopovers() {
 // The same lens for the stop's line chips and the trip's option chips (TEL-293): bar > row > chip, chip.on chosen.
 const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tripv-opts'], CHIP = '.stopv-chip, .tripv-opt';
 const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
+const SNAP_MS = 300; // a released drag glides to its chip (U24)
 function watchChips() {
   let from = null;
   const rel = (el, bar) => { const a = el.getBoundingClientRect(); const b = bar.getBoundingClientRect(); return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height }; };
+  let snap = false; // the next move comes from a released drag: a short glide, no stretch
   const place = (bar, animate) => {
     let lens = bar.querySelector(':scope > .g-lens');
     if (!lens) { lens = document.createElement('div'); lens.className = 'g-lens'; lens.setAttribute('aria-hidden', 'true'); bar.prepend(lens); }
@@ -287,7 +290,9 @@ function watchChips() {
     lens.style.width = `${to.w}px`;
     lens.style.height = `${to.h}px`;
     lens.style.transform = `translate(${to.x}px, ${to.y}px)`;
-    if (animate && from && !still && Math.abs(from.x - to.x) > 1) {
+    if (animate && from && !still && snap) {
+      lens.animate([{ transform: `translate(${from.x}px, ${from.y}px)` }, { transform: `translate(${to.x}px, ${to.y}px)` }], { duration: SNAP_MS, easing: SPRING });
+    } else if (animate && from && !still && Math.abs(from.x - to.x) > 1) {
       const left = Math.min(from.x, to.x);
       const right = Math.max(from.x + from.w, to.x + to.w);
       lens.animate([
@@ -297,13 +302,89 @@ function watchChips() {
       ], { duration: 480, easing: OUT });
     }
     from = null;
+    snap = false;
   };
   document.addEventListener('pointerdown', (e) => {
     const chip = e.target instanceof Element && e.target.closest(CHIP);
     const bar = chip?.closest(CHIP_BAR);
     const on = bar?.querySelector(CHIP_ON);
     from = on ? rel(on, bar) : null;
+    if (on && chip === on && e.isPrimary && !still) hold(bar, on, e);
   }, { capture: true, passive: true });
+
+  // TEL-315, like the iOS 26 tab bar (UI protocol U24): pressed on the selected chip, the lens turns into a clear bubble
+  // above the row; dragged, it follows the finger and magnifies the chips under it (a copy of the row inside the
+  // bubble, which grows with it: no SVG filter, so Safari too); released, it glides to the nearest chip and picks it.
+  // A swipe that starts on any other chip still scrolls the row (CSS: only the selected chip has touch-action: pan-y).
+  let drag = null;
+  let eatClick = 0;
+  function hold(bar, on, e) {
+    const lens = bar.querySelector(':scope > .g-lens');
+    const row = on.parentElement;
+    if (!lens || lens.hidden || !row) return;
+    for (const a of lens.getAnimations()) a.cancel();
+    const at = rel(on, bar);
+    const r = rel(row, bar);
+    const copy = row.cloneNode(true);
+    copy.removeAttribute('id');
+    copy.removeAttribute('role');
+    copy.removeAttribute('aria-label');
+    copy.classList.add('g-lens-copy');
+    for (const c of copy.querySelectorAll('.on, [id]')) { c.classList.remove('on'); c.removeAttribute('id'); } // the real row stays the only selection
+    copy.inert = true;
+    copy.style.width = `${row.clientWidth}px`;
+    copy.style.margin = '0'; // inline: the sheet's own rule for the row (negative margins) is stronger than glass.css's
+    lens.append(copy);
+    lens.style.transform = 'none';
+    lens.classList.add('g-held');
+    drag = { bar, row, lens, copy, id: e.pointerId, x0: e.clientX, base: at.x, x: at.x, y: at.y, w: at.w, h: at.h, r, scroll: row.scrollLeft, moved: false };
+    follow(at.x);
+  }
+  function follow(x) {
+    const d = drag;
+    d.x = x;
+    // held, the lens moves with the `translate` property: the bubble's `scale` (CSS) then grows it in place, where
+    // with `transform` it would scale the offset too
+    d.lens.style.translate = `${x}px ${d.y}px`;
+    const b = d.lens.clientLeft; // the copy sits inside the lens's border
+    d.copy.style.transform = `translate(${d.r.x - x - d.scroll - b}px, ${d.r.y - d.y - b}px)`;
+  }
+  document.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0;
+    if (Math.abs(dx) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    const chips = [...drag.row.querySelectorAll(CHIP)].map((c) => rel(c, drag.bar));
+    if (!chips.length) return;
+    const min = Math.max(chips[0].x, drag.r.x);
+    const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, drag.r.x + drag.r.w) - drag.w;
+    follow(Math.max(min, Math.min(max, drag.base + dx)));
+  }, { passive: true });
+  const letGo = (e, cancel) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    d.lens.classList.remove('g-held');
+    d.copy.remove();
+    d.lens.style.translate = '';
+    d.lens.style.transform = `translate(${d.x}px, ${d.y}px)`;
+    if (!d.moved) return; // a plain tap on the selected chip: the chip's own click decides, as before
+    eatClick = performance.now() + 400; // the finger lifts over another chip: the browser's click must not toggle the old one
+    const mid = d.x + d.w / 2;
+    let best = null, gap = Infinity;
+    for (const c of d.row.querySelectorAll(CHIP)) { const b = rel(c, d.bar); const g = Math.abs(b.x + b.w / 2 - mid); if (g < gap) { gap = g; best = c; } }
+    from = { x: d.x, y: d.y, w: d.w, h: d.h };
+    snap = true;
+    if (!cancel && best && !best.matches(CHIP_ON)) best.click(); // chosen, the same as a tap: the rebuild glides the lens
+    else place(d.bar, true);
+  };
+  document.addEventListener('pointerup', (e) => letGo(e, false), { passive: true });
+  document.addEventListener('pointercancel', (e) => letGo(e, true), { passive: true });
+  document.addEventListener('click', (e) => {
+    if (!e.isTrusted || performance.now() > eatClick) return;
+    eatClick = 0;
+    if (e.target instanceof Element && e.target.closest(CHIP)) { e.preventDefault(); e.stopPropagation(); }
+  }, { capture: true });
   new MutationObserver((recs) => {
     const bars = new Set(recs.map((r) => r.target).filter((t) => t instanceof Element && CHIP_ROW.some((c) => t.classList.contains(c))).map((t) => t.closest(CHIP_BAR)));
     for (const bar of bars) if (bar) place(bar, true);
