@@ -180,7 +180,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       round('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
   // the option chips; the bar holds the glass lens that slides to the chosen one (js/glass.js)
   const opts = h('div', { class: 'tripv-opts', role: 'tablist', 'aria-label': t('Επιλογές διαδρομής') });
-  const optBar = h('div', { class: 'tripv-optbar', hidden: true }, opts);
+  const optBar = h('div', { class: 'tripv-optbar', 'data-lens': true, hidden: true }, opts);
   // tabs: the arrow keys move between the options (and choose them)
   opts.addEventListener('keydown', (e) => {
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;

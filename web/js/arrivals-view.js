@@ -257,7 +257,7 @@ export function mountStop(container, ctx, { code }) {
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
   // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
   // into their own row and grow into the filter chips
-  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
+  const chipBar = h('div', { class: 'stopv-chipbar', 'data-lens': true, hidden: true }, chips);
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));

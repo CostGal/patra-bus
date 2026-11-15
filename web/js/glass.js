@@ -270,9 +270,10 @@ function watchPopovers() {
   }).observe(document.body, { attributes: true, attributeFilter: ['hidden'], subtree: true });
 }
 
-// ---- line filter chips: one lens marks the selected chip (the chips are rebuilt on every change, so the lens lives in
-// their bar, outside the rebuilt row). The same lens for the stop's line chips and the trip's option chips (TEL-293):
-// bar > row > chip, chip.on chosen.
+// ---- pick-one rows (UI protocol U25): one lens marks the chosen chip (the chips may be rebuilt on every change, so the
+// lens lives in their bar, outside the rebuilt row). Any row gets it with one mark, TEL-333: bar[data-lens] > row >
+// chip, the chosen chip .on or aria-pressed / -checked / -selected="true". Today: the stop's line chips and the trip's
+// option chips (TEL-293). The bar must be positioned (css/glass.css gives a plain one position: relative).
 // TEL-315 (UI protocol U24), like the iOS 26 tab bar in the GitHub app: at rest the lens is a solid pill. Out of the
 // pill grows a clear bubble that magnifies the chips under it (a copy of the row inside the bubble, so no SVG filter
 // and Safari too; the real chips under it are cut out of the row, so nothing shows twice):
@@ -283,9 +284,13 @@ function watchPopovers() {
 // transitions), and the copy and the hole stay until it has (MORPH_MS), so nothing pops.
 // One bubble at a time (`bub`); a rebuild of the row while it is out takes it over, so lens, copy and hole never
 // disagree.
-const CHIP_BAR = '.stopv-chipbar, .tripv-optbar', CHIP_ROW = ['stopv-chips', 'tripv-opts'], CHIP = '.stopv-chip, .tripv-opt';
-const CHIP_ON = '.stopv-chip.on, .tripv-opt.on';
-const ROW_ON = ':scope > .stopv-chips > .stopv-chip.on, :scope > .tripv-opts > .tripv-opt.on'; // not the bubble's copy
+const CHIP_BAR = '[data-lens]';
+const LENS_ROW = ':scope > :not(.g-lens)'; // the bar's row: its child that is not the lens
+const CHIP = '[data-lens] > :not(.g-lens) > *'; // a chip of a real row (the bubble's copy sits inside the lens)
+const ON = ':is(.on, [aria-pressed="true"], [aria-checked="true"], [aria-selected="true"])';
+const CHIP_ON = `${CHIP}${ON}`;
+const ROW_ON = `${LENS_ROW} > ${ON}`; // from the bar: not the bubble's copy
+const isRow = (t) => t instanceof Element && !t.classList.contains('g-lens') && !!t.parentElement?.matches(CHIP_BAR);
 const MORPH_MS = 280; // bubble -> pill: the lens's own transitions in css/glass.css
 const LENS_PAD = 7; // the lens reaches this much above and below its chip: 54 px over 40 (css/glass.css: 4 px from the capsule)
 const LENS_PADX = 0; // and this much past each side (0: the lens is as wide as its chip, tests/e2e/glass.spec.mjs)
@@ -320,7 +325,7 @@ function watchChips() {
   function open(bar, pos) {
     finish();
     const lens = bar.querySelector(':scope > .g-lens');
-    const row = bar.querySelector(':scope > .stopv-chips, :scope > .tripv-opts');
+    const row = bar.querySelector(LENS_ROW);
     if (!lens || lens.hidden || !row) return null;
     for (const a of lens.getAnimations()) a.cancel();
     const copy = row.cloneNode(true);
@@ -457,7 +462,7 @@ function watchChips() {
       release(); // and lets go of its own press look (.g-press, grown): the bubble has moved on
     }
     if (!drag.moved) return;
-    const chips = [...bub.row.querySelectorAll(CHIP)].map((c) => pill(c, bub.bar));
+    const chips = [...bub.row.children].map((c) => pill(c, bub.bar));
     if (!chips.length) return;
     const min = Math.max(chips[0].x, EDGE);
     const max = Math.min(chips[chips.length - 1].x + chips[chips.length - 1].w, bub.bar.offsetWidth - EDGE) - bub.w;
@@ -474,7 +479,7 @@ function watchChips() {
     eatClick = performance.now() + 400; // the finger lifts over another chip: the browser's click must not toggle the old one
     const mid = d.x + d.w / 2;
     let best = null, gap = Infinity;
-    for (const c of d.row.querySelectorAll(CHIP)) { const b = rel(c, d.bar); const g = Math.abs(b.x + b.w / 2 - mid); if (g < gap) { gap = g; best = c; } }
+    for (const c of d.row.children) { const b = rel(c, d.bar); const g = Math.abs(b.x + b.w / 2 - mid); if (g < gap) { gap = g; best = c; } }
     if (!cancel && best && !best.matches(CHIP_ON)) {
       best.click(); // chosen, the same as a tap: the rebuild takes the bubble on to the new chip
       queueMicrotask(() => home(d)); // after the rebuild's own place(); only if nothing was rebuilt
@@ -489,11 +494,20 @@ function watchChips() {
   }, { capture: true });
 
   new MutationObserver((recs) => {
-    const rows = recs.map((r) => r.target).filter((t) => t instanceof Element && CHIP_ROW.some((c) => t.classList.contains(c)) && !t.closest('.g-lens'));
-    for (const bar of new Set(rows.map((t) => t.closest(CHIP_BAR)))) if (bar) place(bar, true);
+    const bars = new Set();
+    for (const r of recs) {
+      if (isRow(r.target)) bars.add(r.target.parentElement); // its chips were rebuilt
+      // a bar put on the page with its chips already in it (no rebuild to wake us): place its lens now
+      for (const n of r.addedNodes) {
+        if (!(n instanceof Element) || n.closest('.g-lens')) continue;
+        if (n.matches(CHIP_BAR)) bars.add(n);
+        for (const b of n.querySelectorAll(CHIP_BAR)) bars.add(b);
+      }
+    }
+    for (const bar of bars) place(bar, true);
   }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('scroll', (e) => {
-    const bar = e.target instanceof Element && CHIP_ROW.some((c) => e.target.classList.contains(c)) && e.target.closest(CHIP_BAR);
+    const bar = isRow(e.target) && e.target.parentElement;
     if (!bar) return;
     if (bub && bub.bar === bar) refresh(); else place(bar, false);
   }, { capture: true, passive: true });
@@ -502,7 +516,7 @@ function watchChips() {
   // measured there it would sit in the wrong place on the way up)
   document.getElementById('sheet')?.addEventListener('sheet:settle', (e) => {
     if (e.currentTarget.dataset.state === 'peek') return;
-    for (const bar of document.querySelectorAll('.stopv-chipbar:not([hidden]), .tripv-optbar:not([hidden])')) {
+    for (const bar of document.querySelectorAll(`${CHIP_BAR}:not([hidden])`)) {
       if (bub && bub.bar === bar) refresh(); else place(bar, false);
     }
   });

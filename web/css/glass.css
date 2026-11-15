@@ -311,14 +311,14 @@ html.glass-fx .g-lens-copy {
 }
 /* inside the bubble every chip looks chosen, as GitHub turns a tab blue under it: no pill of its own (the bubble is
    the pill), the label in the primary colour */
-html.glass-fx .g-lens-copy > .stopv-chip, html.glass-fx .g-lens-copy > .tripv-opt {
+html.glass-fx .g-lens > .g-lens-copy > * {
   background: transparent; border-color: transparent; box-shadow: none; color: var(--primary);
 }
 /* bubble out: the bar grows a little (.g-grown, GitHub ~3%), and the row has a hole where the bubble is (.g-holding, js/glass.js: --hole-a/-b,
    in the row's px); the stop's row keeps its own edge fade, intersected with the hole */
-html.glass-fx .stopv-chipbar, html.glass-fx .tripv-optbar { transition: scale .28s cubic-bezier(.3, 1.4, .5, 1); }
+html.glass-fx [data-lens] { transition: scale .28s cubic-bezier(.3, 1.4, .5, 1); }
 html.glass-fx .g-grown { scale: 1.03; }
-html.glass-fx .g-holding > .stopv-chips, html.glass-fx .g-holding > .tripv-opts {
+html.glass-fx .g-holding > :not(.g-lens) {
   --hole: linear-gradient(to right, #000 var(--hole-a, 0px), transparent var(--hole-a, 0px), transparent var(--hole-b, 0px), #000 var(--hole-b, 0px));
   -webkit-mask-image: var(--hole); mask-image: var(--hole);
 }
@@ -331,9 +331,13 @@ html.glass-fx .g-holding > .stopv-chips {
    under the lens) and have no pill of their own; the lens is the only pill. It fades with the chips at low (--l: paint
    only, U8), where they are the line badges under the stop's name (TEL-227). The trip's bar gets its own stacking
    context, so the capsule stays inside it. Only with the lens (glass-fx): without it the chips keep their own pills,
-   or nothing would show which one is chosen */
-html.glass.glass-fx .tripv-optbar { isolation: isolate; }
-html.glass.glass-fx .stopv-chipbar::after, html.glass.glass-fx .tripv-optbar::after {
+   or nothing would show which one is chosen. Every pick-one row with the mark data-lens gets this (U25, TEL-333): bar >
+   row > chip, the chosen chip .on or aria-pressed / -checked / -selected="true" (js/glass.js). A bar or row with no
+   position of its own gets one (:where, so any rule of the view wins, like the stop's sticky bar) */
+:where(html.glass-fx [data-lens]) { position: relative; }
+:where(html.glass-fx [data-lens] > :not(.g-lens)) { position: relative; z-index: 1; }
+html.glass.glass-fx [data-lens] { isolation: isolate; }
+html.glass.glass-fx [data-lens]::after {
   content: ''; position: absolute; z-index: -1; inset: 0; height: auto; pointer-events: none; border-radius: var(--radius-full); /* height: the stop bar's old fade below set 12 px */
   background: color-mix(in srgb, var(--g-card) 34%, transparent); border: var(--g-line);
   box-shadow: inset 0 1px 0 var(--g-edge), 0 4px 14px rgba(0, 0, 0, .12); opacity: var(--l, 1);
@@ -353,20 +357,19 @@ html.glass.glass-fx .tripv-opts { padding-inline: 4px; }
 /* the line badges 20% bigger from mid, drawn only (scale, U8): at low they keep their size under the stop's name */
 html.glass.glass-fx .stopv-chips > .stopv-chip .badge { scale: calc(1 + var(--l, 1) * .2); }
 html.glass.glass-fx .stopv-chip[data-key="*"] { font-size: 1.0625rem; }
-html.glass.glass-fx .stopv-chips > .stopv-chip, html.glass.glass-fx .stopv-chips > .stopv-chip.on,
-html.glass.glass-fx .tripv-opts > .tripv-opt, html.glass.glass-fx .tripv-opts > .tripv-opt.on {
+html.glass.glass-fx [data-lens] > :not(.g-lens) > *, html.glass.glass-fx [data-lens] > :not(.g-lens) > .on {
   background: transparent; border-color: transparent; box-shadow: none; transition: color .2s ease;
 }
 /* the chosen chip's label in the primary colour, as GitHub's blue tab; while the bubble is away from it (or still on its
    way there), it looks like the others */
-html.glass.glass-fx .stopv-chips > .stopv-chip.on, html.glass.glass-fx .tripv-opts > .tripv-opt.on { color: var(--primary); }
-html.glass.glass-fx .g-dragging > .stopv-chips > .stopv-chip.on, html.glass.glass-fx .g-dragging > .tripv-opts > .tripv-opt.on { color: var(--foreground); }
+html.glass.glass-fx [data-lens] > :not(.g-lens) > :is(.on, [aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) { color: var(--primary); }
+html.glass.glass-fx .g-dragging[data-lens] > :not(.g-lens) > :is(.on, [aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) { color: var(--foreground); }
 /* «All» is as wide as the widest line chip (js/glass.js measures --chip-w), so the bubble has one size from any chip;
    with --l it still folds away at low */
 html.glass .stopv-chip[data-key="*"] { min-width: calc(var(--l, 1) * var(--chip-w, 0px)); justify-content: center; }
 /* only the selected chip keeps a sideways drag for the lens; a swipe from any other chip still scrolls the row */
 @media (prefers-reduced-motion: no-preference) {
-  html.glass-fx .stopv-chip.on, html.glass-fx .tripv-opt.on { touch-action: pan-y; }
+  html.glass-fx [data-lens] > :not(.g-lens) > :is(.on, [aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) { touch-action: pan-y; }
 }
 @media (prefers-reduced-motion: reduce) {
   html.glass .fab.g-ping::after { animation: none; }
