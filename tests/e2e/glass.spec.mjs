@@ -310,6 +310,36 @@ test('search in the sheet: ☰ alone at the top, search home only, open = up, cl
 
 test.describe('touch', () => {
   test.use({ hasTouch: true });
+  // TEL-253: while the lens's bubble is out it holds a copy of the row; a pick must repaint the real row, not the copy
+  test('menu theme row: a drag from the chosen theme picks where it lets go; a tap during a glide still picks', async ({ page }) => {
+    await page.goto('/?demo#/');
+    await page.locator('#menu-btn').tap();
+    await expect(page.locator('#menu-pop')).toBeVisible();
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+    const at = (v) => page.evaluate((v) => { const r = document.querySelector(`.theme-bar > .theme-row > [data-value="${v}"]`).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, v);
+    const chosen = () => page.evaluate(() => document.querySelector('.theme-bar > .theme-row > [aria-checked="true"]').dataset.value);
+    const settled = () => page.evaluate(() => { const bar = document.querySelector('.theme-bar'); const l = bar.querySelector(':scope > .g-lens').getBoundingClientRect();
+      const c = bar.querySelector(':scope > .theme-row > [aria-checked="true"]').getBoundingClientRect();
+      return !bar.classList.contains('g-holding') && Math.abs(l.left - c.left) < 2; });
+    await expect.poll(settled).toBe(true);
+    // the menu has finished morphing open (while it grows, its clip-path still cuts where a finger can land)
+    await expect.poll(async () => { const [x, y] = await at('auto'); return page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.dataset.value, [x, y]); }).toBe('auto');
+    // hold Auto, drag to Dark, let go
+    const [x0, y] = await at('auto'); const [x1] = await at('dark');
+    await touch('touchStart', x0, y);
+    await page.waitForTimeout(100);
+    for (let i = 1; i <= 10; i++) { await touch('touchMove', x0 + (x1 - x0) * i / 10, y); await page.waitForTimeout(16); }
+    await touch('touchEnd');
+    await expect.poll(chosen).toBe('dark');
+    await expect.poll(settled).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
+    // a tap on Light, and at once (the bubble still gliding) a tap on Auto: Auto is picked
+    for (const v of ['light', 'auto']) { const [x, yy] = await at(v); await touch('touchStart', x, yy); await touch('touchEnd'); await page.waitForTimeout(60); }
+    await expect.poll(chosen).toBe('auto');
+    await expect.poll(settled).toBe(true);
+    await expect(page.locator('#menu-pop')).toBeVisible();
+  });
   test('search in the sheet: a tap at low opens the keyboard at the top, then the real field once the sheet is up', async ({ page }) => {
     await page.goto('/?demo&debug#/');
     await expect(page.locator('#searchbar')).toBeVisible();

@@ -186,8 +186,10 @@ function buildMenu() {
 }
 // The row is rebuilt on every paint, not only re-marked: a rebuilt row is what moves the lens (js/glass.js). Also on
 // every open, since a hidden menu can't be measured. Focus that was in the row goes to the chosen theme.
+// `.theme-bar > .theme-row` and not `.theme-row`: while the lens's bubble is out (a drag, a glide after a tap) it holds a
+// copy of the row, first in the bar; repainting that copy would leave the real row on the old theme.
 function paintThemeRow() {
-  const row = menuPop.querySelector('.theme-row');
+  const row = menuPop.querySelector('.theme-bar > .theme-row');
   if (!row) return;
   const cur = getSettings().theme || 'auto';
   const hadFocus = row.contains(document.activeElement);
