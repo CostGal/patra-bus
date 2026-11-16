@@ -175,19 +175,27 @@ function buildMenu() {
     item('#/lines', 'bus', t('Γραμμές')),
     h('div', { class: 'pop-sep' }),
     h('div', { class: 'pop-head', id: 'theme-label' }, t('Θέμα')),
-    h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' },
-      THEMES.map(([value, ico, label]) => h('button', {
-        type: 'button', class: 'theme-opt', role: 'radio', 'data-value': value, 'data-keep': '', 'aria-checked': 'false',
-        'aria-label': t(label), title: t(label), onclick: () => setSetting('theme', value),
-      }, icon(ico)))),
+    // TEL-253 (UI-PROTOCOL U25): one pick-one row, the chosen theme under the glass lens (js/glass.js: bar[data-lens] >
+    // row > chip). paintThemeRow fills the row.
+    h('div', { class: 'theme-bar', 'data-lens': true },
+      h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' })),
     h('div', { class: 'pop-sep' }),
     item('#/report', 'bug', t('Αναφορά προβλήματος')),
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
   paintThemeRow();
 }
+// The row is rebuilt on every paint, not only re-marked: a rebuilt row is what moves the lens (js/glass.js). Also on
+// every open, since a hidden menu can't be measured. Focus that was in the row goes to the chosen theme.
 function paintThemeRow() {
+  const row = menuPop.querySelector('.theme-row');
+  if (!row) return;
   const cur = getSettings().theme || 'auto';
-  menuPop.querySelectorAll('[role="radio"]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === cur)));
+  const hadFocus = row.contains(document.activeElement);
+  row.replaceChildren(...THEMES.map(([value, ico, label]) => h('button', {
+    type: 'button', class: 'theme-opt', role: 'radio', 'data-value': value, 'data-keep': '', 'aria-checked': String(value === cur),
+    'aria-label': t(label), title: t(label), onclick: () => setSetting('theme', value),
+  }, icon(ico))));
+  if (hadFocus) row.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
 }
 
 // Runs after the popover consts exist (applyTheme repaints the theme row).
@@ -575,7 +583,7 @@ function onTap(btn, fn) {
 // ☰ stays the menu while searching (the search closes with its own ✕): it ends the search, then opens the menu
 onTap(menuBtn, (fromKeys) => {
   if (searchOpen) closeSearch(false, true);
-  if (menuPop.hidden) menuPopover.open();
+  if (menuPop.hidden) { menuPopover.open(); paintThemeRow(); } // open first: the row is measured for the lens once shown
   else menuPopover.close(fromKeys);
 });
 onTap($('search-close'), (fromKeys) => closeSearch(fromKeys, true));

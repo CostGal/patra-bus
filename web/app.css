@@ -205,6 +205,12 @@ html.sheet-dragging .fabs-bottom { transition: none; }
 }
 .theme-opt:hover { background: var(--muted); }
 .theme-opt[aria-checked="true"] { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+/* TEL-253 (UI-PROTOCOL U25): with the glass lens (css/glass.css, js/glass.js) the row is one glass capsule and the lens
+   is the only pill: capsule 62 px, chips 40, 4 px in from its ends, as the trip's options and the report's categories.
+   Without it (no glass, reduced transparency, more contrast): the separate solid pills above. */
+html.glass.glass-fx .theme-bar { margin: var(--space-1) var(--space-3) var(--space-2); padding-block: 11px; }
+html.glass.glass-fx .theme-row { gap: 0; padding: 0 4px; }
+html.glass.glass-fx .theme-opt { height: 40px; border-radius: var(--radius-full); }
 
 /* ---------- sheet / side panel ---------- */
 .sheet {
