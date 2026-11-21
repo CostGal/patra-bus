@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import { parseHash } from '../web/js/route.js';
 import { CITIES } from '../web/js/cities.js';
 
-const read = (f) => readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
+const read = (f) => readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const html = read('index.html');
 const inline = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 
