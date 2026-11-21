@@ -6,6 +6,8 @@ import { icon } from './ui.js';
 import { t, onLangChange, lang } from './i18n.js';
 import { city } from './cities.js';
 import { BASE_STYLE, styleFor, addPlaces, setMapLanguage } from './map-style.js';
+import { STOP_LAYERS, FULL_ZOOM, addStopLayers, setSelectedStopFilter, createSelectedStop, stopBearings } from './map-stops.js';
+import { loadData, loadShapes } from './data.js';
 
 const FONT = ['Noto Sans Regular'];
 const noop = () => {};
@@ -146,41 +148,65 @@ export function createMap(container, opts = {}) {
 
   function addStops() {
     const c = palette();
-    map.addSource('stops', { type: 'geojson', data: stopsFc });
-    const selFilter = ['==', ['get', 'code'], selected ?? ''];
-    map.addLayer({
-      id: 'stops-halo', type: 'circle', source: 'stops', filter: selFilter,
-      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 11, 17, 20], 'circle-color': c.accent, 'circle-opacity': 0.22 },
-    });
-    map.addLayer({
-      id: 'stops-circle', type: 'circle', source: 'stops', minzoom: 13,
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2.6, 15, 4.6, 17, 7, 19, 9.5],
-        'circle-color': c.fill,
-        'circle-stroke-color': c.stroke,
-        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 13, 1, 16, 2.4],
-      },
-    });
-    map.addLayer({
-      id: 'stops-selected', type: 'circle', source: 'stops', filter: selFilter,
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 17, 10.5],
-        'circle-color': c.accent, 'circle-stroke-color': c.fill, 'circle-stroke-width': 3,
-      },
-    });
-    map.addLayer({
-      id: 'stops-label', type: 'symbol', source: 'stops', minzoom: 16,
-      layout: {
-        'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 12, 'text-anchor': 'top',
-        'text-offset': [0, 0.9], 'text-max-width': 9, 'text-optional': true,
-      },
-      paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.6 },
-    });
-    // Invisible but wide: the touch target (clicks are matched against this layer).
-    map.addLayer({
-      id: 'stops-hit', type: 'circle', source: 'stops', minzoom: 13,
-      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 18], 'circle-color': '#000', 'circle-opacity': 0 },
-    });
+    addStopLayers(map, stopsFc, theme, selected, { font: FONT, color: c.text, halo: c.halo });
+    showSelected();
+  }
+
+  // The tapped stop is drawn on its own (map-stops.js), so it can bounce; its normal icon is hidden meanwhile.
+  const selectedStop = createSelectedStop(map, reduced);
+  function showSelected() {
+    const f = selected == null ? null : stopsFc.features.find((x) => x.properties.code === selected);
+    if (!f) { selectedStop.hide(); return; }
+    const [lng, lat] = f.geometry.coordinates;
+    selectedStop.show({ code: selected, lng, lat, bearing: f.properties.bearing ?? null }, theme);
+  }
+
+  // Arrows are worked out once per city, the first time the map is close enough to show them.
+  let bearings = null;
+  let bearingsFor = null;
+  function applyBearings() {
+    for (const f of stopsFc.features) {
+      const b = bearings?.get(f.properties.code);
+      if (b == null) delete f.properties.bearing;
+      else f.properties.bearing = b;
+    }
+  }
+  async function loadBearings() {
+    const id = city().id;
+    if (bearingsFor === id || map.getZoom() < FULL_ZOOM - 0.5) return;
+    bearingsFor = id;
+    try {
+      const [data, shapes] = await Promise.all([loadData(), loadShapes()]);
+      if (city().id !== id) return;
+      bearings = stopBearings(data, shapes);
+      applyBearings();
+      if (styleReady) map.getSource('stops')?.setData(stopsFc);
+      showSelected();
+    } catch (err) {
+      bearingsFor = null; // no arrows for now; the plain icon still works
+      console.warn('[map] stop directions', err);
+    }
+  }
+  map.on('zoomend', loadBearings);
+
+  // The stop under a tap: the nearest drawn icon within a finger's reach, or the tapped stop itself.
+  function stopAt(point) {
+    if (!styleReady || !map.getLayer(STOP_LAYERS[0])) return null;
+    const R = 20;
+    const hits = map.queryRenderedFeatures([[point.x - R, point.y - R], [point.x + R, point.y + R]], { layers: STOP_LAYERS });
+    let code = null;
+    let bd = R * R * 2;
+    for (const f of hits) {
+      const p = map.project(f.geometry.coordinates);
+      const d = (p.x - point.x) ** 2 + (p.y - point.y) ** 2;
+      if (d < bd) { bd = d; code = String(f.properties.code); }
+    }
+    const own = selectedStop.position();
+    if (own) {
+      const p = map.project(own);
+      if ((p.x - point.x) ** 2 + (p.y - point.y) ** 2 < bd) code = selectedStop.code();
+    }
+    return code;
   }
 
   const userAcc = { type: 'FeatureCollection', features: [] };
@@ -261,25 +287,13 @@ export function createMap(container, opts = {}) {
 
   map.on('click', (e) => {
     if (Date.now() < suppressClickUntil) return;
-    if (styleReady && map.getLayer('stops-hit')) {
-      const hits = map.queryRenderedFeatures(e.point, { layers: ['stops-hit'] });
-      if (hits.length) {
-        let best = hits[0];
-        let bd = Infinity;
-        for (const f of hits) {
-          const p = map.project(f.geometry.coordinates);
-          const d = (p.x - e.point.x) ** 2 + (p.y - e.point.y) ** 2;
-          if (d < bd) { bd = d; best = f; }
-        }
-        onStopClick(String(best.properties.code));
-        return;
-      }
-    }
+    const code = stopAt(e.point);
+    if (code != null) { onStopClick(code); return; }
     onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
   map.on('mousemove', (e) => {
-    if (!styleReady || !map.getLayer('stops-hit')) return;
-    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ['stops-hit'] }).length ? 'pointer' : '';
+    if (!styleReady) return;
+    map.getCanvas().style.cursor = stopAt(e.point) != null ? 'pointer' : '';
   });
   map.on('contextmenu', (e) => triggerLong(e.lngLat));
 
@@ -498,10 +512,13 @@ export function createMap(container, opts = {}) {
         type: 'FeatureCollection',
         features: (stops || []).filter(okPoint).map((s) => ({
           type: 'Feature', geometry: { type: 'Point', coordinates: ll(s) },
-          properties: { code: String(s.code), name: s.displayName || s.name || '' },
+          properties: { code: String(s.code), name: s.displayName || s.name || '', lines: s.lineCodes?.length || 0 },
         })),
       };
+      applyBearings();
       if (styleReady) map.getSource('stops')?.setData(stopsFc);
+      showSelected();
+      loadBearings();
     },
 
     // Live city switch (TEL-347): drop everything of the old city, show the new stops, move to the new centre.
@@ -510,6 +527,8 @@ export function createMap(container, opts = {}) {
       for (const id of [...markerSets.keys()]) api.clearMarkers(id);
       for (const id of [...vehicleSets.keys()]) api.clearVehicles(id);
       api.highlightStop(null);
+      bearings = null;
+      bearingsFor = null;
       api.setStops(stops);
       lastFit = null;
       map.flyTo({ center: ll(city().center), zoom: 14, speed: 1.6, essential: false });
@@ -517,9 +536,8 @@ export function createMap(container, opts = {}) {
 
     highlightStop(code) {
       selected = code == null ? null : String(code);
-      if (!styleReady) return;
-      const f = ['==', ['get', 'code'], selected ?? ''];
-      for (const id of ['stops-halo', 'stops-selected']) if (map.getLayer(id)) map.setFilter(id, f);
+      if (styleReady) setSelectedStopFilter(map, selected);
+      showSelected();
     },
 
     setUserFix(fix) {

@@ -59,6 +59,7 @@ const SHELL = [
   'js/glass.js',
   'js/map.js',
   'js/map-style.js',
+  'js/map-stops.js',
   'js/sheet.js',
   'js/motion.js',
   'js/text.js',
