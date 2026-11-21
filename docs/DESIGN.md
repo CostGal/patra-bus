@@ -172,7 +172,7 @@ the next one. Each element also has a **nick** (TEL-230): a short English name t
 |---|---|---|---|
 | N | Search bar (top) | E | Home |
 | M | Map (locate, attribution, markers) | F | Favourites / stop lists |
-| P | Sheet and every view's header (☆ ⋯ ✕ ←) | L | Lines |
+| P | Sheet and every view's header (☆ ⋯ ✕ ←) | L | Lines (removed, TEL-248) |
 | O | Menus and popovers (☰, ⋯, i) | R | Route planner (removed, TEL-217) |
 | S | Stop and arrivals (chips, LIVE / ΠΡΟΓΡ. tiles) | V | Vehicle |
 | G | Settings | D | Dialogs and forms (setup, welcome, report) |

@@ -172,7 +172,6 @@ function buildMenu() {
     h('div', { class: 'pop-sep' }),
     item('#/', 'home', t('Αρχική')),
     item('#/favorites', 'star', t('Αγαπημένες στάσεις')),
-    item('#/lines', 'bus', t('Γραμμές')),
     h('div', { class: 'pop-sep' }),
     h('div', { class: 'pop-head', id: 'theme-label' }, t('Θέμα')),
     // TEL-253 (UI-PROTOCOL U25): one pick-one row, the chosen theme under the glass lens (js/glass.js: bar[data-lens] >
@@ -784,7 +783,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', place: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', place: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
 // `to`: where the reloaded app opens (Settings asks for itself, TEL-251); home by default.
@@ -820,7 +819,7 @@ async function route() {
   currentHead = SNAP[head] != null ? head : '';
   // the search is home's first row (TEL-223); the other views put their own header there, with a ✕ back home
   searchbarEl.hidden = currentHead !== '';
-  if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' || currentHead === 'line' ? String(arg) : '' };
+  if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' ? String(arg) : '' };
   if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
   content.replaceChildren();
@@ -866,14 +865,6 @@ async function route() {
     case 'bus':
       document.title = `${t('Διαδρομή οχήματος')} · ${title()}`;
       await mount(() => import('./bus-view.js'), (m) => m.mountBus(content, ctx, { vehicleCode: String(arg), route: params.route || undefined, stop: params.stop || undefined }));
-      break;
-    case 'lines':
-      document.title = `${t('Γραμμές')} · ${title()}`;
-      await mount(() => import('./lines-view.js'), (m) => m.mountLines(content, ctx));
-      break;
-    case 'line':
-      document.title = `${t('Γραμμή {code}', { code: arg })} · ${title()}`;
-      await mount(() => import('./lines-view.js'), (m) => m.mountLine(content, ctx, { code: String(arg), dir: params.dir ? Number(params.dir) : undefined, route: params.route || undefined }));
       break;
     case 'settings':
       document.title = `${t('Ρυθμίσεις')} · ${title()}`;

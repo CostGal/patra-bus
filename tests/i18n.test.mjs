@@ -56,9 +56,9 @@ test('setLang("en") translates, fills placeholders, persists in settings, update
   assert.equal(getSettings().lang, 'en'); // persisted through store.js
   assert.equal(t('τώρα'), 'now');
   assert.equal(t('Φύγε σε {n}′', { n: 6 }), 'Leave in 6′');
-  assert.equal(t('Γραμμή {code} · {name}', { code: '601', name: 'ΠΑΝΕΠΙΣΤΗΜΙΟΥ' }), 'Line 601 · ΠΑΝΕΠΙΣΤΗΜΙΟΥ'); // names pass through untouched
-  assert.equal(tn(1, '{n} γραμμή', '{n} γραμμές'), '1 line');
-  assert.equal(tn(3, '{n} γραμμή', '{n} γραμμές'), '3 lines');
+  assert.equal(t('Στάσεις κοντά: {name}', { name: 'ΠΑΝΕΠΙΣΤΗΜΙΟΥ' }), 'Stops near: ΠΑΝΕΠΙΣΤΗΜΙΟΥ'); // names pass through untouched
+  assert.equal(tn(1, '{n} στάση', '{n} στάσεις'), '1 stop');
+  assert.equal(tn(3, '{n} στάση', '{n} στάσεις'), '3 stops');
   assert.deepEqual(seen, ['en']);
   setLang('en'); // unchanged -> no event
   assert.deepEqual(seen, ['en']);
@@ -132,9 +132,9 @@ test('EN: every entry keeps the same {placeholders} as its Greek key and is non-
   }
 });
 
-test('EN: covers every Greek UI string of settings-view.js and lines-view.js', () => {
+test('EN: covers every Greek UI string of settings-view.js', () => {
   const RAW = new Set(['Ελληνικά']); // language names stay native
-  for (const file of ['settings-view.js', 'lines-view.js']) {
+  for (const file of ['settings-view.js']) {
     const src = readFileSync(new URL(`../web/js/${file}`, import.meta.url), 'utf8')
       .split('\n').filter((l) => !/^\s*\/\//.test(l)).map((l) => l.replace(/\s\/\/\s.*$/, '')).join('\n');
     const lits = [...src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)].map((m) => m[1]).filter((s) => /[Α-Ωα-ωάέήίόύώ]/.test(s) && !RAW.has(s));
