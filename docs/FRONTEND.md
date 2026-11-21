@@ -19,7 +19,7 @@ How the phone app in `web/` is built and what it keeps on the device. `web/` is 
 The router lives in `js/app.js` (`route()`, line 645) with helpers in `js/route.js`. A hash looks like `#/{view}/{arg}?{query}`
 with an optional city prefix: `#/corfu/stop/801`.
 - No prefix means Patras when the hash points at something (a stop, a line, coordinates), so old links keep working
-  (`route.js:43-56`). Bare views such as `#/`, `#/lines`, `#/favorites` open in the saved `settings.city`.
+  (`route.js:43-56`). Bare views such as `#/`, `#/favorites`, `#/settings` open in the saved `settings.city`.
 - Links inside the app use `cityHash()`. Anything that leaves the page (share links) uses `shareHash()`, which always adds the prefix.
 - The city is chosen once at start by `js/boot-city.js` (imported first by `app.js`). A link into the other city, or the
   picker in Settings, saves `settings.city` and reloads the page (`app.js:633-649`), so modules may read the city at load time.
@@ -31,8 +31,6 @@ with an optional city prefix: `#/corfu/stop/801`.
 | `#/` | `app.js` (`mountHome`) + `home-view.js` | the search in the sheet; Places and recents at mid, favourites with their next arrival at up (section 12) | 730, 508 |
 | `#/stop/{code}` | `arrivals-view.js` | arrival tiles for one stop (LIVE or ΠΡΟΓΡ.) | 684 |
 | `#/bus/{vehicleCode}?route=&stop=` | `bus-view.js` | one bus as a timeline of stops, anchored on the stop it was opened from | 697 |
-| `#/lines` | `lines-view.js` | searchable list of lines | 701 |
-| `#/line/{code}?dir=&route=` | `lines-view.js` | one line on the map with its stops | 705 |
 | `#/favorites` | `app.js` (`mountFavorites`) | saved stops | 717 |
 | `#/pin?lat=&lng=` | `app.js` (`mountPin`) | stops within 1.5 km of a long-pressed point | 721 |
 | `#/place?id=home\|work\|new\|<id>` | `place-view.js` | set or change a saved place in the sheet (TEL-239) | — |
@@ -62,7 +60,7 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
   OpenStreetMap bus stops from Photon are dropped (our stops cover them). A Photon place whose name starts with
   the query gets `exact: true` and goes first; then the search list shows «Τόποι» above «Στάσεις», unless a
   stop's name starts with the query or its code is the query (TEL-161).
-- **Lines and vehicle**: `lines-view.js`, `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
+- **Vehicle**: `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
 - **Storage, settings, share**: `store.js` (the main blob), `settings-view.js`, `share.js` (Web Share, else clipboard),
   `notify.js` (local reminder timers; today its only user is the test button and the list in Settings, `settings-view.js:4,148`;
   `app.js:18` imports it so persisted reminders re-arm), `usage.js` (anonymous counts).

@@ -31,11 +31,11 @@ export const STATIC_EXCEPTIONS = {
   },
   U19: {
     'app.css: .view-head h1': 'old header (favourites): not on the kit\'s .card-head yet',
-    'css/extras.css: .ex-head h1': 'old header (lines, line): not on the kit\'s .card-head yet',
+    'css/extras.css: .ex-head h1': 'old header: no view uses it since TEL-251 (settings) and TEL-248 (lines removed); the rule can go with it',
   },
 };
 
-// Browser checks: view → { rule: reason }. Views: home, stop, trip, lines, line, bus, favorites, settings, report; and
+// Browser checks: view → { rule: reason }. Views: home, stop, trip, bus, favorites, settings, report; and
 // "stop-long" for the stop with the longest name (826), "chrome" for what sits over the map in every view.
 const OLD_HEAD = 'old header (.ex-head / .view-head), not the kit\'s .card-head yet';
 const OLD_INSET = 'content 24 px from the card at low/mid, 32 up: its own 16 px on top of the sheet\'s';
@@ -56,9 +56,6 @@ export const VIEW_EXCEPTIONS = {
   bus: {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop and the trip (TEL-249)',
   },
-  lines: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
-  line: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD,
-    U20: 'a link in the header is covered by the subtitle (p.ex-sub) at its edge' },
   favorites: {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop, the trip and the bus (TEL-250)',
   },

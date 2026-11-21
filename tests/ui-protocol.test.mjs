@@ -162,7 +162,7 @@ test('U15: apple-mobile-web-app-status-bar-style is "default"', () => {
 
 // ---- U19: a title's selector beats .sheet-content h1 (two classes) ----
 // A title is an h1, or an element with a class the views give to an h1 (h('h1', { class: '…' })).
-const VIEW_JS = ['js/app.js', 'js/arrivals-view.js', 'js/bus-view.js', 'js/lines-view.js', 'js/settings-view.js', 'js/report-view.js', 'js/home-view.js'];
+const VIEW_JS = ['js/app.js', 'js/arrivals-view.js', 'js/bus-view.js', 'js/settings-view.js', 'js/report-view.js', 'js/home-view.js'];
 const H1_CLASSES = new Set(VIEW_JS.flatMap((f) => [...read(f).matchAll(/h\(\s*'h1'\s*,\s*\{\s*class:\s*'([^']+)'/g)].flatMap((m) => m[1].split(/\s+/))));
 const TYPE = new Set(['font', 'font-size', 'line-height', 'letter-spacing', 'font-weight']);
 const classCount = (s) => (s.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g) || []).length;

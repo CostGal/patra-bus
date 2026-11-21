@@ -172,7 +172,7 @@ Where it shows up in Telematica: the floating search bar and bottom sheet (`.mat
 My words:
 
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
-Where it shows up in Telematica: `#/stop/1011`, `#/lines`, `#/settings` (`web/js/app.js`, `route.js`).
+Where it shows up in Telematica: `#/stop/1011`, `#/favorites`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
 
 **Headless browser**: a real browser that runs without a visible window, so a script can open pages and take screenshots, like a robot using the browser for you.

@@ -20,19 +20,17 @@ const NOW_SEC = 15; // under this a tile reads "τώρα"
 const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaSay(rem) }));
 
 // ---- one arrival tile ----
-// v: normalised Vehicle. opts: { compact, now, line, stop, lineLinks, stat, stale }. The element has .tick(now) to refresh the countdown in
+// v: normalised Vehicle. opts: { compact, now, line, stop, stat, stale }. The element has .tick(now) to refresh the countdown in
 // place (the stop view calls it every second; other modules may do the same or just re-render) and .setStat(stat) to show the
 // quiet "συνήθως +3′" under a scheduled tile (reliability stats from api.fetchStats; ignored for live ones).
-// With opts.stop (the stop code the tile belongs to) the tile is a link: a live bus opens its route (#/bus/…), a scheduled
-// departure (no vehicle position) opens its line (#/line/…; lineLinks: false turns that off, e.g. inside the line view).
+// With opts.stop (the stop code the tile belongs to) a live bus's tile is a link to its route (#/bus/…). A scheduled
+// departure (no vehicle position) is not a link: the line page it opened was removed (TEL-248) until it is planned again.
 export const busHash = (v, stop) => cityHash(`#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`);
-const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`);
 
-export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null, stale = false } = {}) {
+export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, stat = null, stale = false } = {}) {
   const live = !!v.live;
   const aged = live && stale; // TEL-52: its position is older than STALE_MS, so it must not read as LIVE any more
-  const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
-    : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
+  const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop) : null;
   const at = fetchedAt + v.etaSec * 1000; // ETA as a wall-clock instant; constant between fetches
   const clock = fmtClock(at);
   const dest = titleCase(v.routeName);

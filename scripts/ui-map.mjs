@@ -93,11 +93,11 @@ export const UI = [
   { id: 'F2', nick: 'place', name: 'Μέρη (στρογγυλά κουμπιά, αρχική)', sel: '.hm-place', all: true }, // TEL-232
   { id: 'F3', nick: 'fav arrival', name: 'Επόμενη άφιξη αγαπημένης (αρχική, up)', sel: '.hm-fav .atile', all: true },
 
-  { id: 'L1', nick: 'line search', name: 'Αναζήτηση γραμμής', sel: '.ex-search' },
-  { id: 'L2', nick: 'line row', name: 'Γραμμή (λίστα)', sel: 'a.lines-row', all: true },
-  { id: 'L3', nick: 'direction chip', name: 'Κατεύθυνση (chip)', sel: '.lines-chip', all: true },
-  { id: 'L4', nick: 'departures', name: 'Αναχωρήσεις από την αφετηρία', sel: '.lines-times' },
-  { id: 'L5', nick: 'terminus link', name: 'Σύνδεσμος αφετηρίας', sel: '.lines-times a[href]' },
+  { id: 'L1', nick: 'line search', name: 'Αναζήτηση γραμμής', sel: '.ex-search', gone: true }, // TEL-248: the lines list and line page were removed
+  { id: 'L2', nick: 'line row', name: 'Γραμμή (λίστα)', sel: 'a.lines-row', all: true, gone: true },
+  { id: 'L3', nick: 'direction chip', name: 'Κατεύθυνση (chip)', sel: '.lines-chip', all: true, gone: true },
+  { id: 'L4', nick: 'departures', name: 'Αναχωρήσεις από την αφετηρία', sel: '.lines-times', gone: true },
+  { id: 'L5', nick: 'terminus link', name: 'Σύνδεσμος αφετηρίας', sel: '.lines-times a[href]', gone: true },
 
   { id: 'R1', nick: 'from', name: 'Αφετηρία', sel: '#pl-from', gone: true },
   { id: 'R2', nick: 'to', name: 'Προορισμός', sel: '#pl-to', gone: true },
@@ -139,8 +139,6 @@ export const UI_SCREENS = [
   { id: 'menu', url: '/?demo#/stop/1011', act: (p) => p.click('#menu-btn') },
   { id: 'search', url: '/?demo#/', act: async (p) => { await p.click('#search-input'); await p.fill('#search-input', 'παν'); } },
   { id: 'home', url: '/?demo#/' },
-  { id: 'lines', url: '/?demo#/lines' },
-  { id: 'line', url: '/?demo#/line/606' },
   { id: 'vehicle', url: '/?demo#/stop/1011', act: (p) => p.click('a.atile-live') },
   { id: 'vehicle-more', url: '/?demo#/stop/1011', act: async (p) => { await p.click('a.atile-live'); await p.waitForTimeout(700); await p.click('.bv-head .btn.round[aria-expanded]'); await p.click('#sheet-handle'); await p.waitForTimeout(600); await p.evaluate(() => document.querySelector('.ob-more')?.scrollIntoView({ block: 'center' })); } },
   { id: 'favorites', url: '/?demo#/favorites', act: async (p) => { // one favourite, so the list is not empty

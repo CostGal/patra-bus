@@ -90,7 +90,7 @@ test('removed legacy token names are not declared or used', () => {
   const re = new RegExp(`--(${REMOVED.join('|')})(?![\\w-])`);
   assert.equal(Object.keys(light).filter((k) => re.test(k)).length, 0, 'declared in tokens.css');
   const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/nearby.css',
-    'css/places.css', 'css/report.css', 'css/welcome.css', 'js/lines-view.js', 'js/bus-view.js', 'index.html'];
+    'css/places.css', 'css/report.css', 'css/welcome.css', 'js/bus-view.js', 'index.html'];
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     assert.doesNotMatch(src, new RegExp(`var\\(${re.source}`), `${f} uses a removed token`);
