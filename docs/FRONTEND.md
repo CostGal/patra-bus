@@ -261,7 +261,7 @@ Sets `html.glass-fx`. Other morphs, with their own timing (Web Animations on `cl
 MutationObserver on `hidden`/`class` catches the stop's `.stopv-menu` and MapLibre's `maplibregl-compact-show`; on
 open it plays circle → panel, on close it puts the popover back on screen, plays it back into its button and hides it
 at the end (a WeakSet marks its own changes). ⋯ gets a stacked ˄ (`.g-morph-btn`, `.g-open`). Chips: a `.g-lens` in
-`.stopv-chipbar` (outside the row the view rebuilds) placed on `.stopv-chip.on` after every rebuild, animated from the
+`.stopv-chipbar` (outside the row the view rebuilds) placed on the chosen `.stopv-chip` (`aria-checked`) after every rebuild, animated from the
 chip that was selected at pointerdown, and kept in place on horizontal scroll. Does nothing with reduced transparency or more contrast; with
 reduced motion nothing grows, moves or ticks (no `scale`/`translate`/ping). Tests: `tests/e2e/glass.spec.mjs`. Screenshots:
 `npm run shots -- --map`. Rules in DESIGN.md §4.

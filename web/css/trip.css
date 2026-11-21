@@ -35,7 +35,7 @@
 .tripv-opts { display: flex; gap: var(--space-2); }
 .tripv-opt { --hit: -3px 0; display: inline-flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: center; gap: var(--space-1);
   min-height: 40px; padding: 0 var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--foreground); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
-.tripv-opt.on { background: var(--primary-soft); border-color: var(--primary); }
+.tripv-opt[aria-checked="true"] { background: var(--primary-soft); border-color: var(--primary); }
 .tripv-opt:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .tripv-opt .icon { width: 18px; height: 18px; }
 .tripv-sep { color: var(--muted-foreground); }
@@ -64,9 +64,9 @@
   background: var(--warning); color: var(--card); font-size: 11px; font-weight: var(--weight-bold); line-height: 15px; text-align: center; }
 [data-sheet="peek"] .tripv-opt { pointer-events: none; }
 html.glass .tripv-opt { background: color-mix(in srgb, var(--g-chip) calc(var(--l, 1) * 100%), transparent); border-color: color-mix(in srgb, var(--foreground) 10%, transparent); box-shadow: inset 0 1px 0 var(--g-edge); }
-html.glass .tripv-opt.on { background: var(--g-chip-on); border-color: color-mix(in srgb, var(--primary) 65%, transparent); }
+html.glass .tripv-opt[aria-checked="true"] { background: var(--g-chip-on); border-color: color-mix(in srgb, var(--primary) 65%, transparent); }
 html.glass-fx .tripv-opts { position: relative; z-index: 1; }
-html.glass-fx .tripv-opt.on { background: transparent; border-color: transparent; }
+html.glass-fx .tripv-opt[aria-checked="true"] { background: transparent; border-color: transparent; }
 
 /* ---- summary: small tiles, a number over a short word (TEL-294); the ΕΚΤΙΜ. flag under them ---- */
 .tripv-sum { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); text-align: center; }
