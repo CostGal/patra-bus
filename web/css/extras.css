@@ -122,7 +122,23 @@
 .set-row + .set-row { border-top: 1px solid var(--border); }
 .set-row-text { flex: 1 1 200px; min-width: 0; }
 .set-label { font-weight: 600; overflow-wrap: anywhere; }
-.set-row .ex-seg { flex: 0 1 auto; }
+.set-row .ex-segbar { flex: 0 1 auto; max-width: 100%; }
+/* TEL-251 (UI-PROTOCOL U25): with the glass lens (css/glass.css, js/glass.js) a segmented control is one glass capsule
+   and the lens is the only pill: capsule 62 px, buttons 40, 4 px in from its ends, as the menu's theme row and the
+   report's categories. Without it (no glass, reduced transparency, more contrast): the segmented control above. */
+html.glass.glass-fx .set-row .ex-segbar { padding-block: 11px; }
+html.glass.glass-fx .ex-segbar > .ex-seg { gap: 0; padding: 0 4px; border: 0; border-radius: var(--radius-full); background: transparent; }
+html.glass.glass-fx .ex-segbar .ex-seg-btn { min-height: 40px; border-radius: var(--radius-full); font-weight: var(--weight-semibold); }
+
+/* header (TEL-251): the kit's .card-head placed as the report's (css/report.css .rp-head). Low and mid: one row, the
+   title 17 px centred. Towards up it grows as a transform (--u, U8); at up its own row, 24 px. */
+.set-head { margin: -5px 0 var(--space-2); } /* 13 px from the card's top at low, as the stop */
+.set-head .set-title.card-title { text-align: center; transform-origin: 50% 0; transform: scale(calc(1 + min(1, var(--u, 0) * 2) * (24 / 17 - 1))); }
+.set-head.is-up .set-title.card-title { grid-column: 1 / -1; grid-row: 2; padding-bottom: 4px; font-size: 1.5rem; line-height: 29px; /* U4: 24 px at up */
+  transform: scale(calc((17 + 7 * min(1, var(--u, 0) * 2)) / 24)); }
+@media (prefers-reduced-motion: reduce) {
+  .set-head .set-title.card-title, .set-head.is-up .set-title.card-title { transform: none; }
+}
 .set-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-2) 0; }
 .set-list { margin: var(--space-1) 0; }
 .set-item { display: flex; align-items: center; gap: var(--space-1); min-height: 52px; border-top: 1px solid var(--border); }
