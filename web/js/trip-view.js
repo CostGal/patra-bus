@@ -191,6 +191,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
     if (i < 0) return;
     e.preventDefault();
     const next = list[(i + step + list.length) % list.length];
+    root.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true })); // only the lens moves (TEL-348)
     choose(next.dataset.key);
     [...opts.children].find((c) => c.dataset.key === next.dataset.key)?.focus({ preventScroll: true });
   });
@@ -277,6 +278,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
   // tap: the user picked a chip, so the map fits the trip again.
   function choose(id, tap = false) {
     if (dead) return;
+    if (tap) root.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true })); // only the lens moves (TEL-348, js/sheet.js)
     const it = its.find((x) => x.id === id) || its[0] || null;
     chosenId = it ? it.id : null;
     draw();

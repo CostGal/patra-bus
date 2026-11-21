@@ -295,6 +295,15 @@ const MORPH_MS = 280; // bubble -> pill: the lens's own transitions in css/glass
 const LENS_PAD = 7; // the lens reaches this much above and below its chip: 54 px over 40 (css/glass.css: 4 px from the capsule)
 const LENS_PADX = 0; // and this much past each side (0: the lens is as wide as its chip, tests/e2e/glass.spec.mjs)
 const EDGE = 4; // the capsule's inner edge: the lens never shows past it at rest
+const DAMPING = 0.58; // the travel spring's damping: a soft overshoot of ~10% of the distance
+const MAX_BOUNCE = 20; // px in spring theory (the glide damps more: on screen ~11-12 px, as the ☰ theme row's longest trip; measured, TEL-348)
+// the damping that overshoots `dist` by at most MAX_BOUNCE: an underdamped spring overshoots exp(-πζ/√(1-ζ²)) of it
+function dampingFor(dist) {
+  const r = Math.exp(-Math.PI * DAMPING / Math.sqrt(1 - DAMPING ** 2));
+  if (dist * r <= MAX_BOUNCE) return DAMPING;
+  const l = -Math.log(MAX_BOUNCE / dist) / Math.PI;
+  return l / Math.sqrt(1 + l * l);
+}
 function watchChips() {
   // where the lens was when a chip was pressed, and in which bar: that bar's next rebuild moves it from there. Per bar
   // (TEL-251): one pick can rebuild two rows at once (a theme picked in Settings also repaints the ☰ menu's row), and
@@ -395,7 +404,10 @@ function watchChips() {
     if (!d) return;
     drag = null;
     bar.classList.add('g-dragging'); // the chip it heads for looks like the others until the bubble gets there
-    const k = (2 * Math.PI / 0.36) ** 2, c = 2 * 0.58 * Math.sqrt(k);
+    // the bounce is capped at the ☰ theme row's (TEL-348, Kostas): a spring overshoots a share of the distance, so a
+    // long trip (the stop's chips) bounced twice as far. Past MAX_BOUNCE px the damping rises just enough to keep it
+    // there; the theme row's trips are shorter, so they keep damping 0.58 as before.
+    const k = (2 * Math.PI / 0.36) ** 2, c = 2 * dampingFor(Math.abs(to.x - d.x)) * Math.sqrt(k);
     let x = d.x, v = 0, last = performance.now();
     const near = Math.max(6, Math.abs(to.x - d.x) / 3);
     let shrunk = false;

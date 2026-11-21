@@ -256,6 +256,8 @@ export function mountStop(container, ctx, { code }) {
   // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
   // into their own row and grow into the filter chips
   const chipBar = h('div', { class: 'stopv-chipbar', 'data-lens': true, hidden: true }, chips);
+  // a pick changes the list: the sheet holds still, only the lens moves (TEL-348, js/sheet.js)
+  const hold = () => root.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
@@ -355,8 +357,8 @@ export function mountStop(container, ctx, { code }) {
       const focusedChip = chips.contains(document.activeElement) ? document.activeElement.dataset.key : null;
       const chip = (label, on, onclick, kids, key) => h('button', { type: 'button', class: `stopv-chip${on ? ' on' : ''}`, 'aria-pressed': String(on), 'data-key': key, onclick }, kids || label);
       chips.replaceChildren(
-        chip(t('Όλες'), !filter, () => { filter = null; showAll = false; render(); pushMap(); }, null, '*'),
-        ...lines.map((l) => chip(null, filter === l.code, () => { filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
+        chip(t('Όλες'), !filter, () => { hold(); filter = null; showAll = false; render(); pushMap(); }, null, '*'),
+        ...lines.map((l) => chip(null, filter === l.code, () => { hold(); filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
           [lineBadge(ctx.data.lineByCode.get(l.code) || l)], l.code)));
       if (focusedChip) [...chips.children].find((c) => c.dataset.key === focusedChip)?.focus({ preventScroll: true });
       placeChips();

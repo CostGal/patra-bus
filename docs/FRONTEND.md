@@ -249,7 +249,7 @@ fit or fly. Only when a snap goes between peek and half (not a drag, not to or f
 (`SPRINGS` in `sheet.js`: a hint of bounce peek→half, more half→peek, none to/from full). It dispatches `sheet:settle` when it comes to rest (`glass.js` re-places the chip lens then, except at low),
 `sheet:leave-full` when it starts down from up (the stop puts its two-line name back to one line, TEL-227; then `snap()`
 measures low and mid, which are not measured while up) and `sheet:stop`
-while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. The handle is 18 px with a 30 px
+while a drag passes a state, which `glass.js` turns into a tick on the handle's pill. It listens for `sheet:hold` (bubbling from a view): a tap in the stop's line chips or the trip's options changes the content under the lens, and the sheet then stays where it is, so only the lens moves, until the next drag or `snap()` measures again (TEL-348). The lens's bounce is capped (`MAX_BOUNCE` in `glass.js`) at the ☰ theme row's, whatever the distance. The handle is 18 px with a 30 px
 touch strip (`::after`); its pill is the iOS grabber, 36 × 5 px, 8 px from the top. Toggles `.g-scrolled` on the sheet when `#sheet-body` has scrolled (the
 sticky headers' `::before` blur layer shows then). Menu morph: a MutationObserver on `#menu-pop`'s style follows the
 opacity app.js's popover spring paints (= progress) and sets `clip-path: inset(… round …)`, `translate` and `--g-morph`
