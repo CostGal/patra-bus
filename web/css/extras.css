@@ -1,4 +1,5 @@
-/* Line browser + settings (owner: extras). Uses css/tokens.css only; classes are prefixed ex-/lines-/set-. */
+/* Settings, the vehicle page and shared ex- pieces (owner: extras). Uses css/tokens.css only; classes are prefixed ex-/set-/bv-.
+   The lines list and line page were removed in TEL-248 (docs/DECISIONS.md, 2026-11-21). */
 
 .ex-view {
   padding: 0 16px calc(24px + var(--safe-bottom, 0px));
@@ -20,19 +21,12 @@
 /* ---- shared ---- */
 .ex-head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
 .ex-head h1 { color: var(--foreground); font-size: 1.25rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-.ex-grow { flex: 1; min-width: 0; }
 .ex-sub { display: block; color: var(--muted-foreground); font-size: .875rem; line-height: 1.35; }
 .ex-empty { padding: var(--space-6) 0; color: var(--muted-foreground); }
 
 .ex-head > .btn.round:first-child { margin-left: -10px; }
 
 
-.ex-search {
-  display: block; width: 100%; min-height: 48px; margin: 0 0 var(--space-2); padding: 0 var(--space-4);
-  border: 1px solid var(--input); border-radius: var(--radius-full); background: var(--muted); color: var(--foreground);
-  font: inherit; font-size: var(--text-base);
-}
-.ex-search::placeholder { color: var(--muted-foreground); }
 
 .ex-note {
   margin: var(--space-2) 0; padding: 10px var(--space-3); border-radius: var(--radius-card);
@@ -61,68 +55,6 @@
 .ex-chip-sched { border-color: var(--scheduled-border); background: transparent; color: var(--scheduled); }
 .ex-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
-/* ---- lines list ---- */
-.lines-list { margin-top: var(--space-1); }
-.lines-row {
-  display: flex; align-items: center; gap: var(--space-3); min-height: 60px; padding: var(--space-2) 0;
-  color: inherit; text-decoration: none; border-bottom: 1px solid var(--border);
-}
-.lines-row:hover { background: var(--muted); }
-.lines-row > .icon { color: var(--muted-foreground); margin-right: -4px; }
-.lines-badge { flex: none; min-width: 52px; display: flex; justify-content: center; }
-.lines-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.lines-name { font-weight: 600; overflow-wrap: anywhere; }
-
-/* ---- lines list and «line not found»: header (TEL-248) ----
-   The kit's .card-head placed as the report's (css/report.css .rp-head): an empty slot · the title, 17 px, centred · ✕.
-   Towards up it grows as a transform (--u, U8); at up its own row, 24 px (js/lines-view.js: titleUp). */
-.lh-head { margin: -5px 0 var(--space-2); } /* 13 px from the card's top at low, as the stop */
-.lh-head .lh-title.card-title { align-self: center; text-align: center; transform-origin: 50% 0; transform: scale(calc(1 + min(1, var(--u, 0) * 2) * (24 / 17 - 1))); }
-.lh-head.is-up .lh-title.card-title { grid-column: 1 / -1; grid-row: 2; padding-bottom: 4px; font-size: 1.5rem; line-height: 29px; /* U4: 24 px at up */
-  transform: scale(calc((17 + 7 * min(1, var(--u, 0) * 2)) / 24)); }
-@media (prefers-reduced-motion: reduce) {
-  .lh-head .lh-title.card-title, .lh-head.is-up .lh-title.card-title { transform: none; }
-}
-
-/* ---- one line ---- */
-/* header: the vehicle's (.bv-head below), share · name with the badge under it · ✕ */
-.lines-line { --row-h: 52px; }
-.lines-line > .ex-sub { margin: 0 0 var(--space-2); text-align: center; } /* the one route's name, when there is no choice */
-/* directions (U25): bar > row > chips. Plain: separate pills, the chosen one in the line's colour; a long row scrolls.
-   With the glass lens (css/glass.css) the bar is one glass capsule, 62 px, the lens the only pill, chips 4 px in. */
-.lines-routebar { margin: 0 0 var(--space-2); opacity: var(--l, 1); } /* folds away at low, as the trip's options (paint only, U8) */
-.lines-routes {
-  display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-1) 0 var(--space-2);
-  scroll-snap-type: x proximity; scrollbar-width: none;
-}
-.lines-routes::-webkit-scrollbar { display: none; }
-.lines-chip {
-  flex: none; max-width: 72vw; min-height: 40px; padding: 0 14px; scroll-snap-align: start;
-  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--foreground);
-  font: inherit; font-size: .875rem; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.lines-chip[aria-pressed="true"] { background: var(--lc); border-color: var(--lc); color: var(--lc-text); font-weight: 600; }
-html.glass.glass-fx .lines-routebar { padding-block: 11px; }
-html.glass.glass-fx .lines-routes { gap: 0; padding: 0 4px; border-radius: var(--radius-full); }
-html.glass.glass-fx .lines-chip { max-width: 60vw; }
-
-.lines-stops { margin-top: var(--space-2); }
-.lines-stop { position: relative; padding-left: 34px; }
-.lines-stop::before { /* the line in the line's colour */
-  content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 4px; background: var(--lc); border-radius: 2px;
-}
-.lines-stop:first-child::before { top: calc(var(--row-h) / 2); border-radius: 2px 2px 0 0; }
-.lines-stop:last-child::before { bottom: auto; height: calc(var(--row-h) / 2); }
-.lines-stop:only-child::before, .is-unordered .lines-stop::before { display: none; } /* no sequence to draw */
-.lines-dot {
-  position: absolute; left: 6px; top: calc(var(--row-h) / 2 - 7px); width: 14px; height: 14px;
-  border-radius: 50%; background: var(--card); border: 3px solid var(--lc);
-}
-.lines-stop.is-end .lines-dot { left: 4px; top: calc(var(--row-h) / 2 - 9px); width: 18px; height: 18px; background: var(--lc); border: 4px solid var(--card); box-shadow: 0 0 0 3px var(--lc); }
-.lines-stop-row { display: flex; align-items: center; gap: var(--space-1); min-height: var(--row-h); }
-.lines-stop-link { flex: 1; min-width: 0; padding: var(--space-1) 0; color: inherit; text-decoration: none; }
-.lines-stop-link:hover .lines-stop-name { text-decoration: underline; }
-.lines-stop-name { display: block; font-weight: 500; overflow-wrap: anywhere; }
 
 /* ---- settings ---- */
 .set-sub { margin: 14px 0 var(--space-1); font-size: .875rem; font-weight: 700; color: var(--muted-foreground); }
@@ -145,7 +77,6 @@ html.glass.glass-fx .lines-chip { max-width: 60vw; }
 
 @media (min-width: 900px) {
   .ex-view { padding-left: var(--space-5); padding-right: var(--space-5); }
-  html:not(.glass-fx) .lines-routes { flex-wrap: wrap; overflow: visible; } /* the capsule keeps one scrolling row */
 }
 
 /* ---- tappable map buses + arrival tile links ---- */
@@ -160,16 +91,6 @@ a.atile { text-decoration: none; }
 .atile-link.atile-compact > .icon { width: 16px; height: 16px; }
 .atile-link.atile-now.atile-live:hover { background: var(--live-muted); }
 
-/* ---- timetable block in the line view ---- */
-.lines-times { margin: var(--space-1) 0 var(--space-3); } /* TEL-248: no box of its own, the tiles as on the stop */
-.lines-times-title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 6px; font-size: var(--text-base); font-weight: 700; }
-.lines-times-title .icon { width: 18px; height: 18px; }
-.lines-times-facts { margin: 0 0 var(--space-1); font-size: .9rem; }
-.lines-times .ex-sub a { display: inline-block; margin-right: 2px; color: var(--primary); text-decoration: none; font-weight: 600; } /* inline-block, 2 px clear of the text after it: its whole box can be tapped, edges included (U20) */
-.lines-times .ex-sub a:hover { text-decoration: underline; }
-.lines-deps { display: grid; gap: 6px; margin: var(--space-2) 0 var(--space-1); }
-.lines-times-note { margin: var(--space-2) 0 0; font-size: var(--text-sm); }
-.lines-chip-dur { opacity: .75; font-weight: 400; }
 
 /* ---- bus view (#/bus/…): vertical stop timeline in the line's colour ---- */
 .bv { --lc: var(--primary); --lc-text: #fff; }
@@ -253,7 +174,5 @@ a.atile { text-decoration: none; }
 }
 .ex-info .icon { width: 16px; height: 16px; }
 .ex-info[aria-expanded="true"] { color: var(--primary); }
-.lines-times-title .ex-info { margin: -8px -10px -8px 0; }
-.lines-times-title { font-size: var(--text-md); }
 
 .bv-more { margin-top: var(--space-3); }

@@ -104,10 +104,11 @@ test('menu theme row: one capsule, the lens on the chosen theme; a pick moves it
 });
 
 test('glass: no shine under the finger; round buttons pop out unclipped; rows get a highlight, not grey', async ({ page }) => {
-  await page.goto('/?demo#/lines');
-  await expect(page.locator('.lines-row').first()).toBeVisible();
+  // the report's ✕ (the kit's .g-circle in .card-head); it was the lines list's ← until TEL-248 removed that page
+  await page.goto('/?demo#/report');
   // a pressed round button grows a lot and stays inside the sheet's scroller (the sheet leaves room above its first row)
   const back = page.locator('#sheet .card-head > .btn.round');
+  await expect(back).toBeVisible();
   const box = await back.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -123,9 +124,17 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
   await page.mouse.up();
 
   // a list row does not grow and does not turn grey: a soft highlight fades in behind it instead
-  await page.goto('/?demo#/lines');
-  const row = page.locator('a.lines-row').first();
+  // a recent stop on the home (it was a line of the lines list until TEL-248)
+  await page.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem('patra-bus:v2') || '{}');
+    st.recents = { stop: [{ code: '1011', city: 'patra' }], place: [] };
+    localStorage.setItem('patra-bus:v2', JSON.stringify(st));
+  });
+  await page.goto('/?demo&debug#/');
+  const row = page.locator('a.stop-row').first();
   await expect(row).toBeVisible();
+  await page.evaluate(() => window.__app.sheet.snap('full', { animate: false })); // the recents sit under the Places
+  await page.waitForTimeout(300);
   const r = await row.boundingBox();
   await page.mouse.move(r.x + 100, r.y + r.height / 2);
   await page.mouse.down();

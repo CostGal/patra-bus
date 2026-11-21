@@ -4,6 +4,14 @@ Product decisions by Kostas that a session cannot read from the code. Newest fir
 decided, and what it means for the work. A decision changes only with a new entry here; the Notion card is the history.
 The list of features (keep / cut / later) is the Notion card TEL-216.
 
+## 2026-11-21: the lines list and the line page are removed until they are planned
+- The lines list (☰ → «Γραμμές», `#/lines`) and the line page (`#/line/{code}`) are removed (card TEL-248). They are hard
+  to add and manage well, so they need a proper plan first. In the feature list (TEL-216) #5 is now «Αργότερα».
+- What changed for the user: no «Γραμμές» in the menu or in the installed app's shortcuts; on a stop, a scheduled bus
+  («ΠΡΟΓΡ.») is no longer a link (a live bus still opens the vehicle page); an old link to a line opens the home.
+- They come back only with their own plan and card, as a new build on the glass UI (`docs/UI-PROTOCOL.md`), not as a
+  revert of TEL-248.
+
 ## 2026-11-12: the trip planner's spare time before the bus is a fixed 2 minutes
 - In the new trip planner the spare time before the bus is a fixed 2 minutes and is not read from Settings (card
   TEL-290, `LIMITS.bufferSec` in `web/js/trip.js`). The spare-time setting is a feature to rework later, in the B1 Block.
