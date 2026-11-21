@@ -233,7 +233,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   // Nobody answering (preventDefault) means the sheet snaps as usual, so it is never left between two states.
   function leaveOrSnap(to, opts) {
     if (upOnly && state === 'full' && to !== 'full') {
-      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to } });
+      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to, velocity: opts?.velocity || 0 } });
       root.dispatchEvent(ev);
       if (ev.defaultPrevented) return;
     }
