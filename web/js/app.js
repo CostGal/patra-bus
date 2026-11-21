@@ -861,7 +861,7 @@ async function route() {
   content.replaceChildren();
   content.removeAttribute('aria-busy'); // set in index.html until the first view
   sheet.scrollToTop();
-  if (leftUp && !reduceMotion.matches) content.animate([{ filter: 'blur(10px)', opacity: 0 }, { filter: 'blur(0)', opacity: 1 }], { duration: 340, delay: 60, easing: 'ease-out', fill: 'backwards' });
+  if (leftUp && !reduceMotion.matches) content.animate([{ filter: 'blur(10px)', opacity: 0 }, { filter: 'blur(0)', opacity: 1 }], { duration: 320, delay: 120, easing: 'ease-out', fill: 'backwards' });
   const carry = leftUp ? leftUpVelocity : 0;
   leftUp = false;
   leftUpVelocity = 0;

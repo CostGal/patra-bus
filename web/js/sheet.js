@@ -50,6 +50,8 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
   let peekPx = null; // null = handle + the view's first row (setPeek overrides it)
+  let leaveStr = ''; // TEL-352: --leave as last written (see setY)
+  let look = false; // TEL-352: the up-only look (css/glass.css .up-only) is on: it outlives upOnly until the sheet has settled
   let upOnly = false; // TEL-352: the view has no low or mid of its own: going down from up asks the app to leave
 
   const isDesktop = () => desktopMQ.matches;
@@ -102,6 +104,13 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
     const st = Math.max(0, Math.min(2, tt)).toFixed(3);
     root.style.setProperty('--sheet-t', st);
+    // TEL-352: an up-only view (Settings, Report) melts into the menu as it is pulled down: --leave is 0 while the sheet
+    // covers more than 65% of the screen and 1 at half; css/glass.css turns the background to glass and blurs the texts with it
+    if (look) {
+      const from = innerHeight * 0.65;
+      const lv = Math.max(0, Math.min(1, (from - vis) / Math.max(1, from - SZ.half))).toFixed(3);
+      if (lv !== leaveStr) { leaveStr = lv; root.style.setProperty('--leave', lv); }
+    }
     for (const f of follow) f.style.setProperty('--sheet-t', st); // chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
     // views listen to this instead of watching the style attribute on every frame (TEL-305)
     if ((tt > 1.5) !== upper) { upper = tt > 1.5; root.dispatchEvent(new CustomEvent('sheet:upper', { detail: { upper } })); }
@@ -369,7 +378,21 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     },
     scrollToTop() { body.scrollTop = 0; },
     // TEL-352: Settings and Report have no low or mid. On, going down from up sends sheet:leave instead of snapping.
-    setUpOnly(v) { upOnly = !!v; },
+    setUpOnly(v) {
+      v = !!v;
+      if (v === upOnly) return;
+      upOnly = v;
+      const endLook = () => {
+        if (upOnly) return;
+        look = false; leaveStr = '';
+        root.classList.remove('up-only');
+        root.style.removeProperty('--leave');
+      };
+      if (v) { look = true; root.classList.add('up-only'); }
+      else if (!leaveStr || Number(leaveStr) === 0) endLook();
+      // leaving mid-pull: the look stays until the spring to the next state is at rest, so nothing jumps
+      else { root.addEventListener('sheet:settle', endLook, { once: true }); setTimeout(endLook, 900); }
+    },
     // A fixed peek height instead of the handle + first row; null restores the default.
     setPeek(px) {
       const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
