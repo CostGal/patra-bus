@@ -50,6 +50,11 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
   let peekPx = null; // null = handle + the view's first row (setPeek overrides it)
+  let leaveStr = ''; // TEL-352: --leave as last written (see setY)
+  let look = false; // TEL-352: the up-only look (css/glass.css .up-only) is on: it outlives upOnly until the sheet has settled
+  let upOnly = false; // TEL-352: the view has no low or mid of its own: going down from up asks the app to leave
+  let leaveOpen = false; // TEL-359: the pull has passed 65%, so the app shows the menu's still copy (sheet:leave-menu)
+  let leaveHalf = null; // TEL-359: where that copy's mid ends, in px: --leave reaches 1 there, not at this view's mid
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
@@ -74,11 +79,13 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     H = root.offsetHeight;
     const peek = Math.min(Math.max(64, peekPx ?? firstRow()) + probe.offsetHeight, H);
     const mid = midRow();
-    const half = mid == null ? Math.round(innerHeight * 0.5)
-      // + the space under the floating card (its margin, or the home bar), where the content is cut (css/glass.css)
-      : Math.max(Math.round(innerHeight * 0.35), Math.min(Math.round(innerHeight * 0.6),
-        mid + Math.max(parseFloat(getComputedStyle(root).getPropertyValue('--g-sheet-m')) || 0, probe.offsetHeight)));
+    const half = mid == null ? Math.round(innerHeight * 0.5) : fitMid(mid);
     SZ = { peek, half: Math.max(peek + 40, Math.min(half, H - 100)), full: H };
+  }
+  // + the space under the floating card (its margin, or the home bar), where the content is cut (css/glass.css)
+  function fitMid(mid) {
+    return Math.max(Math.round(innerHeight * 0.35), Math.min(Math.round(innerHeight * 0.6),
+      mid + Math.max(parseFloat(getComputedStyle(root).getPropertyValue('--g-sheet-m')) || 0, probe.offsetHeight)));
   }
   const yFor = (s) => H - SZ[s];
 
@@ -101,6 +108,19 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
     const st = Math.max(0, Math.min(2, tt)).toFixed(3);
     root.style.setProperty('--sheet-t', st);
+    // TEL-352: an up-only view (Settings, Report) melts into the menu as it is pulled down: --leave is 0 while the sheet
+    // covers more than 65% of the screen and 1 at half; css/glass.css turns the background to glass and blurs the texts with it
+    if (look) {
+      const from = innerHeight * 0.65;
+      const lv = Math.max(0, Math.min(1, (from - vis) / Math.max(1, from - (leaveHalf ?? SZ.half)))).toFixed(3);
+      if (lv !== leaveStr) { leaveStr = lv; root.style.setProperty('--leave', lv); }
+      // TEL-359: past 65% the app puts a still copy of the menu under the finger; back above it, the copy goes
+      const open = Number(lv) > 0;
+      if (upOnly && open !== leaveOpen && (dragging || leaveOpen)) {
+        leaveOpen = open;
+        root.dispatchEvent(new CustomEvent('sheet:leave-menu', { detail: { open } }));
+      }
+    }
     for (const f of follow) f.style.setProperty('--sheet-t', st); // chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
     // views listen to this instead of watching the style attribute on every frame (TEL-305)
     if ((tt > 1.5) !== upper) { upper = tt > 1.5; root.dispatchEvent(new CustomEvent('sheet:upper', { detail: { upper } })); }
@@ -228,6 +248,16 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     dragRaf = requestAnimationFrame(() => setY(ny));
     y = ny;
   }
+  // TEL-352: from up, a view that is "up only" does not snap down to low or mid: it asks the app to leave (sheet:leave).
+  // Nobody answering (preventDefault) means the sheet snaps as usual, so it is never left between two states.
+  function leaveOrSnap(to, opts) {
+    if (upOnly && state === 'full' && to !== 'full') {
+      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to, velocity: opts?.velocity || 0 } });
+      root.dispatchEvent(ev);
+      if (ev.defaultPrevented) return;
+    }
+    snap(to, opts);
+  }
   function dragEnd(moved) {
     cancelAnimationFrame(dragRaf);
     dragging = false;
@@ -256,7 +286,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
-    snap(best, { velocity: v, spring: springFor(dragFrom, best) });
+    leaveOrSnap(best, { velocity: v, spring: springFor(dragFrom, best) });
   }
 
   let handleMoved = false;
@@ -284,13 +314,13 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     if (suppressClick || inert()) return;
     if (state === 'full') tapDir = -1;
     else if (state === 'peek') tapDir = 1;
-    snap(STATES[STATES.indexOf(state) + tapDir]);
+    leaveOrSnap(STATES[STATES.indexOf(state) + tapDir]);
   });
   handle.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
     const i = STATES.indexOf(state) + (e.key === 'ArrowUp' ? 1 : -1);
-    snap(STATES[Math.max(0, Math.min(STATES.length - 1, i))]);
+    leaveOrSnap(STATES[Math.max(0, Math.min(STATES.length - 1, i))]);
   });
 
   // Body gestures (touch only): drag the sheet when it is not full, or when full and scrolled to the top.
@@ -339,7 +369,11 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   });
 
   // Re-measure on size changes (rotation, keyboard, breakpoint).
-  new ResizeObserver(() => { if (!dragging) moveTo(state, { animate: false }); }).observe(root);
+  // TEL-359: a spring already aiming at this height is left alone (home's sheet is taller than Settings': a flick must not jump)
+  new ResizeObserver(() => {
+    if (dragging || (spring.isAnimating() && root.offsetHeight === H)) return;
+    moveTo(state, { animate: false });
+  }).observe(root);
   desktopMQ.addEventListener('change', () => moveTo(state, { animate: false }));
 
   snap(state, { animate: false });
@@ -357,6 +391,37 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
       moveTo(state, { animate: false });
     },
     scrollToTop() { body.scrollTop = 0; },
+    // TEL-352: Settings and Report have no low or mid. On, going down from up sends sheet:leave instead of snapping.
+    setUpOnly(v) {
+      v = !!v;
+      if (v === upOnly) return;
+      upOnly = v;
+      const endLook = () => {
+        if (upOnly) return;
+        look = false; leaveStr = ''; leaveOpen = false;
+        root.classList.remove('up-only');
+        root.style.removeProperty('--leave');
+      };
+      if (v) { look = true; root.classList.add('up-only'); }
+      else if (leaveHalf == null && (!leaveStr || Number(leaveStr) === 0)) endLook(); // with the menu's copy up, it must melt in first
+      // leaving mid-pull: the look stays until the spring to the next state is at rest, so nothing jumps
+      else { root.addEventListener('sheet:settle', endLook, { once: true }); setTimeout(endLook, 900); }
+    },
+    // TEL-359: home's sheet starts higher than Settings' (no room for the ☰): stay at this spot on screen when it swaps.
+    keepTop(px) {
+      if (inert()) return;
+      const d = px - root.getBoundingClientRect().top;
+      H = root.offsetHeight;
+      if (d) setY(y + d);
+    },
+    // TEL-359: the menu's still copy (or null): --leave then ends where the menu's own mid ends, so nothing jumps on release.
+    setLeaveMenu(el) {
+      const end = el?.querySelector('[data-mid-end]');
+      if (!end) { leaveHalf = null; return; }
+      const r = end.getBoundingClientRect();
+      const share = Math.max(0, Math.min(1, Number(end.dataset.midEnd) || 1));
+      leaveHalf = fitMid(Math.round(r.top - root.getBoundingClientRect().top + r.height * share));
+    },
     // A fixed peek height instead of the handle + first row; null restores the default.
     setPeek(px) {
       const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
