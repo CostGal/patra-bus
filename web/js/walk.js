@@ -1,7 +1,6 @@
 // Walking time + route (owner: location). OSRM foot server first, straight-line estimate as fallback.
 // Only the two coordinates of the walk leave the device, and only to the routing server (see ARCHITECTURE.md).
 import { haversine } from './geo.js';
-import { getSettings } from './store.js';
 
 export const OSRM_FOOT = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving';
 export const WALK_SPEEDS = { slow: 1.0, normal: 1.3, fast: 1.6 }; // m/s
@@ -9,9 +8,10 @@ export const DETOUR = 1.3; // straight line → street distance
 const MIN_ROUTE_M = 30; // closer than this the estimate is as good as a route
 const MAX_ROUTE_M = 5000; // farther is not a walk worth routing
 
-// m/s from the walkSpeed setting; never throws.
+// m/s. The walking-speed setting left Settings (TEL-251, Kostas 2026-11-21): everyone walks at the normal speed, also
+// those who picked another one before (the stored value is ignored).
 export function walkSpeed() {
-  try { return WALK_SPEEDS[getSettings().walkSpeed] || WALK_SPEEDS.normal; } catch { return WALK_SPEEDS.normal; }
+  return WALK_SPEEDS.normal;
 }
 
 export function walkEstimate(from, to, speed = walkSpeed()) {

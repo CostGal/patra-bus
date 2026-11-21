@@ -100,7 +100,7 @@ const greekLeft = (page) => page.evaluate((re) => {
 test('EL/EN toggle switches all visible text', async ({ page }) => {
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { name: 'Ρυθμίσεις' })).toBeVisible();
-  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await page.getByRole('radio', { name: 'English', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
@@ -115,7 +115,7 @@ test('EL/EN toggle switches all visible text', async ({ page }) => {
 
   // And back: the Greek UI returns.
   await page.evaluate(() => { location.hash = '#/settings'; });
-  await page.getByRole('button', { name: 'Ελληνικά', exact: true }).click();
+  await page.getByRole('radio', { name: 'Ελληνικά', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Ρυθμίσεις' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'el');
   await expect(page.locator('#search-input')).toHaveAttribute('placeholder', 'Πού πάμε;');

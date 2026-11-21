@@ -1,7 +1,7 @@
 // Settings + about (owner: extras / i18n). Collapsible sections, short labels, explanations behind (i). Styles in css/extras.css.
 // TEL-251 (UI-PROTOCOL): the kit's .card-head with ✕ (U2–U5), 16 px inset (.sheet-inset), and every pick-one row is one
-// glass capsule with the lens (U25, js/glass.js: bar[data-lens] > row > chip). The notifications section and the
-// «reminder before you leave» row were left over from the cut reminders (docs/DECISIONS.md, 2026-11-11) and are gone.
+// glass capsule with the lens (U25, js/glass.js: bar[data-lens] > row > chip), coded as the ☰ menu's theme row. The
+// notifications section, the «reminder before you leave» row and the walking speed are gone (Kostas, 2026-11-21).
 import { h, icon } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
 import { cancelAll as cancelAllReminders } from './notify.js'; // the wipe still clears any reminder an older version left
@@ -39,8 +39,8 @@ export function mountSettings(container, ctx, opts = {}) {
     if (a && container.contains(a) && a.closest('[data-lang-seg]')) keep.lang = a.dataset.v;
     view?.teardown();
     view = build(container, ctx, keep);
-    // `> .ex-seg >`: the real row, not the lens's copy of it (js/glass.js)
-    if (keep.lang) container.querySelector(`[data-lang-seg] > .ex-seg > [data-v="${keep.lang}"]`)?.focus({ preventScroll: true });
+    // `> .theme-row >`: the real row, not the lens's copy of it (js/glass.js)
+    if (keep.lang) container.querySelector(`[data-lang-seg] > .theme-row > [data-v="${keep.lang}"]`)?.focus({ preventScroll: true });
   };
   render();
   if (opts?.section === 'home') container.querySelector('[data-k="home"]')?.scrollIntoView({ block: 'start' });
@@ -94,29 +94,39 @@ function build(container, ctx, keep) {
 
   // ---------- controls bound to a setting ----------
   const syncs = [];
-  // A pick-one row (UI-PROTOCOL U25): bar[data-lens] > .ex-seg > buttons, the chosen one aria-pressed. The row is
-  // rebuilt whenever the value changes (a rebuilt row is what moves the lens, js/glass.js), not only re-marked; focus
-  // that was in the row goes to the chosen button. Without the lens (no glass, reduced transparency, more contrast):
-  // the old segmented control. `current` reads the value (default: the setting).
-  function segmented(key, labelId, options, apply, current = () => getSettings()[key]) {
-    const row = h('div', { class: 'ex-seg', role: 'group', 'aria-labelledby': labelId });
+  // A pick-one row (UI-PROTOCOL U25), coded as the ☰ menu's theme row (js/app.js paintThemeRow, Kostas: "the best by
+  // far"): bar[data-lens].theme-bar > .theme-row[role=radiogroup] > button.theme-opt[role=radio], equal widths, the
+  // chosen one aria-checked. The row is rebuilt whenever the value changes (a rebuilt row is what moves the lens,
+  // js/glass.js), not only re-marked; focus that was in the row goes to the chosen button. options: [value, content,
+  // label]; content is text or an icon, label names an icon. Returns { bar, paint }.
+  function pickRow(labelId, options, onPick) {
+    const row = h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': labelId });
     let shown = null;
-    const sync = () => {
-      const cur = String(current());
+    const paint = (value) => {
+      const cur = String(value);
       if (cur === shown) return;
       shown = cur;
       const hadFocus = row.contains(document.activeElement);
-      row.replaceChildren(...options.map(([value, text]) => h('button', {
-        type: 'button', class: 'ex-seg-btn press', 'data-v': String(value), 'aria-pressed': String(String(value) === cur), onclick: () => {
-          if (apply) apply(value); else setSetting(key, value);
-          if (key === 'theme') applyTheme(value);
-        },
-      }, text)));
-      if (hadFocus) row.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      row.replaceChildren(...options.map(([v, content, label]) => h('button', {
+        type: 'button', class: 'theme-opt', role: 'radio', 'data-v': String(v), 'aria-checked': String(String(v) === cur),
+        'aria-label': label, title: label, onclick: () => onPick(v),
+      }, content)));
+      if (hadFocus) row.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
     };
-    syncs.push(sync); sync();
-    return h('div', { class: 'ex-segbar', 'data-lens': true }, row);
+    return { bar: h('div', { class: 'theme-bar', 'data-lens': true }, row), paint };
   }
+  // A pick-one row bound to a setting: repainted from the store.
+  function segmented(key, labelId, options) {
+    const { bar, paint } = pickRow(labelId, options, (value) => {
+      setSetting(key, value);
+      if (key === 'theme') applyTheme(value);
+    });
+    const sync = () => paint(getSettings()[key]);
+    syncs.push(sync); sync();
+    return bar;
+  }
+  // Language and city rebuild or reload the app: the lens first glides to the new pick, then the change happens.
+  const GLIDE_MS = 450;
   function select(key, labelId, options) {
     const el = h('select', { class: 'ex-select', 'aria-labelledby': labelId, onchange: () => setSetting(key, Number(el.value)) },
       ...options.map(([value, text]) => h('option', { value: String(value) }, text)));
@@ -125,13 +135,27 @@ function build(container, ctx, keep) {
     return el;
   }
   const id = (n) => `set-${n}-${++uid}`;
-  const [idLang, idTheme, idWalk, idBuf, idCity] = [id('lang'), id('theme'), id('walk'), id('buffer'), id('city')];
+  const [idLang, idTheme, idBuf, idCity] = [id('lang'), id('theme'), id('buffer'), id('city')];
 
   // ---------- language (always visible, first) ----------
-  const langSeg = segmented('lang', idLang, [['auto', t('Αυτόματα')], ['el', 'Ελληνικά'], ['en', 'English']], setLang);
+  // Each language in its own name, so the labels never change when the language does (as iOS, Google Maps); "auto" is
+  // the same icon as the menu's auto theme. The view is rebuilt on a language change, after the lens has landed.
+  const langRow = pickRow(idLang, [['auto', icon('layers'), t('Αυτόματα')], ['el', 'Ελληνικά'], ['en', 'English']], (v) => {
+    langRow.paint(v);
+    setTimeout(() => setLang(v), GLIDE_MS);
+  });
+  langRow.paint(getSettings().lang || 'auto');
+  const langSeg = langRow.bar;
   langSeg.dataset.langSeg = '';
-  // City: a switch reloads the app on that city (data, map and the saved items are per city).
-  const citySeg = segmented('city', idCity, Object.values(CITIES).map((c) => [c.id, cityName(c, lang())]), (v) => ctx.switchCity?.(v), cityId);
+  // City: a switch reloads the app on that city (data, map and the saved items are per city), straight back into
+  // Settings, once the lens has landed. A switch with no reload: card TEL-347.
+  const cityRow = pickRow(idCity, Object.values(CITIES).map((c) => [c.id, cityName(c, lang())]), (v) => {
+    if (v === cityId()) return;
+    cityRow.paint(v);
+    setTimeout(() => ctx.switchCity?.(v, '#/settings'), GLIDE_MS);
+  });
+  cityRow.paint(cityId());
+  const citySeg = cityRow.bar;
   const language = h('section', { class: 'set-lang' },
     row(idCity, t('Πόλη'), t('Αλλάζουν οι στάσεις, οι γραμμές και τα δεδομένα. Κάθε πόλη έχει τα δικά της αγαπημένα, μέρη και υπενθυμίσεις.'), citySeg),
     row(idLang, t('Γλώσσα'), null, langSeg));
@@ -139,8 +163,8 @@ function build(container, ctx, keep) {
   // ---------- display & walking ----------
   const mins = (n) => (n === 0 ? t('Καθόλου') : tn(n, '{n} λεπτό', '{n} λεπτά'));
   const display = sec('display', t('Εμφάνιση και περπάτημα'),
-    row(idTheme, t('Θέμα'), null, segmented('theme', idTheme, [['auto', t('Αυτόματο')], ['light', t('Φωτεινό')], ['dark', t('Σκοτεινό')]])),
-    row(idWalk, t('Ταχύτητα περπατήματος'), t('Για να υπολογίζω πότε πρέπει να φύγεις.'), segmented('walkSpeed', idWalk, [['slow', t('Αργά')], ['normal', t('Κανονικά')], ['fast', t('Γρήγορα')]])),
+    // the ☰ menu's theme row, the same icons (js/app.js THEMES)
+    row(idTheme, t('Θέμα'), null, segmented('theme', idTheme, [['auto', icon('layers'), t('Αυτόματο')], ['light', icon('sun'), t('Φωτεινό')], ['dark', icon('moon'), t('Σκοτεινό')]])),
     row(idBuf, t('Περιθώριο στη στάση'), t('Πόσο νωρίτερα θέλεις να φτάνεις στη στάση.'), select('bufferMin', idBuf, [0, 1, 2, 3, 5, 7, 10].map((n) => [n, mins(n)]))));
 
   // ---------- home & work (module from places.js) ----------

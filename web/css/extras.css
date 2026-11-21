@@ -39,13 +39,6 @@
   background: var(--warning-muted); color: var(--foreground); font-size: .875rem; line-height: 1.4;
 }
 
-.ex-seg { display: flex; gap: 2px; padding: 2px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--border); }
-.ex-seg-btn {
-  flex: 1; min-height: 44px; padding: 0 var(--space-3); margin: 0;
-  border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground);
-  font: inherit; font-size: var(--text-md); cursor: pointer; white-space: nowrap;
-}
-.ex-seg-btn[aria-pressed="true"] { background: var(--primary); color: var(--primary-foreground); font-weight: var(--weight-semibold); }
 .ex-select {
   min-height: 44px; max-width: 100%; padding: 0 var(--space-3);
   border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); font: inherit;
@@ -122,13 +115,13 @@
 .set-row + .set-row { border-top: 1px solid var(--border); }
 .set-row-text { flex: 1 1 200px; min-width: 0; }
 .set-label { font-weight: 600; overflow-wrap: anywhere; }
-.set-row .ex-segbar { flex: 0 1 auto; max-width: 100%; }
-/* TEL-251 (UI-PROTOCOL U25): with the glass lens (css/glass.css, js/glass.js) a segmented control is one glass capsule
-   and the lens is the only pill: capsule 62 px, buttons 40, 4 px in from its ends, as the menu's theme row and the
-   report's categories. Without it (no glass, reduced transparency, more contrast): the segmented control above. */
-html.glass.glass-fx .set-row .ex-segbar { padding-block: 11px; }
-html.glass.glass-fx .ex-segbar > .ex-seg { gap: 0; padding: 0 4px; border: 0; border-radius: var(--radius-full); background: transparent; }
-html.glass.glass-fx .ex-segbar .ex-seg-btn { min-height: 40px; border-radius: var(--radius-full); font-weight: var(--weight-semibold); }
+/* pick-one rows (TEL-251, UI-PROTOCOL U25): the ☰ menu's theme row (app.css .theme-bar / .theme-row / .theme-opt),
+   placed on its own line under the label, full width, so every option has the same width and the lens one size.
+   Without the lens (no glass, reduced transparency, more contrast): the menu's separate solid pills. */
+.set-row .theme-bar { flex: 1 1 100%; min-width: 0; }
+.set-row .theme-row { padding: 0; }
+html.glass.glass-fx .set-row .theme-bar { margin: 0; }
+.ex-view .theme-opt { font: inherit; font-size: var(--text-md); font-weight: var(--weight-semibold); white-space: nowrap; }
 
 /* header (TEL-251): the kit's .card-head placed as the report's (css/report.css .rp-head). Low and mid: one row, the
    title 17 px centred. Towards up it grows as a transform (--u, U8); at up its own row, 24 px. */
