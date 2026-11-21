@@ -295,6 +295,22 @@ const MORPH_MS = 280; // bubble -> pill: the lens's own transitions in css/glass
 const LENS_PAD = 7; // the lens reaches this much above and below its chip: 54 px over 40 (css/glass.css: 4 px from the capsule)
 const LENS_PADX = 0; // and this much past each side (0: the lens is as wide as its chip, tests/e2e/glass.spec.mjs)
 const EDGE = 4; // the capsule's inner edge: the lens never shows past it at rest
+const DAMPING = 0.58; // the travel spring's damping: a soft overshoot of ~10% of the distance
+// The bounce is the ☰ theme row's whatever the row (TEL-348, Kostas): there it is ~5 px per chip passed, ~10 px for two
+// (measured). A spring overshoots a share of the distance, so wider chips (the trip's) or a longer trip (the stop's)
+// bounced more: past BOUNCE_PER_CHIP px per chip passed (MAX_BOUNCE at most) the damping rises just enough to keep it
+// there. Spring-theory px: the glide itself damps a little more, so on screen it is ~60-80% of these.
+const BOUNCE_PER_CHIP = 8;
+const MAX_BOUNCE = 16;
+// the damping for a trip of `dist` px over chips `chip` px wide: an underdamped spring overshoots exp(-πζ/√(1-ζ²)) of it
+function dampingFor(dist, chip) {
+  const steps = Math.max(1, Math.round(dist / Math.max(1, chip)));
+  const max = Math.min(MAX_BOUNCE, BOUNCE_PER_CHIP * steps);
+  const r = Math.exp(-Math.PI * DAMPING / Math.sqrt(1 - DAMPING ** 2));
+  if (dist * r <= max) return DAMPING;
+  const l = -Math.log(max / dist) / Math.PI;
+  return l / Math.sqrt(1 + l * l);
+}
 function watchChips() {
   // where the lens was when a chip was pressed, and in which bar: that bar's next rebuild moves it from there. Per bar
   // (TEL-251): one pick can rebuild two rows at once (a theme picked in Settings also repaints the ☰ menu's row), and
@@ -395,7 +411,8 @@ function watchChips() {
     if (!d) return;
     drag = null;
     bar.classList.add('g-dragging'); // the chip it heads for looks like the others until the bubble gets there
-    const k = (2 * Math.PI / 0.36) ** 2, c = 2 * 0.58 * Math.sqrt(k);
+    // the bounce is the ☰ theme row's (TEL-348, dampingFor): the theme row itself keeps damping 0.58
+    const k = (2 * Math.PI / 0.36) ** 2, c = 2 * dampingFor(Math.abs(to.x - d.x), to.w) * Math.sqrt(k);
     let x = d.x, v = 0, last = performance.now();
     const near = Math.max(6, Math.abs(to.x - d.x) / 3);
     let shrunk = false;

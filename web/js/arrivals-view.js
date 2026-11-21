@@ -69,6 +69,8 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
   };
   el.setStat = (s) => {
     usualTxt = live ? '' : usualDelayText(s);
+    // a «συνήθως» line arriving late makes the tile taller: it pushes the list down, the sheet holds (TEL-348)
+    if (usual.hidden === !!usualTxt) el.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
     if (usual.textContent !== usualTxt) usual.textContent = usualTxt;
     usual.hidden = !usualTxt;
     if (lastText != null) { lastText = null; el.tick(Date.now()); }
@@ -256,6 +258,11 @@ export function mountStop(container, ctx, { code }) {
   // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
   // into their own row and grow into the filter chips
   const chipBar = h('div', { class: 'stopv-chipbar', 'data-lens': true, hidden: true }, chips);
+  // TEL-348 (Kostas): once the arrivals are on screen and the sheet has fitted them, nothing the view changes moves the
+  // sheet: a line filter, the 20 s poll, a «συνήθως» line arriving late push the list down instead. Each change first
+  // sends sheet:hold (js/sheet.js fits what is there now, then holds until the next drag or a new view).
+  const hold = () => root.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
+  let sheetFitted = false; // the first render with data has been fitted by the sheet
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
@@ -336,6 +343,7 @@ export function mountStop(container, ctx, { code }) {
   function render() {
     fitName();
     if (dead) return;
+    if (sheetFitted) hold();
     const now = Date.now();
     const data = st.data;
     stale = !!data && isStale(data.fetchedAt, now);
@@ -425,6 +433,7 @@ export function mountStop(container, ctx, { code }) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });
     }
+    if (data) sheetFitted = true;
     paintDynamic(now);
   }
 

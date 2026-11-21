@@ -117,8 +117,21 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
   // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
   // (up, a view may lay its header out differently, e.g. the stop's two-line name: snap() measures on the way down)
+  // TEL-348 (Kostas): content that changes once it is on screen (a pick in the stop's line chips or the trip's options,
+  // the stop's poll, a late «συνήθως» line) must not move the sheet: it pushes the content down instead. The view
+  // sends `sheet:hold` just before the change; the sheet fits what is there now (a fit still pending), then stays where
+  // it is (a shorter list leaves room below) until the next drag or snap, which measure again.
+  let held = false;
+  root.addEventListener('sheet:hold', () => {
+    if (!held && !dragging && !inert() && H && state !== 'full') {
+      const before = SZ[state];
+      measure();
+      if (SZ[state] !== before) moveTo(state);
+    }
+    held = true;
+  });
   new ResizeObserver(() => {
-    if (dragging || inert() || !H || state === 'full') return;
+    if (held || dragging || inert() || !H || state === 'full') return;
     const before = SZ[state];
     measure();
     if (SZ[state] !== before && state !== 'full') moveTo(state);
@@ -170,6 +183,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
 
   function snap(to, { animate = true, velocity = 0, spring: cfg } = {}) {
     if (!STATES.includes(to)) return;
+    held = false;
     cfg ||= springFor(state, to);
     // leaving up: views put back what they grew there (the stop's two-line name, TEL-227), then low and mid are
     // measured again, so the spring aims at their real heights (they are not measured while up, see below)
@@ -190,6 +204,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   let pointerStart = 0;
   let samples = [];
   function dragBegin(clientY) {
+    held = false;
     measure();
     dragging = true;
     spring.stop(); // interrupt any in-flight snap; the drag takes over the live y from here
