@@ -95,13 +95,20 @@ export function tripFeatures(it, { routeByCode, stopByCode, lineByCode, shapes }
 
 // ---------------------------------------------------------------- drawing
 
-let shapesP = null, shapesNow = null;
-const shapes = () => (shapesP ||= loadShapes().catch(() => ({})).then((s) => (shapesNow = s || {})));
+// The loaded shapes of the active city. loadShapes() caches per city and returns the same promise for a city, so that
+// promise tells which city this synchronous copy (for the first paint) belongs to.
+const sh = { base: null, now: null };
+const shapes = () => {
+  const base = loadShapes();
+  if (sh.base !== base) { sh.base = base; sh.now = null; }
+  return base.catch(() => ({})).then((s) => { if (sh.base === base) sh.now = s || {}; return s || {}; });
+};
+const shapesNow = () => (sh.base === loadShapes() ? sh.now : null);
 let drawn = []; // overlay ids on the map now
 let gen = 0; // bumped by every draw and clear: a late shapes.json redraws only the trip it was asked for
 
 function paint(map, it, data) {
-  const f = tripFeatures(it, { ...data, shapes: shapesNow });
+  const f = tripFeatures(it, { ...data, shapes: shapesNow() });
   const ids = f.overlays.map((o) => o.id);
   for (const id of drawn) if (!ids.includes(id)) map.clearOverlay(id);
   for (const o of f.overlays) map.setOverlay(o.id, o.fc, o.style);
@@ -114,7 +121,7 @@ function paint(map, it, data) {
 export function drawTrip(map, it, data) {
   const mine = ++gen;
   const f = paint(map, it, data);
-  if (!shapesNow) shapes().then(() => { if (gen === mine) paint(map, it, data); }).catch(() => {});
+  if (!shapesNow()) shapes().then(() => { if (gen === mine) paint(map, it, data); }).catch(() => {});
   return { points: f.points };
 }
 
