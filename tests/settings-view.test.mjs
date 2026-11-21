@@ -16,12 +16,3 @@ test('every paint*() called in settings-view.js is declared there', () => {
   const missing = [...called].filter((name) => !declared.has(name));
   assert.deepEqual(missing, []);
 });
-
-test('the visibilitychange handler only calls declared functions', () => {
-  const onVis = src.match(/const onVis = \(\) => (.*?);\s*\/\/|const onVis = \(\) => (.*?);\n/);
-  assert.ok(onVis, 'onVis handler not found');
-  const body = onVis[1] ?? onVis[2];
-  const calls = [...body.matchAll(/(?<![\w.])([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).filter((n) => n !== 'if');
-  assert.ok(calls.length > 0);
-  for (const name of calls) assert.ok(declared.has(name), `onVis calls undeclared ${name}()`);
-});

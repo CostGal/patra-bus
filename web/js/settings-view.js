@@ -1,7 +1,10 @@
 // Settings + about (owner: extras / i18n). Collapsible sections, short labels, explanations behind (i). Styles in css/extras.css.
-import { h, icon, fmtClock } from './ui.js';
+// TEL-251 (UI-PROTOCOL): the kit's .card-head with ✕ (U2–U5), 16 px inset (.sheet-inset), and every pick-one row is one
+// glass capsule with the lens (U25, js/glass.js: bar[data-lens] > row > chip), coded as the ☰ menu's theme row. The
+// notifications section, the «reminder before you leave» row and the walking speed are gone (Kostas, 2026-11-21).
+import { h, icon } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
-import { ensurePermission, permissionState, listReminders, cancelReminder, cancelAll as cancelAllReminders, scheduleReminder, onRemindersChange } from './notify.js';
+import { cancelAll as cancelAllReminders } from './notify.js'; // the wipe still clears any reminder an older version left
 import { t, tn, N_, setLang, onLangChange, locale, lang, APP_NAME, APP_VERSION } from './i18n.js';
 import { CITIES, city, cityId, cityName, dataDir } from './cities.js';
 import { cityHash } from './route.js';
@@ -36,7 +39,8 @@ export function mountSettings(container, ctx, opts = {}) {
     if (a && container.contains(a) && a.closest('[data-lang-seg]')) keep.lang = a.dataset.v;
     view?.teardown();
     view = build(container, ctx, keep);
-    if (keep.lang) container.querySelector(`[data-lang-seg] [data-v="${keep.lang}"]`)?.focus();
+    // `> .theme-row >`: the real row, not the lens's copy of it (js/glass.js)
+    if (keep.lang) container.querySelector(`[data-lang-seg] > .theme-row > [data-v="${keep.lang}"]`)?.focus({ preventScroll: true });
   };
   render();
   if (opts?.section === 'home') container.querySelector('[data-k="home"]')?.scrollIntoView({ block: 'start' });
@@ -90,15 +94,39 @@ function build(container, ctx, keep) {
 
   // ---------- controls bound to a setting ----------
   const syncs = [];
-  function segmented(key, labelId, options, apply) {
-    const btns = options.map(([value, text]) => h('button', { type: 'button', class: 'ex-seg-btn press', 'data-v': String(value), onclick: () => {
-      if (apply) apply(value); else setSetting(key, value);
-      if (key === 'theme') applyTheme(value);
-    } }, text));
-    const sync = () => { const cur = String(getSettings()[key]); for (const b of btns) b.setAttribute('aria-pressed', String(b.dataset.v === cur)); };
-    syncs.push(sync); sync();
-    return h('div', { class: 'ex-seg', role: 'group', 'aria-labelledby': labelId }, ...btns);
+  // A pick-one row (UI-PROTOCOL U25), coded as the ☰ menu's theme row (js/app.js paintThemeRow, Kostas: "the best by
+  // far"): bar[data-lens].theme-bar > .theme-row[role=radiogroup] > button.theme-opt[role=radio], equal widths, the
+  // chosen one aria-checked. The row is rebuilt whenever the value changes (a rebuilt row is what moves the lens,
+  // js/glass.js), not only re-marked; focus that was in the row goes to the chosen button. options: [value, content,
+  // label]; content is text or an icon, label names an icon. Returns { bar, paint }.
+  function pickRow(labelId, options, onPick) {
+    const row = h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': labelId });
+    let shown = null;
+    const paint = (value) => {
+      const cur = String(value);
+      if (cur === shown) return;
+      shown = cur;
+      const hadFocus = row.contains(document.activeElement);
+      row.replaceChildren(...options.map(([v, content, label]) => h('button', {
+        type: 'button', class: 'theme-opt', role: 'radio', 'data-v': String(v), 'aria-checked': String(String(v) === cur),
+        'aria-label': label, title: label, onclick: () => onPick(v),
+      }, content)));
+      if (hadFocus) row.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
+    };
+    return { bar: h('div', { class: 'theme-bar', 'data-lens': true }, row), paint };
   }
+  // A pick-one row bound to a setting: repainted from the store.
+  function segmented(key, labelId, options) {
+    const { bar, paint } = pickRow(labelId, options, (value) => {
+      setSetting(key, value);
+      if (key === 'theme') applyTheme(value);
+    });
+    const sync = () => paint(getSettings()[key]);
+    syncs.push(sync); sync();
+    return bar;
+  }
+  // Language and city rebuild or reload the app: the lens first glides to the new pick, then the change happens.
+  const GLIDE_MS = 450;
   function select(key, labelId, options) {
     const el = h('select', { class: 'ex-select', 'aria-labelledby': labelId, onchange: () => setSetting(key, Number(el.value)) },
       ...options.map(([value, text]) => h('option', { value: String(value) }, text)));
@@ -107,14 +135,27 @@ function build(container, ctx, keep) {
     return el;
   }
   const id = (n) => `set-${n}-${++uid}`;
-  const [idLang, idTheme, idWalk, idBuf, idRem, idCity] = [id('lang'), id('theme'), id('walk'), id('buffer'), id('reminder'), id('city')];
+  const [idLang, idTheme, idBuf, idCity] = [id('lang'), id('theme'), id('buffer'), id('city')];
 
   // ---------- language (always visible, first) ----------
-  const langSeg = segmented('lang', idLang, [['auto', t('Αυτόματα')], ['el', 'Ελληνικά'], ['en', 'English']], setLang);
+  // Each language in its own name, so the labels never change when the language does (as iOS, Google Maps); "auto" is
+  // the same icon as the menu's auto theme. The view is rebuilt on a language change, after the lens has landed.
+  const langRow = pickRow(idLang, [['auto', icon('layers'), t('Αυτόματα')], ['el', 'Ελληνικά'], ['en', 'English']], (v) => {
+    langRow.paint(v);
+    setTimeout(() => setLang(v), GLIDE_MS);
+  });
+  langRow.paint(getSettings().lang || 'auto');
+  const langSeg = langRow.bar;
   langSeg.dataset.langSeg = '';
-  // City: a switch reloads the app on that city (data, map and the saved items are per city).
-  const citySeg = h('div', { class: 'ex-seg', role: 'group', 'aria-labelledby': idCity },
-    ...Object.values(CITIES).map((c) => h('button', { type: 'button', class: 'ex-seg-btn press', 'data-v': c.id, 'aria-pressed': String(c.id === cityId()), onclick: () => ctx.switchCity?.(c.id) }, cityName(c, lang()))));
+  // City: a switch reloads the app on that city (data, map and the saved items are per city), straight back into
+  // Settings, once the lens has landed. A switch with no reload: card TEL-347.
+  const cityRow = pickRow(idCity, Object.values(CITIES).map((c) => [c.id, cityName(c, lang())]), (v) => {
+    if (v === cityId()) return;
+    cityRow.paint(v);
+    setTimeout(() => ctx.switchCity?.(v, '#/settings'), GLIDE_MS);
+  });
+  cityRow.paint(cityId());
+  const citySeg = cityRow.bar;
   const language = h('section', { class: 'set-lang' },
     row(idCity, t('Πόλη'), t('Αλλάζουν οι στάσεις, οι γραμμές και τα δεδομένα. Κάθε πόλη έχει τα δικά της αγαπημένα, μέρη και υπενθυμίσεις.'), citySeg),
     row(idLang, t('Γλώσσα'), null, langSeg));
@@ -122,10 +163,9 @@ function build(container, ctx, keep) {
   // ---------- display & walking ----------
   const mins = (n) => (n === 0 ? t('Καθόλου') : tn(n, '{n} λεπτό', '{n} λεπτά'));
   const display = sec('display', t('Εμφάνιση και περπάτημα'),
-    row(idTheme, t('Θέμα'), null, segmented('theme', idTheme, [['auto', t('Αυτόματο')], ['light', t('Φωτεινό')], ['dark', t('Σκοτεινό')]])),
-    row(idWalk, t('Ταχύτητα περπατήματος'), t('Για να υπολογίζω πότε πρέπει να φύγεις.'), segmented('walkSpeed', idWalk, [['slow', t('Αργά')], ['normal', t('Κανονικά')], ['fast', t('Γρήγορα')]])),
-    row(idBuf, t('Περιθώριο στη στάση'), t('Πόσο νωρίτερα θέλεις να φτάνεις στη στάση.'), select('bufferMin', idBuf, [0, 1, 2, 3, 5, 7, 10].map((n) => [n, mins(n)]))),
-    row(idRem, t('Υπενθύμιση πριν φύγεις'), t('Πόσο νωρίτερα να σε ειδοποιώ πριν χρειαστεί να φύγεις.'), select('reminderMin', idRem, [1, 2, 3, 5, 10].map((n) => [n, mins(n)]))));
+    // the ☰ menu's theme row, the same icons (js/app.js THEMES)
+    row(idTheme, t('Θέμα'), null, segmented('theme', idTheme, [['auto', icon('layers'), t('Αυτόματο')], ['light', icon('sun'), t('Φωτεινό')], ['dark', icon('moon'), t('Σκοτεινό')]])),
+    row(idBuf, t('Περιθώριο στη στάση'), t('Πόσο νωρίτερα θέλεις να φτάνεις στη στάση.'), select('bufferMin', idBuf, [0, 1, 2, 3, 5, 7, 10].map((n) => [n, mins(n)]))));
 
   // ---------- home & work (module from places.js) ----------
   const places = extSlot(() => import('./places.js'), 'mountPlacesSettings');
@@ -138,41 +178,6 @@ function build(container, ctx, keep) {
   const mo = typeof MutationObserver === 'function' ? new MutationObserver(paintHome) : null;
   mo?.observe(homeSec, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
   paintHome();
-
-  // ---------- notifications ----------
-  const permText = h('p', { class: 'ex-sub' });
-  const permBtn = h('button', { type: 'button', class: 'btn rect', onclick: async () => {
-    const ok = await ensurePermission();
-    if (dead) return;
-    paintPerm();
-    say(ok ? t('Οι ειδοποιήσεις ενεργοποιήθηκαν') : t('Οι ειδοποιήσεις δεν ενεργοποιήθηκαν'));
-  } }, icon('bell'), t('Ενεργοποίηση ειδοποιήσεων'));
-  const testBtn = h('button', { type: 'button', class: 'btn rect sm', onclick: () => {
-    scheduleReminder({ at: Date.now() + 5000, title: t('Δοκιμαστική υπενθύμιση'), body: t('Έτσι θα σε ειδοποιώ πριν χρειαστεί να φύγεις.'), tag: 'settings-test' });
-    say(t('Η δοκιμή θα εμφανιστεί σε 5 δευτερόλεπτα'));
-  } }, t('Δοκιμή υπενθύμισης'));
-  const remList = h('ul', { class: 'set-list' });
-  const PERM = {
-    granted: N_('Οι ειδοποιήσεις είναι ενεργές.'),
-    denied: N_('Οι ειδοποιήσεις είναι αποκλεισμένες από τον περιηγητή· επίτρεψέ τες από τα δικαιώματα του ιστότοπου.'),
-    default: N_('Οι ειδοποιήσεις δεν έχουν ενεργοποιηθεί.'),
-    unsupported: N_('Αυτή η συσκευή δεν υποστηρίζει ειδοποιήσεις.'),
-  };
-  function paintPerm() {
-    const p = permissionState();
-    permText.textContent = t(PERM[p] || PERM.unsupported);
-    permBtn.hidden = p !== 'default';
-  }
-  function paintReminders() {
-    const items = listReminders();
-    remList.hidden = !items.length;
-    remList.replaceChildren(...items.map((r) => h('li', { class: 'set-item' },
-      h('div', { class: 'set-item-main' }, h('div', { class: 'set-label' }, r.title || t('Υπενθύμιση')), h('div', { class: 'ex-sub' }, `${t('στις {time}', { time: fmtClock(r.at) })}${r.body ? ` · ${r.body}` : ''}`)),
-      h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Ακύρωση υπενθύμισης: {name}', { name: r.title || r.tag }), onclick: () => cancelReminder(r.tag) }, icon('close')))));
-  }
-  const notifications = sec('notifications', t('Ειδοποιήσεις'),
-    h('div', { class: 'set-line' }, permText, ...info(t('Χωρίς ειδοποιήσεις με κλειστή εφαρμογή, οι υπενθυμίσεις λειτουργούν μόνο όσο η εφαρμογή είναι ανοιχτή (ακόμη και στο παρασκήνιο). Αν την κλείσεις εντελώς ή το τηλέφωνο την σταματήσει, δεν θα χτυπήσουν.'))),
-    h('div', { class: 'set-actions' }, permBtn, testBtn), remList);
 
   // ---------- favourites (hidden while empty) ----------
   const favList = h('ul', { class: 'set-list' });
@@ -250,17 +255,38 @@ function build(container, ctx, keep) {
     h('ul', { class: 'set-list' }, [...LINKS, dataSource()].map(([name, href, what]) => h('li', { class: 'set-item' },
       h('a', { class: 'set-link', href, target: '_blank', rel: 'noopener noreferrer' }, name), h('span', { class: 'ex-sub' }, t(what))))));
 
-  container.replaceChildren(h('div', { class: 'ex-view' },
-    h('header', { class: 'ex-head' },
-      h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Πίσω'), onclick: () => ctx.navigate('#/') }, icon('back')),
-      h('h1', {}, t('Ρυθμίσεις'))),
-    language, display, homeSec, notifications, favorites, data, about));
+  // header (TEL-251, UI-PROTOCOL U2–U5): the kit's .card-head (css/ui-kit.css), placed in css/extras.css (set-head), as
+  // the report's (js/report-view.js): an empty slot · the title, 17 px, centred · ✕. Halfway from mid to up it moves to
+  // its own row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (U8).
+  const title = h('h1', { class: 'set-title card-title' }, t('Ρυθμίσεις'));
+  const closeLabel = t('Κλείσιμο');
+  const closeBtn = h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': closeLabel, title: closeLabel, onclick: () => ctx.navigate('#/') }, icon('close'));
+  // low ends under this row (js/sheet.js)
+  const head = h('header', { class: 'set-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, closeBtn);
+  container.replaceChildren(h('div', { class: 'ex-view sheet-inset' }, head, language, display, homeSec, favorites, data, about));
 
-  paintPerm(); paintReminders(); paintFavs();
+  const sheetEl = document.getElementById('sheet');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  // as js/report-view.js: up while the sheet is full or dragged past halfway from mid to up; nothing runs per frame
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  const sheetMo = new MutationObserver(onUpper);
+  if (sheetEl) {
+    sheetMo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+    sheetEl.addEventListener('sheet:upper', onUpper);
+    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
+  }
+  setUp(upRow());
+
+  paintFavs();
   offs.push(onChange(() => { if (dead) return; for (const s of syncs) s(); paintFavs(); }));
-  offs.push(onRemindersChange(paintReminders));
-  const onVis = () => { if (!document.hidden) paintPerm(); }; // permission may change in browser settings
-  document.addEventListener('visibilitychange', onVis);
 
   return {
     teardown() {
@@ -269,7 +295,9 @@ function build(container, ctx, keep) {
       mo?.disconnect();
       for (const v of ext) { try { v.destroy && v.destroy(); } catch (err) { console.warn('[settings] card destroy failed', err); } }
       for (const id of timers) clearTimeout(id);
-      document.removeEventListener('visibilitychange', onVis);
+      sheetMo.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
     },
   };
 }

@@ -296,7 +296,10 @@ const LENS_PAD = 7; // the lens reaches this much above and below its chip: 54 p
 const LENS_PADX = 0; // and this much past each side (0: the lens is as wide as its chip, tests/e2e/glass.spec.mjs)
 const EDGE = 4; // the capsule's inner edge: the lens never shows past it at rest
 function watchChips() {
-  let from = null; // where the lens was when a chip was pressed: the next rebuild moves it from there
+  // where the lens was when a chip was pressed, and in which bar: that bar's next rebuild moves it from there. Per bar
+  // (TEL-251): one pick can rebuild two rows at once (a theme picked in Settings also repaints the ☰ menu's row), and
+  // the other row must not take the glide.
+  let from = null; // { bar, pos }
   let bub = null; // the bubble while it is out: { bar, row, lens, copy, x, y, w, h, r, scroll, raf }
   let closing = null; // the bubble that is morphing back into the pill (its copy and hole still there)
   let drag = null; // { id, x0, base, moved }: the finger that holds the bubble
@@ -414,8 +417,8 @@ function watchChips() {
 
   const place = (bar, animate) => {
     finish();
-    let was = from;
-    from = null;
+    let was = from && from.bar === bar ? from.pos : null;
+    if (from && from.bar === bar) from = null;
     const wasOpen = !!(bub && bub.bar === bar);
     if (wasOpen) { was = at(bub); close(false); } // rebuilt under the bubble: a new one takes over, same place, same frame
     let lens = bar.querySelector(':scope > .g-lens');
@@ -446,7 +449,7 @@ function watchChips() {
     const chip = e.target instanceof Element && e.target.closest(CHIP);
     const bar = chip?.closest(CHIP_BAR);
     if (!bar || chip.closest('.g-lens-copy')) return;
-    from = lensAt(bar); // where the lens is right now (also halfway through a trip): the next rebuild moves it from there
+    from = { bar, pos: lensAt(bar) }; // where the lens is right now (also halfway through a trip): the next rebuild moves it from there
     const on = bar.querySelector(ROW_ON);
     if (!on || chip !== on || !e.isPrimary || still) return;
     if (bub && bub.bar === bar) close(false); // a trip still running: the finger takes over the bubble

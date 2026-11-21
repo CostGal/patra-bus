@@ -786,10 +786,11 @@ let booted = false;
 const SNAP = { '': 'half', stop: 'half', bus: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', place: 'full' };
 
 // Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
-function switchCity(id) {
+// `to`: where the reloaded app opens (Settings asks for itself, TEL-251); home by default.
+function switchCity(id, to = '#/') {
   if (!isCity(id) || id === cityId()) return;
   setSetting('city', id);
-  try { history.replaceState(null, '', formatHash('#/', id)); } catch { /* ignore */ }
+  try { history.replaceState(null, '', formatHash(to, id)); } catch { /* ignore */ }
   location.reload();
 }
 function teardown() {
