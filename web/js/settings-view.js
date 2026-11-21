@@ -147,8 +147,8 @@ function build(container, ctx, keep) {
   langRow.paint(getSettings().lang || 'auto');
   const langSeg = langRow.bar;
   langSeg.dataset.langSeg = '';
-  // City: a switch reloads the app on that city (data, map and the saved items are per city), straight back into
-  // Settings, once the lens has landed. A switch with no reload: card TEL-347.
+  // City: once the lens has landed, the app switches to that city live (TEL-347: data, map and the saved items are per
+  // city) and this screen is mounted again on it.
   const cityRow = pickRow(idCity, Object.values(CITIES).map((c) => [c.id, cityName(c, lang())]), (v) => {
     if (v === cityId()) return;
     cityRow.paint(v);

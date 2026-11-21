@@ -129,3 +129,32 @@ test('real data: stop 1011 is found by code and by name, routes.json (if built) 
   const lines = new Set((d.routesByStop.get('1011') || []).map((r) => r.lineCode));
   for (const l of ['201', '606', '609']) assert.ok(lines.has(l), `line ${l} at 1011`);
 });
+
+// TEL-347: switching city live must never reuse another city's data; switching back reuses the loaded one.
+test('loadData: cached per city, a failed load is not cached', async () => {
+  const { loadData } = await import('../web/js/data.js');
+  const { CITIES } = await import('../web/js/cities.js');
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  let failCorfu = true;
+  globalThis.fetch = async (u) => {
+    calls.push(String(u));
+    const corfu = String(u).includes('/corfu/');
+    if (corfu && failCorfu) return { ok: false, status: 500, json: async () => ({}) };
+    const name = String(u).split('/').pop();
+    const body = name === 'stops.json' ? [stop(corfu ? 'C1' : 'P1', corfu ? 'ΣΑΡΟΚΟ' : 'ΑΡΕΘΑ')] : name === 'lines.json' ? RAW_LINES : null;
+    if (!body) return { ok: false, status: 404, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => body };
+  };
+  try {
+    const p = await loadData(CITIES.patra);
+    assert.ok(p.stopByCode.has('P1') && !p.stopByCode.has('C1'));
+    await assert.rejects(() => loadData(CITIES.corfu)); // upstream error: rejected, and not remembered
+    failCorfu = false;
+    const c = await loadData(CITIES.corfu);
+    assert.ok(c.stopByCode.has('C1') && !c.stopByCode.has('P1'));
+    const before = calls.length;
+    assert.equal(await loadData(CITIES.patra), p); // back to the first city: same object, no new fetch
+    assert.equal(calls.length, before);
+  } finally { globalThis.fetch = realFetch; }
+});

@@ -95,8 +95,7 @@ export const inText = (sec) => (sec < NOW_SEC ? t('τώρα') : t('σε {when}',
 
 // ---------------------------------------------------------------- view
 
-let shapesP = null;
-const shapes = () => (shapesP ||= loadShapes().catch(() => ({})));
+const shapes = () => loadShapes().catch(() => ({})); // loadShapes caches per city
 const validShape = (c) => (Array.isArray(c) && c.length > 1 ? c : null);
 const routeFc = (coordinates, routeCode) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { routeCode }, geometry: { type: 'LineString', coordinates } }] });
 const LIVE_FLAG = () => h('span', { class: 'ex-chip ex-chip-live' }, h('span', { class: 'ex-chip-dot', 'aria-hidden': 'true' }), 'LIVE');

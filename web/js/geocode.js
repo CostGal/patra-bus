@@ -13,8 +13,7 @@ const MAX_CACHE = 40;
 const TIMEOUT_MS = 6000;
 
 const cache = new Map(); // key → { at, places }
-let dataP = null;
-const getData = () => (dataP ||= loadData().catch((e) => { dataP = null; throw e; }));
+const getData = () => loadData(); // cached per city in data.js
 const isAbort = (e) => e?.name === 'AbortError';
 const abortError = () => Object.assign(new Error('aborted'), { name: 'AbortError' });
 
@@ -163,7 +162,7 @@ export function streetPlace(features) {
 // One Photon request → its raw features (cached per text and coarse position, so "Κορίνθου 5" and
 // "Κορίνθου 7" share the street request).
 async function fetchFeatures(text, ref, signal) {
-  const key = `${searchKey(text)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
+  const key = `${city().id}|${searchKey(text)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.features;
   const url = new URL(PHOTON);
