@@ -369,7 +369,11 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   });
 
   // Re-measure on size changes (rotation, keyboard, breakpoint).
-  new ResizeObserver(() => { if (!dragging) moveTo(state, { animate: false }); }).observe(root);
+  // TEL-359: a spring already aiming at this height is left alone (home's sheet is taller than Settings': a flick must not jump)
+  new ResizeObserver(() => {
+    if (dragging || (spring.isAnimating() && root.offsetHeight === H)) return;
+    moveTo(state, { animate: false });
+  }).observe(root);
   desktopMQ.addEventListener('change', () => moveTo(state, { animate: false }));
 
   snap(state, { animate: false });
@@ -399,7 +403,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
         root.style.removeProperty('--leave');
       };
       if (v) { look = true; root.classList.add('up-only'); }
-      else if (!leaveStr || Number(leaveStr) === 0) endLook();
+      else if (leaveHalf == null && (!leaveStr || Number(leaveStr) === 0)) endLook(); // with the menu's copy up, it must melt in first
       // leaving mid-pull: the look stays until the spring to the next state is at rest, so nothing jumps
       else { root.addEventListener('sheet:settle', endLook, { once: true }); setTimeout(endLook, 900); }
     },

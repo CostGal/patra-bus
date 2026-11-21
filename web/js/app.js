@@ -642,21 +642,19 @@ function paintRecents(places, recents) {
 // TEL-359: pulling Settings or Report below 65% shows the menu under the finger. It is a still copy: search, Places and
 // Recents (all that mid shows), no favourites, so no bus data and no timers, and nothing in it can be tapped or focused.
 let leaveMenu = null;
+let homeParts = null; // js/home-view.js, loaded when Settings or Report opens, so a flick can show the copy at once
 function dropLeaveMenu() {
   if (!leaveMenu) return;
   leaveMenu.places?.destroy?.();
   leaveMenu.el?.remove();
+  leaveMenu.ghost?.remove();
   leaveMenu = null;
   sheet.setLeaveMenu(null);
   sheet.el.classList.remove('leave-swap');
 }
-async function showLeaveMenu() {
-  if (leaveMenu || reduceMotion.matches || !document.documentElement.classList.contains('glass')) return;
-  const me = leaveMenu = { el: null, places: null };
-  let mod;
-  try { mod = await import('./home-view.js'); } catch (err) { console.error('[leave menu]', err); }
-  if (leaveMenu !== me) return;
-  if (!mod) { leaveMenu = null; return; }
+function showLeaveMenu() {
+  if (leaveMenu || !homeParts || reduceMotion.matches || !document.documentElement.classList.contains('glass')) return;
+  const me = leaveMenu = { el: null, places: null, ghost: null };
   const search = searchbarEl.cloneNode(true);
   [search, ...search.querySelectorAll('[id]')].forEach((n) => n.removeAttribute('id'));
   // it keeps `hidden` (css/glass.css still draws it): a visible search bar anywhere in the sheet changes the sheet's layout
@@ -666,7 +664,7 @@ async function showLeaveMenu() {
   if (input) input.value = '';
   const places = h('section', { class: 'home-section home-places' });
   const recents = h('div', { class: 'home-recents' });
-  me.places = mod.mountPlacesRow(places);
+  me.places = homeParts.mountPlacesRow(places);
   paintRecents(places, recents);
   me.el = h('div', { class: 'leave-menu', 'aria-hidden': 'true' }, search, h('div', { class: 'sheet-content' }, places, recents));
   me.el.inert = true;
@@ -877,6 +875,7 @@ async function route() {
   currentHead = SNAP[head] != null ? head : '';
   // the search is home's first row (TEL-223); the other views put their own header there, with a ✕ back home
   const topBefore = leftUp ? sheet.el.getBoundingClientRect().top : null;
+  const oldBox = leftUp ? sheet.content.getBoundingClientRect() : null; // where the old content is, before the search bar pushes it
   searchbarEl.hidden = currentHead !== '';
   if (topBefore != null) sheet.keepTop(topBefore);
   if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' ? String(arg) : '' };
@@ -884,7 +883,26 @@ async function route() {
   const content = sheet.content;
   // TEL-352: leaving Settings or Report by a swipe: the old content stays a moment as a still copy that blurs and fades
   // out over the new one, which blurs in (a cross-fade through blur, U10), so the swap is never a cut
-  if (leftUp && !reduceMotion.matches) {
+  // TEL-359: the menu's still copy is already showing: it stays over the real menu (hidden) until the sheet is at rest
+  const swap = leftUp && currentHead === '' && !!leaveMenu?.el;
+  if (swap) {
+    // the old content stays too, in the same spot, and melts with --leave (css/glass.css), as it does under the finger
+    const box = sheet.el.getBoundingClientRect();
+    const ghost = content.cloneNode(true);
+    ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+    ghost.removeAttribute('id');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.inert = true;
+    Object.assign(ghost.style, { position: 'absolute', left: `${oldBox.left - box.left}px`, top: `${oldBox.top - box.top}px`, width: `${oldBox.width}px`, maxHeight: `${innerHeight}px`, overflow: 'hidden', pointerEvents: 'none' });
+    sheet.el.append(ghost);
+    leaveMenu.ghost = ghost;
+    const m = leaveMenu;
+    const done = () => { if (leaveMenu === m) dropLeaveMenu(); };
+    sheet.el.classList.add('leave-swap');
+    sheet.el.addEventListener('sheet:settle', done, { once: true });
+    setTimeout(done, 900);
+  } else dropLeaveMenu();
+  if (leftUp && !swap && !reduceMotion.matches) {
     const host = content.offsetParent;
     if (host) {
       const ghost = content.cloneNode(true);
@@ -897,15 +915,6 @@ async function route() {
       ghost.animate([{ filter: 'blur(0)', opacity: 1 }, { filter: 'blur(10px)', opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' }).onfinish = () => ghost.remove();
     }
   }
-  // TEL-359: the menu's still copy is already showing: it stays over the real menu (hidden) until the sheet is at rest
-  const swap = leftUp && currentHead === '' && !!leaveMenu?.el;
-  if (swap) {
-    const m = leaveMenu;
-    const done = () => { if (leaveMenu === m) dropLeaveMenu(); };
-    sheet.el.classList.add('leave-swap');
-    sheet.el.addEventListener('sheet:settle', done, { once: true });
-    setTimeout(done, 900);
-  } else dropLeaveMenu();
   content.replaceChildren();
   content.removeAttribute('aria-busy'); // set in index.html until the first view
   sheet.scrollToTop();
@@ -920,6 +929,7 @@ async function route() {
   focusPt = null;
   routeSnap = true;
   sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report'); // no low or mid: down from up goes home (TEL-352)
+  if ((currentHead === 'settings' || currentHead === 'report') && !homeParts) import('./home-view.js').then((m) => { homeParts = m; }).catch(() => {});
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted, velocity: carry });
   routeSnap = false;
   nextSnap = null;
@@ -1087,7 +1097,7 @@ async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove, follow: [$('menu-btn')] });
   // Settings and Report are "up only": a swipe down (or a tap on the handle) from up opens home at mid in one move
   $('sheet').addEventListener('sheet:leave-menu', (e) => { if (e.detail?.open) showLeaveMenu(); else dropLeaveMenu(); });
-  $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: 'half' }); });
+  $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); showLeaveMenu(); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: 'half' }); });
   buildChrome();
   map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
