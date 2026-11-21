@@ -50,6 +50,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
   let peekPx = null; // null = handle + the view's first row (setPeek overrides it)
+  let upOnly = false; // TEL-352: the view has no low or mid of its own: going down from up asks the app to leave
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
@@ -228,6 +229,16 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     dragRaf = requestAnimationFrame(() => setY(ny));
     y = ny;
   }
+  // TEL-352: from up, a view that is "up only" does not snap down to low or mid: it asks the app to leave (sheet:leave).
+  // Nobody answering (preventDefault) means the sheet snaps as usual, so it is never left between two states.
+  function leaveOrSnap(to, opts) {
+    if (upOnly && state === 'full' && to !== 'full') {
+      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to } });
+      root.dispatchEvent(ev);
+      if (ev.defaultPrevented) return;
+    }
+    snap(to, opts);
+  }
   function dragEnd(moved) {
     cancelAnimationFrame(dragRaf);
     dragging = false;
@@ -256,7 +267,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
-    snap(best, { velocity: v, spring: springFor(dragFrom, best) });
+    leaveOrSnap(best, { velocity: v, spring: springFor(dragFrom, best) });
   }
 
   let handleMoved = false;
@@ -284,13 +295,13 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     if (suppressClick || inert()) return;
     if (state === 'full') tapDir = -1;
     else if (state === 'peek') tapDir = 1;
-    snap(STATES[STATES.indexOf(state) + tapDir]);
+    leaveOrSnap(STATES[STATES.indexOf(state) + tapDir]);
   });
   handle.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
     const i = STATES.indexOf(state) + (e.key === 'ArrowUp' ? 1 : -1);
-    snap(STATES[Math.max(0, Math.min(STATES.length - 1, i))]);
+    leaveOrSnap(STATES[Math.max(0, Math.min(STATES.length - 1, i))]);
   });
 
   // Body gestures (touch only): drag the sheet when it is not full, or when full and scrolled to the top.
@@ -357,6 +368,8 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
       moveTo(state, { animate: false });
     },
     scrollToTop() { body.scrollTop = 0; },
+    // TEL-352: Settings and Report have no low or mid. On, going down from up sends sheet:leave instead of snapping.
+    setUpOnly(v) { upOnly = !!v; },
     // A fixed peek height instead of the handle + first row; null restores the default.
     setPeek(px) {
       const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));

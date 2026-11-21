@@ -779,6 +779,7 @@ function tripOtherDest() {
 let view = null;
 let routeToken = 0;
 let nextSnap = null;
+let leftUp = false; // TEL-352: the route comes from a swipe down out of Settings or Report (the content swaps in a short blur, U10)
 let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
@@ -844,11 +845,14 @@ async function route() {
   content.replaceChildren();
   content.removeAttribute('aria-busy'); // set in index.html until the first view
   sheet.scrollToTop();
+  if (leftUp && !reduceMotion.matches) content.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  leftUp = false;
   if (!reduceMotion.matches) { content.classList.remove('enter'); void content.offsetWidth; content.classList.add('enter'); }
   document.title = title();
 
   focusPt = null;
   routeSnap = true;
+  sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report'); // no low or mid: down from up goes home (TEL-352)
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted });
   routeSnap = false;
   nextSnap = null;
@@ -1014,6 +1018,8 @@ function buildChrome() {
 
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove, follow: [$('menu-btn')] });
+  // Settings and Report are "up only": a swipe down (or a tap on the handle) from up opens home at mid in one move
+  $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); leftUp = true; navigate('#/', { snap: 'half' }); });
   buildChrome();
   map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
