@@ -843,10 +843,25 @@ async function route() {
   if (currentHead !== 'report') reportCtx = { view: currentHead || 'home', ref: currentHead === 'stop' ? String(arg) : '' };
   if (SNAP[head] == null) history.replaceState(null, '', cityHash('#/'));
   const content = sheet.content;
+  // TEL-352: leaving Settings or Report by a swipe: the old content stays a moment as a still copy that blurs and fades
+  // out over the new one, which blurs in (a cross-fade through blur, U10), so the swap is never a cut
+  if (leftUp && !reduceMotion.matches) {
+    const host = content.offsetParent;
+    if (host) {
+      const ghost = content.cloneNode(true);
+      ghost.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+      ghost.removeAttribute('id');
+      ghost.setAttribute('aria-hidden', 'true');
+      ghost.inert = true;
+      Object.assign(ghost.style, { position: 'absolute', left: `${content.offsetLeft}px`, top: `${content.offsetTop}px`, width: `${content.offsetWidth}px`, pointerEvents: 'none' });
+      host.append(ghost);
+      ghost.animate([{ filter: 'blur(0)', opacity: 1 }, { filter: 'blur(10px)', opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' }).onfinish = () => ghost.remove();
+    }
+  }
   content.replaceChildren();
   content.removeAttribute('aria-busy'); // set in index.html until the first view
   sheet.scrollToTop();
-  if (leftUp && !reduceMotion.matches) content.animate([{ filter: 'blur(8px)', opacity: 0.45 }, { filter: 'blur(0)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.2,.7,.2,1)' });
+  if (leftUp && !reduceMotion.matches) content.animate([{ filter: 'blur(10px)', opacity: 0 }, { filter: 'blur(0)', opacity: 1 }], { duration: 340, delay: 60, easing: 'ease-out', fill: 'backwards' });
   const carry = leftUp ? leftUpVelocity : 0;
   leftUp = false;
   leftUpVelocity = 0;
