@@ -179,11 +179,13 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       h('div', { class: 'tripv-titles' }, title, peek, h('span', { class: 'tripv-peek-end', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
       round('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
   // the option chips; the bar holds the glass lens that slides to the chosen one (js/glass.js)
-  const opts = h('div', { class: 'tripv-opts', role: 'tablist', 'aria-label': t('Επιλογές διαδρομής') });
+  // TEL-348 (U25): coded as the ☰ menu's theme row: bar[data-lens] > row[role=radiogroup] > button[role=radio], the
+  // chosen one aria-checked, the row rebuilt on every choice (that moves the lens, js/glass.js)
+  const opts = h('div', { class: 'tripv-opts', role: 'radiogroup', 'aria-label': t('Επιλογές διαδρομής') });
   const optBar = h('div', { class: 'tripv-optbar', 'data-lens': true, hidden: true }, opts);
-  // tabs: the arrow keys move between the options (and choose them)
+  // radios: the arrow keys move between the options and choose them, as native radios do
   opts.addEventListener('keydown', (e) => {
-    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key] || 0;
     if (!step) return;
     const list = [...opts.children], i = list.indexOf(document.activeElement);
     if (i < 0) return;
@@ -363,7 +365,7 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
         duo.style.setProperty('--lc', lastBadge.style.background || 'var(--border)');
         kids = [...lines.slice(0, -1).flatMap((c) => [badge(c), h('span', { class: 'tripv-sep', 'aria-hidden': 'true' }, '›')]), duo];
       }
-      const btn = h('button', { type: 'button', role: 'tab', class: `tripv-opt${on ? ' on' : ''}`, 'aria-selected': String(on), 'data-key': x.id, tabindex: on ? '0' : '-1',
+      const btn = h('button', { type: 'button', role: 'radio', class: 'tripv-opt', 'aria-checked': String(on), 'data-key': x.id, tabindex: on ? '0' : '-1',
         'aria-label': chipLabel(i + 1, x.chip.eta, x.chip.total), onclick: () => choose(x.id, true) }, ...kids.filter(Boolean));
       if (pill && x.chip.eta) chipPills.push({ pill, btn, it: its[i], n: i + 1, total: x.chip.total });
       return btn;

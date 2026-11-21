@@ -34,10 +34,10 @@ test('glass: on by default', async ({ page }) => {
   await expect.poll(icons).toBe('1 0');
   // (the stop's ⋯ menu, which morphed the same way, left the stop header in TEL-227: its two items are on screen now)
   // line chips: one glass lens sits on the selected chip and follows the selection
-  const lensOn = () => page.evaluate(() => { const l = document.querySelector('.stopv-chipbar .g-lens').getBoundingClientRect(); const c = document.querySelector('.stopv-chip.on').getBoundingClientRect(); return Math.abs(l.left - c.left) < 2 && Math.abs(l.width - c.width) < 2; });
+  const lensOn = () => page.evaluate(() => { const l = document.querySelector('.stopv-chipbar .g-lens').getBoundingClientRect(); const c = document.querySelector('.stopv-chipbar > .stopv-chips > .stopv-chip[aria-checked="true"]').getBoundingClientRect(); return Math.abs(l.left - c.left) < 2 && Math.abs(l.width - c.width) < 2; });
   await expect.poll(lensOn).toBe(true);
   await page.locator('.stopv-chip').nth(1).click();
-  await expect(page.locator('.stopv-chip').nth(1)).toHaveClass(/\bon\b/);
+  await expect(page.locator('.stopv-chip').nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect.poll(lensOn).toBe(true);
   await page.locator('.stopv-chip').first().click();
   // a press lights the button up, release lets it go

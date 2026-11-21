@@ -252,7 +252,20 @@ export function mountStop(container, ctx, { code }) {
   const bannerBtn = h('button', { type: 'button', class: 'btn ghost sm stopv-small', onclick: () => doRefresh() }, t('Δοκίμασε ξανά'));
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
-  const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
+  // TEL-348 (U25): coded as the ☰ menu's theme row: bar[data-lens] > row[role=radiogroup] > button[role=radio], the
+  // chosen one aria-checked, the row rebuilt on every change (that moves the lens, js/glass.js). Two things the theme row
+  // has not: the row scrolls when the lines do not fit, and a tap on the chosen line goes back to «All» (Kostas, TEL-348).
+  const chips = h('div', { class: 'stopv-chips', role: 'radiogroup', 'aria-label': t('Φίλτρο γραμμής') });
+  // radios: the arrow keys move between the chips and pick, as native radios do
+  chips.addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const list = [...chips.children], i = list.indexOf(document.activeElement);
+    if (!step || i < 0) return;
+    e.preventDefault();
+    const key = list[(i + step + list.length) % list.length].dataset.key;
+    filter = key === '*' ? null : key; showAll = false; render(); pushMap();
+    [...chips.children].find((c) => c.dataset.key === key)?.focus({ preventScroll: true });
+  });
   // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
   // into their own row and grow into the filter chips
   const chipBar = h('div', { class: 'stopv-chipbar', 'data-lens': true, hidden: true }, chips);
@@ -353,7 +366,7 @@ export function mountStop(container, ctx, { code }) {
     if (!chipBar.hidden && chipSig !== chips.dataset.sig) {
       chips.dataset.sig = chipSig;
       const focusedChip = chips.contains(document.activeElement) ? document.activeElement.dataset.key : null;
-      const chip = (label, on, onclick, kids, key) => h('button', { type: 'button', class: `stopv-chip${on ? ' on' : ''}`, 'aria-pressed': String(on), 'data-key': key, onclick }, kids || label);
+      const chip = (label, on, onclick, kids, key) => h('button', { type: 'button', class: 'stopv-chip', role: 'radio', 'aria-checked': String(on), tabindex: on ? '0' : '-1', 'data-key': key, onclick }, kids || label);
       chips.replaceChildren(
         chip(t('Όλες'), !filter, () => { filter = null; showAll = false; render(); pushMap(); }, null, '*'),
         ...lines.map((l) => chip(null, filter === l.code, () => { filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
