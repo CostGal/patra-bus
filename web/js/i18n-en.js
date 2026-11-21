@@ -162,10 +162,6 @@ const PAIRS = [
   ['{n} στάσεις', '{n} stops'],
   ['Δεν βρέθηκαν στάσεις για αυτή τη διαδρομή.', 'No stops found for this route.'],
   ['Δεν υπάρχουν διαδρομές', 'No routes'],
-  ['Επόμενα', 'Next'],
-  ['Επόμενα λεωφορεία στη στάση {name}', 'Next buses at {name}'],
-  ['Δεν φορτώθηκαν οι αφίξεις.', 'Could not load arrivals.'],
-  ['Καμία άφιξη της γραμμής {code} αυτή τη στιγμή.', 'No arrivals on line {code} right now.'],
   // ---- other modules, as already wrapped by their owners ----
   ['Εκτός σύνδεσης — δείχνω αποθηκευμένα δεδομένα', 'Offline — showing saved data'],
   ['μισός', 'half'],

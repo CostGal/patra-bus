@@ -3,7 +3,7 @@
 import { h, icon, lineBadge } from './ui.js';
 import { searchKey, titleCase } from './text.js';
 import { loadShapes } from './data.js';
-import { createLivePoller, remainingSec } from './api.js';
+import { createLivePoller } from './api.js';
 import { arrivalTile } from './arrivals-view.js';
 import { shareLink } from './share.js';
 import { t, tn, onLangChange, lang, APP_NAME } from './i18n.js';
@@ -16,7 +16,73 @@ const shapes = () => (shapesP ||= loadShapes().catch(() => ({})));
 const routeName = (ctx, r) => ctx.data.routeByCode.get(r.code)?.displayName || titleCase(r.name);
 // "Updated just now" / "Updated 14″ ago".
 const updated = (age) => (age < 5 ? t('Ενημερώθηκε μόλις τώρα') : t('Ενημερώθηκε πριν {t}', { t: age < 120 ? `${age}″` : `${Math.round(age / 60)}′` }));
-const backBtn = (label, onclick) => h('button', { type: 'button', class: 'btn round strong', 'aria-label': label, onclick }, icon('back'));
+// A round glass button of the card's header (the kit's .g-circle, UI-PROTOCOL U3).
+const circle = (name, label, onclick) => h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': label, title: label, onclick }, icon(name));
+
+// The header's title at up (TEL-248, as js/report-view.js and js/bus-view.js): halfway from mid to up it moves to its own
+// row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (css/extras.css, by --u: U8). Nothing runs on
+// every frame of a drag: sheet.js says when --sheet-t crosses 1.5 (sheet:upper). onDown: measure again at low/mid.
+function titleUp(head, title, onDown = () => {}) {
+  const sheetEl = document.getElementById('sheet');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!on) onDown();
+    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  const mo = new MutationObserver(onUpper);
+  if (sheetEl) {
+    mo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+    sheetEl.addEventListener('sheet:upper', onUpper);
+    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
+  }
+  setUp(upRow());
+  return () => { mo.disconnect(); sheetEl?.removeEventListener('sheet:upper', onUpper); sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp); };
+}
+
+// The name as the vehicle's (js/bus-view.js, U4): one line at low and mid, 17 px, shrunk down to 14 px before it is cut
+// with "…"; at up 24 px (less if its longest word would not fit), up to two lines. Measured only at low and mid, with
+// transitions off (U16).
+const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24;
+let measureCtx = null;
+function fitName(head, title) {
+  if (!title.isConnected || head.classList.contains('is-up')) return;
+  title.style.transition = 'none';
+  for (const k of ['--name-px', '--name-n', '--name-up-n']) title.style.removeProperty(k);
+  const room = title.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
+  if (room > 0) {
+    const r = document.createRange();
+    r.selectNodeContents(title);
+    const scale = title.getBoundingClientRect().width / title.offsetWidth || 1; // the growth towards up, if any (U18)
+    const w = r.getBoundingClientRect().width / scale;
+    let n = NAME_PX;
+    if (w > room) {
+      n = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
+      title.style.setProperty('--name-px', `${n}px`);
+      title.style.setProperty('--name-n', String(n));
+    }
+    measureCtx ||= document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(title);
+    measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
+    const longest = Math.max(...title.textContent.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
+    const upN = Math.max(n, Math.min(NAME_UP, Math.floor(NAME_PX * (head.clientWidth - 2) / (longest * 1.04 || 1)))); // 4%: rounding
+    if (upN !== NAME_UP) title.style.setProperty('--name-up-n', String(upN));
+  }
+  title.style.transition = '';
+}
+
+// A short fixed title (lines list, «line not found»): an empty slot · the title, 17 px, centred · ✕, as the report's.
+function plainHead(titleText, closeLabel, onClose) {
+  const title = h('h1', { class: 'lh-title card-title' }, titleText);
+  // low ends under this row (js/sheet.js)
+  const head = h('header', { class: 'lh-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, circle('close', closeLabel, onClose));
+  return { head, title };
+}
 
 // ---------------------------------------------------------------- list of lines
 
@@ -57,11 +123,11 @@ function buildLines(container, ctx, st) {
   const onInput = () => { st.q = input.value; render(); };
   input.addEventListener('input', onInput);
 
-  container.replaceChildren(h('div', { class: 'ex-view' },
-    h('header', { class: 'ex-head' }, backBtn(t('Πίσω'), () => ctx.navigate('#/')), h('h1', {}, t('Γραμμές'))),
-    input, count, list));
+  const { head, title } = plainHead(t('Γραμμές'), t('Κλείσιμο'), () => ctx.navigate('#/'));
+  container.replaceChildren(h('div', { class: 'ex-view sheet-inset' }, head, input, count, list));
+  const offUp = titleUp(head, title);
   render();
-  return { destroy() { input.removeEventListener('input', onInput); } };
+  return { destroy() { offUp(); input.removeEventListener('input', onInput); } };
 }
 
 // ---------------------------------------------------------------- one line
@@ -106,23 +172,25 @@ function buildLine(container, ctx, params) {
   const { map } = ctx;
   const line = ctx.data.lineByCode.get(String(params.code));
   if (!line) {
-    container.replaceChildren(h('div', { class: 'ex-view' },
-      h('header', { class: 'ex-head' }, backBtn(t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines')), h('h1', {}, t('Γραμμή'))),
+    const { head, title } = plainHead(t('Γραμμή'), t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines'));
+    container.replaceChildren(h('div', { class: 'ex-view sheet-inset' }, head,
       h('p', { class: 'ex-empty' }, t('Η γραμμή δεν βρέθηκε.')),
       h('a', { class: 'btn rect', href: cityHash('#/lines') }, t('Όλες οι γραμμές'))));
-    return { destroy() {} };
+    return { destroy: titleUp(head, title) };
   }
 
   let dead = false;
   let drawToken = 0;
   let routeCode = pickRoute(line, params);
   let current = stopsFor(ctx, routeCode);
-  let open = null; // { code, poller, state, ticker, panel, btn } — one expanded stop at a time (one poller)
 
-  const root = h('div', { class: 'ex-view lines-line' });
+  const root = h('div', { class: 'ex-view lines-line sheet-inset' });
   root.style.setProperty('--lc', line.color || 'var(--primary)');
   root.style.setProperty('--lc-text', line.textColor || '#fff');
+  // directions (TEL-248, UI-PROTOCOL U25): one pick-one row, the chosen chip under the glass lens (js/glass.js:
+  // bar[data-lens] > row > chip, aria-pressed); a long name scrolls inside the capsule, as the stop's chips
   const chips = h('div', { class: 'lines-routes', role: 'group', 'aria-label': t('Διαδρομές της γραμμής') });
+  const chipBar = h('div', { class: 'lines-routebar', 'data-lens': true }, chips);
   const sub = h('p', { class: 'ex-sub' });
   const note = h('p', { class: 'ex-note', role: 'note' });
   const list = h('ol', { class: 'lines-stops' });
@@ -134,6 +202,7 @@ function buildLine(container, ctx, params) {
   const timesList = h('ul', { class: 'lines-deps tabular' });
   const timesMsg = h('p', { class: 'ex-sub', 'aria-live': 'polite' });
   const timesHint = h('p', { class: 'ex-sub lines-times-note', hidden: true }, t('Πλήρες ημερήσιο πρόγραμμα: όχι ακόμη διαθέσιμο — χρειάζεται τα επίσημα δεδομένα δρομολογίων.'));
+  // the stop's arrival tiles under a plain heading, no box of its own (TEL-248)
   const times = h('section', { class: 'lines-times', 'aria-labelledby': timesId },
     h('h2', { id: timesId, class: 'lines-times-title' }, icon('clock'), h('span', { class: 'ex-grow' }, t('Αναχωρήσεις από την αφετηρία')),
       h('button', { type: 'button', class: 'ex-info press', 'aria-label': t('Περισσότερα'), 'aria-expanded': 'false', onclick: (e) => {
@@ -142,24 +211,31 @@ function buildLine(container, ctx, params) {
     timesHint, timesStop, timesList, timesMsg);
   let term = null; // { code, poller, ticker, state, tiles } — the terminal stop's poller (one at a time)
 
-  const share = h('button', { type: 'button', class: 'btn round strong', 'aria-label': t('Κοινοποίηση γραμμής'), onclick: async () => {
+  const share = circle('share', t('Κοινοποίηση γραμμής'), async () => {
     const r = await shareLink({ title: t('Γραμμή {code} · {name}', { code: line.code, name: line.displayName }), text: t('Γραμμή {code} {name} — {app} · {city}', { code: line.code, name: line.displayName, app: APP_NAME, city: cityName(city(), lang()) }), url: `${location.origin}${location.pathname}${shareHash(location.hash)}` });
     if (r === 'copied') ctx.toast(t('Ο σύνδεσμος αντιγράφηκε'));
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
-  } }, icon('share'));
+  });
 
-  root.append(
-    h('header', { class: 'ex-head' },
-      backBtn(t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines')),
-      h('span', { class: 'lines-badge lines-badge-lg' }, lineBadge(line)),
-      h('div', { class: 'ex-grow' }, h('h1', {}, line.displayName), sub),
-      share),
-    chips, note, status, times, list);
+  // header (TEL-248, the vehicle's: UI-PROTOCOL U2–U5, css/extras.css .bv-head): share · the line's name, its badge
+  // under it · ✕ back to the lines. The kit's .card-head and .g-circle (css/ui-kit.css).
+  const title = h('h1', { class: 'bv-title card-title', title: line.displayName }, line.displayName);
+  const head = h('header', { class: 'bv-head' },
+    h('div', { class: 'bv-top card-head' },
+      share,
+      h('div', { class: 'bv-titles' }, title, h('div', { class: 'bv-peek' }, lineBadge(line)),
+        h('span', { class: 'bv-peek-end', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
+      circle('close', t('Πίσω στις γραμμές'), () => ctx.navigate('#/lines'))));
+  root.append(head, sub, chipBar, note, status, times, list);
   container.replaceChildren(root);
+  const fit = () => { if (!dead) fitName(head, title); };
+  const offUp = titleUp(head, title, fit);
+  document.fonts?.ready.then(fit);
+  document.fonts?.addEventListener('loadingdone', fit);
 
   // --- route chips ---
   function paintChips() {
-    chips.hidden = line.routes.length < 2;
+    chipBar.hidden = line.routes.length < 2;
     chips.replaceChildren(...line.routes.map((r) => {
       const name = routeName(ctx, r);
       return h('button', { type: 'button', class: 'lines-chip press', 'aria-pressed': String(r.code === routeCode), title: name, onclick: () => setRoute(r.code) }, name);
@@ -169,7 +245,6 @@ function buildLine(container, ctx, params) {
   }
   function setRoute(code) {
     if (code === routeCode) return;
-    closeNext();
     routeCode = code;
     current = stopsFor(ctx, routeCode);
     const r = line.routes.find((x) => x.code === code);
@@ -232,17 +307,13 @@ function buildLine(container, ctx, params) {
     if (!stops.length) { list.replaceChildren(h('li', { class: 'ex-empty' }, t('Δεν βρέθηκαν στάσεις για αυτή τη διαδρομή.'))); return; }
     list.replaceChildren(...stops.map((s, i) => {
       const end = ordered && (i === 0 ? t('Αφετηρία') : i === stops.length - 1 ? t('Τέρμα') : '');
-      const panel = h('div', { class: 'lines-next', hidden: true });
-      const btn = h('button', { type: 'button', class: 'lines-next-btn press', 'aria-expanded': 'false', 'aria-label': t('Επόμενα λεωφορεία στη στάση {name}', { name: s.displayName }), title: t('Επόμενα'), onclick: () => toggleNext(s, btn, panel) },
-        icon('clock'));
+      // a stop opens its card, with its arrivals (TEL-248: no "next buses" button of its own any more)
       return h('li', { class: `lines-stop${end ? ' is-end' : ''}`, 'data-code': s.code },
         h('span', { class: 'lines-dot', 'aria-hidden': 'true' }),
         h('div', { class: 'lines-stop-row' },
           h('a', { class: 'lines-stop-link press', href: cityHash(`#/stop/${encodeURIComponent(s.code)}`) },
             h('span', { class: 'lines-stop-name' }, s.displayName),
-            end ? h('span', { class: 'ex-sub' }, end) : null),
-          btn),
-        panel);
+            end ? h('span', { class: 'ex-sub' }, end) : null)));
     }));
   }
   function paint() {
@@ -251,53 +322,6 @@ function buildLine(container, ctx, params) {
     paintChips();
     sub.hidden = line.routes.length > 1; // the chips already name the route
     paintStops();
-  }
-
-  // --- "next bus" for ONE expanded stop (live poller, 20 s, visible only) ---
-  function paintNext() {
-    if (!open) return;
-    const { state, panel } = open;
-    const nodes = [];
-    if (!state || state.loading && !state.data) nodes.push(h('p', { class: 'ex-sub' }, t('Φόρτωση…')));
-    else if (state.error && !state.data) nodes.push(h('p', { class: 'ex-sub' }, t('Δεν φορτώθηκαν οι αφίξεις.')),
-      h('button', { type: 'button', class: 'btn rect sm', onclick: () => open?.poller.refresh() }, t('Δοκίμασε ξανά')));
-    else if (state.data) {
-      const now = Date.now();
-      const mine = state.data.vehicles.filter((v) => v.lineCode === line.code)
-        .sort((a, b) => remainingSec(a, state.data.fetchedAt, now) - remainingSec(b, state.data.fetchedAt, now)).slice(0, 3);
-      if (!mine.length) nodes.push(h('p', { class: 'ex-sub' }, t('Καμία άφιξη της γραμμής {code} αυτή τη στιγμή.', { code: line.code })));
-      for (const v of mine) {
-        try { nodes.push(arrivalTile(v, state.data.fetchedAt, { compact: true, now, line, stop: open.code, lineLinks: false })); } catch { /* tile failed: skip */ }
-      }
-      const age = Math.max(0, Math.round((now - state.data.fetchedAt) / 1000));
-      nodes.push(h('p', { class: 'ex-sub lines-age' }, updated(age), state.error ? ` · ${t('αποτυχία ανανέωσης')}` : ''));
-    }
-    panel.replaceChildren(...nodes);
-  }
-  function showLiveOnMap(data) {
-    const vs = (data?.vehicles || []).filter((v) => v.lineCode === line.code && v.live && Number.isFinite(v.lat) && Number.isFinite(v.lng));
-    const stopCode = open && open.code;
-    try { map.setVehicles('line-live', vs.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || line.color, textColor: v.textColor || line.textColor, vehicleCode: v.vehicleCode, routeCode: v.routeCode, stopCode }))); } catch { /* ignore */ }
-  }
-  function closeNext() {
-    if (!open) return;
-    const o = open; open = null;
-    o.poller.destroy(); clearInterval(o.ticker);
-    o.panel.hidden = true; o.panel.replaceChildren();
-    o.btn.setAttribute('aria-expanded', 'false');
-    try { map.clearVehicles('line-live'); map.highlightStop(null); } catch { /* ignore */ }
-  }
-  function toggleNext(stop, btn, panel) {
-    const same = open?.code === stop.code;
-    closeNext();
-    if (same) return;
-    panel.hidden = false; btn.setAttribute('aria-expanded', 'true');
-    const o = { code: stop.code, panel, btn, state: null, poller: null, ticker: null };
-    open = o;
-    o.poller = createLivePoller(stop.code, (s) => { if (open !== o) return; o.state = s; showLiveOnMap(s.data); paintNext(); });
-    o.ticker = setInterval(() => { if (!document.hidden) paintNext(); }, 1000);
-    paintNext();
-    try { map.highlightStop(stop.code); } catch { /* ignore */ }
   }
 
   // --- map ---
@@ -328,8 +352,9 @@ function buildLine(container, ctx, params) {
   return {
     destroy() {
       dead = true; drawToken++;
-      closeNext(); stopTimes();
-      try { map.clearOverlay('line'); map.clearMarkers('line-stops'); map.clearVehicles('line-live'); map.highlightStop(null); } catch { /* ignore */ }
+      offUp(); document.fonts?.removeEventListener('loadingdone', fit);
+      stopTimes();
+      try { map.clearOverlay('line'); map.clearMarkers('line-stops'); } catch { /* ignore */ }
     },
   };
 }

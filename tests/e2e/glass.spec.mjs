@@ -107,16 +107,16 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
   await page.goto('/?demo#/lines');
   await expect(page.locator('.lines-row').first()).toBeVisible();
   // a pressed round button grows a lot and stays inside the sheet's scroller (the sheet leaves room above its first row)
-  const back = page.locator('#sheet .ex-head > .btn.round');
+  const back = page.locator('#sheet .card-head > .btn.round');
   const box = await back.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2, box.y - 30, { steps: 4 });
   await expect.poll(() => back.evaluate((el) => parseFloat(getComputedStyle(el).scale) || 1)).toBeGreaterThan(1.2);
-  const fits = await page.evaluate(() => document.querySelector('#sheet .ex-head > .btn.round').getBoundingClientRect().top - document.getElementById('sheet-body').getBoundingClientRect().top);
+  const fits = await page.evaluate(() => document.querySelector('#sheet .card-head > .btn.round').getBoundingClientRect().top - document.getElementById('sheet-body').getBoundingClientRect().top);
   expect(fits).toBeGreaterThanOrEqual(0);
-  // no light under the finger: no gradient image, no finger position variables
-  expect(await back.evaluate((el) => getComputedStyle(el).backgroundImage)).toBe('none');
+  // no light under the finger: no radial gradient (the kit's .g-circle keeps its fixed top sheen), no finger position variables
+  expect(await back.evaluate((el) => getComputedStyle(el).backgroundImage)).not.toMatch(/radial-gradient/);
   expect(await back.evaluate((el) => el.style.getPropertyValue('--gx'))).toBe('');
   // pressed above its neighbours
   expect(await back.evaluate((el) => parseInt(getComputedStyle(el).zIndex, 10))).toBeGreaterThan(1);

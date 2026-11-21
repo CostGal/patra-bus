@@ -31,7 +31,7 @@ export const STATIC_EXCEPTIONS = {
   },
   U19: {
     'app.css: .view-head h1': 'old header (favourites): not on the kit\'s .card-head yet',
-    'css/extras.css: .ex-head h1': 'old header (lines, line, settings): not on the kit\'s .card-head yet',
+    'css/extras.css: .ex-head h1': 'old header (settings): not on the kit\'s .card-head yet',
   },
 };
 
@@ -56,9 +56,12 @@ export const VIEW_EXCEPTIONS = {
   bus: {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop and the trip (TEL-249)',
   },
-  lines: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD },
-  line: { U2: OLD_INSET, U3: `back button is a .btn.round, ${OLD_HEAD}`, U4: OLD_HEAD, U5: OLD_HEAD,
-    U20: 'a link in the header is covered by the subtitle (p.ex-sub) at its edge' },
+  lines: {
+    U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop and the others (TEL-248)',
+  },
+  line: {
+    U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop and the others (TEL-248)',
+  },
   favorites: {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop, the trip and the bus (TEL-250)',
   },
