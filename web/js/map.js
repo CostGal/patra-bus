@@ -3,13 +3,10 @@
 //   available, setFollow(mode), resetNorth(), opts.onUserMove / opts.onBearing / opts.theme.
 // Everything custom (sources, layers) is re-added on every `style.load` so theme swaps keep state.
 import { icon } from './ui.js';
-import { t, onLangChange } from './i18n.js';
+import { t, onLangChange, lang } from './i18n.js';
 import { city } from './cities.js';
+import { BASE_STYLE, styleFor, addPlaces, setMapLanguage } from './map-style.js';
 
-const STYLES = {
-  light: 'https://tiles.openfreemap.org/styles/liberty',
-  dark: 'https://tiles.openfreemap.org/styles/fiord', // 'dark' is near-black (roads #181818 on #0c0c0c): unreadable
-};
 const FONT = ['Noto Sans Regular'];
 const noop = () => {};
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -73,7 +70,6 @@ export function createMap(container, opts = {}) {
   try {
     map = new maplibregl.Map({
       container,
-      style: STYLES[theme],
       center: ll(city().center),
       zoom: 14,
       minZoom: 8,
@@ -240,6 +236,7 @@ export function createMap(container, opts = {}) {
 
   function rebuild() {
     styleReady = true;
+    addPlaces(map, theme, lang());
     symbolBefore = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
     addUserAccuracy();
     for (const id of overlays.keys()) addOverlay(id);
@@ -247,6 +244,10 @@ export function createMap(container, opts = {}) {
     resolveReady();
   }
   map.on('style.load', rebuild);
+  // Our look (map-style.js) is applied to the provider's style each time it loads. diff: false, a theme swap starts clean.
+  const loadStyle = () => map.setStyle(BASE_STYLE, { diff: false, transformStyle: (_, next) => styleFor(next, theme, lang()) });
+  loadStyle();
+  onLangChange(() => { if (styleReady) setMapLanguage(map, lang()); });
 
   // ---------- events ----------
   let lastLong = 0;
@@ -644,7 +645,7 @@ export function createMap(container, opts = {}) {
       if (next === theme) return;
       theme = next;
       styleReady = false;
-      map.setStyle(STYLES[theme], { diff: false }); // diffing liberty->dark leaves stale layers behind
+      loadStyle();
     },
     getCenter() {
       // centre of the part of the map that is not under the sheet / top bar
