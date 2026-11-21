@@ -36,7 +36,7 @@ function webglOk() {
 function fallbackApi(reason) {
   return {
     available: false, reason, ready: Promise.resolve(),
-    setStops: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
+    setStops: noop, setCity: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
     setOverlay: noop, clearOverlay: noop, setMarkers: noop, clearMarkers: noop, flyTo: noop, fitTo: noop,
     setPadding: noop, recenter: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
   };
@@ -501,6 +501,17 @@ export function createMap(container, opts = {}) {
         })),
       };
       if (styleReady) map.getSource('stops')?.setData(stopsFc);
+    },
+
+    // Live city switch (TEL-347): drop everything of the old city, show the new stops, move to the new centre.
+    setCity(stops) {
+      for (const id of [...overlays.keys()]) api.clearOverlay(id);
+      for (const id of [...markerSets.keys()]) api.clearMarkers(id);
+      for (const id of [...vehicleSets.keys()]) api.clearVehicles(id);
+      api.highlightStop(null);
+      api.setStops(stops);
+      lastFit = null;
+      map.flyTo({ center: ll(city().center), zoom: 14, speed: 1.6, essential: false });
     },
 
     highlightStop(code) {

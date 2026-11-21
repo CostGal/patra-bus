@@ -1,7 +1,7 @@
 // Static data loader and indexes (owner: data). Contracts: docs/ARCHITECTURE.md, section D.
 // buildIndex() is pure (tests); loadData() / loadShapes() fetch once and memoize.
 import { titleCase, searchKey } from './text.js';
-import { dataDir } from './cities.js';
+import { city, dataDir } from './cities.js';
 import { readableLine } from './color.js';
 
 const getJSON = async (u) => {
@@ -58,22 +58,25 @@ export function buildIndex(rawStops, rawLines, rawRoutes) {
   return { stops, lines, routes, stopByCode, lineByCode, routeByCode, routesByStop, meta };
 }
 
-let dataPromise = null;
-export function loadData() {
-  if (!dataPromise) {
-    const dir = dataDir(); // the active city's folder (Patras ./data/, others ./data/{city}/)
-    dataPromise = Promise.all([
+// Cached per city: switching city live (TEL-347) must not reuse another city's data, and switching back is instant.
+const dataPromises = new Map();
+export function loadData(c = city()) {
+  const id = c.id;
+  if (!dataPromises.has(id)) {
+    const dir = dataDir(c); // the active city's folder (Patras ./data/, others ./data/{city}/)
+    dataPromises.set(id, Promise.all([
       getJSON(dir + 'stops.json'), getJSON(dir + 'lines.json'), getJSON(dir + 'routes.json').catch(() => null), // routes: optional
-    ]).then(([s, l, r]) => buildIndex(s, l, r)).catch((e) => { dataPromise = null; throw e; });
+    ]).then(([s, l, r]) => buildIndex(s, l, r)).catch((e) => { dataPromises.delete(id); throw e; }));
   }
-  return dataPromise;
+  return dataPromises.get(id);
 }
 
-let shapesPromise = null;
-export function loadShapes() {
+const shapesPromises = new Map();
+export function loadShapes(c = city()) {
   // A city without shapes.json (404) just has no drawn geometry; any other failure may be transient, so retry later.
-  if (!shapesPromise) shapesPromise = getJSON(dataDir() + 'shapes.json').catch((e) => { if (!/HTTP 404/.test(e?.message)) shapesPromise = null; return {}; });
-  return shapesPromise;
+  const id = c.id;
+  if (!shapesPromises.has(id)) shapesPromises.set(id, getJSON(dataDir(c) + 'shapes.json').catch((e) => { if (!/HTTP 404/.test(e?.message)) shapesPromises.delete(id); return {}; }));
+  return shapesPromises.get(id);
 }
 
 // Ordered Stop objects of a route ([] for an unknown route).

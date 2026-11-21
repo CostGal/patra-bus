@@ -11,7 +11,7 @@ import locationService from './location.js';
 import { DEMO, fetchLive } from './api.js';
 import { getRecents, addRecent, getFavorites, getSettings, setSetting, onChange } from './store.js';
 import { t, tn, N_, onLangChange, lang, APP_NAME } from './i18n.js';
-import { CITIES, city, cityId, cityName, isCity } from './cities.js';
+import { CITIES, city, cityId, cityName, isCity, setActiveCity } from './cities.js';
 import { cityToOffer } from './city-detect.js';
 import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces, withoutShownStops } from './geocode.js';
@@ -293,12 +293,12 @@ function onLocation(fix, status) {
     firstFixHandled = true;
     if (currentHead === '' && locMode === 'idle') map?.flyTo(fix, 15.5);
   }
-  // A real GPS fix inside the other city: offer to switch (TEL-142). The check runs on the device; no reload unless the user taps.
+  // A real GPS fix inside the other city: offer to switch (TEL-142). The check runs on the device; nothing changes unless the user taps.
   const offer = !cityOffered && cityToOffer(fix, cityId());
   if (offer) {
     cityOffered = true;
     toast(t('Βρίσκεσαι στην {city}. Να αλλάξω πόλη;', { city: cityName(CITIES[offer], lang()) }), { action: { label: t('Αλλαγή πόλης'), onClick: () => switchCity(offer) }, ms: CITY_OFFER_MS });
-    // Not tapped (a tap reloads the page, so this never runs then): a short hint that Settings can do it later.
+    // Not tapped (a tap switches the city and ends this toast): a short hint that Settings can do it later.
     setTimeout(() => toast(t('Μπορείς να αλλάξεις πόλη και από τις Ρυθμίσεις.'), { action: { label: t('Ρυθμίσεις'), onClick: () => navigate('#/settings') }, ms: CITY_HINT_MS }), CITY_OFFER_MS);
   }
   paintLocating();
@@ -786,13 +786,32 @@ let reportCtx = { view: '', ref: '' };
 let booted = false;
 const SNAP = { '': 'half', stop: 'half', bus: 'half', lines: 'half', line: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', place: 'full' };
 
-// Switching city = remember it, go to that city's home, reload (data, map and stored items are per city).
-// `to`: where the reloaded app opens (Settings asks for itself, TEL-251); home by default.
-function switchCity(id, to = '#/') {
-  if (!isCity(id) || id === cityId()) return;
-  setSetting('city', id);
-  try { history.replaceState(null, '', formatHash(to, id)); } catch { /* ignore */ }
-  location.reload();
+// Switching city (TEL-347) = load that city's data, then remember it, move the map and redraw the screen: no page reload.
+// Stored items, reminders and the api memo are keyed by city, so they follow cityId(). The active city changes only after
+// the data is in, so nothing mounted reads a half-switched state. If the data cannot load, the city stays as it was.
+let switching = false;
+// `to`: the screen it opens on the new city (Settings asks for itself, TEL-251); home by default.
+async function switchCity(id, to = '#/') {
+  if (!isCity(id) || id === cityId() || switching) return;
+  switching = true;
+  try {
+    let next;
+    try { next = await loadData(CITIES[id]); } catch (err) {
+      console.error('[switch city]', err);
+      toast(t('Δεν φορτώθηκαν τα δεδομένα στάσεων.'));
+      return;
+    }
+    routeToken++; // drop anything still loading for the old city
+    teardown();
+    setActiveCity(id);
+    setSetting('city', id);
+    data = next;
+    ctx.data = next;
+    map.setCity(next.stops);
+    try { history.replaceState(null, '', cityHash(to)); } catch { /* ignore */ }
+    localizeChrome(); // the menu shows the city name
+    await route();
+  } finally { switching = false; }
 }
 function teardown() {
   try { view?.destroy?.(); } catch (err) { console.error('[view destroy]', err); }

@@ -10,8 +10,7 @@ import { t, tn, onLangChange, lang, APP_NAME } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
 import { city, cityName } from './cities.js';
 
-let shapesP = null; // shapes.json is big and optional: load once, only when a line is opened
-const shapes = () => (shapesP ||= loadShapes().catch(() => ({})));
+const shapes = () => loadShapes().catch(() => ({})); // shapes.json is big and optional: loadShapes caches it per city, only loaded when a line is opened
 
 const routeName = (ctx, r) => ctx.data.routeByCode.get(r.code)?.displayName || titleCase(r.name);
 // "Updated just now" / "Updated 14″ ago".
