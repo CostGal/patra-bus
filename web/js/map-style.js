@@ -5,7 +5,11 @@
 export const BASE_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
 const SOURCE = 'openmaptiles';
-const PLACE_FONT = ['Noto Sans Bold'];
+// Map labels use our own Manrope glyphs (TEL-361). Every one of the 256 ranges exists, even the empty ones: MapLibre
+// drops all the labels of a tile when one range fails to load. Manrope has no italic, so italic labels become upright.
+const GLYPHS_URL = `${new URL('../fonts/', import.meta.url).href}{fontstack}/{range}.pbf`;
+export const MAP_FONT = ['Manrope Regular'];
+const PLACE_FONT = ['Manrope Bold'];
 
 const PALETTES = {
   light: {
@@ -91,11 +95,22 @@ function styleRoad(l, c) {
   }
 }
 
+function useOurFont(style) {
+  style.glyphs = GLYPHS_URL;
+  for (const l of style.layers) {
+    // A text layer with no font would ask for MapLibre's default font, which we don't host.
+    if (!l.layout?.['text-field'] && !l.layout?.['text-font']) continue;
+    l.layout['text-font'] = JSON.stringify(l.layout['text-font'] ?? '').includes('Bold') ? PLACE_FONT : MAP_FONT;
+  }
+}
+
 // The provider's style in, ours out. Never changes its input.
 export function styleFor(base, theme, lang) {
-  if (!base?.sources?.[SOURCE] || !Array.isArray(base.layers)) return base;
-  const c = paletteFor(theme);
+  if (!Array.isArray(base?.layers)) return base;
   const style = JSON.parse(JSON.stringify(base));
+  useOurFont(style);
+  if (!style.sources?.[SOURCE]) return style;
+  const c = paletteFor(theme);
   const layers = [];
   for (const l of style.layers) {
     // The map never tilts, so 3D walls only show as broken dark ticks. Places are added by addPlaces().

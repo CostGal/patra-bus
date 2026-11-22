@@ -171,6 +171,10 @@ My words:
 Where it shows up in Telematica: the floating search bar and bottom sheet (`.material` in `app.css`); the fuller glass look is in `css/glass.css` (TEL-83).
 My words:
 
+**Glyphs** (map glyphs): ready-made shapes of letters that the map draws with, like a box of stencils, one per letter. They come in files of 256 letters each.
+Where it shows up in Telematica: our Manrope map labels, in `web/fonts/` (TEL-361). Every file must exist, even the empty ones: if one fails to load, MapLibre drops all the labels of that map tile.
+My words:
+
 **Hash router**: showing different screens depending on the part of the address after `#`, like page tabs in one book.
 Where it shows up in Telematica: `#/stop/1011`, `#/favorites`, `#/settings` (`web/js/app.js`, `route.js`).
 My words:
