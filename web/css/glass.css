@@ -155,10 +155,14 @@ html.glass .g-press {
 html.glass :is(.menu-fab, .fab, .sheet, #menu-pop, .su-card, .wl-card).g-press { transition-duration: .08s; }
 /* round buttons (☰, back, ☆, ⋯, ✕): pressed, they become a whiter glass circle, still a little see-through */
 html.glass :is(.sb-btn, .btn.round).g-press { background-color: var(--g-pressed); }
-/* controls that are not glass surfaces are lifted off the sheet by a shadow */
-html.glass .g-press:not(.menu-fab, .fab, .sheet, #menu-pop, .su-card, .wl-card) {
+/* controls that are not glass surfaces are lifted off the sheet by a shadow. Not the ones with no rounded box of their
+   own, where this rim would be a square (TEL-373): list rows have their highlight, a link dims, the bus only grows */
+html.glass .g-press:not(.menu-fab, .fab, .sheet, #menu-pop, .su-card, .wl-card, .stop-row, .set-link, .veh) {
   box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 10px 28px rgba(0, 0, 0, .16);
 }
+html.glass .set-link.g-press { opacity: .55; }
+/* TEL-373: a touch leaves no grey on a place result (iOS keeps :hover after a tap); the keyboard's selection stays */
+@media (hover: none) { html.glass .plc-sr:hover:not([aria-selected="true"]) { background: transparent; } }
 html.glass .sheet .atile-link:hover { background-color: color-mix(in srgb, var(--g-card) 65%, transparent); } /* mouse: tinted, not solid grey */
 
 /* round buttons pop out: above their neighbours (a positioned layer), and the sheet leaves room above its first row so
