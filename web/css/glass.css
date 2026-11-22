@@ -110,7 +110,7 @@ html.glass .sheet::before {
   border-radius: var(--g-sheet-r) var(--g-sheet-r) calc(var(--g-sheet-r) * (1 - var(--u))) calc(var(--g-sheet-r) * (1 - var(--u)));
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--g-sheen-c) calc((1 - var(--u)) * 100%), transparent), transparent 90px),
-    color-mix(in srgb, var(--g-up) calc(var(--u) * 100%), color-mix(in srgb, var(--g-card) calc(var(--g-sheet-a0) + var(--l) * (var(--g-sheet-a1) - var(--g-sheet-a0))), transparent));
+    color-mix(in srgb, var(--g-up) calc(var(--u) * var(--g-up-a, 100%)), color-mix(in srgb, var(--g-card) calc(var(--g-sheet-a0) + var(--l) * (var(--g-sheet-a1) - var(--g-sheet-a0))), transparent));
   -webkit-backdrop-filter: var(--g-blur-sheet); backdrop-filter: var(--g-blur-sheet);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
 }
@@ -119,6 +119,17 @@ html.glass .sheet::before {
 html.glass .sheet.up-only { --u: calc(1 - var(--leave, 0)); }
 html.glass .sheet.up-only .sheet-content > .ex-view {
   filter: blur(calc(var(--leave, 0) * 10px)); opacity: calc(1 - var(--leave, 0) * 1.25);
+}
+/* TEL-349: on a phone, Settings (not Report) stays light glass while up, so a little of the map shows. The blur is the
+   sheet's own: the cards inside only get a tint (the sheet is their backdrop root). Solid again in the fallbacks. */
+@media (max-width: 899.98px) {
+  html.glass .sheet.up-only:has(.set-sec[data-k]) { --g-up-a: 70%; --g-set-card: 55%; }
+  html.glass .sheet.up-only :is(.set-sec[data-k], .set-lang) {
+    background: color-mix(in srgb, var(--g-up-card) var(--g-set-card, 100%), transparent);
+  }
+}
+@media (max-width: 899.98px) and (prefers-reduced-transparency: reduce), (max-width: 899.98px) and (prefers-contrast: more) {
+  html.glass .sheet.up-only:has(.set-sec[data-k]) { --g-up-a: 100%; --g-set-card: 100%; }
 }
 /* TEL-359: the menu's still copy (js/app.js) sharpens in with --leave; on release it covers the real menu until the sheet rests */
 html.glass .sheet .leave-menu {
