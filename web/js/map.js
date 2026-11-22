@@ -153,11 +153,11 @@ export function createMap(container, opts = {}) {
 
   // The tapped stop is drawn on its own (map-stops.js), so it can bounce; its normal icon is hidden meanwhile.
   const selectedStop = createSelectedStop(map, reduced);
-  function showSelected() {
+  function showSelected(still = false) {
     const f = selected == null ? null : stopsFc.features.find((x) => x.properties.code === selected);
     if (!f) { selectedStop.hide(); return; }
     const [lng, lat] = f.geometry.coordinates;
-    selectedStop.show({ code: selected, lng, lat, bearing: f.properties.bearing ?? null }, theme);
+    selectedStop.show({ code: selected, lng, lat, bearing: f.properties.bearing ?? null }, theme, still);
   }
 
   // Arrows are worked out once per city, the first time the map is close enough to show them.
@@ -610,13 +610,15 @@ export function createMap(container, opts = {}) {
       map.flyTo({ center: ll(city().center), zoom: 14, speed: 1.6, essential: false });
     },
 
-    highlightStop(code) {
+    highlightStop(code, { still = false } = {}) {
       const next = code == null ? null : String(code);
       if (tapFocus && (next != null ? next !== tapFocus.code : selected === tapFocus.code)) tapFocus = null;
       selected = next;
       if (styleReady) setSelectedStopFilter(map, selected);
-      showSelected();
+      showSelected(still);
     },
+    // Where the boot logo lands (TEL-365): the open stop's big icon. It is placed even while the map's tiles still load.
+    selectedPin: () => selectedStop.rect(),
 
     setUserFix(fix) {
       if (!fix || !okPoint(fix)) {
@@ -749,7 +751,7 @@ export function createMap(container, opts = {}) {
       });
     },
 
-    flyTo(p, zoom) {
+    flyTo(p, zoom, { instant = false } = {}) {
       if (!okPoint(p)) return;
       lastFit = null;
       const tapped = tapFocus && stopPoint(tapFocus.code);
@@ -757,7 +759,8 @@ export function createMap(container, opts = {}) {
       const z = onTapped ? tapFocus.zoom : zoom ?? Math.max(map.getZoom(), 16);
       const far = metersBetween(api.getCenter(), p) > 4000;
       const o = { center: ll(p), zoom: z, padding: safePadding(), essential: false };
-      if (far) map.flyTo({ ...o, speed: 1.4 });
+      if (instant) map.jumpTo({ center: o.center, zoom: z, padding: o.padding }); // under the boot screen (TEL-365)
+      else if (far) map.flyTo({ ...o, speed: 1.4 });
       else map.easeTo({ ...o, duration: 600 });
     },
     fitTo(points, o = {}) {

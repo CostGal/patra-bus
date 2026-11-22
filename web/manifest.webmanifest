@@ -8,8 +8,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f7f9",
-  "theme_color": "#f6f7f9",
+  "background_color": "#1f2a33",
+  "theme_color": "#1f2a33",
   "categories": ["travel", "navigation", "utilities"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

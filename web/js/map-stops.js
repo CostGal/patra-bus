@@ -274,7 +274,7 @@ export function createSelectedStop(map, reduced) {
   map.on('rotate', sync);
 
   return {
-    show(stop, theme) {
+    show(stop, theme, still = false) { // still: no bounce (the boot logo lands on it, TEL-365)
       const same = on && current?.code === stop.code;
       closing?.cancel();
       closing = null;
@@ -293,7 +293,7 @@ export function createSelectedStop(map, reduced) {
       marker.setLngLat([stop.lng, stop.lat]);
       if (!on) { marker.addTo(map); on = true; }
       sync();
-      if (!same && !reduced()) {
+      if (!same && !still && !reduced()) {
         lift.animate([
           { transform: 'scale(.22) rotate(0deg)' },
           { transform: 'scale(1.12) rotate(-7deg)', offset: 0.36 },
@@ -320,5 +320,11 @@ export function createSelectedStop(map, reduced) {
       return dx <= PIN / 2 + 4 && dy >= -(PIN + LIFT + 4) && dy <= 14;
     },
     code: () => (on ? current?.code ?? null : null),
+    // The big icon on screen: its centre and the size of the drawn square (28 of the canvas's 32 units).
+    rect() {
+      if (!on) return null;
+      const r = lift.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, size: (r.width * 28) / 32 };
+    },
   };
 }

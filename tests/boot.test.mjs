@@ -1,7 +1,7 @@
 // Boot screen (TEL-255): the inline head script of index.html, its assets and its CSS rules.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { parseHash } from '../web/js/route.js';
 import { CITIES } from '../web/js/cities.js';
@@ -14,7 +14,7 @@ const inline = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 function runHead({ hash = '', search = '', stored = null, settings = {}, lang = 'el-GR', storage = true } = {}) {
   const classes = new Set();
   const ss = new Map(stored ? [['patra-bus:boot', stored]] : []);
-  const d = { dataset: {}, lang: 'el', classList: { add: (...c) => c.forEach((x) => classes.add(x)), remove: (...c) => c.forEach((x) => classes.delete(x)) } };
+  const d = { dataset: {}, style: {}, lang: 'el', classList: { add: (...c) => c.forEach((x) => classes.add(x)), remove: (...c) => c.forEach((x) => classes.delete(x)) } };
   const blocked = () => { throw new Error('blocked'); };
   const win = {
     document: { documentElement: d, addEventListener() {}, removeEventListener() {}, getElementById: () => null },
@@ -33,6 +33,37 @@ test('boot: the home rule of the head script agrees with parseHash(...).path ===
   for (const h of ['', '#', '#/', '#/corfu/', '#/corfu', '#/patra/', '#/?x=1', '#/stop/1011', '#/corfu/stop/801', '#/lines', '#/settings', '#/xyz']) {
     assert.equal(runHead({ hash: h }).shown, parseHash(h).path === '/', h);
   }
+});
+
+// TEL-365: the grey page that hides the iPhone's light flash, from the first frame until the boot screen has gone.
+test('boot canvas: grey only on a cold start at home', () => {
+  const early = html.match(/<script id="boot-canvas">([\s\S]*?)<\/script>/)[1];
+  assert.ok(html.indexOf('id="boot-canvas"') < html.indexOf('rel="stylesheet"'), 'before the first stylesheet');
+  const run = (hash, seen) => {
+    const style = {};
+    vm.runInNewContext(early, {
+      document: { documentElement: { style } }, location: { hash },
+      sessionStorage: { getItem: () => (seen ? '1' : null) },
+    });
+    return style.background;
+  };
+  assert.equal(run('', false), '#1f2a33');
+  assert.equal(run('#/', false), '#1f2a33');
+  assert.equal(run('#/', true), undefined, 'not again in the same tab');
+  assert.equal(run('#/stop/1011', false), undefined, 'never on a deep link');
+});
+
+test('boot canvas: the head script keeps it with the boot screen, clears it without one and after the exit', async () => {
+  const on = runHead({ hash: '#/' });
+  assert.equal(on.d.style.background, '#1f2a33');
+  assert.equal(on.d.style.colorScheme, 'dark');
+  const off = runHead({ hash: '#/', stored: '1' });
+  assert.equal(off.d.style.background, '');
+  assert.equal(off.d.style.colorScheme, '');
+  on.win.__boot.leave(true);
+  await new Promise((ok) => { setTimeout(ok, 240); });
+  assert.equal(on.d.style.background, '');
+  assert.equal(on.d.style.colorScheme, '');
 });
 
 test('boot: the head script knows every city prefix', () => {
@@ -67,7 +98,11 @@ test('boot: the head script sets <html lang> with the rule of resolveLang', () =
 
 test('boot assets: precached, linked, #boot hidden from screen readers, no "Φόρτωση…" in index.html', () => {
   const sw = read('sw.js');
-  for (const f of ['css/boot.css', 'js/boot.js']) assert.ok(sw.includes(`'${f}'`), `${f} missing from SHELL`);
+  for (const f of ['css/boot.css', 'js/boot.js', 'js/start-stop.js']) assert.ok(sw.includes(`'${f}'`), `${f} missing from SHELL`);
+  assert.ok(!sw.includes('icons/startup/'), 'the iPhone launch pictures stay out of SHELL: each phone fetches only its own');
+  for (const [, f] of html.matchAll(/apple-touch-startup-image" href="([^"]+)"/g)) {
+    assert.ok(existsSync(new URL(`../web/${f}`, import.meta.url)), `${f} is missing`);
+  }
   assert.ok(html.includes('href="css/boot.css"'));
   assert.match(html, /<body>\s*(<!--[^>]*-->\s*)?<div id="boot" aria-hidden="true">/, '#boot is the first child of <body>');
   assert.ok(!html.includes('Φόρτωση…'));
@@ -86,7 +121,7 @@ test('boot.css: a reduced-motion block, a failsafe, and only transform, opacity,
     while (depth && i < css.length) { if (css[i] === '{') depth++; else if (css[i] === '}') depth--; i++; }
     frames.push(css.slice(m.index + m[0].length, i - 1));
   }
-  assert.ok(frames.length >= 10);
+  assert.ok(frames.length >= 8);
   for (const f of frames) {
     for (const [, prop] of f.matchAll(/([a-z-]+)\s*:/g)) {
       assert.ok(['transform', 'opacity', 'visibility', 'animation-timing-function'].includes(prop), `animates ${prop}`);

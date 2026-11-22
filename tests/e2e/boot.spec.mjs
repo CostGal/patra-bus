@@ -4,13 +4,53 @@ import { test, expect } from './mock.mjs';
 test.use({ boot: true });
 
 const isBoot = (page) => page.evaluate(() => document.documentElement.classList.contains('boot'));
+// 1.7 s on a phone (TEL-365: the landing takes 510 ms); the margin is for many browsers starting at once on one machine.
+const LEAVES_MS = 3500;
 
-test('boot: shows on home, leaves within 2.5 s, the app is usable', async ({ page }) => {
+// TEL-365: the stop a cold start opens. What it opens by itself is not saved (CLAUDE.md rule 6).
+const savedRecents = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('patra-bus:v2')).recents.stop);
+
+test('boot: with a favourite it opens that stop, and the stop does not become a recent', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    const b = JSON.parse(localStorage.getItem('patra-bus:v2'));
+    b.favorites = [{ code: '1011', city: 'patra' }];
+    localStorage.setItem('patra-bus:v2', JSON.stringify(b));
+  });
+  await page.goto('/?demo');
+  await expect(page.locator('.stopv .atile').first()).toBeVisible();
+  await expect(page).toHaveURL(/#\/stop\/1011$/);
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: LEAVES_MS });
+  expect(await savedRecents(page)).toEqual([]);
+});
+
+test('boot: with nothing known it stays on home', async ({ page }) => {
+  await page.goto('/?demo');
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: LEAVES_MS });
+  expect(new URL(page.url()).hash).not.toContain('stop');
+});
+
+test.describe('location already allowed', () => {
+  test.use({ geolocation: { latitude: 38.26617, longitude: 21.75682 }, permissions: ['geolocation'] });
+  test('boot: opens the nearest stop; its code is in the URL, the coordinates nowhere', async ({ page }) => {
+    await page.goto('/?demo');
+    await expect(page.locator('.stopv .atile').first()).toBeVisible();
+    await expect(page).toHaveURL(/#\/stop\/1011$/);
+    expect(page.url()).not.toContain('38.26');
+    expect(await savedRecents(page)).toEqual([]);
+    const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+    expect(stored).not.toContain('38.26');
+  });
+});
+
+test('boot: shows on home, leaves on time, the app is usable', async ({ page }) => {
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#boot')).toBeVisible();
   await expect(page.locator('#boot .boot-word')).toHaveText('Telematica');
-  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2500 });
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: LEAVES_MS });
   expect(await isBoot(page)).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.style.background), 'the grey page has gone').toBe('');
   await expect(page.locator('#sheet-content')).not.toHaveAttribute('aria-busy', 'true');
   await page.locator('#menu-btn').click();
   await expect(page.locator('#menu-pop')).toBeVisible();
@@ -29,12 +69,13 @@ test('boot: never on a deep link', async ({ page }) => {
   await expect(page.locator('.stopv .atile').first()).toBeVisible();
   expect(await page.evaluate(() => window.__boot)).toBeUndefined();
   await expect(page.locator('#boot')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.style.background), 'no grey page on a deep link').toBe('');
 });
 
 test('boot: not again after a reload in the same tab', async ({ page }) => {
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#boot')).toBeVisible();
-  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2500 });
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: LEAVES_MS });
   await page.reload();
   expect(await page.evaluate(() => window.__boot)).toBeUndefined();
   expect(await isBoot(page)).toBe(false);
@@ -44,7 +85,7 @@ test('boot: an error is not left covered (data fails to load)', async ({ page })
   await page.route(/\/data\/stops\.json/, (route) => route.abort());
   await page.goto('/', { waitUntil: 'commit' });
   await expect(page.locator('#boot')).toBeVisible();
-  await expect(page.locator('#boot')).toHaveCount(0, { timeout: 2500 });
+  await expect(page.locator('#boot')).toHaveCount(0, { timeout: LEAVES_MS });
   await expect(page.locator('#sheet-content .btn')).toBeVisible(); // the error state's retry button
 });
 
