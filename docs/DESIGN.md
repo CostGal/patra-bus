@@ -79,6 +79,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   (`.g-circle`): 38 px, 41% white (dark: 10.5%), a bright top edge and rim, a faint shadow (light 14%, dark 25%), blur
   3.4 px at low growing to 3.9 px from mid (saturate 180%). Elsewhere (not yet aligned to this target): the floating
   controls 7 px, menus and dialogs 9 px.
+  **Settings on a phone** (TEL-349, Kostas, 2026-11-22) is the one exception to "solid when up": the sheet stays light
+  glass (70% cover) and its cards a 55% tint with no blur of their own, so a little of the map shows; solid in the fallbacks.
   **Setup dialog** (TEL-247) follows the target: the stop card's 16 px inset, radii 28 → 20 → 12, the kit's header
   (back `.g-circle` · progress pill · skip `.g-circle`) and one full-width `.g-pill.primary`, no divider line. The card
   rises from below the screen's bottom edge on the shared spring and never fades (U12); only the scrim does.
