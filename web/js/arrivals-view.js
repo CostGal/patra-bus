@@ -79,7 +79,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
   const usualKey = `${v.routeCode}|${clock}`;
   const usualShort = h('span', { class: 'atile-usual-short', 'aria-hidden': 'true' });
   const usualLong = h('span', { class: 'atile-usual-long', 'aria-hidden': 'true' });
-  const usual = live ? null : h('button', { type: 'button', class: 'atile-usual', hidden: true, 'aria-expanded': 'false', onclick: (e) => {
+  const usual = live ? null : h('button', { type: 'button', class: 'atile-usual', hidden: true, 'aria-expanded': 'false', 'data-key': `usual:${usualKey}`, onclick: (e) => {
     e.preventDefault();
     e.stopPropagation();
     const open = !usual.classList.contains('open');
