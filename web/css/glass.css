@@ -36,8 +36,8 @@ html.glass {
   --g-headroom: 12px; /* room above the first row of the sheet for a pressed round button (js/sheet.js: HEADROOM) */
   /* the sheet's three states (TEL-222): margin and corner of the floating card at peek/half, its tint at peek (a0) and
      half (a1), and the solid colours of full (no glass there) */
-  /* TEL-227: mid more see-through (55% → 26%) with a lighter blur of its own (10 px), as in Apple Maps */
-  --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 3%; --g-sheet-a1: 26%;
+  /* TEL-375: more tint for the new map (low 3% → 24%, mid 26% → 44%): text stays readable, the map still shows */
+  --g-sheet-m: 8px; --g-sheet-r: var(--radius-sheet); --g-sheet-a0: 24%; --g-sheet-a1: 44%;
   --g-blur-sheet: blur(10px) saturate(200%) brightness(1.04);
   --g-circle: rgba(255, 255, 255, .41); --g-circle-shadow: rgba(0, 0, 0, .14); /* light: a little more shadow */ /* the card's round buttons (TEL-227) */
   --g-up: #f2f2f7; --g-up-card: #ffffff; --g-sheen-c: rgba(255, 255, 255, .3);
@@ -265,8 +265,8 @@ html.glass-lens #menu-pop, html.glass-lens .su-card, html.glass-lens .wl-card {
   -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-lg); backdrop-filter: url(#g-lens-lg) var(--g-blur-lg);
 }
 html.glass-lens .sheet::before { -webkit-backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); backdrop-filter: url(#g-lens-lg) var(--g-blur-sheet); }
-/* TEL-227: the sheet's blur, 3.6 px at low growing to 4.2 px from mid (--l) */
-html.glass .sheet { --g-blur-sheet: blur(calc(3.6px + var(--l, 1) * .6px)) saturate(190%); }
+/* TEL-375: the sheet's blur, 10 px at low growing to 13 px from mid (--l): streets and labels melt into soft color */
+html.glass .sheet { --g-blur-sheet: blur(calc(10px + var(--l, 1) * 3px)) saturate(170%); }
 
 /* the menu morphs out of the ☰ button (js/glass.js clips and moves it with the popover spring, --g-morph = 0..1).
    The glass starts clear over the pressed ☰ circle and its blur grows with the shape, so the ☰ lines blur out through
