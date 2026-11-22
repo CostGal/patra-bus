@@ -103,6 +103,39 @@ test('menu theme row: one capsule, the lens on the chosen theme; a pick moves it
   await expect.poll(() => lensOn('dark')).toBe(true);
 });
 
+test('report menu (TEL-358): the kinds grow out of the row as a card, and go back into it', async ({ page }) => {
+  await page.goto('/?demo#/');
+  await page.click('#menu-btn');
+  await expect.poll(() => page.evaluate(() => document.getElementById('menu-pop').style.clipPath)).toMatch(/^inset\(0px round \d/);
+  const row = page.locator('#menu-pop .pop-main button.pop-item');
+  const card = page.locator('#menu-pop .pop-sub');
+  const rowBox = await row.boundingBox();
+  // the first frame: still about the row's height, around the row
+  const first = await page.evaluate(() => new Promise((done) => {
+    document.querySelector('#menu-pop .pop-main button.pop-item').click();
+    requestAnimationFrame(() => {
+      const c = document.querySelector('#menu-pop .pop-sub');
+      const m = c.style.clipPath.match(/inset\(0px 0px ([\d.]+)px/);
+      done({ top: c.getBoundingClientRect().top, visible: c.offsetHeight - parseFloat(m ? m[1] : 0) });
+    });
+  }));
+  expect(Math.abs(first.top - rowBox.y)).toBeLessThan(12);
+  expect(first.visible).toBeLessThan(rowBox.height + 24);
+  // settled: the whole card, inside the panel, over a menu that can't be pressed
+  await expect.poll(() => card.evaluate((el) => el.style.getPropertyValue('--rp-sub'))).toBe('1.000');
+  const panel = await page.locator('#menu-pop').boundingBox();
+  const open = await card.boundingBox();
+  expect(open.y).toBeGreaterThanOrEqual(panel.y);
+  expect(open.y + open.height).toBeLessThanOrEqual(panel.y + panel.height);
+  expect(await page.locator('#menu-pop .pop-main').evaluate((el) => el.inert)).toBe(true);
+  // back: into the row, and nothing is left on the menu
+  await card.locator('button.pop-item').click();
+  await expect(card).toBeHidden();
+  const main = await page.locator('#menu-pop .pop-main').evaluate((el) => ({ inert: el.inert, sub: el.style.getPropertyValue('--rp-sub'), filter: getComputedStyle(el).filter }));
+  expect(main).toEqual({ inert: false, sub: '', filter: 'none' });
+  await expect(row).toBeFocused();
+});
+
 test('glass: no shine under the finger; round buttons pop out unclipped; rows get a highlight, not grey', async ({ page }) => {
   // the report's ✕ (the kit's .g-circle in .card-head); it was the lines list's ← until TEL-248 removed that page
   await page.goto('/?demo#/report');

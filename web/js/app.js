@@ -170,23 +170,55 @@ let menuPopover;
 const THEMES = [['auto', 'layers', N_('Αυτόματο')], ['light', 'sun', N_('Φωτεινό')], ['dark', 'moon', N_('Σκοτεινό')]];
 // TEL-358: the kinds of report, picked in the menu; the kind is the form's title. The values are report.js's CATEGORIES.
 const REPORT_KINDS = [['data', 'alert', N_('Λάθος δεδομένα')], ['app', 'bug', N_('Πρόβλημα εφαρμογής')], ['idea', 'bulb', N_('Πρόταση')], ['other', 'dots', N_('Κάτι άλλο')]];
-let resetMenu = () => {}; // back to the menu's main rows; set by buildMenu, called each time the menu opens
+let resetMenu = () => {}; // back to the menu's main rows, at once; set by buildMenu, called each time the menu opens
 function buildMenu() {
+  resetMenu(); // a rebuild (language, city) must not leave the old card's spring running
   const item = (href, ico, label) => h('a', { class: 'pop-item', href: cityHash(href) }, icon(ico), label);
-  // Two faces in the same panel (an iOS sub-menu). The main one is hidden, not removed, so the theme row keeps its lens.
-  const showKinds = (on) => {
-    main.hidden = on;
-    kinds.hidden = !on;
-    if (!on) paintThemeRow(); // a hidden row can't be measured: the lens finds its place again now
-    (on ? backBtn : reportBtn).focus({ preventScroll: true });
+  // TEL-358: the kinds are a glass card that grows out of the report row (DESIGN.md: morph from what you touched) and
+  // shrinks back into it, on one spring: 0 = the row's shape, 1 = the whole card. The menu stays under it, blurred and
+  // inert; a tap on it goes back. `box` is measured with offset*, which transforms don't change (UI-PROTOCOL U18).
+  let subV = 0;
+  let box = { dy: 0, h: 0, rowH: 0, r: 0 };
+  const paintSub = (val) => {
+    subV = val;
+    if (val > 0) main.style.setProperty('--rp-sub', val.toFixed(3));
+    else main.style.removeProperty('--rp-sub');
+    kinds.style.setProperty('--rp-sub', val.toFixed(3));
+    kinds.style.transform = `translateY(${(box.dy * (1 - val)).toFixed(1)}px)`;
+    kinds.style.clipPath = `inset(0 0 ${((box.h - box.rowH) * (1 - val)).toFixed(1)}px 0 round ${box.r}px)`;
   };
-  const reportBtn = h('button', { type: 'button', class: 'pop-item', 'data-keep': '', onclick: () => showKinds(true) },
+  const subLoop = createSpringLoop({ get: () => subV, set: paintSub, onSettle: () => { if (subV === 0) kinds.hidden = true; } });
+  const placeKinds = () => {
+    kinds.hidden = false;
+    const pad = parseFloat(getComputedStyle(menuPop).paddingTop) || 0;
+    const rowTop = main.offsetTop + reportBtn.offsetTop;
+    const rowH = reportBtn.offsetHeight;
+    const cardH = kinds.offsetHeight;
+    const top = Math.max(pad, Math.min(rowTop + rowH / 2 - cardH / 2, menuPop.clientHeight - cardH - pad)); // centred on the row, inside the panel
+    kinds.style.top = `${top}px`;
+    box = { dy: rowTop - top, h: cardH, rowH, r: parseFloat(getComputedStyle(kinds).borderTopLeftRadius) || 0 };
+  };
+  const showKinds = (on) => {
+    if (on && subV === 0) placeKinds();
+    main.inert = on;
+    kinds.inert = !on;
+    reportBtn.setAttribute('aria-expanded', String(on));
+    (on ? backBtn : reportBtn).focus({ preventScroll: true });
+    if (reduceMotion.matches) {
+      subLoop.stop();
+      paintSub(on ? 1 : 0);
+      kinds.hidden = !on;
+      return;
+    }
+    subLoop.to(on ? 1 : 0, SETTLE); // from wherever it is: a quick tap on back reverses it
+  };
+  const reportBtn = h('button', { type: 'button', class: 'pop-item', 'data-keep': '', 'aria-expanded': 'false', onclick: () => showKinds(true) },
     icon('bug'), h('span', { style: { flex: '1' } }, t('Αναφορά προβλήματος')), icon('chevron'));
   const backBtn = h('button', { type: 'button', class: 'pop-item', 'data-keep': '', 'aria-label': t('Πίσω στο μενού'), onclick: () => showKinds(false) },
     icon('chevron-left'), t('Αναφορά'));
-  const kinds = h('div', { class: 'pop-face', hidden: true }, backBtn, h('div', { class: 'pop-sep' }),
+  const kinds = h('div', { class: 'pop-sub', hidden: true }, backBtn, h('div', { class: 'pop-sep' }),
     REPORT_KINDS.map(([kind, ico, label]) => item(`#/report?kind=${kind}`, ico, t(label))));
-  const main = h('div', { class: 'pop-face' },
+  const main = h('div', { class: 'pop-main' },
     // The active city, one tap from the picker in the settings.
     h('a', { class: 'pop-item pop-city', href: cityHash('#/settings') }, icon('pin'),
       h('span', { class: 'pop-city-name' }, cityName(city(), lang())), h('span', { class: 'pop-city-sub' }, t('Αλλαγή πόλης'))),
@@ -203,7 +235,15 @@ function buildMenu() {
     reportBtn,
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
   menuPop.replaceChildren(main, kinds);
-  resetMenu = () => { main.hidden = false; kinds.hidden = true; };
+  // the menu under the card is inert, so a tap on it lands on the panel itself
+  menuPop.onclick = (e) => { if (e.target === menuPop && main.inert) showKinds(false); };
+  resetMenu = () => {
+    subLoop.stop();
+    paintSub(0);
+    kinds.hidden = true;
+    main.inert = false;
+    reportBtn.setAttribute('aria-expanded', 'false');
+  };
   paintThemeRow();
 }
 // The row is rebuilt on every paint, not only re-marked: a rebuilt row is what moves the lens (js/glass.js). Also on
