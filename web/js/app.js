@@ -659,8 +659,9 @@ function dropLeaveMenu() {
   sheet.setLeaveMenu(null);
   sheet.el.classList.remove('leave-swap');
 }
-function showLeaveMenu() {
-  if (leaveMenu || !homeParts || reduceMotion.matches || !document.documentElement.classList.contains('glass')) return;
+// TEL-372: `low` = the swipe from Favourites to low: the copy is only the search bar, all that home shows at low
+function showLeaveMenu(low = false) {
+  if (leaveMenu || (!low && !homeParts) || reduceMotion.matches || !document.documentElement.classList.contains('glass')) return;
   const me = leaveMenu = { el: null, places: null, ghost: null };
   const search = searchbarEl.cloneNode(true);
   [search, ...search.querySelectorAll('[id]')].forEach((n) => n.removeAttribute('id'));
@@ -669,6 +670,13 @@ function showLeaveMenu() {
   search.removeAttribute('role');
   const input = search.querySelector('input');
   if (input) input.value = '';
+  if (low) {
+    me.el = h('div', { class: 'leave-menu', 'aria-hidden': 'true' }, search);
+    me.el.inert = true;
+    sheet.el.append(me.el);
+    sheet.setLeaveMenu(null);
+    return;
+  }
   const places = h('section', { class: 'home-section home-places' });
   const recents = h('div', { class: 'home-recents' });
   me.places = homeParts.mountPlacesRow(places);
@@ -937,6 +945,7 @@ async function route() {
   focusPt = null;
   routeSnap = true;
   sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report'); // no low or mid: down from up goes home (TEL-352)
+  sheet.setLowLeave(currentHead === 'favorites'); // a swipe from mid to low melts into home's search (TEL-372)
   if ((currentHead === 'settings' || currentHead === 'report') && !homeParts) import('./home-view.js').then((m) => { homeParts = m; }).catch(() => {});
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted, velocity: carry });
   routeSnap = false;
@@ -1156,8 +1165,8 @@ async function chooseStartStop(started) {
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove, follow: [$('menu-btn')] });
   // Settings and Report are "up only": a swipe down (or a tap on the handle) from up opens home at mid in one move
-  $('sheet').addEventListener('sheet:leave-menu', (e) => { if (e.detail?.open) showLeaveMenu(); else dropLeaveMenu(); });
-  $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); showLeaveMenu(); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: 'half' }); });
+  $('sheet').addEventListener('sheet:leave-menu', (e) => { if (e.detail?.open) showLeaveMenu(!!e.detail.low); else dropLeaveMenu(); });
+  $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); const low = !!e.detail?.low; showLeaveMenu(low); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: low ? 'peek' : 'half' }); });
   buildChrome();
   map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onStopHold, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);

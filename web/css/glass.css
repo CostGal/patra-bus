@@ -131,6 +131,11 @@ html.glass .sheet.up-only .sheet-content > .ex-view {
 @media (max-width: 899.98px) and (prefers-reduced-transparency: reduce), (max-width: 899.98px) and (prefers-contrast: more) {
   html.glass .sheet.up-only:has(.set-sec[data-k]) { --g-up-a: 100%; --g-set-card: 100%; }
 }
+/* TEL-372: swiping Favourites from mid to low: its content blurs out with --leave while search (the copy below) blurs in.
+   Only the content melts: the sheet's own glass stays (U12) */
+html.glass .sheet.low-leave .sheet-content > .fav-view {
+  filter: blur(calc(var(--leave, 0) * 10px)); opacity: calc(1 - var(--leave, 0) * 1.25);
+}
 /* TEL-359: the menu's still copy (js/app.js) sharpens in with --leave; on release it covers the real menu until the sheet rests */
 html.glass .sheet .leave-menu {
   position: absolute; inset: 6px 0 auto; z-index: 1; pointer-events: none;
