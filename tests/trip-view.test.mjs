@@ -241,7 +241,7 @@ test('trip-view.js imports nothing from reminders, places, storage or the networ
   const src = readFileSync(new URL('../web/js/trip-view.js', import.meta.url), 'utf8');
   const imports = [...src.matchAll(/^import .* from '(.+)';$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(imports, ['./arrivals-view.js', './geo.js', './i18n.js', './trip-map.js', './trip.js', './ui.js']);
-  for (const name of ['notify', 'onboard', 'store', 'planner', 'walk', 'api', 'geocode']) {
+  for (const name of ['onboard', 'store', 'planner', 'walk', 'api', 'geocode']) {
     assert.ok(!new RegExp(`from '\\./${name}\\.js'|import\\(['"]\\./${name}`).test(src), name);
   }
   assert.ok(!/\bfetch\(|localStorage|sendBeacon/.test(src), 'no network or storage of its own');

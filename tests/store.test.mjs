@@ -21,7 +21,7 @@ test('defaults', () => {
   assert.deepEqual(s.getFavorites(), []);
   assert.deepEqual(s.getRecents('stop'), []);
   assert.deepEqual(s.getRecents('place'), []);
-  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el', usageStats: true });
+  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, lang: 'el', usageStats: true });
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
   assert.equal(s.isFavorite('1011'), false);
 });
@@ -124,8 +124,7 @@ test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   assert.equal(s.setSetting('theme', 'dark'), true);
   assert.equal(s.setSetting('walkSpeed', 'fast'), true);
   assert.equal(s.setSetting('bufferMin', '5'), true); // from a <select>
-  assert.equal(s.setSetting('reminderMin', 3), true);
-  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3, lang: 'el', usageStats: true });
+  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, lang: 'el', usageStats: true });
   assert.equal(s.setSetting('theme', 'blue'), false);
   assert.equal(s.setSetting('bufferMin', -1), false);
   assert.equal(s.setSetting('bufferMin', 2.5), false);
@@ -133,7 +132,7 @@ test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   assert.equal(s.setSetting('nope', 1), false);
   assert.equal(s.getSettings().theme, 'dark');
   assert.equal(s.getSettings().nope, undefined);
-  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, reminderMin: 3 });
+  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { theme: 'dark', walkSpeed: 'fast', bufferMin: 5 });
   s.resetSettings();
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
 });
@@ -256,76 +255,6 @@ test('module singleton imports and works without localStorage', async () => {
   m.clearAll();
   assert.equal(resolveTheme('dark'), 'dark');
   assert.equal(resolveTheme('auto'), 'light'); // no matchMedia in node
-});
-
-// ---- reminders (notify.js core; persisted in the same kind of storage) ----
-import { createReminders } from '../web/js/notify.js';
-
-function remEnv() {
-  let t = 1_000_000; const timers = []; const fired = []; const ls = fakeStorage();
-  const mk = () => createReminders({
-    storage: () => ls, now: () => t, onFire: (r) => fired.push(r.tag),
-    setTimer: (fn, ms) => { const x = { fn, at: t + ms }; timers.push(x); return x; },
-    clearTimer: (x) => { const i = timers.indexOf(x); if (i >= 0) timers.splice(i, 1); },
-  });
-  const advance = (ms) => { const end = t + ms; for (;;) { timers.sort((a, b) => a.at - b.at); const n = timers[0]; if (!n || n.at > end) break; timers.shift(); t = Math.max(t, n.at); n.fn(); } t = end; };
-  return { mk, advance, fired, ls, now: () => t, set: (v) => { t = v; } };
-}
-
-test('reminders: fire once at the due time and are removed from storage', () => {
-  const e = remEnv(); const r = e.mk();
-  r.scheduleReminder({ at: e.now() + 70_000, title: 'a', tag: 'x' });
-  assert.equal(r.listReminders().length, 1);
-  e.advance(69_000); assert.deepEqual(e.fired, []);
-  e.advance(2_000); assert.deepEqual(e.fired, ['x']);
-  assert.equal(r.listReminders().length, 0);
-  assert.equal(e.ls.getItem('patra-bus:reminders'), null);
-  e.advance(100_000); assert.deepEqual(e.fired, ['x']);
-});
-
-test('reminders: same tag replaces; a stale cancel handle does not cancel the replacement', () => {
-  const e = remEnv(); const r = e.mk();
-  const h1 = r.scheduleReminder({ at: e.now() + 10_000, title: 'a', tag: 'x' });
-  r.scheduleReminder({ at: e.now() + 20_000, title: 'b', tag: 'x' });
-  assert.equal(r.listReminders().length, 1);
-  assert.equal(r.listReminders()[0].title, 'b');
-  h1.cancel(); assert.equal(r.listReminders().length, 1);
-  e.advance(25_000); assert.deepEqual(e.fired, ['x']);
-  r.scheduleReminder({ at: e.now() + 10_000, tag: 'y' }).cancel();
-  e.advance(20_000); assert.deepEqual(e.fired, ['x']);
-});
-
-test('reminders: a reload re-arms pending ones; late-within-grace fire, stale are dropped', () => {
-  const e = remEnv(); const a = e.mk();
-  a.scheduleReminder({ at: e.now() + 60_000, title: 'soon', tag: 'soon' });
-  const b = e.mk(); e.set(e.now() + 90_000); b.start(); // "reload" 30 s after it was due
-  assert.deepEqual(e.fired, ['soon']);
-  const e2 = remEnv(); const c = e2.mk();
-  c.scheduleReminder({ at: e2.now() + 60_000, tag: 'old' });
-  const d = e2.mk(); e2.set(e2.now() + 60_000 + 5 * 60_000); d.start(); // 5 min late: not worth firing
-  assert.deepEqual(e2.fired, []); assert.equal(d.listReminders().length, 0);
-});
-
-test('reminders: a second tab sees cancellations; far-past times are not scheduled; bad input throws', () => {
-  const e = remEnv(); const a = e.mk(); const b = e.mk();
-  a.scheduleReminder({ at: e.now() + 10_000, tag: 'x' });
-  assert.equal(b.hasReminder('x'), true);
-  b.cancelReminder('x'); assert.equal(a.hasReminder('x'), false);
-  e.advance(20_000); assert.deepEqual(e.fired, []);
-  assert.equal(a.scheduleReminder({ at: e.now() - 10 * 60_000, tag: 'p' }).dropped, true);
-  assert.throws(() => a.scheduleReminder({ at: 'soon' }), TypeError);
-});
-
-test('reminders: long horizons are re-checked at least every 30 s; works without storage', () => {
-  const e = remEnv(); const r = e.mk();
-  r.scheduleReminder({ at: e.now() + 10 * 60_000, tag: 'l' });
-  e.advance(9 * 60_000); assert.deepEqual(e.fired, []);
-  e.advance(61_000); assert.deepEqual(e.fired, ['l']);
-  let t = 5000; const timers = []; const fired = [];
-  const m = createReminders({ storage: () => null, now: () => t, setTimer: (fn) => { const x = { fn }; timers.push(x); return x; }, clearTimer() {}, onFire: (x) => fired.push(x.tag) });
-  m.scheduleReminder({ at: t + 1000, tag: 'mem' });
-  assert.equal(m.listReminders().length, 1);
-  t += 1000; timers.at(-1).fn(); assert.deepEqual(fired, ['mem']);
 });
 
 test('settings: lang is auto|el|en, defaults to el, persists, rejects anything else', () => {

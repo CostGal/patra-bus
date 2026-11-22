@@ -17,7 +17,7 @@ import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces, withoutShownStops } from './geocode.js';
 import { searchKey } from './text.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
-import './notify.js'; // re-arms persisted reminders after a reload
+try { localStorage.removeItem('patra-bus:reminders'); } catch { /* no storage */ } // left by older versions (TEL-351)
 
 // Was the page opened on the home view (not a deep link)? Only then the first-run setup may appear.
 const bootHome = parseHash(location.hash).path === '/';

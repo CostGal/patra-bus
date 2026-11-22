@@ -29,7 +29,7 @@ the Worker still carries code for them that nothing in the app calls (see [WORKE
 ## Where data lives
 | Where | What | Notes |
 |---|---|---|
-| **On the phone only** | Favourites, recents, settings and first-run flags in one blob in `localStorage` ⓖ (`patra-bus:v2`); saved places (`patra-bus:places`); pending local reminders (`patra-bus:reminders`); a "location worked before" flag (`patra-bus:loc-granted`). Details: [FRONTEND.md](FRONTEND.md) section 5 | "Delete all" in Settings clears the `v2` blob and the reminders, not the places or the location flag. |
+| **On the phone only** | Favourites, recents, settings and first-run flags in one blob in `localStorage` ⓖ (`patra-bus:v2`); saved places (`patra-bus:places`); a "location worked before" flag (`patra-bus:loc-granted`). Details: [FRONTEND.md](FRONTEND.md) section 5 | "Delete all" in Settings clears the `v2` blob, not the places or the location flag. |
 | **On the phone, never stored** | Your live GPS location | Only the flag "permission granted" is saved. Never sent to our Worker, never put in a link. |
 | **Cloudflare KV** ⓖ | Citybus token per city (`token/{city}`), daily report counter (`report-day/{date}`), short fallback cache (`memo/…`, 60 s) | Token expires every 48 h. It is fetched only when a request needs it: the first request for that city, any request in the last 5 min before expiry, or a retry after a 401/403. No timer refreshes it. The KV entry expires with the token, so a city with no requests since then has no token (`/health` shows `null`). |
 | **Cloudflare Durable Objects** ⓖ | **`Stats`**: delay statistics (last 200 samples per route + stop), read by the app. **`Reminder`** (one-off push reminders: push subscription ⓖ, time, bus line/stop codes) and **`Routine`** (weekly: same, kept up to 120 days): the Worker still has them, but the app has no client for either | A reminder is deleted after it is sent. No place names or coordinates are stored. `Counters` is in the next row. |
@@ -53,7 +53,7 @@ Third-party services (free, no key). Credits: Settings → Σχετικά lists 
 | "Next bus near me" | `web/js/nearby.js`, `location.js`, `walk.js` |
 | Place search | `web/js/geocode.js` |
 | Trip planner A → B (beta) | `web/js/trip.js`: direct and one-transfer trips as plain data, no network and no screen; imports only `geo.js` (TEL-290, TEL-292). Not yet wired into a screen |
-| Local reminder timers | `web/js/notify.js`: only the test button and the list in Settings use it today, and `app.js` loads it to re-arm saved ones. The Worker side (`worker/src/reminders.js`, `push.js`, `routines.js`) has no client in the app |
+| Reminders | None in the app (`notify.js` removed in TEL-351; `app.js` deletes the old `patra-bus:reminders` key). The Worker side (`worker/src/reminders.js`, `push.js`, `routines.js`) has no client in the app |
 | Vehicle page (one bus as a timeline) | `web/js/bus-view.js` |
 | Saved places (home, work) | `web/js/places.js`, shown in Settings; nothing else reads them yet |
 | Anonymous counts | `web/js/usage.js`, `worker/src/counters.js`, `worker/src/admin.js` (private `/stats` page) |

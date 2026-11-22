@@ -143,8 +143,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - Countdowns use `font-variant-numeric: tabular-nums` so digits don't jitter.
 
 ## 6. Feedback (multimodal, sparingly)
-- Haptics (`navigator.vibrate`) only for meaningful moments. Today: a long-press on the map (`map.js`) and a reminder
-  that fires (`notify.js`). Same frame as the visual change. Never on every tap.
+- Haptics (`navigator.vibrate`) only for meaningful moments. Today: a long-press on the map (`map.js`).
+  Same frame as the visual change. Never on every tap.
 - Four kinds of feedback: status, completion, warning, error — short, inline.
 
 ## 7. Reduced motion
