@@ -1040,6 +1040,12 @@ function navigate(hash, opts = {}) {
 
 // ---------------------------------------------------------------- map events
 function onStopClick(code) { navigate(`#/stop/${encodeURIComponent(code)}`); }
+async function onStopHold(code) {
+  const stop = data?.stopByCode.get(code);
+  if (!stop) return;
+  const [{ openStopMenu }, picture] = await Promise.all([import('./stop-menu.js'), map.stopPicture(code, 280, 150)]);
+  openStopMenu({ stop, at: picture?.screen ?? { x: innerWidth / 2, y: innerHeight / 3 }, picture, navigate });
+}
 // A tapped live bus marker (carries vehicleCode + routeCode + stopCode): open its route and timeline.
 function onVehicleClick(v) {
   if (!v || !v.vehicleCode || !v.routeCode) return;
@@ -1099,7 +1105,7 @@ async function boot() {
   $('sheet').addEventListener('sheet:leave-menu', (e) => { if (e.detail?.open) showLeaveMenu(); else dropLeaveMenu(); });
   $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); showLeaveMenu(); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: 'half' }); });
   buildChrome();
-  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
+  map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onStopHold, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');

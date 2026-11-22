@@ -84,6 +84,7 @@ const SHELL = [
   'js/store.js',
   'js/notify.js',
   'js/share.js',
+  'js/stop-menu.js',
   'js/bus-view.js',
   'js/settings-view.js',
   'js/accents.js',

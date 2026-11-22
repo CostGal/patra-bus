@@ -61,7 +61,7 @@ const el = (cls, html) => {
 };
 
 export function createMap(container, opts = {}) {
-  const { onStopClick = noop, onVehicleClick = noop, onMapClick = noop, onLongPress = noop, onUserMove = noop, onBearing = noop } = opts;
+  const { onStopClick = noop, onVehicleClick = noop, onMapClick = noop, onLongPress = noop, onStopHold = noop, onUserMove = noop, onBearing = noop } = opts;
   // Floating UI that fitTo / flyTo keep clear of: { top: [selector], right: [selector] }, measured on every call.
   const avoid = { top: opts.avoid?.top || [], right: opts.avoid?.right || [] };
   if (typeof maplibregl === 'undefined') return fallbackApi('script');
@@ -205,33 +205,38 @@ export function createMap(container, opts = {}) {
     return code;
   }
 
-  // Tapping a stop (TEL-360): 1st close enough to see its direction, 2nd closer, 3rd back to the zoom you started from.
-  let tapFocus = null; // { code, start, step, zoom }
+  // Tapping a stop (TEL-360): the 1st goes close enough to see its direction, each next one closer up to the map's limit.
+  // A double tap goes back to the zoom you started from.
+  let tapFocus = null; // { code, start, zoom }
+  let lastTap = { code: null, at: 0 };
   const TAP_ZOOM = FULL_ZOOM + 0.5;
   const TAP_MORE = 1.5;
-  const TAP_MAX = 19;
+  const TAP_MAX = 19.5;
+  const DOUBLE_TAP_MS = 320;
   const stopPoint = (code) => {
     const f = stopsFc.features.find((x) => x.properties.code === code);
     return f ? { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] } : null;
   };
   function tapStop(code) {
     const now = map.getZoom();
+    const at = performance.now();
+    const double = lastTap.code === code && at - lastTap.at < DOUBLE_TAP_MS;
+    lastTap = double ? { code: null, at: 0 } : { code, at };
+    if (double && tapFocus?.code === code) {
+      const back = tapFocus.start;
+      tapFocus = null;
+      api.flyTo(stopPoint(code), back);
+      return;
+    }
     if (tapFocus?.code !== code) {
       const open = code === selected; // already open (from a list or a link): the route will not run again
-      tapFocus = { code, start: now, step: 1, zoom: Math.max(now, TAP_ZOOM) };
+      tapFocus = { code, start: now, zoom: Math.max(now, TAP_ZOOM) };
       if (open) api.flyTo(stopPoint(code));
       else onStopClick(code);
       return;
     }
-    if (tapFocus.step === 1) {
-      tapFocus.step = 2;
-      tapFocus.zoom = Math.min(now + TAP_MORE, TAP_MAX);
-      api.flyTo(stopPoint(code));
-      return;
-    }
-    const back = tapFocus.start;
-    tapFocus = null;
-    api.flyTo(stopPoint(code), back);
+    tapFocus.zoom = Math.min((map.isMoving() ? tapFocus.zoom : now) + TAP_MORE, TAP_MAX);
+    api.flyTo(stopPoint(code));
   }
 
   const userAcc = { type: 'FeatureCollection', features: [] };
@@ -307,6 +312,8 @@ export function createMap(container, opts = {}) {
     if (Date.now() - lastLong < 900) return;
     lastLong = Date.now();
     navigator.vibrate?.(12);
+    const held = stopAt(map.project(lngLat));
+    if (held != null) { onStopHold(held); return; }
     onLongPress({ lat: lngLat.lat, lng: lngLat.lng });
   }
 
@@ -340,6 +347,12 @@ export function createMap(container, opts = {}) {
   }
   function lpHide() { lpDot?.remove(); lpDot = null; }
   const lpCancel = () => { if (lp) { clearTimeout(lp.timer); lp = null; } lpHide(); };
+  // On a stop a double tap is ours (back to the starting zoom); anywhere else it is the map's usual zoom in.
+  cc.addEventListener('pointerdown', (e) => {
+    const box = cc.getBoundingClientRect();
+    if (stopAt({ x: e.clientX - box.left, y: e.clientY - box.top }) != null) map.doubleClickZoom.disable();
+    else map.doubleClickZoom.enable();
+  }, { passive: true, capture: true });
   cc.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
     if (!e.isPrimary) { lpCancel(); return; }
@@ -659,6 +672,32 @@ export function createMap(container, opts = {}) {
     },
 
     getZoom: () => tapFocus?.zoom ?? map.getZoom(), // where the camera is heading after a tap
+
+    // A picture of the map around a stop, for the hold menu: { canvas, x, y } (the stop's place in it, 0..1), or null.
+    stopPicture(code, w, h) {
+      const p = stopPoint(code);
+      if (!p) return Promise.resolve(null);
+      return new Promise((done) => {
+        const timer = setTimeout(() => { map.off('render', draw); done(null); }, 400);
+        function draw() {
+          clearTimeout(timer);
+          map.off('render', draw);
+          const src = map.getCanvas();
+          const k = src.width / src.clientWidth;
+          const pt = map.project([p.lng, p.lat]);
+          const left = Math.max(0, Math.min(src.clientWidth - w, pt.x - w / 2));
+          const top = Math.max(0, Math.min(src.clientHeight - h, pt.y - h / 2));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * k);
+          canvas.height = Math.round(h * k);
+          canvas.getContext('2d').drawImage(src, left * k, top * k, w * k, h * k, 0, 0, canvas.width, canvas.height);
+          const r = container.getBoundingClientRect();
+          done({ canvas, x: (pt.x - left) / w, y: (pt.y - top) / h, screen: { x: r.left + pt.x, y: r.top + pt.y } });
+        }
+        map.on('render', draw);
+        map.triggerRepaint();
+      });
+    },
 
     flyTo(p, zoom) {
       if (!okPoint(p)) return;
