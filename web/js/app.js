@@ -364,8 +364,20 @@ let placeCtl = null;
 let places = { q: '', loading: false, results: [], failed: false };
 let sheetBefore = null; // where the sheet was when the search opened (it goes up while the search is open)
 
+// TEL-366 TEMP DEBUG (remove before merge): shows what opened the search
+const dbgLog = [];
+for (const ev of ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click', 'focusin', 'hashchange']) {
+  document.addEventListener(ev, (e) => { dbgLog.push(`${Math.round(performance.now() % 100000)} ${ev} ${e.target?.id || e.target?.className || e.target?.tagName}`); if (dbgLog.length > 10) dbgLog.shift(); }, true);
+}
+function dbgShow() {
+  const d = document.createElement('pre');
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#000c;color:#0f0;font:10px monospace;margin:0;padding:4px;white-space:pre-wrap;pointer-events:none';
+  d.textContent = `openSearch ${Math.round(performance.now() % 100000)} from ${sheet.state}\n${new Error().stack.split('\n').slice(1, 5).join('\n')}\n${dbgLog.join('\n')}`;
+  document.body.append(d);
+}
 function openSearch() {
   if (searchOpen) return;
+  dbgShow();
   searchOpen = true;
   appEl.classList.add('searching');
   sheetBefore = sheet.state;
