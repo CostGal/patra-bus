@@ -400,7 +400,8 @@ function srRow(id, ico, name, sub, choose) {
   const row = h('div', { class: 'sr', role: 'option', id, 'aria-selected': 'false' },
     h('span', { class: 'sr-ico' }, icon(ico)),
     h('span', { class: 'sr-main' }, h('div', { class: 'sr-name' }, name), sub ? h('div', { class: 'sr-sub' }, sub) : null));
-  row.addEventListener('pointerdown', (e) => e.preventDefault()); // keep the keyboard / focus
+  // keep the keyboard / focus. On mousedown, not pointerdown: there WebKit drops the tap's click (TEL-356)
+  row.addEventListener('mousedown', (e) => e.preventDefault());
   row.addEventListener('click', choose);
   rows.push({ row, choose });
   return row;
