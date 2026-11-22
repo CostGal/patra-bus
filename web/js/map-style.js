@@ -98,8 +98,9 @@ function styleRoad(l, c) {
 function useOurFont(style) {
   style.glyphs = GLYPHS_URL;
   for (const l of style.layers) {
-    const font = l.layout?.['text-font'];
-    if (font) l.layout['text-font'] = JSON.stringify(font).includes('Bold') ? PLACE_FONT : MAP_FONT;
+    // A text layer with no font would ask for MapLibre's default font, which we don't host.
+    if (!l.layout?.['text-field'] && !l.layout?.['text-font']) continue;
+    l.layout['text-font'] = JSON.stringify(l.layout['text-font'] ?? '').includes('Bold') ? PLACE_FONT : MAP_FONT;
   }
 }
 
