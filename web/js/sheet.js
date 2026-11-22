@@ -55,6 +55,9 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   let upOnly = false; // TEL-352: the view has no low or mid of its own: going down from up asks the app to leave
   let leaveOpen = false; // TEL-359: the pull has passed 65%, so the app shows the menu's still copy (sheet:leave-menu)
   let leaveHalf = null; // TEL-359: where that copy's mid ends, in px: --leave reaches 1 there, not at this view's mid
+  let lowLeave = false; // TEL-372: the view melts into home's search when swiped from mid to low (Favourites)
+  let lowPull = null; // TEL-372: that swipe is running: --leave goes 0 → 1 between these two heights, in px { from, to }
+  let lowTimer = 0;
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
@@ -110,15 +113,17 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     root.style.setProperty('--sheet-t', st);
     // TEL-352: an up-only view (Settings, Report) melts into the menu as it is pulled down: --leave is 0 while the sheet
     // covers more than 65% of the screen and 1 at half; css/glass.css turns the background to glass and blurs the texts with it
-    if (look) {
-      const from = innerHeight * 0.65;
-      const lv = Math.max(0, Math.min(1, (from - vis) / Math.max(1, from - (leaveHalf ?? SZ.half)))).toFixed(3);
+    if (look || lowPull) {
+      // TEL-372: a swipe from mid to low uses the same --leave, measured between those two heights
+      const from = lowPull ? lowPull.from : innerHeight * 0.65;
+      const to = lowPull ? lowPull.to : (leaveHalf ?? SZ.half);
+      const lv = Math.max(0, Math.min(1, (from - vis) / Math.max(1, from - to))).toFixed(3);
       if (lv !== leaveStr) { leaveStr = lv; root.style.setProperty('--leave', lv); }
       // TEL-359: past 65% the app puts a still copy of the menu under the finger; back above it, the copy goes
       const open = Number(lv) > 0;
-      if (upOnly && open !== leaveOpen && (dragging || leaveOpen)) {
+      if ((upOnly || lowPull) && open !== leaveOpen && (dragging || leaveOpen)) {
         leaveOpen = open;
-        root.dispatchEvent(new CustomEvent('sheet:leave-menu', { detail: { open } }));
+        root.dispatchEvent(new CustomEvent('sheet:leave-menu', { detail: { open, low: !!lowPull } }));
       }
     }
     for (const f of follow) f.style.setProperty('--sheet-t', st); // chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
@@ -133,7 +138,20 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
 
   // Drives --sheet-y with the spring while not dragging; the pointer sets it directly during a drag.
   // sheet:settle when the sheet comes to rest (glass.js re-places what it measured while the content was morphing)
-  const settled = () => root.dispatchEvent(new CustomEvent('sheet:settle'));
+  const settled = () => { endLowPull(); root.dispatchEvent(new CustomEvent('sheet:settle')); };
+  // TEL-372: the swipe from mid to low is over (the sheet is at rest, or a new drag starts): its look and copy go
+  function endLowPull() {
+    clearTimeout(lowTimer);
+    if (!lowPull || dragging) return;
+    lowPull = null;
+    leaveStr = '';
+    root.classList.remove('low-leave');
+    root.style.removeProperty('--leave');
+    if (leaveOpen) {
+      leaveOpen = false;
+      root.dispatchEvent(new CustomEvent('sheet:leave-menu', { detail: { open: false, low: true } }));
+    }
+  }
   const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
   // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
   // (up, a view may lay its header out differently, e.g. the stop's two-line name: snap() measures on the way down)
@@ -175,6 +193,7 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   // module-level spring loop above.
   function moveTo(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
     measure();
+    if (lowPull && to === 'peek') lowPull.to = SZ.peek; // home's low can differ from the view's: the melt ends exactly there
     if (inert()) {
       root.style.removeProperty('--sheet-y');
       root.style.setProperty('--sheet-t', fixed ? '2' : '1'); // plain page = the full look; side panel = the half look
@@ -225,7 +244,13 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   let samples = [];
   function dragBegin(clientY) {
     held = false;
+    endLowPull();
     measure();
+    // TEL-372: only a swipe that starts at mid melts into search; reduced motion gets a plain jump on release
+    if (lowLeave && state === 'half' && !reduceMQ.matches) {
+      lowPull = { from: SZ.half, to: SZ.peek };
+      root.classList.add('low-leave');
+    }
     dragging = true;
     spring.stop(); // interrupt any in-flight snap; the drag takes over the live y from here
     startY = y;
@@ -286,6 +311,13 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
+    if (lowPull) lowTimer = setTimeout(endLowPull, 900); // in case the spring never reports rest
+    // TEL-372: a swipe from mid that lands on low asks the app to leave for home's search (a tap on the handle does not)
+    if (lowLeave && dragFrom === 'half' && best === 'peek') {
+      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to: best, velocity: v, low: true } });
+      root.dispatchEvent(ev);
+      if (ev.defaultPrevented) return;
+    }
     leaveOrSnap(best, { velocity: v, spring: springFor(dragFrom, best) });
   }
 
@@ -409,6 +441,8 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
       // leaving mid-pull: the look stays until the spring to the next state is at rest, so nothing jumps
       else { root.addEventListener('sheet:settle', endLook, { once: true }); setTimeout(endLook, 900); }
     },
+    // TEL-372: on, a swipe from mid to low sends sheet:leave (low: true) instead of snapping (Favourites).
+    setLowLeave(v) { lowLeave = !!v; },
     // TEL-359: home's sheet starts higher than Settings' (no room for the ☰): stay at this spot on screen when it swaps.
     keepTop(px) {
       if (inert()) return;

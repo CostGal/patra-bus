@@ -14,6 +14,19 @@ async function dragDown(page, dy) {
   await page.waitForTimeout(700);
 }
 
+// the card has stopped moving, so the handle is where its box says when the drag begins
+const sheetAtRest = (page) => page.waitForFunction(() => new Promise((done) => {
+  const s = document.getElementById('sheet');
+  let last = s.getBoundingClientRect().top, still = 0, n = 0;
+  const loop = () => {
+    const top = s.getBoundingClientRect().top;
+    still = Math.abs(top - last) < 0.5 ? still + 1 : 0;
+    last = top;
+    if (still >= 12) done(true); else if (++n > 240) done(false); else requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}));
+
 for (const [name, hash] of [['Settings', '#/settings'], ['Report', '#/report']]) {
   test(`up only: a drag down from ${name} ends on home at mid`, async ({ page }) => {
     await page.goto(`/?demo${hash}`);
@@ -103,6 +116,70 @@ for (const [name, dist] of [['short', 110], ['medium', 230], ['long', 380]]) {
     expect(await page.evaluate(() => document.getElementById('sheet').classList.contains('up-only'))).toBe(false);
   });
 }
+
+// TEL-372: Favourites melts into home's search when swiped from mid to low
+test('favourites: a swipe from mid to low ends on home at low with the search', async ({ page }) => {
+  await page.goto('/?demo#/favorites');
+  await expect(page.locator('.fav-view')).toBeVisible(); // "half" alone is also the sheet before the view has mounted
+  await expect.poll(() => state(page)).toBe('half');
+  await sheetAtRest(page);
+  await dragDown(page, 320);
+  await expect.poll(() => state(page)).toBe('peek');
+  expect(await page.evaluate(() => location.hash)).toBe('#/');
+  await expect(page.locator('#searchbar')).toBeVisible();
+  await expect(page.locator('.leave-menu')).toHaveCount(0);
+  expect(await page.evaluate(() => document.getElementById('sheet').classList.contains('low-leave'))).toBe(false);
+});
+
+test('favourites: the copy follows the finger, and a cancelled swipe stays on Favourites at mid', async ({ page }) => {
+  await page.goto('/?demo#/favorites');
+  await expect(page.locator('.fav-view')).toBeVisible(); // "half" alone is also the sheet before the view has mounted
+  await expect.poll(() => state(page)).toBe('half');
+  await page.waitForTimeout(300);
+  const leave = () => page.evaluate(() => parseFloat(document.getElementById('sheet').style.getPropertyValue('--leave')) || 0);
+  const h = await page.locator('#sheet-handle').boundingBox();
+  const x = h.x + h.width / 2, y0 = h.y + h.height / 2;
+  await page.mouse.move(x, y0);
+  await page.mouse.down();
+  await page.mouse.move(x, y0 + 90, { steps: 6 });
+  await expect(page.locator('.leave-menu')).toHaveCount(1);
+  await expect.poll(leave).toBeGreaterThan(0);
+  expect(await leave()).toBeLessThan(1);
+  await page.mouse.move(x, y0 + 8, { steps: 6 });
+  for (let i = 0; i < 7; i++) { await page.mouse.move(x, y0 + 8 + (i % 2)); await page.waitForTimeout(25); } // the finger rests: no flick up
+  await page.mouse.up();
+  await expect.poll(() => state(page)).toBe('half');
+  await page.waitForTimeout(1000);
+  expect(await page.evaluate(() => location.hash)).toContain('favorites');
+  await expect(page.locator('.leave-menu')).toHaveCount(0);
+  expect(await leave()).toBe(0);
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.fav-view')).opacity)).toBe('1');
+});
+
+test('favourites: with reduced motion the swipe is a plain jump to home at low', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?demo#/favorites');
+  await expect(page.locator('.fav-view')).toBeVisible(); // "half" alone is also the sheet before the view has mounted
+  await expect.poll(() => state(page)).toBe('half');
+  await sheetAtRest(page);
+  await dragDown(page, 320);
+  await expect.poll(() => state(page)).toBe('peek');
+  expect(await page.evaluate(() => location.hash)).toBe('#/');
+  await expect(page.locator('.leave-menu')).toHaveCount(0);
+});
+
+test('favourites: a swipe that starts at up does not leave Favourites', async ({ page }) => {
+  await page.goto('/?demo&debug#/favorites');
+  await expect(page.locator('.fav-view')).toBeVisible();
+  await expect.poll(() => state(page)).toBe('half');
+  await page.waitForFunction(() => window.__app?.sheet); // the debug handle is set after the first view
+  await page.evaluate(() => window.__app.sheet.snap('full', { animate: false }));
+  await page.waitForTimeout(100);
+  await dragDown(page, 160); // a quick pull may land on mid or low: either way it is still Favourites
+  expect(await state(page)).not.toBe('full');
+  expect(await page.evaluate(() => location.hash)).toContain('favorites');
+  await expect(page.locator('.leave-menu')).toHaveCount(0);
+});
 
 test('live menu: a still copy shows under the finger below 65%, goes when pulled back, and the real menu replaces it', async ({ page }) => {
   const calls = [];
