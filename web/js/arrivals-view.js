@@ -113,7 +113,6 @@ export function mountStop(container, ctx, { code }) {
   let showAll = false;
   let stale = false;
   let retryPending = false;
-  let fitted = false;
   let tiles = []; // { v, el } for the tiles currently shown
   let timer = null;
   const stats = new Map(); // routeCode -> stat | null (asked once per mount; api.js memoises across mounts)
@@ -476,13 +475,8 @@ export function mountStop(container, ctx, { code }) {
       : [];
     // vehicleCode / routeCode / stopCode make the marker tappable (map.js onVehicleClick -> #/bus/…)
     const pts = buses.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || '#757575', textColor: v.textColor || '#ffffff', label: v.lineCode, vehicleCode: v.vehicleCode, routeCode: v.routeCode, stopCode: code }));
+    // The camera stays on the stop: a live bus never moves or zooms the map (TEL-356)
     onMap((m) => { if (!dead) m.setVehicles('stop', pts); });
-    if (!fitted && data) {
-      fitted = true;
-      // Bring the nearest live bus into view when it is not already around the stop.
-      const near = pts.map((p) => ({ p, d: Math.hypot((p.lat - stop.lat) * 111000, (p.lng - stop.lng) * 87000) })).sort((a, b) => a.d - b.d)[0];
-      if (near && near.d > 250 && near.d < 3000) onMap((m) => { if (!dead) m.fitTo([{ lat: stop.lat, lng: stop.lng }, near.p], { maxZoom: 16 }); });
-    }
   }
 
   // ---- clock ----
