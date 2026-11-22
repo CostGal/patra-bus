@@ -27,15 +27,7 @@
 .rp-kind .icon { flex: none; color: var(--muted-foreground); --icon: 22px; }
 .rp-kind span { flex: 1; min-width: 0; }
 
-/* the diagnostics, exactly as sent */
-.rp .set-sec { margin: 0; }
-.rp-diag {
-  margin: var(--space-2) 0 0; padding: 10px var(--space-3); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--border);
-  color: var(--foreground); font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
-}
-
 .rp-submit { width: 100%; min-height: 48px; }
-.rp-note { margin-top: calc(var(--space-2) * -1); }
 
 /* honeypot: out of sight and out of reach, but still a real field for scripts */
 .rp-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }

@@ -115,14 +115,10 @@ export function mountReport(container, ctx, params = {}) {
       h('p', { id: ids.mailHint, class: 'ex-sub' }, t('Μόνο αν θέλεις να σου απαντήσουμε.')),
       mailErr),
     h('div', { class: 'rp-hp', 'aria-hidden': 'true' }, trap),
-    h('details', { class: 'set-sec' },
-      h('summary', { class: 'set-sum press' }, h('span', { class: 'set-sum-title' }, t('Τι στέλνεται αυτόματα')), icon('chevron-down')),
-      h('div', { class: 'set-body' },
-        h('p', { class: 'ex-sub' }, t('Τεχνικά στοιχεία που βοηθούν να βρούμε το πρόβλημα. Δεν περιέχουν τοποθεσία ή στοιχεία που σε ταυτοποιούν.')),
-        h('pre', { class: 'rp-diag' }, JSON.stringify(diag, null, 1)))),
+    // CLAUDE.md rule 4: the form names every kind of diagnostic in `diag`, before the send button (TEL-358).
+    h('p', { class: 'ex-sub rp-note' }, t('Στέλνονται μόνο όσα γράφεις εδώ και αυτά τα τεχνικά στοιχεία: έκδοση, πόλη, γλώσσα, η οθόνη και η στάση ή γραμμή που έβλεπες, σύστημα, browser, μέγεθος οθόνης, σύνδεση, θέμα και τρόπος λειτουργίας της εφαρμογής. Η IP σου δεν αποθηκεύεται. Μην γράψεις προσωπικά στοιχεία που δεν χρειάζονται.')),
     sendErr,
-    submit,
-    h('p', { class: 'ex-sub rp-note' }, t('Στέλνονται μόνο όσα γράφεις εδώ και τα τεχνικά στοιχεία πιο πάνω. Η IP σου δεν αποθηκεύεται. Μην γράψεις προσωπικά στοιχεία που δεν χρειάζονται.')));
+    submit);
   const panel = h('div', { class: 'rp-panel' }, form);
 
   // header: the shared card header (TEL-350, js/ui.js cardHead)

@@ -275,10 +275,12 @@ test('app wiring: report row in the menu above settings, its four kinds, full-he
   assert.ok(read('index.html').includes('href="css/report.css"'));
 });
 
-test('report view: honeypot and the diagnostics preview are in the form, the view uses only the shared pure module for logic', () => {
+test('report view: honeypot and the line naming the diagnostics are in the form, the view uses only the shared pure module for logic', () => {
   const src = read('js/report-view.js');
   assert.match(src, /name: 'contact_me_by_fax_only'/);
   assert.match(src, /hp: trap\.value/);
-  assert.match(src, /JSON\.stringify\(diag, null, 1\)/);
+  // CLAUDE.md rule 4: the form names what it sends, above the send button
+  for (const word of ['έκδοση', 'πόλη', 'γλώσσα', 'η οθόνη', 'στάση ή γραμμή', 'σύστημα', 'browser', 'μέγεθος οθόνης', 'σύνδεση', 'θέμα', 'τρόπος λειτουργίας']) assert.ok(src.includes(word), `${word} missing from the note`);
+  assert.ok(src.indexOf("class: 'ex-sub rp-note'") < src.indexOf('    submit);'));
   assert.doesNotMatch(src, /location\.(hash|search|href)|geolocation|userAgent/, 'no URL, location or UA may reach the report');
 });
