@@ -75,7 +75,7 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   edge). No ⋯ for now (it comes back with an island of the stop card once it has its own items). The sheet goes up
   from mid 25% quicker than before.
   **Glass target (LOCKED by Kostas, 2026-10-31; sheet retuned by Kostas, 2026-11-22, TEL-375, for the new map):** the sheet at
-  mid 44% tint, at low 24%; its blur 10 px at low growing to 13 px from mid (saturate 170%). The card's round buttons
+  mid 31% tint, at low 17%; its blur 7 px at low growing to 9 px from mid (saturate 170%). The card's round buttons
   (`.g-circle`): 38 px, 41% white (dark: 10.5%), a bright top edge and rim, a faint shadow (light 14%, dark 25%), blur
   3.4 px at low growing to 3.9 px from mid (saturate 180%). Elsewhere (not yet aligned to this target): the floating
   controls 7 px, menus and dialogs 9 px.
