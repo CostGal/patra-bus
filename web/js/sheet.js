@@ -361,7 +361,9 @@ export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
     if (inert() || handle.contains(e.target)) return;
     const kb = e.target.matches?.(':focus-visible');
     if (state === 'peek' && !kb) { snap('half'); return; }
-    if (!kb || state === 'full') return;
+    // the sheet's own body gets focus after every route (app.js): it is as tall as the sheet, so it never "fits" and
+    // would send the sheet up. Nothing in it needs to be revealed (TEL-366: the first swipe from Settings landed at up)
+    if (!kb || state === 'full' || e.target === body) return;
     const bottom = e.target.getBoundingClientRect().bottom - y; // at translateY 0
     const fits = (s) => bottom + yFor(s) <= innerHeight - 8;
     const to = fits('half') ? 'half' : 'full';
