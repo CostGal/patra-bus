@@ -205,30 +205,42 @@ export function createMap(container, opts = {}) {
     return code;
   }
 
+  // Press and hold: is the finger on a stop or on empty map? A finger is wider than a tap target, so the reach is larger.
+  // Up close every stop is drawn, so it is measured on the stops themselves; further out only the icons on screen count.
+  function stopUnderHold(point) {
+    if (selectedStop.hit(point)) return selectedStop.code();
+    if (!styleReady || !map.getLayer(STOP_LAYERS[0])) return null;
+    const R = 30;
+    let code = null;
+    let bd = R * R;
+    const consider = (c, coords) => {
+      const p = map.project(coords);
+      const d = (p.x - point.x) ** 2 + (p.y - point.y) ** 2;
+      if (d < bd) { bd = d; code = String(c); }
+    };
+    if (map.getZoom() >= FULL_ZOOM) for (const f of stopsFc.features) consider(f.properties.code, f.geometry.coordinates);
+    else for (const f of map.queryRenderedFeatures([[point.x - R, point.y - R], [point.x + R, point.y + R]], { layers: STOP_LAYERS })) consider(f.properties.code, f.geometry.coordinates);
+    return code;
+  }
+
   // Tapping a stop (TEL-360): the 1st goes close enough to see its direction, each next one closer up to the map's limit.
   // A double tap goes back to the zoom you started from.
-  let tapFocus = null; // { code, start, zoom }
+  let tapFocus = null; // { code, start, zoom, back }
   let lastTap = { code: null, at: 0 };
   const TAP_ZOOM = FULL_ZOOM + 0.5;
   const TAP_MORE = 1.5;
   const TAP_MAX = 19.5;
-  const DOUBLE_TAP_MS = 320;
+  const DOUBLE_TAP_MS = 420;
+  const DOUBLE_TAP_PX = 48;
+  const recentTapCode = () => (performance.now() - lastTap.at < DOUBLE_TAP_MS + 400 ? lastTap.code : null);
   const stopPoint = (code) => {
     const f = stopsFc.features.find((x) => x.properties.code === code);
     return f ? { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] } : null;
   };
   function tapStop(code) {
     const now = map.getZoom();
-    const at = performance.now();
-    const double = lastTap.code === code && at - lastTap.at < DOUBLE_TAP_MS;
-    lastTap = double ? { code: null, at: 0 } : { code, at };
-    if (double && tapFocus?.code === code) {
-      const back = tapFocus.start;
-      tapFocus = null;
-      api.flyTo(stopPoint(code), back);
-      return;
-    }
-    if (tapFocus?.code !== code) {
+    lastTap = { code, at: performance.now() };
+    if (tapFocus?.code !== code || tapFocus.back) {
       const open = code === selected; // already open (from a list or a link): the route will not run again
       tapFocus = { code, start: now, zoom: Math.max(now, TAP_ZOOM) };
       if (open) api.flyTo(stopPoint(code));
@@ -236,6 +248,13 @@ export function createMap(container, opts = {}) {
       return;
     }
     tapFocus.zoom = Math.min((map.isMoving() ? tapFocus.zoom : now) + TAP_MORE, TAP_MAX);
+    api.flyTo(stopPoint(code));
+  }
+  // Kept (with back: true) so the stop view that is still opening aims at this zoom too.
+  function tapBack(code) {
+    lastTap = { code: null, at: 0 };
+    if (tapFocus?.code !== code) return;
+    tapFocus = { code, start: tapFocus.start, zoom: tapFocus.start, back: true };
     api.flyTo(stopPoint(code));
   }
 
@@ -308,17 +327,20 @@ export function createMap(container, opts = {}) {
   // ---------- events ----------
   let lastLong = 0;
   let suppressClickUntil = 0;
-  function triggerLong(lngLat) {
+  function triggerLong(lngLat, held = stopUnderHold(map.project(lngLat))) {
     if (Date.now() - lastLong < 900) return;
     lastLong = Date.now();
     navigator.vibrate?.(12);
-    const held = stopAt(map.project(lngLat));
     if (held != null) { onStopHold(held); return; }
     onLongPress({ lat: lngLat.lat, lng: lngLat.lng });
   }
 
+  let touches = []; // fingers that went down and may still become a click, oldest first
+  let lastDown = null;
   map.on('click', (e) => {
+    const down = touches.shift(); // the finger that made this click
     if (Date.now() < suppressClickUntil) return;
+    if (down?.double && down.code != null) { tapBack(down.code); return; } // the stop may have moved from under the finger
     const code = stopAt(e.point);
     if (code != null) { tapStop(code); return; }
     onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
@@ -349,10 +371,24 @@ export function createMap(container, opts = {}) {
   const lpCancel = () => { if (lp) { clearTimeout(lp.timer); lp = null; } lpHide(); };
   // On a stop a double tap is ours (back to the starting zoom); anywhere else it is the map's usual zoom in.
   cc.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary) return;
     const box = cc.getBoundingClientRect();
-    if (stopAt({ x: e.clientX - box.left, y: e.clientY - box.top }) != null) map.doubleClickZoom.disable();
+    const near = lastDown && e.timeStamp - lastDown.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < DOUBLE_TAP_PX;
+    const code = near ? recentTapCode() : null;
+    const double = code != null;
+    lastDown = near ? null : { t: e.timeStamp, x: e.clientX, y: e.clientY };
+    touches = touches.filter((x) => e.timeStamp - x.t < 1000);
+    touches.push({ t: e.timeStamp, x: e.clientX, y: e.clientY, double, code });
+    if (double || stopAt({ x: e.clientX - box.left, y: e.clientY - box.top }) != null) map.doubleClickZoom.disable();
     else map.doubleClickZoom.enable();
   }, { passive: true, capture: true });
+  // The finger slid: a drag, so it will not be a click.
+  cc.addEventListener('pointermove', (e) => {
+    const last = touches[touches.length - 1];
+    if (last && Math.hypot(e.clientX - last.x, e.clientY - last.y) > 10) touches.pop();
+  }, { passive: true });
+  // Decided when the finger lands, on what was on screen then, with the same point the map gives a tap.
+  map.on('touchstart', (e) => { if (lp && e.points?.length === 1) lp.stop = stopUnderHold(e.point); });
   cc.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
     if (!e.isPrimary) { lpCancel(); return; }
@@ -365,7 +401,9 @@ export function createMap(container, opts = {}) {
         lp = null;
         if (!pt) return;
         fired = true;
-        triggerLong(map.unproject([pt.x - rect.left, pt.y - rect.top]));
+        const at = map.unproject([pt.x - rect.left, pt.y - rect.top]);
+        if (pt.stop !== undefined) triggerLong(at, pt.stop);
+        else triggerLong(at);
       }, 500),
     };
   }, { passive: true });
@@ -671,7 +709,7 @@ export function createMap(container, opts = {}) {
       markerSets.delete(id);
     },
 
-    getZoom: () => tapFocus?.zoom ?? map.getZoom(), // where the camera is heading after a tap
+    getZoom: () => (tapFocus ? Math.max(tapFocus.zoom, TAP_ZOOM) : map.getZoom()), // after a tap: never fit a bus by zooming out
 
     // A picture of the map around a stop, for the hold menu: { canvas, x, y } (the stop's place in it, 0..1), or null.
     stopPicture(code, w, h) {
