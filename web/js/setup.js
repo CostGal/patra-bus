@@ -113,8 +113,7 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
       h('div', { class: 'su-eg' }, exampleTile({ live: true, line: liveLine, dest: t('Κέντρο'), mins: 4 }),
         p(t('Το λεωφορείο στέλνει τη θέση του. Το βλέπεις στον χάρτη και ο χρόνος είναι εκτίμηση με βάση αυτή.'), 'su-cap')),
       h('div', { class: 'su-eg' }, exampleTile({ live: false, line: schedLine, dest: t('Κέντρο'), mins: 12 }),
-        p(t('Είναι μόνο η ώρα του προγράμματος, χωρίς θέση οχήματος. Το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'), 'su-cap')),
-      p(t('′ = λεπτά, ″ = δευτερόλεπτα'), 'su-units')];
+        p(t('Είναι μόνο η ώρα του προγράμματος, χωρίς θέση οχήματος. Το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'), 'su-cap'))];
   }
 
   function paintChoices() {

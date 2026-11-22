@@ -3,11 +3,10 @@
 // Minimal UI: a tile is badge + destination + big countdown + a small LIVE / ΠΡΟΓΡ. flag; explanations live in Settings → Σχετικά.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
-import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, isStale } from './api.js';
-import { ageText } from './arrivals.js';
+import { createLivePoller, remainingSec, fetchStats, usualDelay, DEMO, isStale } from './api.js';
 import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
 import { shareLink } from './share.js';
-import { t, etaTxt, etaSay } from './i18n.js';
+import { t, etaTxt, etaSay, ageWords, minWord, secWord } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
 import { fmtDist } from './geo.js';
 
@@ -22,12 +21,50 @@ const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { 
 // ---- one arrival tile ----
 // v: normalised Vehicle. opts: { compact, now, line, stop, stat, stale }. The element has .tick(now) to refresh the countdown in
 // place (the stop view calls it every second; other modules may do the same or just re-render) and .setStat(stat) to show the
-// quiet "συνήθως +3′" under a scheduled tile (reliability stats from api.fetchStats; ignored for live ones).
+// small "+3" mark on a scheduled tile's flag, which opens in place into its sentence (reliability stats from api.fetchStats; ignored for live ones).
 // With opts.stop (the stop code the tile belongs to) a live bus's tile is a link to its route (#/bus/…). A scheduled
 // departure (no vehicle position) is not a link: the line page it opened was removed (TEL-248) until it is planned again.
 export const busHash = (v, stop) => cityHash(`#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`);
 
-export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, stat = null, stale = false } = {}) {
+// Where the open pill goes: over the flag, kept between the line badge and the countdown (px from its closed place).
+function usualShift(btn, width) {
+  const tile = btn.closest('.atile'), flag = btn.parentElement;
+  if (!tile) return 0;
+  const f = flag.getBoundingClientRect();
+  const min = tile.querySelector('.atile-badge').getBoundingClientRect().right + 3;
+  const max = tile.querySelector('.atile-num').getBoundingClientRect().left - 3 - width;
+  return Math.round(Math.max(min, Math.min(f.left - 1, max)) - (f.right - 11));
+}
+
+// The full sentence, or the shorter one when it does not fit between the line badge and the countdown (a narrow phone).
+function fitUsual(btn) {
+  const pill = btn.firstChild, long = pill.lastChild, tile = btn.closest('.atile');
+  long.textContent = btn.usualText;
+  if (!tile) return;
+  const room = tile.querySelector('.atile-num').getBoundingClientRect().left - tile.querySelector('.atile-badge').getBoundingClientRect().right - 6;
+  if (pill.offsetWidth > room) long.textContent = btn.usualTight;
+}
+
+const usualCover = (btn) => btn.parentElement.offsetWidth + 2;
+
+// The usual-delay mark opens and closes in place with a spring (TEL-254). The width goes from px to px, then back to auto.
+function toggleUsual(btn, open) {
+  const pill = btn.firstChild, from = pill.offsetWidth;
+  pill.style.minWidth = '';
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', String(open));
+  pill.style.width = 'auto';
+  if (open) fitUsual(btn);
+  const to = open ? Math.max(pill.offsetWidth, usualCover(btn)) : pill.offsetWidth; // open, it hides the whole flag
+  pill.style.width = `${from}px`;
+  void pill.offsetWidth; // the browser takes "from" as the start of the transition
+  pill.style.width = `${to}px`;
+  btn.style.transform = open ? `translateX(${usualShift(btn, to)}px)` : '';
+  clearTimeout(btn.usualTimer);
+  btn.usualTimer = setTimeout(() => { pill.style.width = ''; if (open) pill.style.minWidth = `${to}px`; }, 480);
+}
+
+export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, stat = null, stale = false, usualOpen = null } = {}) {
   const live = !!v.live;
   const aged = live && stale; // TEL-52: its position is older than STALE_MS, so it must not read as LIVE any more
   const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop) : null;
@@ -38,11 +75,21 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
 
   const num = h('span', { class: 'atile-num tabular' });
   const age = aged ? h('span', { class: 'atile-age' }) : null;
+  // the list is rebuilt on every poll: usualOpen (a Set kept by the view) remembers which marks are open
+  const usualKey = `${v.routeCode}|${clock}`;
+  const usualShort = h('span', { class: 'atile-usual-short', 'aria-hidden': 'true' });
+  const usualLong = h('span', { class: 'atile-usual-long', 'aria-hidden': 'true' });
+  const usual = live ? null : h('button', { type: 'button', class: 'atile-usual', hidden: true, 'aria-expanded': 'false', onclick: (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const open = !usual.classList.contains('open');
+    if (usualOpen) { if (open) usualOpen.add(usualKey); else usualOpen.delete(usualKey); }
+    toggleUsual(usual, open);
+  } }, h('span', { class: 'atile-usual-pill' }, usualShort, usualLong));
   const flag = live
     ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'), age)
-    : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock));
-  const usual = h('span', { class: 'atile-usual', hidden: true });
-  const status = h('div', { class: 'atile-status' }, flag, live ? null : usual);
+    : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock), usual);
+  const status = h('div', { class: 'atile-status' }, flag);
 
   const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${aged ? ' atile-aged' : ''}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
     h('div', { class: 'atile-badge' }, badge),
@@ -58,7 +105,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
       : t('Γραμμή {line}, {dest}. Προγραμματισμένη άφιξη στις {clock}, {when}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.', a) + (usualTxt ? ` ${usualTxt}.` : '') + hint;
   };
   el.tick = (t0 = Date.now()) => {
-    if (age) age.textContent = t('πριν {age}', { age: ageText((t0 - fetchedAt) / 1000) });
+    if (age) age.textContent = t('πριν {age}', { age: ageWords((t0 - fetchedAt) / 1000) });
     const rem = remainingSec(v, fetchedAt, t0);
     const text = etaTxt(rem);
     el.classList.toggle('atile-now', rem < NOW_SEC);
@@ -68,11 +115,35 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
     el.setAttribute('aria-label', label(rem));
   };
   el.setStat = (s) => {
-    usualTxt = live ? '' : usualDelayText(s);
-    // a «συνήθως» line arriving late makes the tile taller: it pushes the list down, the sheet holds (TEL-348)
-    if (usual.hidden === !!usualTxt) el.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
-    if (usual.textContent !== usualTxt) usual.textContent = usualTxt;
-    usual.hidden = !usualTxt;
+    if (live) return;
+    const info = usualDelay(s);
+    usualTxt = info ? info.text : '';
+    // the mark sits on the flag and does not change the tile's height; the sheet still holds on a late change (TEL-348)
+    if (usual.hidden === !!info) el.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
+    usual.hidden = !info;
+    // a button inside role="img" would be hidden from screen readers
+    if (!href) el.setAttribute('role', info ? 'group' : 'img');
+    if (info) {
+      usual.dataset.kind = info.kind;
+      usual.setAttribute('aria-label', info.text);
+      usualShort.textContent = info.short;
+      usualLong.textContent = info.text;
+      usual.usualText = info.text;
+      usual.usualTight = info.tight;
+      const open = !!usualOpen && usualOpen.has(usualKey);
+      usual.classList.toggle('open', open);
+      usual.setAttribute('aria-expanded', String(open));
+      // rebuilt by a poll while open: back in its place before the first paint, without moving
+      if (open) requestAnimationFrame(() => {
+        if (!usual.isConnected) return;
+        usual.style.transition = 'none';
+        fitUsual(usual);
+        usual.firstChild.style.minWidth = `${usualCover(usual)}px`;
+        usual.style.transform = `translateX(${usualShift(usual, usual.firstChild.offsetWidth)}px)`;
+        void usual.offsetWidth;
+        usual.style.transition = '';
+      });
+    }
     if (lastText != null) { lastText = null; el.tick(Date.now()); }
   };
   el.tick(now);
@@ -174,7 +245,7 @@ export function mountStop(container, ctx, { code }) {
         ctx.map?.setOverlay('stop-walk', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: r.geometry } }] }, { kind: 'walk' });
       } else ctx.map?.clearOverlay('stop-walk');
       ctx.map?.fitTo([fix, stop], { maxZoom: 17 });
-      ctx.toast(t('{d} · {min} με τα πόδια', { d: fmtDist(r.meters), min: `${Math.max(1, Math.round(r.seconds / 60))}′` }));
+      ctx.toast(t('{d} · {min} με τα πόδια', { d: fmtDist(r.meters), min: minWord(Math.max(1, Math.round(r.seconds / 60))) }));
     } catch (err) {
       if (err?.name !== 'AbortError') console.warn('[directions]', err);
     }
@@ -323,6 +394,7 @@ export function mountStop(container, ctx, { code }) {
     paintDynamic(Date.now());
   }
 
+  const usualOpen = new Set(); // which «συνήθως» marks are open, across the rebuilds of the list (TEL-254)
   const leftSec = (v, fetchedAt, now) => v.etaSec - (now - fetchedAt) / 1000; // unclamped
 
   // Reliability stats, lazily and only for routes with a scheduled tile on screen (api.js: memo 10 min, never throws).
@@ -400,7 +472,7 @@ export function mountStop(container, ctx, { code }) {
       } else {
         const cut = showAll ? shown : shown.slice(0, MAX_TILES);
         const items = cut.map((v) => {
-          const tl = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code, stat: v.live ? null : stats.get(v.routeCode), stale });
+          const tl = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code, stat: v.live ? null : stats.get(v.routeCode), stale, usualOpen });
           tl.dataset.key = v.vehicleCode || `${v.routeCode}:${v.etaSec}`;
           tiles.push({ v, el: tl });
           return h('li', {}, tl);
@@ -443,9 +515,9 @@ export function mountStop(container, ctx, { code }) {
     const data = st.data;
     const age = data ? (now - data.fetchedAt) / 1000 : 0;
     banner.hidden = !(data && stale);
-    if (!banner.hidden) bannerText.textContent = t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageText(age) }) + (st.error ? ` ${errText(st.error)}` : '');
+    if (!banner.hidden) bannerText.textContent = t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageWords(age) }) + (st.error ? ` ${errText(st.error)}` : '');
     const wait = st.nextAt ? secsUntil(st.nextAt, now) : 0;
-    const label = st.loading ? t('Ανανέωση…') : retryPending && wait > 0 ? t('Νέα προσπάθεια σε {n}″', { n: wait }) : t('Δοκίμασε ξανά');
+    const label = st.loading ? t('Ανανέωση…') : retryPending && wait > 0 ? t('Νέα προσπάθεια σε {when}', { when: secWord(wait) }) : t('Δοκίμασε ξανά');
     for (const b of [bannerBtn, ...body.querySelectorAll('.stopv-retry')]) {
       b.textContent = label;
       b.setAttribute('aria-disabled', String(st.loading || (retryPending && wait > 0)));
@@ -454,9 +526,9 @@ export function mountStop(container, ctx, { code }) {
     // one quiet line: age · next refresh (· demo)
     const bits = [];
     if (DEMO) bits.push(t('δεδομένα προσομοίωσης'));
-    if (data) bits.push(t('ενημερώθηκε πριν {age}', { age: ageText(age) }));
+    if (data) bits.push(t('Ενημερώθηκε πριν {age}', { age: ageWords(age) }));
     if (st.loading) bits.push(t('ανανέωση…'));
-    else if (st.nextAt) bits.push(t('ανανέωση σε {n}″', { n: wait }));
+    else if (st.nextAt) bits.push(t('ανανέωση σε {when}', { when: secWord(wait) }));
     if (st.error && data) bits.push(t('η τελευταία ανανέωση απέτυχε'));
     foot.textContent = bits.join(' · ');
   }

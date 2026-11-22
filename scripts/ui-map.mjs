@@ -72,7 +72,7 @@ export const UI = [
   { id: 'S8', nick: 'stripe', name: 'Λωρίδα αριστερά (πράσινη = LIVE)', sel: '.atile', edge: 'left' },
   { id: 'S9', nick: 'destination', name: 'Προορισμός (άφιξη)', sel: '.atile-dest' },
   { id: 'S10', nick: 'chevron', name: '› Βελάκι (άφιξη)', sel: '.atile > .icon-chevron' },
-  { id: 'S11', nick: 'note', name: '«συνήθως +3′» (άφιξη ΠΡΟΓΡ.)', sel: '.atile-usual' },
+  { id: 'S11', nick: 'note', name: 'σήμα «+3» (άφιξη ΠΡΟΓΡ.)', sel: '.atile-usual' },
   { id: 'S12', nick: 'status line', name: 'Γραμμή κατάστασης (ηλικία · επόμενη ανανέωση)', sel: '.stopv-foot-text' },
   { id: 'S13', nick: 'refresh', name: 'Ανανέωση', sel: '.stopv-refresh' },
   { id: 'S14', nick: 'show all', name: 'Εμφάνιση όλων (αφίξεις)', sel: '.stopv-more' },

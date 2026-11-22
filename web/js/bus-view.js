@@ -4,10 +4,9 @@
 // ESTIMATE, labelled so). Route order itself is inferred (routes.json), see route.confidence. Styles: css/extras.css (bv-).
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { createLivePoller, DEMO, STALE_MS } from './api.js';
-import { ageText } from './arrivals.js';
 import { loadShapes } from './data.js';
 import { closestOnPath } from './geo.js';
-import { t, N_, etaTxt, APP_NAME } from './i18n.js';
+import { t, N_, APP_NAME, ageWords, etaWords } from './i18n.js';
 import { cityHash } from './route.js';
 
 export const MAX_SNAP_M = 250; // a GPS fix farther than this from the stop polyline is not trusted for placement
@@ -90,8 +89,8 @@ export function busTimeline(route, anchorStop, anchorEtaSec, fetchedAt, vehicleP
   };
 }
 
-// "τώρα" / "σε 9′" / "σε 1 ώ 05′"
-export const inText = (sec) => (sec < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaTxt(sec) }));
+// "τώρα" / "σε 9 λεπτά" / "σε 1 ώρα και 5 λεπτά" (TEL-254)
+export const inText = (sec) => (sec < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaWords(sec) }));
 
 // ---------------------------------------------------------------- view
 
@@ -277,7 +276,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     if (!anchorCode) msgs.push(t('Άνοιξε το όχημα από μια στάση (ή από τον χάρτη) για να δεις τη ζωντανή του θέση.'));
     else if (st.error && !st.data) msgs.push(`${t('Δεν φορτώθηκαν τα δεδομένα.')} ${t(ERR_TEXT[st.error.kind] || ERR_TEXT.upstream)}`);
     else if (gone) msgs.push(t('Το όχημα δεν εμφανίζεται πλέον στα live δεδομένα. Η διαδρομή παραμένει στον χάρτη.'));
-    else if (stale) msgs.push(t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageText(age) }) + (st.error ? ` ${ERR_TEXT[st.error.kind] ? t(ERR_TEXT[st.error.kind]) : ''}` : ''));
+    else if (stale) msgs.push(t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageWords(age) }) + (st.error ? ` ${ERR_TEXT[st.error.kind] ? t(ERR_TEXT[st.error.kind]) : ''}` : ''));
     else if (found && !found.v.live) msgs.push(t('Δεν υπάρχει ζωντανή θέση για αυτό το δρομολόγιο: οι ώρες βασίζονται στο πρόγραμμα της στάσης και μπορεί να μην τηρηθούν.'));
     banner.hidden = !msgs.length;
     banner.textContent = msgs.join(' ');
@@ -347,7 +346,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
     // footer + legend (behind "⋯")
     const bits = [];
     if (terminus) bits.push(terminus);
-    if (st.data) bits.push(t('ενημερώθηκε πριν {age}', { age: ageText(age) }));
+    if (st.data) bits.push(t('Ενημερώθηκε πριν {age}', { age: ageWords(age) }));
     if (st.loading) bits.push(t('ανανέωση…'));
     foot.textContent = bits.join(' · ');
     foot.hidden = !bits.length;

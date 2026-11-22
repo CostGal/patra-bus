@@ -6,7 +6,7 @@
 // numbers, as Google Maps does (TEL-294, Kostas). No ~ anywhere.
 // Imports: ui, i18n, geo, arrivals-view (arrivalTile) and trip (retime, leaveState) only (guard: tests/trip-view.test.mjs).
 import { h, icon, lineBadge, fmtClock } from './ui.js';
-import { t, tn, etaTxt } from './i18n.js';
+import { t, tn, etaTxt, etaWords } from './i18n.js';
 import { fmtDist } from './geo.js';
 import { arrivalTile } from './arrivals-view.js';
 import { retime, leaveState } from './trip.js';
@@ -47,7 +47,7 @@ function totalOf(it) {
 // or scheduled bus.
 function titleOf(it, now) {
   const s = leaveState(it, now);
-  if (s.kind === 'later') return { kind: s.kind, text: t('Φύγε σε {when}', { when: etaTxt(s.leaveInSec) }) };
+  if (s.kind === 'later') return { kind: s.kind, text: t('Φύγε σε {when}', { when: etaWords(s.leaveInSec) }) };
   if (s.kind === 'now' || s.kind === 'run') return { kind: s.kind, text: t('Φύγε τώρα') };
   if (s.kind === 'walk') return { kind: s.kind, text: t('Με τα πόδια {dur}', { dur: dur(walkSec(it)) }) };
   return { kind: s.kind, text: t('Χωρίς δρομολόγιο τώρα') }; // none, missed

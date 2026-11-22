@@ -102,9 +102,9 @@ test('locateOnRoute: segment, fraction, and rejection of far / invalid points', 
 test('inText', () => {
   assert.equal(inText(0), 'τώρα');
   assert.equal(inText(14), 'τώρα');
-  assert.equal(inText(60), 'σε 1′');
-  assert.equal(inText(540), 'σε 9′');
-  assert.equal(inText(3900), 'σε 1 ώ 05′');
+  assert.equal(inText(60), 'σε 1 λεπτό');
+  assert.equal(inText(540), 'σε 9 λεπτά');
+  assert.equal(inText(3900), 'σε 1 ώρα και 5 λεπτά');
 });
 
 test('real routes.json: every anchor on every route gives a well-formed, monotonic timeline', () => {
