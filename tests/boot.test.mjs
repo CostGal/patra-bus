@@ -1,7 +1,7 @@
 // Boot screen (TEL-255): the inline head script of index.html, its assets and its CSS rules.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { parseHash } from '../web/js/route.js';
 import { CITIES } from '../web/js/cities.js';
@@ -67,7 +67,11 @@ test('boot: the head script sets <html lang> with the rule of resolveLang', () =
 
 test('boot assets: precached, linked, #boot hidden from screen readers, no "Φόρτωση…" in index.html', () => {
   const sw = read('sw.js');
-  for (const f of ['css/boot.css', 'js/boot.js']) assert.ok(sw.includes(`'${f}'`), `${f} missing from SHELL`);
+  for (const f of ['css/boot.css', 'js/boot.js', 'js/start-stop.js']) assert.ok(sw.includes(`'${f}'`), `${f} missing from SHELL`);
+  assert.ok(!sw.includes('icons/startup/'), 'the iPhone launch pictures stay out of SHELL: each phone fetches only its own');
+  for (const [, f] of html.matchAll(/apple-touch-startup-image" href="([^"]+)"/g)) {
+    assert.ok(existsSync(new URL(`../web/${f}`, import.meta.url)), `${f} is missing`);
+  }
   assert.ok(html.includes('href="css/boot.css"'));
   assert.match(html, /<body>\s*(<!--[^>]*-->\s*)?<div id="boot" aria-hidden="true">/, '#boot is the first child of <body>');
   assert.ok(!html.includes('Φόρτωση…'));
@@ -86,7 +90,7 @@ test('boot.css: a reduced-motion block, a failsafe, and only transform, opacity,
     while (depth && i < css.length) { if (css[i] === '{') depth++; else if (css[i] === '}') depth--; i++; }
     frames.push(css.slice(m.index + m[0].length, i - 1));
   }
-  assert.ok(frames.length >= 10);
+  assert.ok(frames.length >= 8);
   for (const f of frames) {
     for (const [, prop] of f.matchAll(/([a-z-]+)\s*:/g)) {
       assert.ok(['transform', 'opacity', 'visibility', 'animation-timing-function'].includes(prop), `animates ${prop}`);

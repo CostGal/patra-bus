@@ -28,6 +28,20 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <!-- iPhone launch pictures of the installed app (TEL-365): the logo where #boot starts. One per screen size, so they
+       stay out of the offline list in sw.js (Kostas, 2026-11-22): the phone fetches only its own. -->
+  <link rel="apple-touch-startup-image" href="icons/startup/1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/startup/640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
   <link rel="stylesheet" href="css/tokens.css">
@@ -66,26 +80,36 @@
       if (!show) return;
       d.classList.add('boot');
       var B = window.__boot = { t0: performance.now(), hold: p.get('boot') === 'hold', out: false, cbs: [] };
+      // The phone's top bar in the brand's grey while the boot screen is up (first match wins; app.js leaves this one alone).
+      var bar = null;
+      try {
+        bar = document.createElement('meta');
+        bar.name = 'theme-color'; bar.id = 'boot-theme'; bar.content = '#1f2a33';
+        document.head.insertBefore(bar, document.head.firstChild);
+      } catch (e) { bar = null; }
       B.on = function (f) { if (B.out) f(); else B.cbs.push(f); };
-      // Starts the exit (200 ms; 180 ms with reduced motion), then removes #boot. A tap calls it before any module has loaded.
-      B.leave = function () {
+      // Starts the exit, then removes #boot: the landing (510 ms), a tap's fade (200 ms), 180 ms with reduced motion.
+      // A tap calls it before any module has loaded.
+      B.leave = function (skip) {
         if (B.out) return;
         B.out = true;
+        if (skip) d.classList.add('boot-skip');
         d.classList.add('boot-out');
+        if (bar) bar.remove();
         document.removeEventListener('pointerdown', tap, true);
         var rm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
         setTimeout(function () {
           var el = document.getElementById('boot');
           if (el) el.remove();
-          d.classList.remove('boot', 'boot-out', 'boot-hold');
-        }, rm ? 180 : 200);
+          d.classList.remove('boot', 'boot-out', 'boot-skip', 'boot-hold');
+        }, rm ? 180 : skip ? 200 : 510);
         B.cbs.splice(0).forEach(function (f) { try { f(); } catch (e) { /* ignore */ } });
       };
-      function tap(e) { if (e.target && e.target.closest && e.target.closest('#boot')) B.leave(); }
+      function tap(e) { if (e.target && e.target.closest && e.target.closest('#boot')) B.leave(true); }
       document.addEventListener('pointerdown', tap, true);
-      // will-change only while the bus rises in
+      // will-change only while the stop grows into the logo
       document.addEventListener('animationend', function end(e) {
-        if (e.animationName === 'boot-bus') { e.target.style.willChange = 'auto'; document.removeEventListener('animationend', end); }
+        if (e.animationName === 'boot-emblem') { e.target.style.willChange = 'auto'; document.removeEventListener('animationend', end); }
       });
       if (B.hold) d.classList.add('boot-hold');
     })();
@@ -95,31 +119,38 @@
   <script type="module" src="js/glass.js"></script> <!-- glass UI (TEL-83, css/glass.css): the light effects and morphs -->
 </head>
 <body>
-  <!-- Boot screen (TEL-255, variant C): shown only when the head script sets html.boot. Each moving part is its own HTML
+  <!-- Boot screen (TEL-255, TEL-365): shown only when the head script sets html.boot. Each moving part is its own HTML
        layer so the phone's compositor runs it while the app loads. Artwork copied from icon.svg (a rebranding changes both). -->
   <div id="boot" aria-hidden="true">
+    <div class="boot-bg"></div>
+    <div class="boot-sky"></div>
     <div class="boot-mark">
       <div class="boot-logo">
-        <span class="boot-pulse"></span><span class="boot-pulse"></span><span class="boot-dot"></span>
+        <div class="boot-art">
+          <svg viewBox="0 0 512 512" focusable="false">
+            <rect width="512" height="512" fill="#1f2a33"/>
+            <path d="M-30 150 L545 330" stroke="#465663" stroke-width="16" fill="none"/>
+            <path d="M-30 430 C120 410 170 310 256 256 S420 110 545 86" stroke="#18212a" stroke-width="50" fill="none"/>
+            <path d="M-30 430 C120 410 170 310 256 256 S420 110 545 86" stroke="#b08e55" stroke-width="34" fill="none"/>
+          </svg>
+        </div>
         <span class="boot-ring"></span>
-        <div class="boot-squash">
-          <div class="boot-tile">
-            <div class="boot-drive">
-              <svg class="boot-art" viewBox="0 0 512 512" focusable="false">
-                <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff"/>
-                <rect x="146" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-                <rect x="262" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-                <circle cx="164" cy="300" r="18" fill="#0b5394"/>
-                <circle cx="348" cy="300" r="18" fill="#0b5394"/>
-                <circle cx="178" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
-                <circle cx="334" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
-              </svg>
-              <span class="boot-lamp boot-lamp-l"></span><span class="boot-lamp boot-lamp-r"></span>
-            </div>
-          </div>
+        <div class="boot-emblem">
+          <svg viewBox="0 0 512 512" focusable="false">
+            <rect x="106" y="106" width="300" height="300" rx="72" fill="#2b73cc" stroke="#f2e4c4" stroke-width="12"/>
+            <g transform="translate(256 256) scale(.74) translate(-256 -264)">
+              <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff6e3"/>
+              <rect x="146" y="150" width="104" height="80" rx="12" fill="#2b73cc"/>
+              <rect x="262" y="150" width="104" height="80" rx="12" fill="#2b73cc"/>
+              <circle cx="164" cy="300" r="18" fill="#2b73cc"/>
+              <circle cx="348" cy="300" r="18" fill="#2b73cc"/>
+              <circle cx="178" cy="372" r="36" fill="#fff6e3" stroke="#2b73cc" stroke-width="14"/>
+              <circle cx="334" cy="372" r="36" fill="#fff6e3" stroke="#2b73cc" stroke-width="14"/>
+            </g>
+          </svg>
         </div>
       </div>
-      <div class="boot-name"><span class="boot-clip"><span class="boot-word">Telematica</span></span><span class="boot-beta">BETA</span></div>
+      <div class="boot-name"><span class="boot-word">Telematica</span><span class="boot-beta">BETA</span></div>
     </div>
   </div>
   <div id="app" class="app">

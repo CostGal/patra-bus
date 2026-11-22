@@ -126,7 +126,9 @@ the usage keys (`KEEP_ON_RESET`, line 35), but no screen calls it today.
 - `?debug` puts `window.__app` (`map`, `sheet`, `ctx`, `data`) on the page (`app.js:818`).
 
 ## 7. Location
-The position stays on the device (CLAUDE.md rule 6). `location.js` does not use the network. Two requests leave the phone:
+The position stays on the device (CLAUDE.md rule 6). `location.js` does not use the network. On a cold start the nearest
+stop's code (never the coordinates) can reach our worker through the stop card it opens (`start-stop.js`, TEL-365). Two
+requests with a position leave the phone:
 - **OSRM** (`walk.js:70`): start and end of a walk with 5 decimals (about 1 m), at most one request per second (`gapMs`, line 34),
   timeout 6 s, a minute of straight-line estimates after three failures or a 429. Without an answer `walkEstimate`
   (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118` and the stop's "Οδηγίες ως εδώ" pill
@@ -152,14 +154,17 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
 
 ## 10. Boot screen, first run, welcome, problem report
 - **Boot screen** (TEL-255, variant C «Σήμα LIVE»; `index.html` `#boot` and its inline head script, `css/boot.css`,
-  `boot.js`): about 1.5 s of the logo in motion (the LIVE dot pulses and opens into the tile, the bus rises in, the
-  headlights blink, then «Telematica» and BETA) on a cold start that lands on home. Each moving part is its own HTML
+  `boot.js`): about 1.7 s on a cold start that lands on home. The app icon opens, its road spreads over the screen, the
+  stop inside it grows into the logo with «Telematica» and BETA, and the logo lands on the stop that opens (TEL-365).
+  **Which stop** (`start-stop.js`, on the device): the nearest within 800 m if location is already allowed and a fix comes
+  within 1 s of the first frame, else the first favourite, else the last stop opened, else home. A stop opened this way
+  is not saved as a recent (CLAUDE.md rule 6). iPhone launch pictures: `icons/startup/`, not in SHELL. Each moving part is its own HTML
   layer animated with `transform`/`opacity` only, so the compositor runs it while the app loads. Never
   on a deep link, not again in the same tab or app process (`sessionStorage` `patra-bus:boot`), so not after the reload of
   a city change or on return from the background. The head script decides before first paint, sets `<html lang>` (same
   rule as `resolveLang`) and owns the state (`window.__boot`), so a tap skips it before any module loads. `app.js` calls
-  `bootScreen.finish()` after the first `route()` and on both error paths; the exit starts at the later of that and 1500 ms
-  (500 ms with reduced motion). Still loading then: a pulsing `--live` ring. A CSS failsafe hides it at 5 s. The setup
+  `bootScreen.finish()` after the first `route()` and on both error paths; the landing starts at the later of that and 1190 ms
+  (500 ms with reduced motion). Still loading then: a pulsing green ring. With no stop or no map at all, the logo fades at the centre. A CSS failsafe hides it at 5 s. The setup
   opens on `bootScreen.leaving`, the welcome after the setup and the boot screen. `?boot` forces it on any hash,
   `?boot=hold` keeps the last frame until a tap. The artwork is `icon.svg`'s: a rebranding changes both.
   Until the first view mounts, `#sheet-content` holds three text-free skeleton rows with `aria-busy="true"` (issue #32).

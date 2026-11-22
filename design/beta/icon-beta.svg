@@ -1,16 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Telematica app icon, BETA variant. Full-bleed navy, so it also works as a maskable icon:
-       the bus and the badge sit inside the central safe circle (radius 204.8). -->
-  <rect width="512" height="512" fill="#0b5394"/>
-  <g transform="translate(256 234) scale(0.85) translate(-256 -264)">
-    <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff"/>
-    <rect x="146" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-    <rect x="262" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-    <circle cx="164" cy="300" r="18" fill="#0b5394"/>
-    <circle cx="348" cy="300" r="18" fill="#0b5394"/>
-    <circle cx="178" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
-    <circle cx="334" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
+  <!-- Telematica app icon, BETA variant (TEL-365). Full-bleed, so it also works as a maskable icon:
+       the stop and the badge sit inside the central safe circle (radius 204.8). -->
+  <rect width="512" height="512" fill="#1f2a33"/>
+  <path d="M-30 150 L545 330" stroke="#465663" stroke-width="16" fill="none"/>
+  <path d="M-30 430 C120 410 170 310 256 256 S420 110 545 86" stroke="#18212a" stroke-width="50" fill="none"/>
+  <path d="M-30 430 C120 410 170 310 256 256 S420 110 545 86" stroke="#b08e55" stroke-width="34" fill="none"/>
+  <rect x="106" y="96" width="300" height="300" rx="72" fill="#2b73cc" stroke="#f2e4c4" stroke-width="12"/>
+  <g transform="translate(256 246) scale(.74) translate(-256 -264)">
+    <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff6e3"/>
+    <rect x="146" y="150" width="104" height="80" rx="12" fill="#2b73cc"/>
+    <rect x="262" y="150" width="104" height="80" rx="12" fill="#2b73cc"/>
+    <circle cx="164" cy="300" r="18" fill="#2b73cc"/>
+    <circle cx="348" cy="300" r="18" fill="#2b73cc"/>
+    <circle cx="178" cy="372" r="36" fill="#fff6e3" stroke="#2b73cc" stroke-width="14"/>
+    <circle cx="334" cy="372" r="36" fill="#fff6e3" stroke="#2b73cc" stroke-width="14"/>
   </g>
-  <rect x="168" y="382" width="176" height="56" rx="28" fill="#F9AB00"/>
-  <text x="256" y="421" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="800" letter-spacing="4" fill="#0b5394">BETA</text>
+  <rect x="168" y="382" width="176" height="56" rx="28" fill="#dcb95c"/>
+  <text x="256" y="421" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="800" letter-spacing="4" fill="#1f2a33">BETA</text>
 </svg>

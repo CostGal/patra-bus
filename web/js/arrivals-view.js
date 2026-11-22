@@ -210,7 +210,7 @@ const errText = (e) => ERR_TEXT()[e && e.kind] || ERR_TEXT().upstream;
 const secsUntil = (at, now) => Math.max(0, Math.ceil((at - now) / 1000));
 
 // ---- the stop view ----
-export function mountStop(container, ctx, { code, walk = false }) {
+export function mountStop(container, ctx, { code, walk = false, auto = false }) { // auto: opened by the app at start, not a recent
   code = String(code);
   const stop = ctx.data && ctx.data.stopByCode.get(code);
   const root = h('div', { class: 'stopv sheet-inset' });
@@ -236,7 +236,7 @@ export function mountStop(container, ctx, { code, walk = false }) {
   let mapQ = Promise.resolve(ctx.map && ctx.map.ready).catch(() => {});
   const onMap = (fn) => { mapQ = mapQ.then(() => { try { if (ctx.map) fn(ctx.map); } catch (e) { console.warn('map', e); } }); };
 
-  addRecent('stop', { code, name: stop.displayName });
+  if (!auto) addRecent('stop', { code, name: stop.displayName }); // CLAUDE.md rule 6: the stop near you is not saved
 
   // ---- header (TEL-227, an Apple Maps place card): share · centred name and "Stop 1011 · <line badges>" · close.
   // Low is this header alone; from mid, under the line chips, the row of directions and ☆. The ⋯ menu is gone: its
@@ -579,7 +579,8 @@ export function mountStop(container, ctx, { code, walk = false }) {
 
   // ---- map ----
   // Opening a stop never zooms out (TEL-360): you keep your zoom, and up close the stop's arrow stays visible.
-  onMap((m) => { m.highlightStop(code); m.flyTo({ lat: stop.lat, lng: stop.lng }); });
+  // auto: the boot logo has just landed on this stop (TEL-365), so the map stays where it is
+  onMap((m) => { m.highlightStop(code); if (!auto) m.flyTo({ lat: stop.lat, lng: stop.lng }); });
 
   let pushed = '';
   function pushMap() {

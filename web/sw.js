@@ -102,6 +102,7 @@ const SHELL = [
   'js/report-view.js',
   'js/welcome.js',
   'js/boot.js',
+  'js/start-stop.js',
   'js/setup.js',
   'js/usage.js',
   'data/stops.json',

@@ -17,12 +17,17 @@ import { parseHash, formatHash, cityHash } from './route.js';
 import { searchPlaces, withoutShownStops } from './geocode.js';
 import { searchKey } from './text.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
+import { pickStartStop } from './start-stop.js';
 try { localStorage.removeItem('patra-bus:reminders'); } catch { /* no storage */ } // left by older versions (TEL-351)
 
 // Was the page opened on the home view (not a deep link)? Only then the first-run setup may appear.
 const bootHome = parseHash(location.hash).path === '/';
 // First-run setup (js/setup.js, TEL-74): fetched in parallel with boot, opened just before the first route.
 const setupP = import('./setup.js').catch(() => null);
+// The stop a cold start opened by itself (TEL-365): not saved as a recent while it stays open (CLAUDE.md rule 6).
+let autoStop = null;
+// Under the boot screen the start waits for the first fix itself, so that fix does not move the map on its own.
+let pickingStart = bootHome && !!globalThis.__boot && !globalThis.__boot.hold;
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -38,7 +43,7 @@ let sheet = null;
 let ctx = null;
 
 // ---------------------------------------------------------------- theme
-const themeMetas = [...document.querySelectorAll('meta[name="theme-color"]')];
+const themeMetas = [...document.querySelectorAll('meta[name="theme-color"]:not(#boot-theme)')];
 const themeMetaOrig = themeMetas.map((m) => m.content);
 const resolveTheme = () => {
   const t = getSettings().theme;
@@ -289,7 +294,7 @@ function onLocation(fix, status) {
     else if (LOC_ERR[status]) toast(t(LOC_ERR[status]));
   }
   // First fix of the session while browsing the home screen inside the active city: show where you are.
-  if (fix && !firstFixHandled && inArea(fix)) {
+  if (fix && !firstFixHandled && !pickingStart && inArea(fix)) {
     firstFixHandled = true;
     if (currentHead === '' && locMode === 'idle') map?.flyTo(fix, 15.5);
   }
@@ -874,6 +879,7 @@ async function route() {
   teardown();
   const head = parts[0] || '';
   const arg = parts[1];
+  if (head !== 'stop' || String(arg) !== autoStop) autoStop = null;
   currentHead = SNAP[head] != null ? head : '';
   // the search is home's first row (TEL-223); the other views put their own header there, with a ✕ back home
   const topBefore = leftUp ? sheet.el.getBoundingClientRect().top : null;
@@ -957,13 +963,14 @@ async function route() {
         break;
       }
       document.title = `${stop.displayName} · ${title()}`;
-      noteStop(stop);
-      map.highlightStop(stop.code);
-      map.flyTo(stop, 17);
+      const auto = autoStop === stop.code;
+      if (!auto) noteStop(stop);
+      map.highlightStop(stop.code, { still: auto && !booted }); // the boot logo lands on it (TEL-365)
+      map.flyTo(stop, 17, { instant: auto && !booted });
       focusPt = stop;
       const walk = walkOnOpen === stop.code;
       walkOnOpen = null;
-      await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code, walk }));
+      await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code, walk, auto }));
       break;
     }
     case 'bus':
@@ -1111,6 +1118,41 @@ function buildChrome() {
   if (DEMO) $('demo-tag').hidden = false;
 }
 
+// ---------------------------------------------------------------- the stop a cold start opens (TEL-365)
+const START_WAIT_MS = 1000; // from the first frame of the boot screen: a fix later than this does not move anything
+
+// A fix, or null at `until` or when none can be had. `started`: autoStart's answer (no prompt is ever shown here).
+async function waitStartFix(started, until) {
+  const left = () => Math.max(0, until - performance.now());
+  const on = await Promise.race([started, new Promise((r) => { setTimeout(r, left(), false); })]);
+  if (locationService.current) return locationService.current;
+  if (!on || !left()) return null;
+  return new Promise((resolve) => {
+    let off = null;
+    const done = (v) => { clearTimeout(timer); off?.(); resolve(v); };
+    const timer = setTimeout(() => done(null), left());
+    off = locationService.subscribe((fix, status) => { if (fix) done(fix); else if (NO_LOC.has(status)) done(null); });
+  });
+}
+
+// Only under the boot screen, on home: picks the stop on the device and points the first route at it (CLAUDE.md rule 6).
+async function chooseStartStop(started) {
+  const B = globalThis.__boot;
+  if (!pickingStart) return;
+  const fix = await waitStartFix(started, B.t0 + START_WAIT_MS);
+  pickingStart = false;
+  const code = pickStartStop({
+    fix, favorites: getFavorites(), recents: recentStops(1).map((s) => s.code), stops: data.stops, stopByCode: data.stopByCode,
+  });
+  if (!code) { onLocation(locationService.current, locationService.status); return; }
+  firstFixHandled = true; // a late fix does not pull the map off the stop
+  autoStop = code;
+  history.replaceState(null, '', cityHash(`#/stop/${encodeURIComponent(code)}`));
+  // Framed again now that the sheet has its real height, so nothing moves after the logo has landed.
+  const stop = data.stopByCode.get(code);
+  bootScreen.landOn(() => { map.flyTo(stop, 17, { instant: true }); return map.selectedPin?.(); });
+}
+
 async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove, follow: [$('menu-btn')] });
   // Settings and Report are "up only": a swipe down (or a tap on the handle) from up opens home at mid in one move
@@ -1121,6 +1163,8 @@ async function boot() {
   if (!map.available) enterNoMap(map.reason);
   applyTheme();
   setLocMode('idle');
+  // Before the data, so a slow network does not eat the time the start stop waits for a fix (TEL-365).
+  const locStarted = locationService.autoStart?.(); // only if permission is already granted: no prompt on load
 
   try {
     data = await loadData();
@@ -1141,7 +1185,6 @@ async function boot() {
   if (new URLSearchParams(location.search).has('debug')) window.__app = { map, sheet, ctx, data };
   locationService.subscribe(onLocation);
   onLocation(locationService.current, locationService.status);
-  locationService.autoStart?.(); // only if permission is already granted: no prompt on load
 
   window.addEventListener('hashchange', () => route());
   onLangChange(() => { localizeChrome(); route(); });
@@ -1149,6 +1192,8 @@ async function boot() {
   let setupClosed = null;
   // The setup sets its flags now and opens once the boot screen starts to leave (TEL-255).
   try { setupClosed = (await setupP)?.maybeSetup({ bootHome, ctx, after: bootScreen.leaving }) ?? null; } catch (err) { console.error('[setup]', err); }
+  if (setupClosed) { pickingStart = false; onLocation(locationService.current, locationService.status); }
+  else await chooseStartStop(locStarted);
   await route();
   booted = true;
   bootScreen.finish();
