@@ -255,7 +255,7 @@ html.glass .sheet-pill { width: 48px; height: 3px; border-radius: 2px; backgroun
 html.glass[data-theme="dark"] .sheet-pill { background: rgba(235, 235, 245, .3); }
 html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; right: 0; top: -12px; bottom: 0; }
 /* the shrink-on-press of DESIGN §1 gives way to the grow of the glass (js/glass.js animates `scale`) */
-html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
+html.glass :is(.press:active, .press.is-pressed, .fab:active) { transform: none; }
 
 /* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
 html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .map-capsule {
