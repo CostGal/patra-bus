@@ -71,8 +71,10 @@ function addLens() {
 const SURFACE = '.fab, .sheet, #menu-pop, .su-card, .wl-card';
 const CONTROL = 'button, a[href], [role="button"], summary, label, .atile-link';
 const ROW = '.stop-row, .su-choice'; // full-width list rows (and the setup's choices): a highlight, no growing
+const QUIET_ROW = '.set-sum, .set-fav-link, .plc-sr'; // TEL-373: whole rows do not react to touch or hold; a tap still opens them
+const QUIET_AREA = '.set-sec, .set-lang'; // TEL-373: Settings' cards around them: a finger there does not press the sheet
 const ROUND = '.btn.round, .sb-btn, .fab'; // round buttons grow the most
-const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, ${ROW}`;
+const NO_GROW = `.sheet, #menu-pop, .su-card, .wl-card, .sheet-handle, .set-link, ${ROW}`;
 const SPRING = 'cubic-bezier(.34, 1.56, .64, 1)'; // overshoots a little: the "liquid" settle
 const clamp = (v, m) => Math.max(-m, Math.min(m, v));
 let pressed = null;
@@ -85,7 +87,8 @@ function targetOf(e) {
   const place = e.target.closest('.hm-place'); // home's Places (TEL-232): the link is circle + label, the circle presses
   if (place) return place.querySelector('.g-circle') || place;
   const c = e.target.closest(CONTROL);
-  if (c && !c.matches('.sheet-handle')) return c;
+  if (c && !c.matches('.sheet-handle')) return c.matches(QUIET_ROW) ? null : c;
+  if (e.target.closest(QUIET_AREA)) return null;
   return e.target.closest(SURFACE);
 }
 const canGrow = (el) => !still && !el.matches(NO_GROW);
