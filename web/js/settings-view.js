@@ -4,7 +4,6 @@
 // notifications section, the «reminder before you leave» row and the walking speed are gone (Kostas, 2026-11-21).
 import { h, icon } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
-import { cancelAll as cancelAllReminders } from './notify.js'; // the wipe still clears any reminder an older version left
 import { t, tn, N_, setLang, onLangChange, locale, lang, APP_NAME, APP_VERSION } from './i18n.js';
 import { CITIES, city, cityId, cityName, dataDir } from './cities.js';
 import { cityHash } from './route.js';
@@ -227,7 +226,7 @@ function build(container, ctx, keep) {
       return;
     }
     clearTimeout(armed); timers.delete(armed); armed = null;
-    clearAll(); cancelAllReminders(); applyTheme('auto');
+    clearAll(); applyTheme('auto');
     wipeBtn.textContent = t('Διαγραφή όλων των δεδομένων');
     say(t('Τα δεδομένα της εφαρμογής διαγράφηκαν από αυτή τη συσκευή'));
   } }, t('Διαγραφή όλων των δεδομένων'));

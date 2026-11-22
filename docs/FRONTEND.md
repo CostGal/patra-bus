@@ -62,8 +62,7 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
   stop's name starts with the query or its code is the query (TEL-161).
 - **Vehicle**: `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
 - **Storage, settings, share**: `store.js` (the main blob), `settings-view.js`, `share.js` (Web Share, else clipboard),
-  `notify.js` (local reminder timers; today its only user is the test button and the list in Settings, `settings-view.js:4,148`;
-  `app.js:18` imports it so persisted reminders re-arm), `usage.js` (anonymous counts).
+  `usage.js` (anonymous counts).
 - **First run, welcome, report**: `setup.js`, `welcome.js`, `report-view.js`, `report.js` **(W)** (validation and diagnostics
   whitelist), `platform.js` (iOS/Android, installed or browser).
 - **Language and text**: `i18n.js` (`t`, `tn`, `N_`, `lang`), `i18n-en.js` + `i18n-en-report|welcome|setup|home.js`, `text.js`
@@ -90,7 +89,6 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
 |---|---|---|
 | `patra-bus:v2` | One JSON blob, schema 3: favourites, recents (stops and places), settings, first-run flags | `store.js:8,10` |
 | `patra-bus:places` | Saved home, work and up to 3 custom places, with coordinates the user chose | `places.js:8` |
-| `patra-bus:reminders` | Pending local reminders (only the Settings test creates them) | `notify.js:9` |
 | `patra-bus:loc-granted` | `'1'` once a GPS fix worked, so the app may start location without a prompt | `location.js:14,126` |
 
 | Key (`sessionStorage`) | Holds | Where |
@@ -106,7 +104,7 @@ Favourites, recents, places and reminders each carry a `city`; an item without o
 Flags inside the blob's `settings` (`store.js:19-32`):
 | Setting | Meaning | Set when |
 |---|---|---|
-| `city`, `lang`, `theme`, `walkSpeed`, `bufferMin`, `reminderMin` | preferences (`reminderMin` is only a Settings row; nothing reads it) | user changes them |
+| `city`, `lang`, `theme`, `walkSpeed`, `bufferMin` | preferences | user changes them |
 | `setupDone` | first-run setup was shown | when it opens (`setup.js:50`) |
 | `welcomeSeen` | testers' welcome was shown | when it opens (`welcome.js:21`) |
 | `usageStats` | counting on (default) or off | Settings → Data |
@@ -149,8 +147,7 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
   fonts, sprites) in the cache `patra-bus-map-v1`, at most 4000 entries, oldest tiles trimmed first (`sw.js:5-6,165-209`).
   OSRM and Photon are never cached.
 - `CACHE` (`sw.js:4`) is rewritten at deploy by `scripts/stamp-cache.mjs`; nobody bumps it by hand. The committed value stays.
-- There is no offline map download any more; only the runtime map cache above exists. The `notificationclick` handler
-  (`sw.js:225`) serves the notifications `notify.js` can show.
+- There is no offline map download any more; only the runtime map cache above exists.
 - `app.js:836-839` registers it after load. A page offline shows a pill (`app.js:296-309`).
 
 ## 10. Boot screen, first run, welcome, problem report

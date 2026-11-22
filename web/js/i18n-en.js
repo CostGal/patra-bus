@@ -247,7 +247,6 @@ const PAIRS = [
   ['Δεν υπάρχουν προσεχή δρομολόγια κοντά σου.', 'No upcoming trips near you.'],
   ['ζωντανά', 'live'],
   ['προγραμματισμένο', 'scheduled'],
-  ['Άνοιγμα', 'Open'],
   ['Τόπος', 'Place'],
   ['Έχεις ήδη 3 δικούς σου τόπους', 'You already have 3 saved places'],
   ['Όνομα (π.χ. Γυμναστήριο)', 'Name (e.g. Gym)'],

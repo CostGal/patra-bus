@@ -82,7 +82,6 @@ const SHELL = [
   'js/nearby.js',
   'js/geocode.js',
   'js/store.js',
-  'js/notify.js',
   'js/share.js',
   'js/stop-menu.js',
   'js/bus-view.js',
@@ -237,24 +236,3 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirst(event));
 });
 
-// Tap on a reminder notification: focus the open app (jumping to the target hash) or open it.
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil((async () => {
-    const scope = self.registration.scope;
-    let target = new URL('./', scope);
-    try {
-      const u = new URL(event.notification.data?.url || './', scope);
-      if (u.origin === self.location.origin) target = u;
-    } catch { /* keep scope */ }
-    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const open = wins.find((w) => w.url.startsWith(scope));
-    if (!open) return self.clients.openWindow(target.href);
-    const same = (a, b) => a.split('#')[0] === b.split('#')[0];
-    try {
-      await open.focus();
-      // Only a fragment change when the page is the same document (no reload, keeps ?demo etc.).
-      if (target.hash && same(open.url, target.href) && 'navigate' in open) await open.navigate(target.href);
-    } catch { /* focus can be refused; nothing else to do */ }
-  })());
-});
