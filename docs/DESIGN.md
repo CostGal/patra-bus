@@ -74,8 +74,8 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
   number is at the very bottom of the view. Header, chips, directions and cards share one inset (16 px from the card's
   edge). No ⋯ for now (it comes back with an island of the stop card once it has its own items). The sheet goes up
   from mid 25% quicker than before.
-  **Glass target (LOCKED by Kostas, 2026-10-31; the target for now, every other surface is to follow it):** the sheet at
-  mid 26% tint, at low 3%; its blur 3.6 px at low growing to 4.2 px from mid (saturate 190%). The card's round buttons
+  **Glass target (LOCKED by Kostas, 2026-10-31; sheet retuned by Kostas, 2026-11-22, TEL-375, for the new map):** the sheet at
+  mid 31% tint, at low 17%; its blur 7 px at low growing to 9 px from mid (saturate 170%). The card's round buttons
   (`.g-circle`): 38 px, 41% white (dark: 10.5%), a bright top edge and rim, a faint shadow (light 14%, dark 25%), blur
   3.4 px at low growing to 3.9 px from mid (saturate 180%). Elsewhere (not yet aligned to this target): the floating
   controls 7 px, menus and dialogs 9 px.

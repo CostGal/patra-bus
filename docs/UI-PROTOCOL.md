@@ -26,7 +26,7 @@ and the exact values (§4 "Stop header", §4 "Glass target"); this file says wha
 | U4 | Titles are small and centred: 17 px on the buttons' row at low and mid, 24 px on their own row at up. At low and mid a long name shrinks to a floor (14 px), then "…": the header keeps its height. At up a long name may wrap to a second line; that one line is the only height a name may add. | auto |
 | U5 | Low is one row, centred in the card, as tall as the buttons. Buttons and actions appear from mid. | auto |
 | U6 | Chips fill their row from mid, with the same inset (U2). At low they are the small badges under the name. | eye |
-| U7 | Glass is clear: a light tint and a light blur (DESIGN §4 "Glass target"). Light mode gets a little more shadow on buttons. | eye |
+| U7 | Glass is clear: a light tint and a light blur (DESIGN §4 "Glass target"). The sheet takes a medium tint and blur so its text stays readable over the map (TEL-375). Light mode gets a little more shadow on buttons. | eye |
 | U25 | A row where you pick one of a few (the stop's line chips, the trip's options, a segmented control in Settings, the theme row in the menu, a line's directions) is one glass capsule with the lens of U24. The chips have no pill of their own: the lens is the only pill. Capsule 62 px tall, the pill 54, 4 px around it. With reduced transparency or more contrast: separate solid pills, no lens. | eye |
 
 ### Motion
