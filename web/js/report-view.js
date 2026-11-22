@@ -1,6 +1,6 @@
 // Report a problem (owner: extras). A full-height sheet like the settings: category, text, optional email, and the
 // diagnostics that go with it, shown before sending. Pure logic (validation, payload, transport) is in report.js.
-import { h, icon } from './ui.js';
+import { h, icon, cardHead } from './ui.js';
 import { t, N_, lang, APP_VERSION } from './i18n.js';
 import { cityId } from './cities.js';
 import { getSettings } from './store.js';
@@ -145,44 +145,15 @@ export function mountReport(container, ctx, params = {}) {
     h('p', { class: 'ex-sub rp-note' }, t('Στέλνονται μόνο όσα γράφεις εδώ και τα τεχνικά στοιχεία πιο πάνω. Η IP σου δεν αποθηκεύεται. Μην γράψεις προσωπικά στοιχεία που δεν χρειάζονται.')));
   const panel = h('div', { class: 'rp-panel' }, form);
 
-  // header (TEL-252, UI-PROTOCOL U2–U5): the kit's .card-head (css/ui-kit.css), placed in css/report.css (rp-head), as
-  // the favourites' (js/app.js): an empty slot · the title, 17 px, centred · ✕. The title is short and fixed, so it is
-  // not shrunk to fit. Halfway from mid to up it moves to its own row, 24 px, in a short blur (U4, U10); towards up it
-  // grows as a transform (U8).
-  const title = h('h1', { class: 'rp-title card-title' }, t('Αναφορά προβλήματος'));
-  const label = t('Κλείσιμο');
-  const closeBtn = h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': label, title: label, onclick: () => ctx.navigate('#/') }, icon('close'));
-  // low ends under this row (js/sheet.js)
-  const head = h('header', { class: 'rp-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, closeBtn);
-  container.replaceChildren(h('div', { class: 'ex-view rp sheet-inset' }, head, panel));
-
-  const sheetEl = document.getElementById('sheet');
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const setUp = (on) => {
-    if (head.classList.contains('is-up') === on) return;
-    head.classList.toggle('is-up', on);
-    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
-  };
-  // as js/bus-view.js: up while the sheet is full or dragged past halfway from mid to up; nothing runs per frame
-  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
-    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
-  const onUpper = () => setUp(upRow());
-  const onLeaveUp = () => setUp(false);
-  const mo = new MutationObserver(onUpper);
-  if (sheetEl) {
-    mo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
-    sheetEl.addEventListener('sheet:upper', onUpper);
-    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
-  }
-  setUp(upRow());
+  // header: the shared card header (TEL-350, js/ui.js cardHead)
+  const head = cardHead({ title: t('Αναφορά προβλήματος'), closeLabel: t('Κλείσιμο'), onClose: () => ctx.navigate('#/') });
+  container.replaceChildren(h('div', { class: 'ex-view rp sheet-inset' }, head.el, panel));
 
   return {
     destroy() {
       dead = true;
       clearTimeout(timer);
-      mo.disconnect();
-      sheetEl?.removeEventListener('sheet:upper', onUpper);
-      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      head.destroy();
     },
   };
 }

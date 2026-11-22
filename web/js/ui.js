@@ -64,6 +64,44 @@ export function icon(name) {
   return s;
 }
 
+// ---- cardHead: the header of a card with a short, fixed title (TEL-350, UI-PROTOCOL U2–U5) ----
+// The kit's .card-head and .card-head-up (css/ui-kit.css): an empty slot · the title, 17 px, centred · ✕. Halfway from
+// mid to up the title moves to its own row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (U8).
+// Nothing runs per frame. Returns { el, destroy }: the view calls destroy() when it closes.
+export function cardHead({ title, closeLabel, onClose }) {
+  const titleEl = h('h1', { class: 'card-title' }, title);
+  const closeBtn = h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': closeLabel, title: closeLabel, onclick: onClose }, icon('close'));
+  // low ends under this row (js/sheet.js)
+  const el = h('header', { class: 'card-head card-head-up', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), titleEl, closeBtn);
+  const sheetEl = document.getElementById('sheet');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (el.classList.contains('is-up') === on) return;
+    el.classList.toggle('is-up', on);
+    if (!reduceMotion.matches) titleEl.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  // up while the sheet is full or dragged past halfway from mid to up
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  const mo = new MutationObserver(onUpper);
+  if (sheetEl) {
+    mo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+    sheetEl.addEventListener('sheet:upper', onUpper);
+    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
+  }
+  setUp(upRow());
+  return {
+    el,
+    destroy() {
+      mo.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+    },
+  };
+}
+
 // ---- toast: one at a time, bottom-centre above the sheet, announced politely ----
 let toastTimer = 0;
 let toastHost = null;

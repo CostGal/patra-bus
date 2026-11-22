@@ -2,7 +2,7 @@
 // TEL-251 (UI-PROTOCOL): the kit's .card-head with ✕ (U2–U5), 16 px inset (.sheet-inset), and every pick-one row is one
 // glass capsule with the lens (U25, js/glass.js: bar[data-lens] > row > chip), coded as the ☰ menu's theme row. The
 // notifications section, the «reminder before you leave» row and the walking speed are gone (Kostas, 2026-11-21).
-import { h, icon } from './ui.js';
+import { h, icon, cardHead } from './ui.js';
 import { getSettings, setSetting, getFavorites, removeFavorite, moveFavorite, clearRecents, clearAll, onChange, applyTheme } from './store.js';
 import { t, tn, N_, setLang, onLangChange, locale, lang, APP_NAME, APP_VERSION } from './i18n.js';
 import { CITIES, city, cityId, cityName, dataDir } from './cities.js';
@@ -254,35 +254,9 @@ function build(container, ctx, keep) {
     h('ul', { class: 'set-list' }, [...LINKS, dataSource()].map(([name, href, what]) => h('li', { class: 'set-item' },
       h('a', { class: 'set-link', href, target: '_blank', rel: 'noopener noreferrer' }, name), h('span', { class: 'ex-sub' }, t(what))))));
 
-  // header (TEL-251, UI-PROTOCOL U2–U5): the kit's .card-head (css/ui-kit.css), placed in css/extras.css (set-head), as
-  // the report's (js/report-view.js): an empty slot · the title, 17 px, centred · ✕. Halfway from mid to up it moves to
-  // its own row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (U8).
-  const title = h('h1', { class: 'set-title card-title' }, t('Ρυθμίσεις'));
-  const closeLabel = t('Κλείσιμο');
-  const closeBtn = h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': closeLabel, title: closeLabel, onclick: () => ctx.navigate('#/') }, icon('close'));
-  // low ends under this row (js/sheet.js)
-  const head = h('header', { class: 'set-head card-head', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), title, closeBtn);
-  container.replaceChildren(h('div', { class: 'ex-view sheet-inset' }, head, language, display, homeSec, favorites, data, about));
-
-  const sheetEl = document.getElementById('sheet');
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const setUp = (on) => {
-    if (head.classList.contains('is-up') === on) return;
-    head.classList.toggle('is-up', on);
-    if (!reduceMotion.matches) title.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
-  };
-  // as js/report-view.js: up while the sheet is full or dragged past halfway from mid to up; nothing runs per frame
-  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
-    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
-  const onUpper = () => setUp(upRow());
-  const onLeaveUp = () => setUp(false);
-  const sheetMo = new MutationObserver(onUpper);
-  if (sheetEl) {
-    sheetMo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
-    sheetEl.addEventListener('sheet:upper', onUpper);
-    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
-  }
-  setUp(upRow());
+  // header: the shared card header (TEL-350, js/ui.js cardHead)
+  const head = cardHead({ title: t('Ρυθμίσεις'), closeLabel: t('Κλείσιμο'), onClose: () => ctx.navigate('#/') });
+  container.replaceChildren(h('div', { class: 'ex-view sheet-inset' }, head.el, language, display, homeSec, favorites, data, about));
 
   paintFavs();
   offs.push(onChange(() => { if (dead) return; for (const s of syncs) s(); paintFavs(); }));
@@ -294,9 +268,7 @@ function build(container, ctx, keep) {
       mo?.disconnect();
       for (const v of ext) { try { v.destroy && v.destroy(); } catch (err) { console.warn('[settings] card destroy failed', err); } }
       for (const id of timers) clearTimeout(id);
-      sheetMo.disconnect();
-      sheetEl?.removeEventListener('sheet:upper', onUpper);
-      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      head.destroy();
     },
   };
 }
