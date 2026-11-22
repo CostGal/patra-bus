@@ -109,6 +109,15 @@ const SHELL = [
   // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.
   'data/corfu/stops.json',
   'data/corfu/lines.json',
+  // Map letters (TEL-361): Latin, Greek and punctuation, so labels show offline. Rarer ranges are cached when first used.
+  'fonts/Manrope%20Regular/0-255.pbf',
+  'fonts/Manrope%20Regular/256-511.pbf',
+  'fonts/Manrope%20Regular/768-1023.pbf',
+  'fonts/Manrope%20Regular/8192-8447.pbf',
+  'fonts/Manrope%20Bold/0-255.pbf',
+  'fonts/Manrope%20Bold/256-511.pbf',
+  'fonts/Manrope%20Bold/768-1023.pbf',
+  'fonts/Manrope%20Bold/8192-8447.pbf',
 ];
 
 // Cached when present; a 404 here must not break the install.
