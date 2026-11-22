@@ -33,7 +33,8 @@ const SCREENS = [
   { id: 'trip', url: '/?demo#/trip?stop=1011', scroll: 1 },
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
-  { id: 'report', url: '/?demo#/report', scroll: 1 },
+  { id: 'report', url: '/?demo#/report?kind=app', scroll: 1 },
+  { id: 'report-kinds', url: '/?demo#/report' },
   { id: 'setup', url: '/?demo&setup#/', steps: 2 },
   { id: 'boot', url: '/?demo&boot=hold#/' }, // boot screen (TEL-255), held on its last frame
 ];

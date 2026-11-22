@@ -1,5 +1,6 @@
-// Report a problem (owner: extras). A full-height sheet like the settings: category, text, optional email, and the
-// diagnostics that go with it, shown before sending. Pure logic (validation, payload, transport) is in report.js.
+// Report a problem (owner: extras). A full-height sheet like the settings: the kind is picked first (in the ☰ menu, or
+// here for a link without one, TEL-358) and is the form's title; then text, optional email, and the diagnostics that go
+// with it, shown before sending. Pure logic (validation, payload, transport) is in report.js.
 import { h, icon, cardHead } from './ui.js';
 import { t, N_, lang, APP_VERSION } from './i18n.js';
 import { cityId } from './cities.js';
@@ -8,12 +9,6 @@ import { currentPlatform } from './platform.js';
 import { API_BASE, DEMO } from './api.js';
 import { LIMITS, collectDiagnostics, buildPayload, validateReport, sendReport } from './report.js';
 
-const CATS = [
-  ['data', N_('Λάθος δεδομένα')],
-  ['app', N_('Πρόβλημα εφαρμογής')],
-  ['idea', N_('Πρόταση')],
-  ['other', N_('Άλλο')],
-];
 const ERR = {
   network: N_('Δεν στάλθηκε. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.'),
   timeout: N_('Δεν στάλθηκε: η σύνδεση άργησε. Δοκίμασε ξανά.'),
@@ -25,9 +20,24 @@ const ERR = {
 
 let uid = 0;
 
+// A link with no kind (or an unknown one): the same four kinds as the menu, as a list in the sheet.
+function mountKinds(container, ctx, kinds) {
+  const head = cardHead({ title: t('Αναφορά προβλήματος'), closeLabel: t('Κλείσιμο'), onClose: () => ctx.navigate('#/') });
+  const list = h('div', { class: 'rp-kinds' }, kinds.map(([value, ico, label]) => h('button', {
+    type: 'button', class: 'rp-kind press', onclick: () => ctx.navigate(`#/report?kind=${value}`),
+  }, icon(ico), h('span', {}, t(label)), icon('chevron'))));
+  container.replaceChildren(h('div', { class: 'ex-view rp sheet-inset' }, head.el,
+    h('div', { class: 'rp-panel rp-form' }, h('p', { class: 'ex-sub rp-intro' }, t('Βρήκες λάθος ή κάτι δεν δουλεύει; Πες μας.')), list)));
+  return { destroy() { head.destroy(); } };
+}
+
 export function mountReport(container, ctx, params = {}) {
+  const kinds = params.kinds || [];
+  const kind = kinds.find(([value]) => value === params.kind);
+  if (!kind) return mountKinds(container, ctx, kinds);
+  const cat = kind[0];
   const n = ++uid;
-  const ids = { cat: `rp-cat-${n}`, msg: `rp-msg-${n}`, msgErr: `rp-msg-err-${n}`, mail: `rp-mail-${n}`, mailHint: `rp-mail-hint-${n}`, mailErr: `rp-mail-err-${n}` };
+  const ids = { msg: `rp-msg-${n}`, msgErr: `rp-msg-err-${n}`, mail: `rp-mail-${n}`, mailHint: `rp-mail-hint-${n}`, mailErr: `rp-mail-err-${n}` };
   let busy = false;
   let dead = false;
   let timer = 0;
@@ -38,34 +48,6 @@ export function mountReport(container, ctx, params = {}) {
     viewport: { w: innerWidth, h: innerHeight }, online: navigator.onLine !== false, theme: getSettings().theme || 'auto',
     sw: !!navigator.serviceWorker?.controller, demo: DEMO,
   });
-
-  // category (TEL-252, UI-PROTOCOL U25): one pick-one row, the chosen chip under the glass lens (js/glass.js: bar[data-lens]
-  // > row > chip, the chosen one aria-checked). Buttons with role radio, not native radios: the lens copies the row into
-  // its bubble, and a copied radio would join the form's group. The row is rebuilt on every pick (that moves the lens);
-  // the arrow keys move between the chips and pick, as native radios do.
-  let cat = ['stop', 'line'].includes(params.context?.view) ? 'data' : 'app';
-  const cats = h('div', { class: 'rp-cats', role: 'radiogroup', 'aria-labelledby': ids.cat });
-  const catBar = h('div', { class: 'rp-catbar', 'data-lens': true }, cats);
-  const paintCats = (focus) => {
-    cats.replaceChildren(...CATS.map(([value, label]) => {
-      const on = value === cat;
-      return h('button', {
-        type: 'button', role: 'radio', class: `rp-cat${on ? ' on' : ''}`, 'aria-checked': String(on), tabindex: on ? '0' : '-1',
-        'data-key': value, onclick: () => pickCat(value),
-      }, t(label));
-    }));
-    if (focus) cats.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
-  };
-  const pickCat = (value) => { if (value !== cat) { cat = value; paintCats(true); } };
-  cats.addEventListener('keydown', (e) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    const i = CATS.findIndex(([value]) => value === cat);
-    const j = step ? (i + step + CATS.length) % CATS.length : e.key === 'Home' ? 0 : e.key === 'End' ? CATS.length - 1 : -1;
-    if (j < 0) return;
-    e.preventDefault();
-    pickCat(CATS[j][0]);
-  });
-  paintCats(false);
 
   const message = h('textarea', {
     id: ids.msg, class: 'rp-input rp-text', rows: 6, maxlength: LIMITS.messageMax, required: true, 'aria-describedby': ids.msgErr,
@@ -126,8 +108,6 @@ export function mountReport(container, ctx, params = {}) {
   }
 
   const form = h('form', { class: 'rp-form', novalidate: true, onsubmit: onSubmit },
-    h('p', { class: 'ex-sub rp-intro' }, t('Βρήκες λάθος ή κάτι δεν δουλεύει; Πες μας.')),
-    h('div', { class: 'rp-field' }, h('p', { id: ids.cat, class: 'rp-label' }, t('Τι αφορά;')), catBar),
     h('div', { class: 'rp-field' }, h('label', { class: 'rp-label', for: ids.msg }, t('Τι συνέβη;')), message, msgErr),
     h('div', { class: 'rp-field' },
       h('label', { class: 'rp-label', for: ids.mail }, t('Email'), ' ', h('span', { class: 'rp-opt' }, `(${t('προαιρετικό')})`)),
@@ -146,7 +126,7 @@ export function mountReport(container, ctx, params = {}) {
   const panel = h('div', { class: 'rp-panel' }, form);
 
   // header: the shared card header (TEL-350, js/ui.js cardHead)
-  const head = cardHead({ title: t('Αναφορά προβλήματος'), closeLabel: t('Κλείσιμο'), onClose: () => ctx.navigate('#/') });
+  const head = cardHead({ title: t(kind[2]), closeLabel: t('Κλείσιμο'), onClose: () => ctx.navigate('#/') });
   container.replaceChildren(h('div', { class: 'ex-view rp sheet-inset' }, head.el, panel));
 
   return {

@@ -17,21 +17,15 @@
 .rp-input[aria-invalid="true"] { border-color: var(--destructive); }
 .rp-err { color: var(--destructive); font-size: .875rem; line-height: var(--lead-label); letter-spacing: var(--track-label); }
 
-/* category (TEL-252, UI-PROTOCOL U25): one pick-one row of four chips (role radio; js/report-view.js). With the glass
-   lens (css/glass.css, js/glass.js) the row is one glass capsule and the lens is the only pill: capsule 62 px, chips
-   40, 4 px in from its ends, as the trip's options. Without it (no glass, reduced transparency, more contrast):
-   separate solid pills, the chosen one in the primary colour. A long label wraps to two lines, never inside a word. */
-.rp-cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
-.rp-cat {
-  display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 44px; padding: 2px var(--space-1); text-align: center;
-  border: 1px solid var(--input); border-radius: var(--radius-full); background: var(--card); color: var(--muted-foreground);
-  font: inherit; font-size: .875rem; font-weight: var(--weight-semibold); line-height: 1.15; cursor: pointer;
+/* the kinds, for a link that names none (TEL-358): the same rows as the ☰ sub-menu */
+.rp-kinds { display: grid; gap: var(--space-1); }
+.rp-kind {
+  display: flex; align-items: center; gap: var(--space-4); width: 100%; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md);
+  background: none; color: var(--foreground); font: inherit; font-size: var(--text-md); text-align: left; cursor: pointer;
 }
-.rp-cat:hover { background: var(--muted); }
-.rp-cat[aria-checked="true"] { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
-html.glass.glass-fx .rp-catbar { padding-block: 11px; }
-html.glass.glass-fx .rp-cats { gap: 0; padding-inline: 4px; }
-html.glass.glass-fx .rp-cat { min-height: 40px; }
+.rp-kind:hover { background: var(--muted); }
+.rp-kind .icon { flex: none; color: var(--muted-foreground); --icon: 22px; }
+.rp-kind span { flex: 1; min-width: 0; }
 
 /* the diagnostics, exactly as sent */
 .rp .set-sec { margin: 0; }

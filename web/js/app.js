@@ -168,9 +168,25 @@ const menuPop = $('menu-pop');
 let menuPopover;
 
 const THEMES = [['auto', 'layers', N_('Αυτόματο')], ['light', 'sun', N_('Φωτεινό')], ['dark', 'moon', N_('Σκοτεινό')]];
+// TEL-358: the kinds of report, picked in the menu; the kind is the form's title. The values are report.js's CATEGORIES.
+const REPORT_KINDS = [['data', 'alert', N_('Λάθος δεδομένα')], ['app', 'bug', N_('Πρόβλημα εφαρμογής')], ['idea', 'bulb', N_('Πρόταση')], ['other', 'dots', N_('Κάτι άλλο')]];
+let resetMenu = () => {}; // back to the menu's main rows; set by buildMenu, called each time the menu opens
 function buildMenu() {
   const item = (href, ico, label) => h('a', { class: 'pop-item', href: cityHash(href) }, icon(ico), label);
-  menuPop.replaceChildren(
+  // Two faces in the same panel (an iOS sub-menu). The main one is hidden, not removed, so the theme row keeps its lens.
+  const showKinds = (on) => {
+    main.hidden = on;
+    kinds.hidden = !on;
+    if (!on) paintThemeRow(); // a hidden row can't be measured: the lens finds its place again now
+    (on ? backBtn : reportBtn).focus({ preventScroll: true });
+  };
+  const reportBtn = h('button', { type: 'button', class: 'pop-item', 'data-keep': '', onclick: () => showKinds(true) },
+    icon('bug'), h('span', { style: { flex: '1' } }, t('Αναφορά προβλήματος')), icon('chevron'));
+  const backBtn = h('button', { type: 'button', class: 'pop-item', 'data-keep': '', 'aria-label': t('Πίσω στο μενού'), onclick: () => showKinds(false) },
+    icon('chevron-left'), t('Αναφορά'));
+  const kinds = h('div', { class: 'pop-face', hidden: true }, backBtn, h('div', { class: 'pop-sep' }),
+    REPORT_KINDS.map(([kind, ico, label]) => item(`#/report?kind=${kind}`, ico, t(label))));
+  const main = h('div', { class: 'pop-face' },
     // The active city, one tap from the picker in the settings.
     h('a', { class: 'pop-item pop-city', href: cityHash('#/settings') }, icon('pin'),
       h('span', { class: 'pop-city-name' }, cityName(city(), lang())), h('span', { class: 'pop-city-sub' }, t('Αλλαγή πόλης'))),
@@ -184,8 +200,10 @@ function buildMenu() {
     h('div', { class: 'theme-bar', 'data-lens': true },
       h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' })),
     h('div', { class: 'pop-sep' }),
-    item('#/report', 'bug', t('Αναφορά προβλήματος')),
+    reportBtn,
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
+  menuPop.replaceChildren(main, kinds);
+  resetMenu = () => { main.hidden = false; kinds.hidden = true; };
   paintThemeRow();
 }
 // The row is rebuilt on every paint, not only re-marked: a rebuilt row is what moves the lens (js/glass.js). Also on
@@ -591,7 +609,7 @@ function onTap(btn, fn) {
 // ☰ stays the menu while searching (the search closes with its own ✕): it ends the search, then opens the menu
 onTap(menuBtn, (fromKeys) => {
   if (searchOpen) closeSearch(false, true);
-  if (menuPop.hidden) { menuPopover.open(); paintThemeRow(); } // open first: the row is measured for the lens once shown
+  if (menuPop.hidden) { resetMenu(); menuPopover.open(); paintThemeRow(); } // open first: the row is measured for the lens once shown
   else menuPopover.close(fromKeys);
 });
 onTap($('search-close'), (fromKeys) => closeSearch(fromKeys, true));
@@ -992,7 +1010,7 @@ async function route() {
       break;
     case 'report':
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
-      await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx }));
+      await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx, kind: params.kind, kinds: REPORT_KINDS }));
       break;
     case 'place': // TEL-239: set Σπίτι, Δουλειά or a new place in the sheet
       document.title = `${t('Μέρη')} · ${title()}`;

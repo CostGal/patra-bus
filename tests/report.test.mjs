@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cleanText, cleanDiag, validateReport, isHoneypot, collectDiagnostics, buildPayload, sendReport, ReportError, LIMITS } from '../web/js/report.js';
+import { cleanText, cleanDiag, validateReport, isHoneypot, collectDiagnostics, buildPayload, sendReport, ReportError, LIMITS, CATEGORIES } from '../web/js/report.js';
 import { notionPage, forwardReport, takeDailySlot, DAILY_MAX, MAX_REPORT_BYTES } from '../worker/src/report.js';
 import worker from '../worker/src/index.js';
 
@@ -259,14 +259,16 @@ test('/api/report: GET is 404, preflight allows POST + Content-Type', async () =
 });
 
 // ---- wiring in the app ----
-test('app wiring: bug icon in the menu above settings, full-height route, shell files precached and linked', () => {
+test('app wiring: report row in the menu above settings, its four kinds, full-height route, shell files precached and linked', () => {
   const app = read('js/app.js');
-  assert.match(app, /item\('#\/report', 'bug', t\('Αναφορά προβλήματος'\)\)/);
-  assert.ok(app.indexOf("item('#/report'") > app.lastIndexOf("pop-sep") && app.indexOf("item('#/report'") < app.indexOf("item('#/settings'"));
+  assert.ok(app.indexOf('    reportBtn,') > 0 && app.indexOf('    reportBtn,') < app.indexOf("item('#/settings'"));
+  assert.match(app, /item\(`#\/report\?kind=\$\{kind\}`, ico, t\(label\)\)/);
+  const kinds = [...app.match(/REPORT_KINDS = \[(.*)\];/)[1].matchAll(/\['(\w+)', '(\w+)'/g)];
+  assert.deepEqual(kinds.map((k) => k[1]), CATEGORIES);
+  for (const k of kinds) assert.match(read('js/ui.js'), new RegExp(`^\\s*${k[2]}: '`, 'm'));
   assert.match(app, /SNAP = \{[^}]*report: 'full'/);
   assert.match(app, /case 'report':/);
-  assert.match(app, /mountReport\(content, ctx, \{ context: reportCtx \}\)/);
-  assert.match(read('js/ui.js'), /^\s*bug: '/m);
+  assert.match(app, /mountReport\(content, ctx, \{ context: reportCtx, kind: params\.kind, kinds: REPORT_KINDS \}\)/);
   const sw = read('sw.js');
   for (const f of ['js/report.js', 'js/report-view.js', 'js/i18n-en-report.js', 'css/report.css']) assert.ok(sw.includes(`'${f}'`), `${f} missing from SHELL`);
   assert.ok(!sw.includes("'patra-bus-v15'"), 'CACHE must be bumped');
