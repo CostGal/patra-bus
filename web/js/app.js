@@ -364,25 +364,8 @@ let placeCtl = null;
 let places = { q: '', loading: false, results: [], failed: false };
 let sheetBefore = null; // where the sheet was when the search opened (it goes up while the search is open)
 
-// TEL-366 TEMP DEBUG (remove before merge): shows what opened the search
-const dbgLog = [];
-for (const ev of ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click', 'focusin', 'hashchange']) {
-  document.addEventListener(ev, (e) => { dbgLog.push(`${Math.round(performance.now() % 100000)} ${ev} ${e.target?.id || e.target?.className || e.target?.tagName}`); if (dbgLog.length > 10) dbgLog.shift(); }, true);
-}
-const dbgBox = document.createElement('pre');
-dbgBox.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#000c;color:#ff0;font:10px monospace;margin:0;padding:4px;white-space:pre-wrap;pointer-events:none';
-dbgBox.textContent = 'dbg v3 loaded';
-document.body.append(dbgBox);
-function dbgRoute(s) { dbgBox.textContent += `\n${Math.round(performance.now() % 100000)} ${s}`; }
-function dbgShow() {
-  const d = document.createElement('pre');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#000c;color:#0f0;font:10px monospace;margin:0;padding:4px;white-space:pre-wrap;pointer-events:none';
-  d.textContent = `openSearch ${Math.round(performance.now() % 100000)} from ${sheet.state}\n${new Error().stack.split('\n').slice(1, 5).join('\n')}\n${dbgLog.join('\n')}`;
-  document.body.append(d);
-}
 function openSearch() {
   if (searchOpen) return;
-  dbgShow();
   searchOpen = true;
   appEl.classList.add('searching');
   sheetBefore = sheet.state;
@@ -947,13 +930,7 @@ async function route() {
   routeSnap = true;
   sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report'); // no low or mid: down from up goes home (TEL-352)
   if ((currentHead === 'settings' || currentHead === 'report') && !homeParts) import('./home-view.js').then((m) => { homeParts = m; }).catch(() => {});
-  dbgRoute(`route head="${currentHead}" snap=${nextSnap || SNAP[currentHead]} leftUp=${leftUp} swap=${swap} homeParts=${!!homeParts}`);
-  const dbgPos = (w) => dbgRoute(`${w} state=${sheet.state} top=${Math.round(sheet.el.getBoundingClientRect().top)} y=${sheet.el.style.getPropertyValue('--sheet-y')} H=${sheet.el.offsetHeight} iH=${innerHeight} search=${searchOpen}`);
-  dbgPos('before snap');
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted, velocity: carry });
-  dbgPos('after snap');
-  setTimeout(() => dbgPos('+150ms'), 150);
-  setTimeout(() => dbgPos('+1200ms'), 1200);
   routeSnap = false;
   nextSnap = null;
 
@@ -1120,7 +1097,7 @@ async function boot() {
   sheet = createSheet($('sheet'), { onSnap, onMove, follow: [$('menu-btn')] });
   // Settings and Report are "up only": a swipe down (or a tap on the handle) from up opens home at mid in one move
   $('sheet').addEventListener('sheet:leave-menu', (e) => { if (e.detail?.open) showLeaveMenu(); else dropLeaveMenu(); });
-  $('sheet').addEventListener('sheet:leave', (e) => { dbgRoute(`sheet:leave to=${e.detail?.to} homeParts=${!!homeParts}`); e.preventDefault(); showLeaveMenu(); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: 'half' }); });
+  $('sheet').addEventListener('sheet:leave', (e) => { e.preventDefault(); showLeaveMenu(); leftUp = true; leftUpVelocity = e.detail?.velocity || 0; navigate('#/', { snap: 'half' }); });
   buildChrome();
   map = createMap($('map'), { theme: resolveTheme(), attribInto: $('map-attrib'), avoid: { top: ['#menu-btn', '#offline-pill'], right: ['#fabs-bottom'] }, onStopClick, onVehicleClick, onMapClick, onLongPress, onUserMove, onBearing });
   if (!map.available) enterNoMap(map.reason);
