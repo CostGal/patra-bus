@@ -194,7 +194,7 @@ export function addPlaces(map, theme, lang) {
   }, before);
   const { shop, ...rest } = PLACES;
   layer('tel-places', Object.values(rest).flat(), 15); // the app opens at zoom 14: that view stays calm behind the glass sheet
-  layer('tel-places-shop', shop, 16.6); // the most common kind: only when zoomed in, so the city view keeps its variety
+  layer('tel-places-shop', shop, 16.5); // the most common kind: only when zoomed in, so the city view keeps its variety
 }
 
 // The app's language changed: rename the map without reloading it.

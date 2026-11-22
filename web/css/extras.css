@@ -185,3 +185,28 @@ a.atile { text-decoration: none; }
 .ex-info[aria-expanded="true"] { color: var(--primary); }
 
 .bv-more { margin-top: var(--space-3); }
+
+/* Press and hold a stop on the map (TEL-360): the place menu of Apple Maps. Only the panel moves; the glass never fades (U12). */
+.stop-menu { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .5); }
+.stop-menu.closing { background: transparent; pointer-events: none; }
+.stop-menu-panel { position: absolute; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 10px; }
+.stop-menu-card, .stop-menu-list { border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-2), inset 0 0 0 1px color-mix(in srgb, var(--card-foreground) 14%, transparent); }
+.stop-menu-card { background: var(--card); color: var(--card-foreground); }
+.stop-menu-map { position: relative; height: 150px; background: var(--muted); overflow: hidden; }
+.stop-menu-map canvas { display: block; width: 100%; height: 100%; }
+.stop-menu-name { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px 14px; }
+.stop-menu-name strong { font-size: 17px; font-weight: var(--weight-bold); line-height: 1.25; }
+.stop-menu-name > span { font-size: var(--text-sm); color: var(--muted-foreground); }
+.stop-menu-lines { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.stop-menu-lines .badge { display: inline-block; min-width: 2.6em; padding: .2em .55em; border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1.35; text-align: center; }
+.stop-menu-more { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--muted-foreground); }
+.stop-menu-list { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--card); color: var(--card-foreground); }
+html.glass .stop-menu-list { background: color-mix(in srgb, var(--card) 76%, transparent); -webkit-backdrop-filter: blur(9px) saturate(200%); backdrop-filter: blur(9px) saturate(200%); }
+.stop-menu-act { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 10px; border: 0; border-radius: var(--radius-inner); background: none; color: inherit; font: inherit; font-size: 16px; font-weight: 500; text-align: left; cursor: pointer; }
+.stop-menu-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, currentColor 12%, transparent); }
+.stop-menu-ico .icon { width: 18px; height: 18px; }
+.stop-menu-act:active { background: color-mix(in srgb, currentColor 12%, transparent); }
+.stop-menu-act:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  html.glass .stop-menu-list { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
