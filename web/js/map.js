@@ -5,11 +5,10 @@
 import { icon } from './ui.js';
 import { t, onLangChange, lang } from './i18n.js';
 import { city } from './cities.js';
-import { BASE_STYLE, styleFor, addPlaces, setMapLanguage } from './map-style.js';
+import { BASE_STYLE, MAP_FONT, styleFor, addPlaces, setMapLanguage } from './map-style.js';
 import { STOP_LAYERS, FULL_ZOOM, addStopLayers, drawStopPin, setSelectedStopFilter, createSelectedStop, stopBearings } from './map-stops.js';
 import { loadData, loadShapes } from './data.js';
 
-const FONT = ['Noto Sans Regular'];
 const noop = () => {};
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ll = (p) => [p.lng, p.lat];
@@ -148,7 +147,7 @@ export function createMap(container, opts = {}) {
 
   function addStops() {
     const c = palette();
-    addStopLayers(map, stopsFc, theme, selected, { font: FONT, color: c.text, halo: c.halo });
+    addStopLayers(map, stopsFc, theme, selected, { font: MAP_FONT, color: c.text, halo: c.halo });
     showSelected();
   }
 
