@@ -371,7 +371,7 @@ for (const ev of ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click',
 }
 const dbgBox = document.createElement('pre');
 dbgBox.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#000c;color:#ff0;font:10px monospace;margin:0;padding:4px;white-space:pre-wrap;pointer-events:none';
-dbgBox.textContent = 'dbg v2 loaded';
+dbgBox.textContent = 'dbg v3 loaded';
 document.body.append(dbgBox);
 function dbgRoute(s) { dbgBox.textContent += `\n${Math.round(performance.now() % 100000)} ${s}`; }
 function dbgShow() {
@@ -948,7 +948,12 @@ async function route() {
   sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report'); // no low or mid: down from up goes home (TEL-352)
   if ((currentHead === 'settings' || currentHead === 'report') && !homeParts) import('./home-view.js').then((m) => { homeParts = m; }).catch(() => {});
   dbgRoute(`route head="${currentHead}" snap=${nextSnap || SNAP[currentHead]} leftUp=${leftUp} swap=${swap} homeParts=${!!homeParts}`);
+  const dbgPos = (w) => dbgRoute(`${w} state=${sheet.state} top=${Math.round(sheet.el.getBoundingClientRect().top)} y=${sheet.el.style.getPropertyValue('--sheet-y')} H=${sheet.el.offsetHeight} iH=${innerHeight} search=${searchOpen}`);
+  dbgPos('before snap');
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted, velocity: carry });
+  dbgPos('after snap');
+  setTimeout(() => dbgPos('+150ms'), 150);
+  setTimeout(() => dbgPos('+1200ms'), 1200);
   routeSnap = false;
   nextSnap = null;
 
