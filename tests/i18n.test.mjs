@@ -36,7 +36,7 @@ test('starts in Greek for an el browser, <html lang> follows', () => {
 
 test('t() in Greek returns the source and fills {placeholders}', () => {
   assert.equal(t('τώρα'), 'τώρα');
-  assert.equal(t('Φύγε σε {n}′', { n: 6 }), 'Φύγε σε 6′');
+  assert.equal(t('Φύγε σε {n} λεπτά', { n: 6 }), 'Φύγε σε 6 λεπτά');
   assert.equal(t('Γραμμή {code} · {name}', { code: '601', name: 'Άγιος' }), 'Γραμμή 601 · Άγιος');
   assert.equal(t('Περπάτησε {n}′', { n: 0 }), 'Περπάτησε 0′'); // 0 is a value, not "missing"
   assert.equal(t('Περπάτησε {n}′', {}), 'Περπάτησε ′'); // missing var -> empty, never "undefined"
@@ -55,7 +55,7 @@ test('setLang("en") translates, fills placeholders, persists in settings, update
   assert.equal(locale(), 'en-GB');
   assert.equal(getSettings().lang, 'en'); // persisted through store.js
   assert.equal(t('τώρα'), 'now');
-  assert.equal(t('Φύγε σε {n}′', { n: 6 }), 'Leave in 6′');
+  assert.equal(t('Φύγε σε {n} λεπτά', { n: 6 }), 'Leave in 6 minutes');
   assert.equal(t('Στάσεις κοντά: {name}', { name: 'ΠΑΝΕΠΙΣΤΗΜΙΟΥ' }), 'Stops near: ΠΑΝΕΠΙΣΤΗΜΙΟΥ'); // names pass through untouched
   assert.equal(tn(1, '{n} στάση', '{n} στάσεις'), '1 stop');
   assert.equal(tn(3, '{n} στάση', '{n} στάσεις'), '3 stops');

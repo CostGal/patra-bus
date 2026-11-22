@@ -44,7 +44,7 @@ test('pickHero / actionFor: catch, missed, none', () => {
   const mk = (vs, meters = 100) => ({ meters, departures: computeDepartures({ fetchedAt: now, vehicles: vs }, { now, walkSec: 180, bufferSec: 120 }) });
   let h = pickHero([mk([v({ etaSec: 100, vehicleCode: 'a' }), v({ etaSec: 600, vehicleCode: 'b' })])]);
   assert.equal(h.kind, 'catch'); assert.equal(h.dep.v.vehicleCode, 'b'); assert.equal(h.earlierMissed.v.vehicleCode, 'a');
-  assert.deepEqual([actionFor(h.dep).cat, actionFor(h.dep).text], ['go', 'Φύγε σε 5′']);
+  assert.deepEqual([actionFor(h.dep).cat, actionFor(h.dep).text], ['go', 'Φύγε σε 5 λεπτά']);
   h = pickHero([mk([v({ etaSec: 340, vehicleCode: 'c' })])]);
   assert.equal(actionFor(h.dep).text, 'Φύγε τώρα');
   h = pickHero([mk([v({ etaSec: 100, vehicleCode: 'a' }), v({ etaSec: 150, vehicleCode: 'b' })])]);

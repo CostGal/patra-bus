@@ -106,8 +106,25 @@
 .atile-live .atile-flag { border-color: var(--live); background: var(--live); color: var(--live-foreground); }
 .atile-flag .icon { width: 13px; height: 13px; stroke-width: 2.4; }
 .atile-clock { margin-left: 2px; font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; }
-.atile-usual { color: var(--muted-foreground); font-size: var(--text-sm); font-weight: 400; }
+/* TEL-254: the usual delay is a small mark on the ΠΡΟΓΡ. flag. A tap opens it in place into its sentence, over the flag,
+   so the tile never changes height. Late = warning, early = primary, on time = grey: green stays for LIVE only.
+   js/arrivals-view.js moves the open pill (transform) so it stays between the line badge and the countdown. */
+.atile-sched { isolation: isolate; } /* the mark stays under the sticky line chips */
+.atile-sched .atile-flag { position: relative; margin-right: 22px; }
+.atile-usual { --c: var(--muted-foreground); --t: var(--card); position: absolute; z-index: 2; top: calc(50% - 14px); left: calc(100% - 8px); display: block; padding: 0; border: 0; border-radius: var(--radius-full); background: none; color: inherit; font: inherit; letter-spacing: 0; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: none; } /* the spring moves it, nothing else */
 .atile-usual[hidden] { display: none; }
+.atile-usual[data-kind="late"] { --c: var(--warning); }
+.atile-usual[data-kind="early"] { --c: var(--primary); --t: var(--primary-foreground); }
+.atile-usual::after { content: ''; position: absolute; inset: -8px; border-radius: var(--radius-full); } /* 44 px to tap, and round */
+/* The pill is laid out at its final width; --usual-cut (set by the spring) hides its right part, so nothing reflows. */
+.atile-usual-pill { position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 28px; height: 28px; white-space: nowrap; background: var(--card); color: var(--t); font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1; font-variant-numeric: tabular-nums; clip-path: inset(0 var(--usual-cut, 0px) 0 0 round 14px); }
+.atile-usual-pill::before { content: ''; position: absolute; inset: 1.5px; border-radius: 12.5px; background: var(--c); clip-path: inset(0 var(--usual-cut, 0px) 0 0 round 12.5px); }
+.atile-usual-short, .atile-usual-long { position: relative; }
+.atile-usual-long { display: none; }
+.atile-usual.unfold .atile-usual-pill { width: max-content; min-width: 28px; padding: 0 10px; font-weight: 600; }
+.atile-usual.unfold .atile-usual-short { position: absolute; top: 0; left: 0; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; font-weight: var(--weight-bold); }
+.atile-usual.unfold .atile-usual-long { display: inline; }
+.atile-usual:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .atile-eta { text-align: right; }
 .atile-num { display: block; min-width: 3.4ch; font-size: var(--text-2xl); font-weight: var(--weight-bold); line-height: 1; letter-spacing: var(--track-display); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--scheduled); }
 .atile-live .atile-num { color: var(--live); }

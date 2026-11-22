@@ -58,7 +58,6 @@ html.glass .su-choice.g-press::before { opacity: 1; transition-duration: .12s; }
 .su-eg { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); text-align: start; }
 .su-eg .atile { pointer-events: none; }
 .su-cap { margin: 0; font-size: var(--text-sm); }
-.su-units { margin-bottom: var(--space-2); font-size: var(--text-sm); }
 
 /* footer: one full-width button (the kit's .g-pill), no divider line (DESIGN §4) */
 .su-foot { display: flex; flex: none; padding-top: var(--space-4); }

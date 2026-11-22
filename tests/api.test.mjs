@@ -2,7 +2,7 @@ import { test, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  fetchLive, fetchStats, usualDelayText, remainingSec, createLivePoller, ApiError, lastAttemptAt, _setTransport,
+  fetchLive, fetchStats, usualDelay, remainingSec, createLivePoller, ApiError, lastAttemptAt, _setTransport,
   MIN_GAP_MS, POLL_MS, API_BASE,
 } from '../web/js/api.js';
 import { _setDemoData } from '../web/js/demo.js';
@@ -520,12 +520,13 @@ test('fetchStats: demo mode is deterministic, offline, and has data for most rou
   assert.ok(have.some((x) => x.medianDelaySec >= 60) && have.some((x) => x.medianDelaySec === 0));
 });
 
-test('usualDelayText: only with at least 10 samples', () => {
-  assert.equal(usualDelayText(null), '');
-  assert.equal(usualDelayText({ samples: 9, medianDelaySec: 180 }), '');
-  assert.equal(usualDelayText({ samples: 10, medianDelaySec: 180 }), 'συνήθως +3′');
-  assert.equal(usualDelayText({ samples: 40, medianDelaySec: 20 }), 'συνήθως στην ώρα του');
-  assert.equal(usualDelayText({ samples: 40, medianDelaySec: -130 }), 'συνήθως −2′');
+test('usualDelay: a mark and its sentence, only with at least 10 samples', () => {
+  assert.equal(usualDelay(null), null);
+  assert.equal(usualDelay({ samples: 9, medianDelaySec: 180 }), null);
+  assert.deepEqual(usualDelay({ samples: 10, medianDelaySec: 180 }), { kind: 'late', short: '+3', text: 'Συνήθως αργεί 3 λεπτά', tight: 'Αργεί 3 λεπτά' });
+  assert.deepEqual(usualDelay({ samples: 10, medianDelaySec: 60 }), { kind: 'late', short: '+1', text: 'Συνήθως αργεί 1 λεπτό', tight: 'Αργεί 1 λεπτό' });
+  assert.deepEqual(usualDelay({ samples: 40, medianDelaySec: 20 }), { kind: 'on', short: '✓', text: 'Συνήθως στην ώρα του', tight: 'Στην ώρα του' });
+  assert.deepEqual(usualDelay({ samples: 40, medianDelaySec: -130 }), { kind: 'early', short: '−2', text: 'Συνήθως 2 λεπτά νωρίς', tight: '2 λεπτά νωρίς' });
 });
 
 test('isStale: only data older than STALE_MS is stale (TEL-52)', async () => {

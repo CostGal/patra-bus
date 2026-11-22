@@ -7,7 +7,6 @@ export const PAIRS = [
   ['Αλλάζουν οι στάσεις, οι γραμμές και ο χάρτης. Την αλλάζεις όποτε θέλεις από τις Ρυθμίσεις.', 'This sets the stops, lines and map. You can change it any time in Settings.'],
   ['LIVE ή ΠΡΟΓΡ.;', 'LIVE or SCHED.?'],
   ['Κάθε άφιξη είναι ένα από τα δύο:', 'Every arrival is one of the two:'],
-  ['′ = λεπτά, ″ = δευτερόλεπτα', '′ = minutes, ″ = seconds'],
   ['Παράδειγμα: γραμμή {line}, ζωντανή άφιξη σε {n} λεπτά.', 'Example: line {line}, live arrival in {n} minutes.'],
   ['Παράδειγμα: γραμμή {line}, προγραμματισμένη άφιξη στις {clock}.', 'Example: line {line}, scheduled arrival at {clock}.'],
   ['Κέντρο', 'Centre'],

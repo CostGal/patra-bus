@@ -4,7 +4,7 @@
 // (success or failure) plus in-flight dedupe.
 import { isLive, noServiceResult, normalizeLive } from './arrivals.js';
 import { demoLive, demoReady } from './demo.js';
-import { t } from './i18n.js';
+import { t, tn } from './i18n.js';
 import { cityId } from './cities.js';
 import { readableLine } from './color.js';
 import { inArea } from './geo.js';
@@ -316,10 +316,13 @@ export function fetchStats(routeCode, stopCode) {
   return p;
 }
 
-// Quiet secondary line for a scheduled arrival, or '' without enough history.
-export function usualDelayText(stat) {
-  if (!stat || !(stat.samples >= STATS_MIN_SAMPLES) || !Number.isFinite(stat.medianDelaySec)) return '';
+// The usual delay of a scheduled arrival (TEL-254): { kind: late|early|on, short: the mark "+4", text: the sentence it
+// opens into, tight: the same in fewer words for a narrow phone }, or null without enough history.
+export function usualDelay(stat) {
+  if (!stat || !(stat.samples >= STATS_MIN_SAMPLES) || !Number.isFinite(stat.medianDelaySec)) return null;
   const m = Math.round(stat.medianDelaySec / 60);
-  if (m === 0) return t('συνήθως στην ώρα του');
-  return m > 0 ? t('συνήθως +{n}′', { n: m }) : t('συνήθως −{n}′', { n: -m });
+  if (m === 0) return { kind: 'on', short: '✓', text: t('Συνήθως στην ώρα του'), tight: t('Στην ώρα του') };
+  return m > 0
+    ? { kind: 'late', short: `+${m}`, text: tn(m, 'Συνήθως αργεί {n} λεπτό', 'Συνήθως αργεί {n} λεπτά'), tight: tn(m, 'Αργεί {n} λεπτό', 'Αργεί {n} λεπτά') }
+    : { kind: 'early', short: `−${-m}`, text: tn(-m, 'Συνήθως {n} λεπτό νωρίς', 'Συνήθως {n} λεπτά νωρίς'), tight: tn(-m, '{n} λεπτό νωρίς', '{n} λεπτά νωρίς') };
 }

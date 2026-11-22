@@ -59,8 +59,8 @@ const walkOnly = (seconds = 720, source = 'osrm') => ({
 const allTimes = (m) => [m.chip.total, ...m.steps.map((s) => s.time)].filter(Boolean);
 
 // ---- title ----
-test('title: later → «Φύγε σε N′», now and run → «Φύγε τώρα», none and missed → «Χωρίς δρομολόγιο τώρα», walk → «Με τα πόδια N′»', () => {
-  assert.equal(tripModel(direct(), NOW).title.text, 'Φύγε σε 4′');
+test('title: later → «Φύγε σε N λεπτά», now and run → «Φύγε τώρα», none and missed → «Χωρίς δρομολόγιο τώρα», walk → «Με τα πόδια N′»', () => {
+  assert.equal(tripModel(direct(), NOW).title.text, 'Φύγε σε 4 λεπτά');
   assert.equal(tripModel(direct(), NOW + 200 * 1000).title.kind, 'now'); // leave in 40 s
   assert.equal(tripModel(direct(), NOW + 200 * 1000).title.text, 'Φύγε τώρα');
   assert.equal(tripModel(direct(), NOW + 300 * 1000).title.kind, 'run'); // 1′ late, the bus still reachable
@@ -80,7 +80,7 @@ test('the title never has ~, even when everything else is an estimate', () => {
 });
 
 test('scheduled first bus also gives the countdown', () => {
-  assert.equal(tripModel(direct({ leaveSource: 'scheduled' }, { departSource: 'scheduled' }), NOW).title.text, 'Φύγε σε 4′');
+  assert.equal(tripModel(direct({ leaveSource: 'scheduled' }, { departSource: 'scheduled' }), NOW).title.text, 'Φύγε σε 4 λεπτά');
 });
 
 // ---- the estimate rule (TEL-294: the view draws an orange (*) mark from the source; no ~ in any text) ----
@@ -113,7 +113,7 @@ test('ΕΚΤΙΜ. and the estimate source also in English', () => {
   setLang('en');
   try {
     const m = tripModel(transfer(), NOW, 'Home');
-    assert.equal(m.title.text, 'Leave in 4′');
+    assert.equal(m.title.text, 'Leave in 4 min');
     const second = m.steps.filter((s) => s.kind === 'bus')[1];
     assert.equal(second.flag, 'estimated');
     assert.equal(second.time.source, 'estimated');

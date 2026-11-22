@@ -19,7 +19,7 @@ test('stale data: LIVE tiles age out one by one, the list is not greyed', async 
   await expect(live).toBeVisible();
   await expect(live).toHaveClass(/\batile-aged\b/);
   await expect(live.locator('.atile-flag')).toContainText('LIVE');
-  await expect(live.locator('.atile-age')).toHaveText(/^(\d+″|\d+′)\s*ago$|^πριν/);
+  await expect(live.locator('.atile-age')).toHaveText(/^\d+ (sec|min) ago$|^πριν/);
   const l = await look(live);
   expect(l.pulse, 'no pulsing dot once aged').toBe('none');
   // it no longer looks like a fresh LIVE tile: neutral stripe, neutral countdown, no solid fill
