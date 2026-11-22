@@ -6,7 +6,7 @@ import { icon } from './ui.js';
 import { t, onLangChange, lang } from './i18n.js';
 import { city } from './cities.js';
 import { BASE_STYLE, styleFor, addPlaces, setMapLanguage } from './map-style.js';
-import { STOP_LAYERS, FULL_ZOOM, addStopLayers, setSelectedStopFilter, createSelectedStop, stopBearings } from './map-stops.js';
+import { STOP_LAYERS, FULL_ZOOM, addStopLayers, drawStopPin, setSelectedStopFilter, createSelectedStop, stopBearings } from './map-stops.js';
 import { loadData, loadShapes } from './data.js';
 
 const FONT = ['Noto Sans Regular'];
@@ -711,29 +711,45 @@ export function createMap(container, opts = {}) {
 
     getZoom: () => (tapFocus ? Math.max(tapFocus.zoom, TAP_ZOOM) : map.getZoom()), // after a tap: never fit a bus by zooming out
 
-    // A picture of the map around a stop, for the hold menu: { canvas, x, y } (the stop's place in it, 0..1), or null.
+    // A picture of the map around a stop with the stop drawn on it, for the hold menu: { canvas, screen }, or null.
     stopPicture(code, w, h) {
       const p = stopPoint(code);
       if (!p) return Promise.resolve(null);
-      return new Promise((done) => {
-        const timer = setTimeout(() => { map.off('render', draw); done(null); }, 400);
-        function draw() {
-          clearTimeout(timer);
-          map.off('render', draw);
+      const f = stopsFc.features.find((x) => x.properties.code === code);
+      const arrow = f?.properties.bearing != null && map.getZoom() >= FULL_ZOOM ? f.properties.bearing - map.getBearing() : null;
+      const shot = () => new Promise((done) => {
+        function finish(withMap) {
           const src = map.getCanvas();
           const k = src.width / src.clientWidth;
           const pt = map.project([p.lng, p.lat]);
           const left = Math.max(0, Math.min(src.clientWidth - w, pt.x - w / 2));
-          const top = Math.max(0, Math.min(src.clientHeight - h, pt.y - h / 2));
+          const top = Math.max(0, Math.min(src.clientHeight - h, pt.y - h / 2 - 26)); // the icon stands above the spot
           const canvas = document.createElement('canvas');
           canvas.width = Math.round(w * k);
           canvas.height = Math.round(h * k);
-          canvas.getContext('2d').drawImage(src, left * k, top * k, w * k, h * k, 0, 0, canvas.width, canvas.height);
+          const x = canvas.getContext('2d');
+          if (withMap) x.drawImage(src, left * k, top * k, w * k, h * k, 0, 0, canvas.width, canvas.height);
+          x.scale(k, k);
+          drawStopPin(x, Math.max(30, Math.min(w - 30, pt.x - left)), Math.max(72, Math.min(h - 12, pt.y - top)), theme, arrow);
           const r = container.getBoundingClientRect();
-          done({ canvas, x: (pt.x - left) / w, y: (pt.y - top) / h, screen: { x: r.left + pt.x, y: r.top + pt.y } });
+          done({ canvas, screen: { x: r.left + pt.x, y: r.top + pt.y } });
+        }
+        const timer = setTimeout(() => { map.off('render', draw); finish(false); }, 400);
+        function draw() {
+          clearTimeout(timer);
+          map.off('render', draw);
+          finish(true);
         }
         map.on('render', draw);
         map.triggerRepaint();
+      });
+      // The stop's small icon leaves the map for the picture, so only the big one shows; then it comes back.
+      setSelectedStopFilter(map, code);
+      const hidden = new Promise((go) => { map.once('idle', go); setTimeout(go, 320); });
+      map.triggerRepaint();
+      return hidden.then(shot).then((picture) => {
+        setSelectedStopFilter(map, selected);
+        return picture;
       });
     },
 

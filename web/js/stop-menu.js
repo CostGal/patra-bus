@@ -1,12 +1,13 @@
 // Press and hold a stop on the map (TEL-360): the map dims and a small card with the actions rises from the stop, as the
 // place menu of Apple Maps. The little map is a picture of what is already on screen: no request to anyone.
-import { h, icon, toast } from './ui.js';
+import { h, icon, toast, lineBadge } from './ui.js';
 import { t } from './i18n.js';
 import { shareHash } from './route.js';
 import { shareLink } from './share.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const EDGE = 16;
+const MAX_LINES = 6;
 const IGNORE_RELEASE_MS = 350; // the finger that opened the menu is still lifting: that is not a tap outside it
 
 async function shareStop(stop) {
@@ -22,8 +23,8 @@ async function shareStop(stop) {
 
 let closeOpen = null;
 
-// `at`: the stop on screen ({ x, y }). `picture`: { canvas, x, y } from the map, or null.
-export function openStopMenu({ stop, at, picture, navigate }) {
+// `at`: the stop on screen ({ x, y }). `picture`: { canvas } from the map, with the stop drawn on it, or null.
+export function openStopMenu({ stop, lines = [], at, picture, navigate }) {
   closeOpen?.();
   const before = document.activeElement;
   const openedAt = performance.now();
@@ -32,15 +33,18 @@ export function openStopMenu({ stop, at, picture, navigate }) {
   const action = (name, label, run) => h('button', {
     type: 'button', class: 'stop-menu-act', role: 'menuitem',
     onclick: () => { close(); run(); },
-  }, icon(name), h('span', {}, label));
+  }, h('span', { class: 'stop-menu-ico' }, icon(name)), h('span', {}, label));
 
   const mapBox = h('div', { class: 'stop-menu-map' });
   if (picture) {
     picture.canvas.setAttribute('aria-hidden', 'true');
-    mapBox.append(picture.canvas, h('span', { class: 'stop-menu-dot', style: `left:${picture.x * 100}%;top:${picture.y * 100}%` }));
+    mapBox.append(picture.canvas);
   }
+  const pills = lines.slice(0, MAX_LINES).map(lineBadge);
+  if (lines.length > MAX_LINES) pills.push(h('span', { class: 'stop-menu-more' }, `+${lines.length - MAX_LINES}`));
   const card = h('div', { class: 'stop-menu-card' }, mapBox,
-    h('div', { class: 'stop-menu-name' }, h('strong', {}, stop.displayName), h('span', {}, t('Στάση {code}', { code: stop.code }))));
+    h('div', { class: 'stop-menu-name' }, h('strong', {}, stop.displayName), h('span', {}, t('Στάση {code}', { code: stop.code })),
+      pills.length ? h('div', { class: 'stop-menu-lines' }, ...pills) : null));
   const list = h('div', { class: 'stop-menu-list', role: 'menu' },
     action('walk', t('Οδηγίες ως εδώ'), () => navigate(`#/trip?stop=${encodeURIComponent(stop.code)}`)),
     action('share', t('Κοινοποίηση'), () => shareStop(stop)));
@@ -66,9 +70,9 @@ export function openStopMenu({ stop, at, picture, navigate }) {
   document.addEventListener('keydown', onKey);
   document.body.append(root);
 
-  // Next to the stop, always whole on the screen.
+  // Centred across, at the stop's height, always whole on the screen.
   const r = panel.getBoundingClientRect();
-  const left = Math.max(EDGE, Math.min(innerWidth - r.width - EDGE, at.x - r.width / 2));
+  const left = Math.max(EDGE, (innerWidth - r.width) / 2);
   const top = Math.max(EDGE, Math.min(innerHeight - r.height - EDGE, at.y - r.height * 0.3));
   Object.assign(panel.style, { left: `${left}px`, top: `${top}px`, transformOrigin: `${at.x - left}px ${at.y - top}px` });
   list.querySelector('button')?.focus({ preventScroll: true });

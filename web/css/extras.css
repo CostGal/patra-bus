@@ -187,21 +187,24 @@ a.atile { text-decoration: none; }
 .bv-more { margin-top: var(--space-3); }
 
 /* Press and hold a stop on the map (TEL-360): the place menu of Apple Maps. Only the panel moves; the glass never fades (U12). */
-.stop-menu { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .42); }
+.stop-menu { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .5); }
 .stop-menu.closing { background: transparent; pointer-events: none; }
-.stop-menu-panel { position: absolute; width: min(280px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 12px; }
-.stop-menu-card, .stop-menu-list { border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-2); }
+.stop-menu-panel { position: absolute; width: min(300px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 10px; }
+.stop-menu-card, .stop-menu-list { border-radius: var(--radius-card); overflow: hidden; box-shadow: var(--shadow-2), inset 0 0 0 1px color-mix(in srgb, var(--card-foreground) 14%, transparent); }
 .stop-menu-card { background: var(--card); color: var(--card-foreground); }
-.stop-menu-map { position: relative; height: 150px; background: var(--border); overflow: hidden; }
-.stop-menu-map canvas { display: block; width: 100%; height: 100%; object-fit: cover; }
-.stop-menu-dot { position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 14px; border: 3px solid #fff6e3; box-sizing: border-box; box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); }
-.stop-menu-name { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px 12px; }
-.stop-menu-name strong { font-size: 15px; font-weight: 600; line-height: 1.25; }
-.stop-menu-name span { font-size: 13px; color: var(--muted-foreground, inherit); }
-.stop-menu-list { display: flex; flex-direction: column; background: var(--card); color: var(--card-foreground); padding: 6px 0; }
-html.glass .stop-menu-list { background: color-mix(in srgb, var(--card) 72%, transparent); -webkit-backdrop-filter: blur(9px) saturate(200%); backdrop-filter: blur(9px) saturate(200%); }
-.stop-menu-act { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 16px; border: 0; background: none; color: inherit; font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
-.stop-menu-act svg { width: 20px; height: 20px; flex: none; }
+.stop-menu-map { position: relative; height: 150px; background: var(--muted); overflow: hidden; }
+.stop-menu-map canvas { display: block; width: 100%; height: 100%; }
+.stop-menu-name { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px 14px; }
+.stop-menu-name strong { font-size: 17px; font-weight: var(--weight-bold); line-height: 1.25; }
+.stop-menu-name > span { font-size: var(--text-sm); color: var(--muted-foreground); }
+.stop-menu-lines { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.stop-menu-lines .badge { display: inline-block; min-width: 2.6em; padding: .2em .55em; border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1.35; text-align: center; }
+.stop-menu-more { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--muted-foreground); }
+.stop-menu-list { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--card); color: var(--card-foreground); }
+html.glass .stop-menu-list { background: color-mix(in srgb, var(--card) 76%, transparent); -webkit-backdrop-filter: blur(9px) saturate(200%); backdrop-filter: blur(9px) saturate(200%); }
+.stop-menu-act { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 10px; border: 0; border-radius: var(--radius-inner); background: none; color: inherit; font: inherit; font-size: 16px; font-weight: 500; text-align: left; cursor: pointer; }
+.stop-menu-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: color-mix(in srgb, currentColor 12%, transparent); }
+.stop-menu-ico .icon { width: 18px; height: 18px; }
 .stop-menu-act:active { background: color-mix(in srgb, currentColor 12%, transparent); }
 .stop-menu-act:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {

@@ -143,6 +143,38 @@ function arrowCanvas(theme) {
   return canvas;
 }
 
+// The stop drawn big on a picture of the map (the hold menu): icon above the spot, tip, dot and direction arrow.
+export function drawStopPin(x, px, py, theme, arrowDeg = null) {
+  const c = colorsFor(theme);
+  const size = 54;
+  const tip = 12;
+  x.save();
+  x.translate(px, py);
+  x.fillStyle = c.fill;
+  x.beginPath();
+  x.moveTo(-8, -tip - 3);
+  x.lineTo(8, -tip - 3);
+  x.lineTo(0, -3);
+  x.closePath();
+  x.fill();
+  x.save();
+  x.translate(-size / 2, -tip - size);
+  drawStop(x, size, c, false);
+  x.restore();
+  x.beginPath();
+  x.arc(0, 0, 5.5, 0, Math.PI * 2);
+  x.fillStyle = c.fill;
+  x.fill();
+  x.lineWidth = 2.5;
+  x.strokeStyle = c.bus;
+  x.stroke();
+  if (arrowDeg != null) {
+    x.rotate(arrowDeg * DEG);
+    x.drawImage(arrowCanvas(theme), -7, -19, 14, 10);
+  }
+  x.restore();
+}
+
 function putImage(map, name, canvas) {
   if (map.hasImage(name)) map.removeImage(name);
   map.addImage(name, canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height), { pixelRatio: 2 });

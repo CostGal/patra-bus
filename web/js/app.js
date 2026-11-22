@@ -1043,8 +1043,9 @@ function onStopClick(code) { navigate(`#/stop/${encodeURIComponent(code)}`); }
 async function onStopHold(code) {
   const stop = data?.stopByCode.get(code);
   if (!stop) return;
-  const [{ openStopMenu }, picture] = await Promise.all([import('./stop-menu.js'), map.stopPicture(code, 280, 150)]);
-  openStopMenu({ stop, at: picture?.screen ?? { x: innerWidth / 2, y: innerHeight / 3 }, picture, navigate });
+  const [{ openStopMenu }, picture] = await Promise.all([import('./stop-menu.js'), map.stopPicture(code, Math.min(300, innerWidth - 32), 150)]);
+  const lines = stop.lineCodes.map((c) => data.lineByCode.get(c)).filter(Boolean);
+  openStopMenu({ stop, lines, at: picture?.screen ?? { x: innerWidth / 2, y: innerHeight / 3 }, picture, navigate });
 }
 // A tapped live bus marker (carries vehicleCode + routeCode + stopCode): open its route and timeline.
 function onVehicleClick(v) {
