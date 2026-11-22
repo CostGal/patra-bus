@@ -192,6 +192,7 @@ export function createMap(container, opts = {}) {
   // The stop under a tap: the nearest drawn icon within a finger's reach, or the tapped stop itself.
   function stopAt(point) {
     if (!styleReady || !map.getLayer(STOP_LAYERS[0])) return null;
+    if (selectedStop.hit(point)) return selectedStop.code();
     const R = 20;
     const hits = map.queryRenderedFeatures([[point.x - R, point.y - R], [point.x + R, point.y + R]], { layers: STOP_LAYERS });
     let code = null;
@@ -201,12 +202,36 @@ export function createMap(container, opts = {}) {
       const d = (p.x - point.x) ** 2 + (p.y - point.y) ** 2;
       if (d < bd) { bd = d; code = String(f.properties.code); }
     }
-    const own = selectedStop.position();
-    if (own) {
-      const p = map.project(own);
-      if ((p.x - point.x) ** 2 + (p.y - point.y) ** 2 < bd) code = selectedStop.code();
-    }
     return code;
+  }
+
+  // Tapping a stop (TEL-360): 1st close enough to see its direction, 2nd closer, 3rd back to the zoom you started from.
+  let tapFocus = null; // { code, start, step, zoom }
+  const TAP_ZOOM = FULL_ZOOM + 0.5;
+  const TAP_MORE = 1.5;
+  const TAP_MAX = 19;
+  const stopPoint = (code) => {
+    const f = stopsFc.features.find((x) => x.properties.code === code);
+    return f ? { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] } : null;
+  };
+  function tapStop(code) {
+    const now = map.getZoom();
+    if (tapFocus?.code !== code) {
+      const open = code === selected; // already open (from a list or a link): the route will not run again
+      tapFocus = { code, start: now, step: 1, zoom: Math.max(now, TAP_ZOOM) };
+      if (open) api.flyTo(stopPoint(code));
+      else onStopClick(code);
+      return;
+    }
+    if (tapFocus.step === 1) {
+      tapFocus.step = 2;
+      tapFocus.zoom = Math.min(now + TAP_MORE, TAP_MAX);
+      api.flyTo(stopPoint(code));
+      return;
+    }
+    const back = tapFocus.start;
+    tapFocus = null;
+    api.flyTo(stopPoint(code), back);
   }
 
   const userAcc = { type: 'FeatureCollection', features: [] };
@@ -288,7 +313,7 @@ export function createMap(container, opts = {}) {
   map.on('click', (e) => {
     if (Date.now() < suppressClickUntil) return;
     const code = stopAt(e.point);
-    if (code != null) { onStopClick(code); return; }
+    if (code != null) { tapStop(code); return; }
     onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
   map.on('mousemove', (e) => {
@@ -528,6 +553,7 @@ export function createMap(container, opts = {}) {
       for (const id of [...markerSets.keys()]) api.clearMarkers(id);
       for (const id of [...vehicleSets.keys()]) api.clearVehicles(id);
       api.highlightStop(null);
+      tapFocus = null;
       bearings = null;
       bearingsFor = null;
       api.setStops(stops);
@@ -536,7 +562,9 @@ export function createMap(container, opts = {}) {
     },
 
     highlightStop(code) {
-      selected = code == null ? null : String(code);
+      const next = code == null ? null : String(code);
+      if (tapFocus && (next != null ? next !== tapFocus.code : selected === tapFocus.code)) tapFocus = null;
+      selected = next;
       if (styleReady) setSelectedStopFilter(map, selected);
       showSelected();
     },
@@ -630,12 +658,14 @@ export function createMap(container, opts = {}) {
       markerSets.delete(id);
     },
 
-    getZoom: () => map.getZoom(),
+    getZoom: () => tapFocus?.zoom ?? map.getZoom(), // where the camera is heading after a tap
 
     flyTo(p, zoom) {
       if (!okPoint(p)) return;
       lastFit = null;
-      const z = zoom ?? Math.max(map.getZoom(), 16);
+      const tapped = tapFocus && stopPoint(tapFocus.code);
+      const onTapped = tapped && tapped.lat === p.lat && tapped.lng === p.lng;
+      const z = onTapped ? tapFocus.zoom : zoom ?? Math.max(map.getZoom(), 16);
       const far = metersBetween(api.getCenter(), p) > 4000;
       const o = { center: ll(p), zoom: z, padding: safePadding(), essential: false };
       if (far) map.flyTo({ ...o, speed: 1.4 });

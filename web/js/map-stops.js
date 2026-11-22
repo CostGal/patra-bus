@@ -203,17 +203,30 @@ export function setSelectedStopFilter(map, code) {
   if (map.getLayer(ARROW_LAYER)) map.setFilter(ARROW_LAYER, ['all', ['has', 'bearing'], filter]);
 }
 
-// ---------- the tapped stop: the icon grows with a bounce, and shrinks back when it closes ----------
-const GROW = 1.38;
+// ---------- the tapped stop: a big icon rises from the stop with a bounce (like Apple Maps) ----------
+// The dot and the arrow stay on the real spot; the icon stands above it, so the stop across the road stays visible.
+const PIN = 64;
+const STEM = 9;
+const LIFT = STEM + 3;
 
 export function createSelectedStop(map, reduced) {
   const root = document.createElement('div');
-  root.style.pointerEvents = 'none';
-  const body = document.createElement('div');
-  body.style.position = 'relative';
+  Object.assign(root.style, { width: '0', height: '0', pointerEvents: 'none' });
+  const lift = document.createElement('div');
+  Object.assign(lift.style, {
+    position: 'absolute', left: `${-PIN / 2}px`, bottom: `${LIFT}px`, width: `${PIN}px`, height: `${PIN}px`,
+    transformOrigin: `50% calc(100% + ${LIFT}px)`,
+  });
+  const stem = document.createElement('div');
+  Object.assign(stem.style, {
+    position: 'absolute', left: '50%', top: 'calc(100% - 2px)', marginLeft: '-8px', width: '0', height: '0',
+    borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: `${STEM + 2}px solid`,
+  });
+  const dot = document.createElement('div');
+  Object.assign(dot.style, { position: 'absolute', left: '-6px', top: '-6px', width: '12px', height: '12px', borderRadius: '50%', boxSizing: 'border-box', borderWidth: '2.5px', borderStyle: 'solid' });
   const arrow = document.createElement('canvas');
-  Object.assign(arrow.style, { position: 'absolute', left: '50%', top: '50%', width: '14px', height: '10px', margin: '-5px 0 0 -7px' });
-  root.append(body);
+  Object.assign(arrow.style, { position: 'absolute', left: '-7px', top: '-5px', width: '14px', height: '10px' });
+  root.append(dot, arrow, lift);
   const marker = new maplibregl.Marker({ element: root, anchor: 'center' });
   let current = null;
   let on = false;
@@ -221,11 +234,9 @@ export function createSelectedStop(map, reduced) {
 
   function sync() {
     if (!current) return;
-    const px = Math.round(stopIconPx(map.getZoom()) * GROW);
-    body.style.width = body.style.height = `${px}px`;
     const showArrow = current.bearing != null && map.getZoom() >= FULL_ZOOM;
     arrow.style.display = showArrow ? '' : 'none';
-    if (showArrow) arrow.style.transform = `rotate(${current.bearing - map.getBearing()}deg) translateY(${-(px / 2 + 8)}px)`;
+    if (showArrow) arrow.style.transform = `rotate(${current.bearing - map.getBearing()}deg) translateY(-14px)`;
   }
   map.on('zoom', sync);
   map.on('rotate', sync);
@@ -236,20 +247,28 @@ export function createSelectedStop(map, reduced) {
       closing?.cancel();
       closing = null;
       current = stop;
-      const icon = stopCanvas(theme, false, 96);
+      const c = colorsFor(theme);
+      const icon = stopCanvas(theme, false, PIN * 3);
       Object.assign(icon.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
+      stem.style.borderTopColor = c.fill;
+      dot.style.background = c.fill;
+      dot.style.borderColor = c.bus;
       const a = arrowCanvas(theme);
       arrow.width = a.width;
       arrow.height = a.height;
       arrow.getContext('2d').drawImage(a, 0, 0);
-      body.replaceChildren(icon, arrow);
+      lift.replaceChildren(stem, icon);
       marker.setLngLat([stop.lng, stop.lat]);
       if (!on) { marker.addTo(map); on = true; }
       sync();
       if (!same && !reduced()) {
-        body.animate([
-          { transform: 'scale(.72)' }, { transform: 'scale(1.14)', offset: 0.5 }, { transform: 'scale(.97)', offset: 0.78 }, { transform: 'scale(1)' },
-        ], { duration: 400, easing: 'ease-out' });
+        lift.animate([
+          { transform: 'scale(.22) rotate(0deg)' },
+          { transform: 'scale(1.12) rotate(-7deg)', offset: 0.36 },
+          { transform: 'scale(.97) rotate(4deg)', offset: 0.6 },
+          { transform: 'scale(1.01) rotate(-1.5deg)', offset: 0.82 },
+          { transform: 'scale(1) rotate(0deg)' },
+        ], { duration: 640, easing: 'ease-out' });
       }
     },
     hide() {
@@ -257,10 +276,17 @@ export function createSelectedStop(map, reduced) {
       current = null;
       on = false;
       if (reduced()) { marker.remove(); return; }
-      closing = body.animate([{ transform: 'scale(1)' }, { transform: 'scale(.72)', opacity: 0 }], { duration: 170, easing: 'ease-in', fill: 'forwards' });
+      closing = lift.animate([{ transform: 'scale(1)' }, { transform: 'scale(.22)', opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
       closing.onfinish = () => { closing?.cancel(); closing = null; if (!on) marker.remove(); };
     },
-    position: () => (on && current ? [current.lng, current.lat] : null),
+    // Is this screen point on the big icon or on the spot under it?
+    hit(point) {
+      if (!on || !current) return false;
+      const p = map.project([current.lng, current.lat]);
+      const dx = Math.abs(point.x - p.x);
+      const dy = point.y - p.y;
+      return dx <= PIN / 2 + 4 && dy >= -(PIN + LIFT + 4) && dy <= 14;
+    },
     code: () => (on ? current?.code ?? null : null),
   };
 }
