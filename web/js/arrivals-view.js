@@ -9,6 +9,7 @@ import { shareLink } from './share.js';
 import { t, etaTxt, etaSay, ageWords, minWord, secWord } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
 import { fmtDist } from './geo.js';
+import { createSpringLoop } from './motion.js';
 
 export { etaTxt as etaText };
 
@@ -33,7 +34,7 @@ function usualShift(btn, width) {
   const f = flag.getBoundingClientRect();
   const min = tile.querySelector('.atile-badge').getBoundingClientRect().right + 3;
   const max = tile.querySelector('.atile-num').getBoundingClientRect().left - 3 - width;
-  return Math.round(Math.max(min, Math.min(f.left - 1, max)) - (f.right - 11));
+  return Math.round(Math.max(min, Math.min(f.left - 1, max)) - (f.left + flag.clientLeft + btn.offsetLeft));
 }
 
 // The full sentence, or the shorter one when it does not fit between the line badge and the countdown (a narrow phone).
@@ -47,21 +48,68 @@ function fitUsual(btn) {
 
 const usualCover = (btn) => btn.parentElement.offsetWidth + 2;
 
-// The usual-delay mark opens and closes in place with a spring (TEL-254). The width goes from px to px, then back to auto.
+const USUAL_ROUND = 28; // px: the closed mark is a circle this wide (css/arrivals.css)
+
+// The final size and place are worked out once, before anything moves, so nothing has to be corrected when it settles.
+function unfoldUsual(btn) {
+  const pill = btn.firstChild;
+  btn.classList.add('unfold');
+  pill.style.width = '';
+  fitUsual(btn);
+  const width = Math.max(pill.offsetWidth, usualCover(btn)); // open, it hides the whole flag
+  pill.style.width = `${width}px`;
+  btn.style.transformOrigin = `${width / 2}px 50%`;
+  const a = btn.usualAnim ||= { p: 0, vel: 0, at: 0, loop: null };
+  return Object.assign(a, { width, x: usualShift(btn, width) });
+}
+
+// p: 0 = the closed circle, 1 = the open pill, a little above 1 = the bounce. Only the cut-out, opacity and transform change.
+function paintUsual(btn, p) {
+  const a = btn.usualAnim, pill = btn.firstChild, q = Math.min(1, Math.max(0, p));
+  a.p = p;
+  pill.style.setProperty('--usual-cut', `${((a.width - USUAL_ROUND) * (1 - q)).toFixed(2)}px`);
+  pill.firstChild.style.opacity = Math.max(0, 1 - q * 2.5);
+  pill.lastChild.style.opacity = Math.max(0, (q - 0.35) / 0.65);
+  btn.style.transform = `translate3d(${a.x * q}px, 0, 0) scale(${1 + Math.max(0, p - 1) * 0.3})`;
+}
+
+function foldUsual(btn) {
+  const pill = btn.firstChild;
+  btn.classList.remove('unfold');
+  for (const el of [pill, pill.firstChild, pill.lastChild]) el.removeAttribute('style');
+  btn.style.transform = btn.style.transformOrigin = btn.style.willChange = '';
+  Object.assign(btn.usualAnim, { p: 0, vel: 0 });
+}
+
+// The usual-delay mark opens and closes in place on the shared spring (TEL-254); a second tap reverses it from where it is.
 function toggleUsual(btn, open) {
-  const pill = btn.firstChild, from = pill.offsetWidth;
-  pill.style.minWidth = '';
   btn.classList.toggle('open', open);
   btn.setAttribute('aria-expanded', String(open));
-  pill.style.width = 'auto';
-  if (open) fitUsual(btn);
-  const to = open ? Math.max(pill.offsetWidth, usualCover(btn)) : pill.offsetWidth; // open, it hides the whole flag
-  pill.style.width = `${from}px`;
-  void pill.offsetWidth; // the browser takes "from" as the start of the transition
-  pill.style.width = `${to}px`;
-  btn.style.transform = open ? `translateX(${usualShift(btn, to)}px)` : '';
-  clearTimeout(btn.usualTimer);
-  btn.usualTimer = setTimeout(() => { pill.style.width = ''; if (open) pill.style.minWidth = `${to}px`; }, 480);
+  const a = btn.classList.contains('unfold') ? btn.usualAnim : unfoldUsual(btn);
+  const done = () => {
+    a.vel = 0;
+    if (btn.classList.contains('open')) btn.style.willChange = ''; else foldUsual(btn);
+  };
+  if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    a.loop?.stop();
+    paintUsual(btn, open ? 1 : 0);
+    done();
+    btn.animate?.([{ opacity: 0.4 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+    return;
+  }
+  a.loop ||= createSpringLoop({
+    get: () => a.p,
+    set: (p) => {
+      const now = performance.now(), dt = (now - a.at) / 1000;
+      if (dt > 0) a.vel = (p - a.p) / dt;
+      a.at = now;
+      paintUsual(btn, p);
+    },
+    onSettle: () => done(),
+  });
+  a.at = performance.now();
+  btn.style.willChange = 'transform';
+  a.loop.to(open ? 1 : 0, { velocity: a.vel, damping: open ? 0.72 : 1, response: open ? 0.42 : 0.3 });
 }
 
 export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, stat = null, stale = false, usualOpen = null } = {}) {
@@ -134,14 +182,10 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
       usual.classList.toggle('open', open);
       usual.setAttribute('aria-expanded', String(open));
       // rebuilt by a poll while open: back in its place before the first paint, without moving
-      if (open) requestAnimationFrame(() => {
-        if (!usual.isConnected) return;
-        usual.style.transition = 'none';
-        fitUsual(usual);
-        usual.firstChild.style.minWidth = `${usualCover(usual)}px`;
-        usual.style.transform = `translateX(${usualShift(usual, usual.firstChild.offsetWidth)}px)`;
-        void usual.offsetWidth;
-        usual.style.transition = '';
+      if (open && !usual.classList.contains('unfold')) requestAnimationFrame(() => {
+        if (!usual.isConnected || usual.classList.contains('unfold')) return;
+        unfoldUsual(usual);
+        paintUsual(usual, 1);
       });
     }
     if (lastText != null) { lastText = null; el.tick(Date.now()); }
