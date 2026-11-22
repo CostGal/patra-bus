@@ -497,8 +497,9 @@ export function createMap(container, opts = {}) {
         padding: { top: sp.top + m + 24, bottom: sp.bottom + m, left: sp.left + m, right: sp.right + m }, maxZoom, // +24 on top: pins grow upwards from their tip
       });
       if (!cam) throw new Error('no fit');
+      if (o.notBelow != null && cam.zoom < o.notBelow) return; // showing all the points would zoom out: stay where we are
       map.easeTo({ center: b.getCenter(), zoom: cam.zoom, bearing: map.getBearing(), padding: sp, duration: 700, essential: false });
-    } catch { map.fitBounds(b, { maxZoom, duration: 0 }); }
+    } catch { if (o.notBelow == null) map.fitBounds(b, { maxZoom, duration: 0 }); }
   }
 
   // ---------- public API ----------
@@ -628,6 +629,8 @@ export function createMap(container, opts = {}) {
       for (const m of markerSets.get(id) || []) m.remove();
       markerSets.delete(id);
     },
+
+    getZoom: () => map.getZoom(),
 
     flyTo(p, zoom) {
       if (!okPoint(p)) return;

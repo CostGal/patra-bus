@@ -463,7 +463,13 @@ export function mountStop(container, ctx, { code }) {
   }
 
   // ---- map ----
-  onMap((m) => { m.highlightStop(code); m.flyTo({ lat: stop.lat, lng: stop.lng }, 16); });
+  // Opening a stop never zooms out (TEL-360): you keep your zoom, and up close the stop's arrow stays visible.
+  let openedAtZoom = 0;
+  onMap((m) => {
+    openedAtZoom = m.getZoom?.() ?? 0;
+    m.highlightStop(code);
+    m.flyTo({ lat: stop.lat, lng: stop.lng });
+  });
 
   let pushed = '';
   function pushMap() {
@@ -481,7 +487,7 @@ export function mountStop(container, ctx, { code }) {
       fitted = true;
       // Bring the nearest live bus into view when it is not already around the stop.
       const near = pts.map((p) => ({ p, d: Math.hypot((p.lat - stop.lat) * 111000, (p.lng - stop.lng) * 87000) })).sort((a, b) => a.d - b.d)[0];
-      if (near && near.d > 250 && near.d < 3000) onMap((m) => { if (!dead) m.fitTo([{ lat: stop.lat, lng: stop.lng }, near.p], { maxZoom: 16 }); });
+      if (near && near.d > 250 && near.d < 3000) onMap((m) => { if (!dead) m.fitTo([{ lat: stop.lat, lng: stop.lng }, near.p], { maxZoom: 16, notBelow: openedAtZoom }); });
     }
   }
 
