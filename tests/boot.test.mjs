@@ -14,7 +14,7 @@ const inline = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 function runHead({ hash = '', search = '', stored = null, settings = {}, lang = 'el-GR', storage = true } = {}) {
   const classes = new Set();
   const ss = new Map(stored ? [['patra-bus:boot', stored]] : []);
-  const d = { dataset: {}, lang: 'el', classList: { add: (...c) => c.forEach((x) => classes.add(x)), remove: (...c) => c.forEach((x) => classes.delete(x)) } };
+  const d = { dataset: {}, style: {}, lang: 'el', classList: { add: (...c) => c.forEach((x) => classes.add(x)), remove: (...c) => c.forEach((x) => classes.delete(x)) } };
   const blocked = () => { throw new Error('blocked'); };
   const win = {
     document: { documentElement: d, addEventListener() {}, removeEventListener() {}, getElementById: () => null },
@@ -33,6 +33,37 @@ test('boot: the home rule of the head script agrees with parseHash(...).path ===
   for (const h of ['', '#', '#/', '#/corfu/', '#/corfu', '#/patra/', '#/?x=1', '#/stop/1011', '#/corfu/stop/801', '#/lines', '#/settings', '#/xyz']) {
     assert.equal(runHead({ hash: h }).shown, parseHash(h).path === '/', h);
   }
+});
+
+// TEL-365: the grey page that hides the iPhone's light flash, from the first frame until the boot screen has gone.
+test('boot canvas: grey only on a cold start at home', () => {
+  const early = html.match(/<script id="boot-canvas">([\s\S]*?)<\/script>/)[1];
+  assert.ok(html.indexOf('id="boot-canvas"') < html.indexOf('rel="stylesheet"'), 'before the first stylesheet');
+  const run = (hash, seen) => {
+    const style = {};
+    vm.runInNewContext(early, {
+      document: { documentElement: { style } }, location: { hash },
+      sessionStorage: { getItem: () => (seen ? '1' : null) },
+    });
+    return style.background;
+  };
+  assert.equal(run('', false), '#1f2a33');
+  assert.equal(run('#/', false), '#1f2a33');
+  assert.equal(run('#/', true), undefined, 'not again in the same tab');
+  assert.equal(run('#/stop/1011', false), undefined, 'never on a deep link');
+});
+
+test('boot canvas: the head script keeps it with the boot screen, clears it without one and after the exit', async () => {
+  const on = runHead({ hash: '#/' });
+  assert.equal(on.d.style.background, '#1f2a33');
+  assert.equal(on.d.style.colorScheme, 'dark');
+  const off = runHead({ hash: '#/', stored: '1' });
+  assert.equal(off.d.style.background, '');
+  assert.equal(off.d.style.colorScheme, '');
+  on.win.__boot.leave(true);
+  await new Promise((ok) => { setTimeout(ok, 240); });
+  assert.equal(on.d.style.background, '');
+  assert.equal(on.d.style.colorScheme, '');
 });
 
 test('boot: the head script knows every city prefix', () => {

@@ -2,6 +2,16 @@
 <html lang="el" class="glass">
 <head>
   <meta charset="utf-8">
+  <script id="boot-canvas">
+    // TEL-365: on a cold start at home the page is the brand's grey from its very first frame, so the iPhone's launch
+    // picture hands over without a light flash. The head script below confirms or clears it.
+    try {
+      if (!location.hash.replace(/[#/]/g, '') && !sessionStorage.getItem('patra-bus:boot')) {
+        document.documentElement.style.background = '#1f2a33';
+        document.documentElement.style.colorScheme = 'dark';
+      }
+    } catch (e) { /* no storage: the head script decides */ }
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
@@ -77,7 +87,10 @@
         try { show = !sessionStorage.getItem('patra-bus:boot'); sessionStorage.setItem('patra-bus:boot', '1'); } catch (e) { show = true; }
         if (segs.length) show = false;
       }
-      if (!show) return;
+      // The grey page behind the boot screen (see #boot-canvas): only while the boot screen is up.
+      function canvas(on) { d.style.background = on ? '#1f2a33' : ''; d.style.colorScheme = on ? 'dark' : ''; }
+      if (!show) { canvas(false); return; }
+      canvas(true);
       d.classList.add('boot');
       var B = window.__boot = { t0: performance.now(), hold: p.get('boot') === 'hold', out: false, cbs: [] };
       // The phone's top bar in the brand's grey while the boot screen is up (first match wins; app.js leaves this one alone).
@@ -102,11 +115,14 @@
           var el = document.getElementById('boot');
           if (el) el.remove();
           d.classList.remove('boot', 'boot-out', 'boot-skip', 'boot-hold');
+          canvas(false);
         }, rm ? 180 : skip ? 200 : 510);
         B.cbs.splice(0).forEach(function (f) { try { f(); } catch (e) { /* ignore */ } });
       };
       function tap(e) { if (e.target && e.target.closest && e.target.closest('#boot')) B.leave(true); }
       document.addEventListener('pointerdown', tap, true);
+      // A broken module: the CSS failsafe hides the boot screen at 5 s, and the grey goes with it.
+      document.addEventListener('animationend', function (e) { if (e.animationName === 'boot-failsafe') canvas(false); });
       // will-change only while the stop grows into the logo
       document.addEventListener('animationend', function end(e) {
         if (e.animationName === 'boot-emblem') { e.target.style.willChange = 'auto'; document.removeEventListener('animationend', end); }

@@ -50,6 +50,7 @@ test('boot: shows on home, leaves on time, the app is usable', async ({ page }) 
   await expect(page.locator('#boot .boot-word')).toHaveText('Telematica');
   await expect(page.locator('#boot')).toHaveCount(0, { timeout: LEAVES_MS });
   expect(await isBoot(page)).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.style.background), 'the grey page has gone').toBe('');
   await expect(page.locator('#sheet-content')).not.toHaveAttribute('aria-busy', 'true');
   await page.locator('#menu-btn').click();
   await expect(page.locator('#menu-pop')).toBeVisible();
@@ -68,6 +69,7 @@ test('boot: never on a deep link', async ({ page }) => {
   await expect(page.locator('.stopv .atile').first()).toBeVisible();
   expect(await page.evaluate(() => window.__boot)).toBeUndefined();
   await expect(page.locator('#boot')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.style.background), 'no grey page on a deep link').toBe('');
 });
 
 test('boot: not again after a reload in the same tab', async ({ page }) => {
