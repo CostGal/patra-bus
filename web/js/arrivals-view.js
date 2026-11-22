@@ -95,7 +95,7 @@ const errText = (e) => ERR_TEXT()[e && e.kind] || ERR_TEXT().upstream;
 const secsUntil = (at, now) => Math.max(0, Math.ceil((at - now) / 1000));
 
 // ---- the stop view ----
-export function mountStop(container, ctx, { code }) {
+export function mountStop(container, ctx, { code, walk = false }) {
   code = String(code);
   const stop = ctx.data && ctx.data.stopByCode.get(code);
   const root = h('div', { class: 'stopv sheet-inset' });
@@ -505,11 +505,17 @@ export function mountStop(container, ctx, { code }) {
   onVisibility();
   render();
 
+  // «Οδηγίες ως εδώ» from the hold menu (TEL-360) does what the button here does, when this stop is already open or just opened.
+  const onWalk = (e) => { if (e.detail === code) { e.preventDefault(); directions(); } };
+  document.addEventListener('stop:walk', onWalk);
+  if (walk) directions();
+
   return {
     destroy() {
       dead = true;
       clearInterval(timer);
       clearTimeout(sayTimer);
+      document.removeEventListener('stop:walk', onWalk);
       document.removeEventListener('visibilitychange', onVisibility);
       unsubStore();
       chipRO.disconnect();

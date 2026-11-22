@@ -213,6 +213,7 @@ const searchbarEl = $('searchbar');
 // What the map re-centres on between low and mid: home = the user's location (if the map has it), a stop or a pin =
 // that point (route() sets it); other views keep the map still.
 let focusPt = null;
+let walkOnOpen = null; // the stop whose walk to draw as soon as it opens (the hold menu)
 let lastSnap = null;
 let routeSnap = false; // the snap comes from route(), which moves the map itself
 function onSnap({ state, visible, desktop }) {
@@ -960,7 +961,9 @@ async function route() {
       map.highlightStop(stop.code);
       map.flyTo(stop, 17);
       focusPt = stop;
-      await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code }));
+      const walk = walkOnOpen === stop.code;
+      walkOnOpen = null;
+      await mount(() => import('./arrivals-view.js'), (m) => m.mountStop(content, ctx, { code: stop.code, walk }));
       break;
     }
     case 'bus':
@@ -1046,7 +1049,14 @@ async function onStopHold(code) {
   if (!stop) return;
   const [{ openStopMenu }, picture] = await Promise.all([import('./stop-menu.js'), map.stopPicture(code, Math.min(300, innerWidth - 32), 150)]);
   const lines = stop.lineCodes.map((c) => data.lineByCode.get(c)).filter(Boolean);
-  openStopMenu({ stop, lines, at: picture?.screen ?? { x: innerWidth / 2, y: innerHeight / 3 }, picture, navigate });
+  openStopMenu({ stop, lines, at: picture?.screen ?? { x: innerWidth / 2, y: innerHeight / 3 }, picture, onDirections: () => walkToStop(code) });
+}
+// The open stop view draws the walk itself (it cancels the event); otherwise open the stop and it draws it then.
+function walkToStop(code) {
+  const handled = !document.dispatchEvent(new CustomEvent('stop:walk', { detail: code, cancelable: true }));
+  if (handled) return;
+  walkOnOpen = code;
+  navigate(`#/stop/${encodeURIComponent(code)}`);
 }
 // A tapped live bus marker (carries vehicleCode + routeCode + stopCode): open its route and timeline.
 function onVehicleClick(v) {

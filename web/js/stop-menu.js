@@ -24,7 +24,7 @@ async function shareStop(stop) {
 let closeOpen = null;
 
 // `at`: the stop on screen ({ x, y }). `picture`: { canvas } from the map, with the stop drawn on it, or null.
-export function openStopMenu({ stop, lines = [], at, picture, navigate }) {
+export function openStopMenu({ stop, lines = [], at, picture, onDirections }) {
   closeOpen?.();
   const before = document.activeElement;
   const openedAt = performance.now();
@@ -46,7 +46,7 @@ export function openStopMenu({ stop, lines = [], at, picture, navigate }) {
     h('div', { class: 'stop-menu-name' }, h('strong', {}, stop.displayName), h('span', {}, t('Στάση {code}', { code: stop.code })),
       pills.length ? h('div', { class: 'stop-menu-lines' }, ...pills) : null));
   const list = h('div', { class: 'stop-menu-list', role: 'menu' },
-    action('walk', t('Οδηγίες ως εδώ'), () => navigate(`#/trip?stop=${encodeURIComponent(stop.code)}`)),
+    action('walk', t('Οδηγίες ως εδώ'), onDirections),
     action('share', t('Κοινοποίηση'), () => shareStop(stop)));
   const panel = h('div', { class: 'stop-menu-panel' }, card, list);
   const root = h('div', {
