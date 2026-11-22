@@ -255,7 +255,7 @@ html.glass .sheet-pill { width: 48px; height: 3px; border-radius: 2px; backgroun
 html.glass[data-theme="dark"] .sheet-pill { background: rgba(235, 235, 245, .3); }
 html.glass .sheet-handle::after { content: ''; position: absolute; left: 0; right: 0; top: -12px; bottom: 0; }
 /* the shrink-on-press of DESIGN §1 gives way to the grow of the glass (js/glass.js animates `scale`) */
-html.glass :is(.press:active, .press.is-pressed, .fab:active, .rp-cat:active .rp-cat-pill) { transform: none; }
+html.glass :is(.press:active, .press.is-pressed, .fab:active) { transform: none; }
 
 /* refraction (Chromium only): the backdrop bends at the edges before it is blurred */
 html.glass-lens .menu-fab, html.glass-lens .fab, html.glass-lens .map-capsule {
@@ -297,6 +297,21 @@ html.glass-morph #menu-btn > .g-x {
   html.glass #menu-btn[aria-expanded="true"] > .g-x { opacity: 1; }
 }
 html.glass-morph #menu-pop > * { opacity: clamp(0, calc((var(--g-morph, 1) - .5) / .5), 1); }
+
+/* TEL-358: the report kinds, a card that grows out of the report row (js/app.js moves and clips it, --rp-sub = 0..1).
+   The menu under it blurs and steps back. Solid without glass; the rim is inset because the clip would cut a shadow. */
+.pop-main { position: relative; opacity: calc(1 - var(--rp-sub, 0) * .6); }
+.pop-main[style*="--rp-sub"] { filter: blur(calc(var(--rp-sub) * 5px)); scale: calc(1 - var(--rp-sub) * .03); }
+html.glass-morph #menu-pop > .pop-main { opacity: calc(clamp(0, calc((var(--g-morph, 1) - .5) / .5), 1) * (1 - var(--rp-sub, 0) * .6)); }
+.pop-sub {
+  position: absolute; z-index: 1; left: var(--space-2); right: var(--space-2); padding: var(--space-1);
+  border-radius: var(--radius); background: var(--popover); box-shadow: inset 0 0 0 1px var(--border); will-change: transform, clip-path;
+}
+html.glass-morph .pop-sub {
+  background: var(--g-sheen), color-mix(in srgb, var(--g-card) 72%, transparent);
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim);
+}
+.pop-sub > * { opacity: clamp(0, calc((var(--rp-sub, 0) - .35) / .45), 1); }
 
 /* ---------- more morphs (js/glass.js, html.glass-fx): the same Liquid Glass logic as ☰ ---------- */
 /* buttons whose icon turns into another while their popover is open (⋯ → ˄): both stacked, crossfaded with blur and a turn */

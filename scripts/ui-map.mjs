@@ -54,7 +54,7 @@ export const UI = [
 
   { id: 'O1', nick: 'menu panel', name: 'Μενού ☰', sel: '#menu-pop' },
   { id: 'O2', nick: 'city switch', name: 'Αλλαγή πόλης (μενού)', sel: '#menu-pop .pop-city' },
-  { id: 'O3', nick: 'menu item', name: 'Στοιχείο μενού', sel: '#menu-pop a.pop-item:not(.pop-city)', all: true },
+  { id: 'O3', nick: 'menu item', name: 'Στοιχείο μενού', sel: '#menu-pop .pop-item:not(.pop-city)', all: true },
   { id: 'O4', nick: 'theme row', name: 'Θέμα (μενού)', sel: '#menu-pop .theme-row' },
   { id: 'O5', nick: 'theme option', name: 'Επιλογή θέματος', sel: '#menu-pop .theme-opt', all: true },
   { id: 'O6', nick: 'more panel', name: 'Μενού ⋯ στάσης', sel: '.stopv-menu', gone: true }, // TEL-227: the stop has no ⋯ menu (share is in the header)
@@ -121,7 +121,7 @@ export const UI = [
   { id: 'D5', nick: 'welcome card', name: 'Κάρτα «Πρώτοι δοκιμαστές»', sel: '.wl-card' },
   { id: 'D6', nick: 'start', name: 'Ας ξεκινήσουμε (welcome)', sel: '.wl-start' },
   { id: 'D7', nick: 'feedback link', name: 'Στείλε σχόλια (welcome)', sel: '.wl-link' },
-  { id: 'D8', nick: 'category', name: 'Κατηγορία (αναφορά)', sel: '.rp-cat', all: true },
+  { id: 'D8', nick: 'report kind', name: 'Είδος (αναφορά)', sel: '.rp-kind', all: true },
   { id: 'D9', nick: 'text', name: 'Κείμενο (αναφορά)', sel: '.rp-text' },
   { id: 'D10', nick: 'email', name: 'Email (αναφορά)', sel: '.rp-input[type=email]' },
   { id: 'D11', nick: 'send', name: 'Αποστολή (αναφορά)', sel: '.rp-submit' },
@@ -147,6 +147,7 @@ export const UI_SCREENS = [
   } },
   { id: 'settings', url: '/?demo#/settings' },
   { id: 'report', url: '/?demo#/report' },
+  { id: 'report-form', url: '/?demo#/report?kind=app' },
   { id: 'setup', url: '/?demo&setup#/' },
   { id: 'welcome', url: '/?demo&welcome#/' },
   { id: 'boot', url: '/?demo&boot=hold#/' },
