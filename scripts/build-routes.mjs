@@ -26,7 +26,7 @@ const dataUrl = () => new URL(`../web/${dataDir().slice(2)}`, import.meta.url);
 let DATA = dataUrl();
 const CACHE = new URL('./.cache/osrm/', import.meta.url);
 
-// Tunable constants (documented in docs/ARCHITECTURE.md terms: bus legSec = car seconds x BUS_FACTOR + DWELL_SEC).
+// Tunable constants (see docs/FRONTEND.md, section 4: bus legSec = car seconds x BUS_FACTOR + DWELL_SEC).
 export const K = {
   BUS_FACTOR: 1.4,   // OSRM car profile is optimistic for a city bus (traffic, acceleration, size)
   DWELL_SEC: 15,     // average stop time per leg

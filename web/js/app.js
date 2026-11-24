@@ -1,5 +1,5 @@
 // App shell and integrator (owner: shell). Boots data + map + sheet, wires location, search, theme and the hash router.
-// Views are lazy-loaded modules with `mountX(container, ctx, params) -> { destroy() }` (docs/ARCHITECTURE.md).
+// Views are lazy-loaded modules with `mountX(container, ctx, params) -> { destroy() }` (docs/FRONTEND.md, section 2).
 import './boot-city.js'; // must stay first: picks the active city before any other module reads it
 import { h, icon, toast, lineBadge } from './ui.js';
 import { loadData, searchStops } from './data.js';

@@ -1,4 +1,4 @@
-// Static data loader and indexes (owner: data). Contracts: docs/ARCHITECTURE.md, section D.
+// Static data loader and indexes (owner: data). See docs/FRONTEND.md, sections 3 and 4.
 // buildIndex() is pure (tests); loadData() / loadShapes() fetch once and memoize.
 import { titleCase, searchKey } from './text.js';
 import { city, dataDir } from './cities.js';

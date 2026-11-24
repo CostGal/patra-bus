@@ -1,4 +1,4 @@
-// Shared DOM helpers (owner: shell). Signatures are a contract, see docs/ARCHITECTURE.md.
+// Shared DOM helpers (owner: shell). Signatures are a contract, see docs/FRONTEND.md, section 3.
 export function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {

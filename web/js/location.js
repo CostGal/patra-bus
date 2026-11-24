@@ -1,4 +1,4 @@
-// Location service (owner: location). Contract in docs/ARCHITECTURE.md.
+// Location service (owner: location). See docs/FRONTEND.md, section 7.
 // The position never leaves this module except through subscribers; nothing here talks to the network.
 import { haversine, bearing, angleDiff, lerpAngle, normDeg } from './geo.js';
 

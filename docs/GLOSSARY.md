@@ -12,7 +12,7 @@ Where it shows up in Telematica: the `Agent-ready` select on Code Tasks (it repl
 My words:
 
 **Alarm** (Durable Object alarm): a wake-up call a program sets for itself, like an alarm clock that starts the code at an exact time.
-Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
+Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`; only the worker side is left, the app no longer uses them, see docs/WORKER.md section 10).
 My words:
 
 **All rights reserved**: the default legal state of a piece of work: people may look at it, but copying or using it needs the owner's permission, like a library book you can read but not photocopy and sell.
@@ -128,7 +128,7 @@ Where it shows up in Telematica: the lens bend at the edges of the glass UI (`we
 My words:
 
 **Durable Object**: a small box of memory on Cloudflare that has an ID and can wake itself up later, like a labelled locker with its own alarm clock.
-Where it shows up in Telematica: one per push reminder and routine, plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
+Where it shows up in Telematica: one per push reminder and routine (worker side only, unused by the app), plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
 My words:
 
 **ES module**: a JavaScript file that declares what it shares (`export`) and what it borrows (`import`), like a kitchen drawer with a label.
@@ -244,7 +244,7 @@ Where it shows up in Telematica: the repo has none; MapLibre, OpenFreeMap and th
 My words:
 
 **localStorage**: a small notebook the browser keeps on your device for a website, like a sticky note only you can read.
-Where it shows up in Telematica: favourites, settings, places and routines in `patra-bus:v2` (`web/js/store.js`).
+Where it shows up in Telematica: favourites, settings and places in `patra-bus:v2` (`web/js/store.js`).
 My words:
 
 **Manifest** (web app manifest): an ID card that tells the phone the app's name, icon and colours so it can be installed, like a name tag.
