@@ -1,0 +1,122 @@
+/* Trip view (.tripv-*, js/trip-view.js, TEL-293). Colours, sizes and radii from tokens.css only; the header row, title,
+   round buttons and the 16 px inset are the kit's (css/ui-kit.css). The stop card (css/arrivals.css, css/glass.css)
+   is the model for the header and the chips. No blur of its own here: the sheet is the only glass layer.
+   Drag-linked changes are transform / opacity on --l (0 at low, 1 from mid) and --u (0 up to mid, 1 up) only (U8). */
+
+.tripv { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-6); /* sides: .sheet-inset */ font-family: var(--font); color: var(--foreground); }
+.tripv .icon { width: 1.1em; height: 1.1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tripv .icon-walk { fill: currentColor; stroke: none; }
+.tripv .badge { display: inline-block; min-width: 2.4em; padding: .15em .45em; border-radius: var(--radius-md); font-weight: var(--weight-bold); font-size: var(--text-sm); line-height: 1.2; text-align: center; font-variant-numeric: tabular-nums; }
+.tripv .tabular { font-variant-numeric: tabular-nums; }
+
+/* ---- header: back · leave line · ✕ (as the stop card's) ---- */
+/* low: the leave line at the top of the 38 px row and the small row under it (badge, flag, «προς …»); from mid the
+   leave line is centred on the buttons and the small row fades; at up the line has its own row, 24 px */
+.tripv-head { display: flex; flex-direction: column; }
+.tripv-top { margin: -5px 0 0; } /* 13 px from the card's top at low, as the stop */
+.tripv-titles { position: relative; min-width: 0; text-align: center; }
+.tripv-peek { position: absolute; left: 0; right: 0; top: 20px; display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  height: 18px; overflow: hidden; white-space: nowrap; color: var(--muted-foreground); font-size: var(--text-xs); opacity: calc(1 - var(--l, 1)); }
+.tripv-peek .badge { font-size: var(--text-2xs); min-width: 2em; padding: .1em .35em; }
+.tripv-peek .icon { width: 14px; height: 14px; }
+.tripv-peek-to { overflow: hidden; text-overflow: ellipsis; }
+/* low ends here (js/sheet.js): as .stopv-peek, the small row under the line and 8 px more */
+.tripv-peek-end { position: absolute; left: 0; top: 100%; width: 1px; height: calc(21px + max(0px, 8px - env(safe-area-inset-bottom, 0px))); pointer-events: none; }
+.tripv-head.is-up .tripv-titles { grid-column: 1 / -1; grid-row: 2; padding-bottom: 9px; }
+.tripv-head.is-up .tripv-peek { display: none; }
+/* the line moves down to the buttons' middle towards mid, grows towards up (17 → 24 px as a scale), and at up is set
+   at 24 px on its own row, drawn at the same visual size while it grows to it (the stop's rules, fixed sizes) */
+.tripv-title.card-title { transform-origin: 50% 0; transform: translateY(calc(var(--l, 1) * 9px)) scale(calc(1 + min(1, var(--u, 0) * 2) * (24 / 17 - 1))); }
+.tripv-head.is-up .tripv-title.card-title { font-size: 24px; line-height: 29px; /* U4: 24 px at up */ transform: scale(calc((17 + 7 * min(1, var(--u, 0) * 2)) / 24)); }
+
+/* ---- option chips: they fill their row from mid; the glass lens (js/glass.js) marks the chosen one ---- */
+.tripv-optbar { position: relative; opacity: var(--l, 1); }
+.tripv-optbar[hidden] { display: none; }
+.tripv-opts { display: flex; gap: var(--space-2); }
+.tripv-opt { --hit: -3px 0; display: inline-flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: center; gap: var(--space-1);
+  min-height: 40px; padding: 0 var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--card); color: var(--foreground); font: inherit; font-weight: var(--weight-semibold); cursor: pointer; }
+.tripv-opt[aria-checked="true"] { background: var(--primary-soft); border-color: var(--primary); }
+.tripv-opt:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.tripv-opt .icon { width: 18px; height: 18px; }
+.tripv-sep { color: var(--muted-foreground); }
+/* the chip's time (TEL-294, design «M»): the line pill points into an outlined pill with the minutes to arrival, in the
+   line's colour (--lc, set by js/trip-view.js); an estimate is grey with the orange (*) mark on its top-right corner */
+.tripv-duo { display: inline-flex; align-items: stretch; min-width: 0; }
+.tripv-duo > .badge { position: relative; z-index: 1; min-width: 0; padding-right: 8px; border-radius: var(--radius-md) 0 0 var(--radius-md);
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%); }
+.tripv-tp { position: relative; display: inline-flex; align-items: center; margin-left: -6px; padding: 0 6px 0 8px; border: 1px solid var(--lc, var(--border));
+  border-left: 0; border-radius: 0 var(--radius-full) var(--radius-full) 0; background: var(--card); color: var(--foreground);
+  font-size: var(--text-sm); font-weight: var(--weight-bold); line-height: 1.2; white-space: nowrap; }
+.tripv-tp.solo { margin-left: 0; padding-left: 6px; border-left: 1px solid var(--border); border-radius: var(--radius-full); }
+.tripv-tp.is-est { color: var(--muted-foreground); font-weight: var(--weight-medium); }
+.tripv-tp.is-est::after { content: '*'; position: absolute; top: -6px; right: -5px; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--warning); color: var(--card); box-shadow: 0 0 0 1.5px var(--card);
+  font-size: 11px; font-weight: var(--weight-bold); line-height: 15px; text-align: center; }
+@media (max-width: 374.98px) { /* narrow phones: the chips give up some room */
+  .tripv-opt { gap: 2px; padding: 0 var(--space-1); }
+  .tripv-opt .badge { min-width: 0; padding: .1em .3em; }
+  .tripv-duo > .badge { padding-right: 7px; }
+}
+
+/* the same mark in the legend line, which explains it */
+.tripv-legend-mark { display: inline-block; margin-right: 3px; vertical-align: -1px; }
+.tripv-mark { display: block; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--warning); color: var(--card); font-size: 11px; font-weight: var(--weight-bold); line-height: 15px; text-align: center; }
+[data-sheet="peek"] .tripv-opt { pointer-events: none; }
+html.glass .tripv-opt { background: color-mix(in srgb, var(--g-chip) calc(var(--l, 1) * 100%), transparent); border-color: color-mix(in srgb, var(--foreground) 10%, transparent); box-shadow: inset 0 1px 0 var(--g-edge); }
+html.glass .tripv-opt[aria-checked="true"] { background: var(--g-chip-on); border-color: color-mix(in srgb, var(--primary) 65%, transparent); }
+html.glass-fx .tripv-opts { position: relative; z-index: 1; }
+html.glass-fx .tripv-opt[aria-checked="true"] { background: transparent; border-color: transparent; }
+
+/* ---- summary: small tiles, a number over a short word (TEL-294); the ΕΚΤΙΜ. flag under them ---- */
+.tripv-sum { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); text-align: center; }
+.tripv-sum[hidden] { display: none; }
+.tripv-stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); width: 100%; }
+.tripv-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
+.tripv-stat .icon { width: 16px; height: 16px; color: var(--muted-foreground); }
+.tripv-stat-n { font-size: var(--text-lg); font-weight: var(--weight-bold); line-height: 1.2; color: var(--foreground); white-space: nowrap; }
+.tripv-stat-l { font-size: var(--text-2xs); line-height: 1.3; color: var(--muted-foreground); }
+
+/* ---- times: bold in the text colour, whatever their source (only the option chips mark an estimate, TEL-294) ---- */
+.tripv-time { font-weight: var(--weight-bold); color: var(--foreground); white-space: nowrap; }
+
+/* the estimated flag: dashed outline in the warning colour, the same height as LIVE / ΠΡΟΓΡ. */
+.tripv-est, .tripv-flag { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius-md); font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: .05em; line-height: 1.5; white-space: nowrap; vertical-align: middle; }
+.tripv-est { border: 1px dashed var(--warning); color: var(--warning); background: var(--warning-muted); }
+.tripv-flag { border: 1px solid var(--scheduled-border); color: var(--scheduled); }
+.tripv-flag.is-live { border-color: var(--live); background: var(--live); color: var(--live-foreground); }
+.tripv-flag .atile-dot { position: relative; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ---- steps: one card; each row an icon, the text, and its time on the right; a thin line joins the icons ---- */
+.tripv-steps { position: relative; display: flex; flex-direction: column; gap: var(--space-1); margin: 0; padding: var(--space-2); list-style: none; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
+.tripv-step { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); min-height: 44px; padding: var(--space-1) 0; }
+.tripv-step-tile { grid-template-columns: 28px minmax(0, 1fr); }
+.tripv-steps::before { content: ''; position: absolute; z-index: 0; left: calc(var(--space-2) + 13px); top: calc(var(--space-2) + 22px); bottom: calc(var(--space-2) + 22px); width: 2px; background: var(--border); } /* from the first icon to the last */
+.tripv-ico { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--muted); color: var(--foreground); }
+.tripv-ico .icon { width: 16px; height: 16px; }
+.tripv-body { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.tripv-text { font-size: var(--text-md); font-weight: var(--weight-semibold); line-height: 1.3; overflow-wrap: anywhere; }
+.tripv-sub { color: var(--muted-foreground); font-size: var(--text-sm); }
+.tripv-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.tripv-step-arrive .tripv-text { font-weight: var(--weight-bold); }
+/* the bus row is the stop card's arrival tile; inside this card it takes the inner radius */
+.tripv-steps .atile { border-radius: var(--radius-inner); }
+
+/* ---- notes, legend, states ---- */
+.tripv-notes { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3); list-style: none; border-radius: var(--radius-card); background: var(--warning-muted); color: var(--warning); font-size: var(--text-sm); }
+.tripv-notes li { display: flex; gap: var(--space-2); align-items: flex-start; }
+.tripv-notes .icon { margin-top: 1px; }
+.tripv-legend { margin: 0; color: var(--muted-foreground); font-size: var(--text-xs); text-align: center; }
+.tripv-wait { margin: 0; color: var(--muted-foreground); font-size: var(--text-sm); text-align: center; }
+.tripv-skel { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.tripv-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px var(--space-3); text-align: center; color: var(--muted-foreground); }
+.tripv-state > .icon { width: 32px; height: 32px; margin-bottom: var(--space-1); }
+.tripv-state-title { margin: 0; font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--foreground); }
+.tripv-state-sub { margin: 0; font-size: var(--text-sm); }
+.tripv-state .btn { margin-top: var(--space-2); }
+
+/* reduced motion: nothing grows or slides; things just swap */
+@media (prefers-reduced-motion: reduce) {
+  .tripv-title.card-title, .tripv-head.is-up .tripv-title.card-title { transform: none; }
+}

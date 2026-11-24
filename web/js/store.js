@@ -14,14 +14,13 @@ const MAX_FAVS = 100;
 // lang defaults to 'el' (TEL-58, #33): the first-run setup (TEL-74, js/setup.js) stores the language the user picks,
 // pre-selected from the system language; 'el' only applies to whoever skips that step.
 // usageStats: anonymous daily counts are on unless the user switches them off (CLAUDE.md rule 4, js/usage.js).
-export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el', usageStats: true });
+export const DEFAULT_SETTINGS = Object.freeze({ theme: 'auto', walkSpeed: 'normal', bufferMin: 2, lang: 'el', usageStats: true });
 const intIn = (lo, hi) => (v) => Number.isInteger(v) && v >= lo && v <= hi;
 const VALID = {
   theme: (v) => ['auto', 'light', 'dark'].includes(v),
   lang: (v) => ['auto', 'el', 'en'].includes(v),
   walkSpeed: (v) => ['slow', 'normal', 'fast'].includes(v),
   bufferMin: intIn(0, 30),
-  reminderMin: intIn(0, 30),
   city: isCity, // absent until the user picks one: the default city applies
   welcomeSeen: (v) => typeof v === 'boolean', // absent = the testers' welcome was not shown yet
   legendSeen: (v) => typeof v === 'boolean', // unused since TEL-65 removed the stop-view legend (the first-run setup explains LIVE / ΠΡΟΓΡ. now); kept so stored flags still validate
@@ -33,7 +32,7 @@ const VALID = {
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
 // The usage choice and markers survive too: a reset must not switch counting back on or count this device again.
 const KEEP_ON_RESET = ['city', 'welcomeSeen', 'legendSeen', 'setupDone', 'usageStats', 'usageDay', 'usageInstall'];
-const NUMERIC = new Set(['bufferMin', 'reminderMin']);
+const NUMERIC = new Set(['bufferMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };
 const defaultEvents = () => (typeof globalThis.addEventListener === 'function' ? globalThis : null);

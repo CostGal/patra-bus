@@ -1,14 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0b5394"/>
-  <!-- bus body -->
-  <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff"/>
-  <!-- windows -->
-  <rect x="146" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-  <rect x="262" y="150" width="104" height="80" rx="12" fill="#0b5394"/>
-  <!-- headlights -->
-  <circle cx="164" cy="300" r="18" fill="#0b5394"/>
-  <circle cx="348" cy="300" r="18" fill="#0b5394"/>
-  <!-- wheels -->
-  <circle cx="178" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
-  <circle cx="334" cy="372" r="36" fill="#fff" stroke="#0b5394" stroke-width="14"/>
+  <!-- Telematica logo (TEL-365): a stop on the dark map. Full-bleed, with the stop inside the maskable safe circle. -->
+  <rect width="512" height="512" fill="#1f2a33"/>
+  <!-- the map: a side street and the main road -->
+  <path d="M-30 150 L545 330" stroke="#465663" stroke-width="16" fill="none"/>
+  <path d="M-30 430 C120 410 170 310 256 256 S420 110 545 86" stroke="#18212a" stroke-width="50" fill="none"/>
+  <path d="M-30 430 C120 410 170 310 256 256 S420 110 545 86" stroke="#b08e55" stroke-width="34" fill="none"/>
+  <!-- the stop -->
+  <rect x="106" y="106" width="300" height="300" rx="72" fill="#2b73cc" stroke="#f2e4c4" stroke-width="12"/>
+  <g transform="translate(256 256) scale(.74) translate(-256 -264)">
+    <rect x="116" y="120" width="280" height="244" rx="40" fill="#fff6e3"/>
+    <rect x="146" y="150" width="104" height="80" rx="12" fill="#2b73cc"/>
+    <rect x="262" y="150" width="104" height="80" rx="12" fill="#2b73cc"/>
+    <circle cx="164" cy="300" r="18" fill="#2b73cc"/>
+    <circle cx="348" cy="300" r="18" fill="#2b73cc"/>
+    <circle cx="178" cy="372" r="36" fill="#fff6e3" stroke="#2b73cc" stroke-width="14"/>
+    <circle cx="334" cy="372" r="36" fill="#fff6e3" stroke="#2b73cc" stroke-width="14"/>
+  </g>
 </svg>

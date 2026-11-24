@@ -1,5 +1,7 @@
-/* First-run setup (owner: extras, TEL-74). Prefix su-. Modal = dim scrim (DESIGN §4) and a solid card, like css/welcome.css.
-   The card's rise/sink is the spring in js/setup.js; a new step slides in from the side it comes from (--dir). */
+/* First-run setup (owner: extras, TEL-74; look TEL-247). Prefix su-. Modal = dim scrim (DESIGN §4) and the glass card of
+   the locked stop card style (DESIGN §10, docs/UI-PROTOCOL.md): 16 px inset (U2), the kit's header and circles (U3), radii
+   that step down 28 → 20 → 12. The glass itself comes from css/glass.css (.su-card); the card's rise/sink is the spring in
+   js/setup.js and never touches its opacity (U12); a new step slides in from the side it comes from (--dir). */
 
 .su {
   position: fixed; inset: 0; z-index: 100; display: flex; overflow-y: auto; overscroll-behavior: contain;
@@ -11,58 +13,68 @@
 .su-scrim { position: absolute; inset: 0; background: var(--overlay); }
 .su-card {
   position: relative; display: flex; flex-direction: column; margin: auto; width: min(100%, 24rem); height: min(100%, 36rem);
-  padding: var(--space-3) var(--space-4) var(--space-4);
-  border-radius: var(--radius-lg); background: var(--popover); color: var(--popover-foreground); box-shadow: 0 16px 48px rgba(0, 0, 0, .3);
-  transform-origin: 50% 60%; overflow: hidden;
+  padding: var(--space-4); /* U2: one inset, 16 px, for the circles, the text and the button */
+  border-radius: var(--radius-sheet); background: var(--popover); color: var(--popover-foreground); box-shadow: 0 16px 48px rgba(0, 0, 0, .3);
+  overflow: hidden;
 }
 
-.su-top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
-.su-dots { display: flex; gap: 6px; }
-.su-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: width .25s var(--spring-ease), background-color .25s; }
-.su-dot.on { width: 22px; border-radius: 4px; background: var(--primary); }
-.su-skip { min-height: 44px; color: var(--muted-foreground); }
+/* header: back · progress · skip on the kit's 38 px row; back keeps its place on step 1 */
+.su-head { flex: none; }
+.su-back[inert] { visibility: hidden; }
+.su-dots { position: relative; display: flex; gap: 12px; align-self: center; justify-self: center; padding: 0 7px; }
+.su-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+/* the pill sits over the current dot and slides with transform only (U8); js/setup.js sets translateX(step × 20 px) */
+.su-pill { position: absolute; top: 0; left: 0; width: 22px; height: 8px; border-radius: 4px; background: var(--primary); transition: transform .25s var(--spring-ease); }
 
-/* same card height on every step; only the step scrolls, so Back / Next never leave the screen */
+/* same card height on every step; only the step scrolls, so the header and the button never leave the screen */
 .su-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 calc(-1 * var(--space-1)); padding: 0 var(--space-1); }
+.su-step { text-align: center; }
 .su-step-in { animation: su-in .32s var(--spring-ease) both; }
-.su-count { margin: var(--space-2) 0 0; color: var(--muted-foreground); font-size: var(--text-sm); font-weight: 600; }
-.su .su-title { margin: var(--space-1) 0 var(--space-2); color: var(--foreground); font-size: 1.5rem; font-weight: 700; line-height: var(--lead-display); letter-spacing: var(--track-display); }
+.su .su-title { margin: var(--space-4) 0 var(--space-2); color: var(--foreground); font-size: 1.5rem; font-weight: 700; line-height: var(--lead-display); letter-spacing: var(--track-display); }
 .su-title:focus { outline: none; }
-.su-p { margin: 0 0 var(--space-3); color: var(--muted-foreground); font-size: var(--text-md); line-height: var(--lead-body); letter-spacing: var(--track-body); }
+.su-p { margin: 0 0 var(--space-4); color: var(--muted-foreground); font-size: var(--text-md); line-height: var(--lead-body); letter-spacing: var(--track-body); }
 
+/* choices: tinted rows, no border, no blur of their own; selected = soft blue with a check */
 .su-choices { display: grid; gap: var(--space-2); }
 .su-choice {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-3);
-  border: 2px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--foreground);
+  position: relative; isolation: isolate; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 52px; padding: 0 var(--space-4);
+  border: 0; border-radius: var(--radius-card); background: color-mix(in srgb, var(--card) 45%, transparent); color: var(--foreground);
   font: inherit; font-size: var(--text-md); font-weight: 600; text-align: start; cursor: pointer;
 }
-.su-choice[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-soft); }
-.su-check { width: 22px; height: 22px; flex: none; border: 2px solid var(--border); border-radius: 50%; }
-.su-choice[aria-pressed="true"] .su-check { border: 7px solid var(--primary); }
+.su-choice[aria-pressed="true"] { background: var(--primary-soft); }
+.su-check { display: flex; flex: none; color: var(--primary); opacity: 0; transform: scale(.6); transition: opacity .18s var(--spring-ease), transform .18s var(--spring-ease); }
+.su-check .icon { width: 20px; height: 20px; stroke-width: 2.5; }
+.su-choice[aria-pressed="true"] .su-check { opacity: 1; transform: none; }
+/* pressed (js/glass.js .g-press): a soft highlight inside the row, as the stop rows; the row does not grow */
+html.glass .su-choice::before {
+  content: ''; position: absolute; z-index: -1; inset: 3px; border-radius: var(--radius-inner); pointer-events: none;
+  background: var(--g-row); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim);
+  opacity: 0; transition: opacity .3s ease-out;
+}
+html.glass .su-choice.g-press { box-shadow: none; }
+html.glass .su-choice.g-press::before { opacity: 1; transition-duration: .12s; }
 
-.su-eg { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); }
+/* step 3: two real arrival tiles (20 px, like the stop card's), captions left-aligned under each */
+.su-eg { display: grid; gap: var(--space-1); margin-bottom: var(--space-3); text-align: start; }
 .su-eg .atile { pointer-events: none; }
 .su-cap { margin: 0; font-size: var(--text-sm); }
-.su-units { margin-bottom: var(--space-2); font-size: var(--text-sm); }
 
-.su-foot { display: flex; flex: none; gap: var(--space-2); justify-content: flex-end; padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.su-foot .btn { min-height: 48px; padding: 0 var(--space-4); }
-.su-next { flex: 1; }
-.su-back[hidden] { display: none; }
+/* footer: one full-width button (the kit's .g-pill), no divider line (DESIGN §4) */
+.su-foot { display: flex; flex: none; padding-top: var(--space-4); }
+.su-next { width: 100%; }
 
 @keyframes su-in { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 24px)); } to { opacity: 1; transform: none; } }
 @keyframes su-fade { from { opacity: 0; } to { opacity: 1; } }
 
-/* narrow phones (iPhone SE): less padding, so the sample tiles get the width a real stop list gives them */
+/* narrow phones (iPhone SE): less padding round the card, so the sample tiles get the width a real stop list gives them */
 @media (max-width: 360px) {
   .su { padding-left: calc(var(--safe-left) + var(--space-2)); padding-right: calc(var(--safe-right) + var(--space-2)); }
-  .su-card { padding-left: var(--space-3); padding-right: var(--space-3); }
 }
 
-/* reduced motion (§7): no sliding; the dialog and each step just fade (<= 200 ms) */
+/* reduced motion (§7): the card appears and goes in place; only the scrim fades (180 ms), steps cross-fade (150 ms) */
 @media (prefers-reduced-motion: reduce) {
-  .su { animation: su-fade .18s linear; }
-  .su.su-out { opacity: 0; transition: opacity .18s linear; }
+  .su-scrim { animation: su-fade .18s linear; }
+  .su.su-out .su-scrim { opacity: 0; transition: opacity .18s linear; }
   .su-step-in { animation: su-fade .15s linear both; }
-  .su-dot { transition: none; }
+  .su-pill, .su-check { transition: none; }
 }

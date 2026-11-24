@@ -76,3 +76,19 @@ export function etaSay(sec) {
   const hours = tn(Math.floor(m / 60), '{n} ώρα', '{n} ώρες');
   return m % 60 ? t('{hours} και {min}', { hours, min: min(m % 60) }) : hours;
 }
+
+// Words for sentences (TEL-254, TEL-62): "3 λεπτά" / "3 min", "9 δευτ." / "9 sec". The big countdown keeps "6′" (etaTxt).
+export const minWord = (n) => (cur === 'en' ? `${n} min` : tn(n, '{n} λεπτό', '{n} λεπτά'));
+export const secWord = (n) => (cur === 'en' ? `${n} sec` : `${n} δευτ.`);
+// Age of data in words: seconds under a minute, then minutes. (arrivals.js is shared with the worker, so it stays as it is.)
+export function ageWords(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  return s < 60 ? secWord(s) : minWord(Math.floor(s / 60));
+}
+// A time to go in a sentence: "<1 λεπτό", "9 λεπτά", "1 ώρα και 5 λεπτά".
+export function etaWords(sec) {
+  const s = Number(sec);
+  if (!Number.isFinite(s) || s < 15) return t('τώρα');
+  if (s < 60) return `<${minWord(1)}`;
+  return s < 3600 ? minWord(Math.floor(s / 60)) : etaSay(s);
+}

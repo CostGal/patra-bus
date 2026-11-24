@@ -3,6 +3,8 @@
 import { PAIRS as REPORT_PAIRS } from './i18n-en-report.js';
 import { PAIRS as WELCOME_PAIRS } from './i18n-en-welcome.js';
 import { PAIRS as SETUP_PAIRS } from './i18n-en-setup.js';
+import { PAIRS as HOME_PAIRS } from './i18n-en-home.js';
+import { PAIRS as TRIP_PAIRS } from './i18n-en-trip.js';
 
 const PAIRS = [
   // ---- shared: arrivals, status, common controls ----
@@ -10,7 +12,6 @@ const PAIRS = [
   ['ΠΡΟΓΡ.', 'SCHED.'],
   ['πριν {age}', '{age} ago'],
   ['τώρα', 'now'],
-  ['Φύγε σε {n}′', 'Leave in {n}′'],
   ['Φύγε τώρα', 'Leave now'],
   ['Φύγε τώρα — στο όριο', 'Leave now — tight'],
   ['Πήγαινε στη στάση τώρα', 'Go to the stop now'],
@@ -18,6 +19,7 @@ const PAIRS = [
   ['Πίσω', 'Back'],
   ['Κλείσιμο', 'Close'],
   ['Κοινοποίηση', 'Share'],
+  ['Οδηγίες ως εδώ', 'Directions here'],
   ['Περισσότερα', 'More'],
   ['Δοκίμασε ξανά', 'Try again'],
   ['Ανανέωση', 'Refresh'],
@@ -73,9 +75,6 @@ const PAIRS = [
   ['κατά προσέγγιση', 'approximate'],
   ['Ο σύνδεσμος αντιγράφηκε', 'Link copied'],
   ['Δεν ήταν δυνατή η κοινοποίηση', 'Could not share'],
-  ['Ενημερώθηκε μόλις τώρα', 'Updated just now'],
-  ['Ενημερώθηκε πριν {t}', 'Updated {t} ago'],
-  ['αποτυχία ανανέωσης', 'refresh failed'],
   ['η τελευταία ανανέωση απέτυχε', 'last refresh failed'],
   ['ανανέωση…', 'refreshing…'],
   ['Δεν υπάρχει σύνδεση με το διαδίκτυο.', 'No internet connection.'],
@@ -105,15 +104,8 @@ const PAIRS = [
   ['Αυτόματο', 'Auto'],
   ['Φωτεινό', 'Light'],
   ['Σκοτεινό', 'Dark'],
-  ['Ταχύτητα περπατήματος', 'Walking speed'],
-  ['Για να υπολογίζω πότε πρέπει να φύγεις.', 'Used to work out when you need to leave.'],
-  ['Αργά', 'Slow'],
-  ['Κανονικά', 'Normal'],
-  ['Γρήγορα', 'Fast'],
   ['Περιθώριο στη στάση', 'Buffer at the stop'],
   ['Πόσο νωρίτερα θέλεις να φτάνεις στη στάση.', 'How early you want to be at the stop.'],
-  ['Υπενθύμιση πριν φύγεις', 'Remind me before leaving'],
-  ['Πόσο νωρίτερα να σε ειδοποιώ πριν χρειαστεί να φύγεις.', 'How long before you need to leave to notify you.'],
   ['Καθόλου', 'None'],
   ['{n} λεπτό', '{n} minute'],
   ['{n} λεπτά', '{n} minutes'],
@@ -123,23 +115,6 @@ const PAIRS = [
 
   // ---- settings: sections ----
   ['Σπίτι & δουλειά', 'Home & work'],
-  ['Ειδοποιήσεις', 'Notifications'],
-  ['Οι ειδοποιήσεις είναι ενεργές.', 'Notifications are on.'],
-  ['Οι ειδοποιήσεις είναι αποκλεισμένες από τον περιηγητή· επίτρεψέ τες από τα δικαιώματα του ιστότοπου.', 'Notifications are blocked in your browser. Allow them in the site settings.'],
-  ['Οι ειδοποιήσεις δεν έχουν ενεργοποιηθεί.', 'Notifications are not enabled.'],
-  ['Αυτή η συσκευή δεν υποστηρίζει ειδοποιήσεις.', 'This device does not support notifications.'],
-  ['Χωρίς ειδοποιήσεις με κλειστή εφαρμογή, οι υπενθυμίσεις λειτουργούν μόνο όσο η εφαρμογή είναι ανοιχτή (ακόμη και στο παρασκήνιο). Αν την κλείσεις εντελώς ή το τηλέφωνο την σταματήσει, δεν θα χτυπήσουν.',
-    'Without push notifications, reminders only work while the app is open (even in the background). If you close it or the phone stops it, they will not ring.'],
-  ['Ενεργοποίηση ειδοποιήσεων', 'Enable notifications'],
-  ['Οι ειδοποιήσεις ενεργοποιήθηκαν', 'Notifications enabled'],
-  ['Οι ειδοποιήσεις δεν ενεργοποιήθηκαν', 'Notifications were not enabled'],
-  ['Δοκιμή υπενθύμισης', 'Test reminder'],
-  ['Δοκιμαστική υπενθύμιση', 'Test reminder'],
-  ['Έτσι θα σε ειδοποιώ πριν χρειαστεί να φύγεις.', 'This is how you will be notified before you need to leave.'],
-  ['Η δοκιμή θα εμφανιστεί σε 5 δευτερόλεπτα', 'The test will appear in 5 seconds'],
-  ['Υπενθύμιση', 'Reminder'],
-  ['στις {time}', 'at {time}'],
-  ['Ακύρωση υπενθύμισης: {name}', 'Cancel reminder: {name}'],
   ['Αγαπημένες στάσεις', 'Favourite stops'],
   ['δεν βρέθηκε στα τρέχοντα δεδομένα', 'not in the current data'],
   ['Μετακίνηση πάνω: {name}', 'Move up: {name}'],
@@ -179,36 +154,11 @@ const PAIRS = [
   ['αναζήτηση τόπων', 'place search'],
   ['στάσεις, γραμμές και αφίξεις', 'stops, lines and arrivals'],
 
-  // ---- lines ----
-  ['Γραμμές', 'Lines'],
-  ['Αναζήτηση γραμμής ή προορισμού', 'Search line or destination'],
-  ['{n} γραμμή', '{n} line'],
-  ['{n} γραμμές', '{n} lines'],
-  ['Καμία γραμμή δεν ταιριάζει', 'No matching lines'],
-  ['Πίσω στις γραμμές', 'Back to lines'],
-  ['Γραμμή', 'Line'],
-  ['Η γραμμή δεν βρέθηκε.', 'Line not found.'],
-  ['Όλες οι γραμμές', 'All lines'],
-  ['Διαδρομές της γραμμής', 'Routes of this line'],
-  ['Κοινοποίηση γραμμής', 'Share line'],
-  ['Γραμμή {code} · {name}', 'Line {code} · {name}'],
-  ['Γραμμή {code} {name} — {app} · {city}', 'Line {code} {name} — {app} · {city}'],
-  ['Αναχωρήσεις από την αφετηρία', 'Departures from the start'],
-  ['Πλήρες ημερήσιο πρόγραμμα: όχι ακόμη διαθέσιμο — χρειάζεται τα επίσημα δεδομένα δρομολογίων.', 'The full daily timetable is not available yet; it needs the official schedule data.'],
+  // ---- stops on a route (vehicle page) ----
   ['Αφετηρία', 'Start'],
   ['Τέρμα', 'End'],
-  ['Δεν υπάρχει γνωστή αφετηρία για αυτή τη διαδρομή.', 'No known start for this route.'],
-  ['Δεν φορτώθηκαν οι αναχωρήσεις.', 'Could not load departures.'],
-  ['Καμία προσεχής αναχώρηση αυτής της διαδρομής', 'No upcoming departures on this route'],
-  ['Οι στάσεις είναι αλφαβητικά (άγνωστη σειρά).', 'Stops are alphabetical (order unknown).'],
   ['{n} στάση', '{n} stop'],
   ['{n} στάσεις', '{n} stops'],
-  ['Δεν βρέθηκαν στάσεις για αυτή τη διαδρομή.', 'No stops found for this route.'],
-  ['Δεν υπάρχουν διαδρομές', 'No routes'],
-  ['Επόμενα', 'Next'],
-  ['Επόμενα λεωφορεία στη στάση {name}', 'Next buses at {name}'],
-  ['Δεν φορτώθηκαν οι αφίξεις.', 'Could not load arrivals.'],
-  ['Καμία άφιξη της γραμμής {code} αυτή τη στιγμή.', 'No arrivals on line {code} right now.'],
   // ---- other modules, as already wrapped by their owners ----
   ['Εκτός σύνδεσης — δείχνω αποθηκευμένα δεδομένα', 'Offline — showing saved data'],
   ['μισός', 'half'],
@@ -245,7 +195,7 @@ const PAIRS = [
   ['Γραμμή {line}, {dest}. Ζωντανή θέση: φτάνει {when}, περίπου στις {clock}.{hint}', 'Line {line}, {dest}. Live position: arrives {when}, around {clock}.{hint}'],
   ['Γραμμή {line}, {dest}. Προγραμματισμένη άφιξη στις {clock}, {when}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.', 'Line {line}, {dest}. Scheduled arrival at {clock}, {when}. No live position, and it may not be kept.'],
   // ---- round 3 wave 2: remaining modules ----
-  ['συνήθως στην ώρα του', 'usually on time'],
+  ['Συνήθως στην ώρα του', 'Usually on time'],
   ['Επιλεγμένο σημείο', 'Selected point'],
   ['Ακολούθησε τη θέση μου', 'Follow my location'],
   ['Περιστροφή χάρτη με την πυξίδα', 'Rotate map with compass'],
@@ -267,7 +217,6 @@ const PAIRS = [
   ['Αναζήτηση τόπων…', 'Search places…'],
   ['Δεν ήταν δυνατή η αναζήτηση τόπων.', 'Could not search places.'],
   ['Κανένα αποτέλεσμα', 'No results'],
-  ['Δεν φορτώθηκε η ενότητα «κοντά σου».', 'The “nearby” section did not load.'],
   ['Δεν έχεις αγαπημένες στάσεις ακόμα. Άνοιξε μια στάση και πάτα το αστέρι για να την προσθέσεις.', 'You have no favorite stops yet. Open a stop and tap the star to add it.'],
   ['{d} από εσένα', '{d} from you'],
   ['Κοντινές στάσεις', 'Nearby stops'],
@@ -283,8 +232,6 @@ const PAIRS = [
   [' Πάτα για τη γραμμή.', ' Tap for the line.'],
   ['Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', 'Old data: updated {age} ago.'],
   ['δεδομένα προσομοίωσης', 'simulated data'],
-  ['ενημερώθηκε πριν {age}', 'updated {age} ago'],
-  ['Γραμμή {code} · διαδρομή οχήματος', 'Line {code} · vehicle route'],
   ['Εκτός live', 'No longer live'],
   ['Άνοιξε το όχημα από μια στάση (ή από τον χάρτη) για να δεις τη ζωντανή του θέση.', 'Open the vehicle from a stop (or from the map) to see its live position.'],
   ['Δεν φορτώθηκαν τα δεδομένα.', 'Data did not load.'],
@@ -344,7 +291,6 @@ const PAIRS = [
   ['Δεν υπάρχουν προσεχή δρομολόγια κοντά σου.', 'No upcoming trips near you.'],
   ['ζωντανά', 'live'],
   ['προγραμματισμένο', 'scheduled'],
-  ['Άνοιγμα', 'Open'],
   ['Τόπος', 'Place'],
   ['Έχεις ήδη 3 δικούς σου τόπους', 'You already have 3 saved places'],
   ['Όνομα (π.χ. Γυμναστήριο)', 'Name (e.g. Gym)'],
@@ -362,14 +308,21 @@ const PAIRS = [
   ['κλειστός', 'collapsed'],
 
   // ---- round 3 wave 2: remaining strings ----
-  ['συνήθως +{n}′', 'usually +{n}′'],
-  ['συνήθως −{n}′', 'usually −{n}′'],
+  ['Συνήθως αργεί {n} λεπτό', 'Usually {n} min late'],
+  ['Συνήθως αργεί {n} λεπτά', 'Usually {n} min late'],
+  ['Συνήθως {n} λεπτό νωρίς', 'Usually {n} min early'],
+  ['Συνήθως {n} λεπτά νωρίς', 'Usually {n} min early'],
+  ['Στην ώρα του', 'On time'],
+  ['Αργεί {n} λεπτό', '{n} min late'],
+  ['Αργεί {n} λεπτά', '{n} min late'],
+  ['{n} λεπτό νωρίς', '{n} min early'],
+  ['{n} λεπτά νωρίς', '{n} min early'],
   ['Στάση {name}', 'Stop {name}'],
   ['Αφίξεις λεωφορείων στη στάση {name} ({code})', 'Bus arrivals at {name} ({code})'],
   ['Καμία άφιξη για τη γραμμή {line}', 'No arrivals for line {line}'],
   ['Εμφάνιση όλων ({n})', 'Show all ({n})'],
-  ['Νέα προσπάθεια σε {n}″', 'Retrying in {n}″'],
-  ['ανανέωση σε {n}″', 'refreshing in {n}″'],
+  ['Νέα προσπάθεια σε {when}', 'Retrying in {when}'],
+  ['ανανέωση σε {when}', 'refreshing in {when}'],
   ['Τέρμα «{name}»: ≈ {clock} · {when} (εκτίμηση)', 'Terminus "{name}": ≈ {clock} · {when} (estimated)'],
   ['Μόνο η ώρα στη στάση «{name}» προέρχεται από live δεδομένα. Οι υπόλοιπες ώρες είναι εκτίμηση από τυπικούς χρόνους διαδρομής, όχι πρόγραμμα.',
     'Only the time at stop "{name}" comes from live data. The other times are estimated from typical trip durations, not a timetable.'],
@@ -396,4 +349,4 @@ const PAIRS = [
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.
-export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS]);
+export const EN = new Map([...PAIRS, ...REPORT_PAIRS, ...WELCOME_PAIRS, ...SETUP_PAIRS, ...HOME_PAIRS, ...TRIP_PAIRS]);

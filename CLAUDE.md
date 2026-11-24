@@ -40,9 +40,14 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
    Settings (`settings-view.js`), and the map's own credit on the map (`AttributionControl` in `map.js`).
 6. **The user's location stays on the device.** It is not sent to our worker, not stored (localStorage holds only the
    flag `patra-bus:loc-granted`), and not put in an app URL, share link, reminder or report. Two exceptions, both
-   requests straight from the browser to a third party: **OSRM** (`walk.js`, the "near you" card) gets the start and end
-   of a walk at 5 decimals (~1 m); **Photon** (`geocode.js`) gets a `lat`/`lon` bias rounded to 2 decimals (~1 km).
-   A new location flow to anyone needs this rule updated first.
+   requests straight from the browser to a third party: **OSRM** (`walk.js`) gets the start and end of a walking leg at
+   5 decimals (~1 m): for the "near you" card, for the walk to a stop and for the walking legs of a trip; **Photon**
+   (`geocode.js`) gets the typed text and a `lat`/`lon` bias rounded to 2 decimals (~1 km). A trip's start, when it is
+   your location, is never put in the app URL or a share link. One more case (Kostas, 2026-11-22, TEL-365): on a cold
+   start at home with location already allowed, the app picks the nearest stop on the device and opens its card. Only
+   that stop's code leaves the device, in the card's usual live and delay-stats requests to our worker, and it is in
+   the app's URL (`#/stop/<code>`). A share or report from that card carries it only when the user sends it. It is not
+   saved as a recent. A new location flow to anyone needs this rule updated first.
 7. **No secrets in commits, PRs, issues or comments:** the citybus token, `NOTION_TOKEN`, `NOTION_DB_ID`,
    `VAPID_PRIVATE_KEY`, `STATS_TOKEN`. They live as Cloudflare secrets and, locally, in `worker/.dev.vars`
    (gitignored); not in `.dev.vars.example` either.
@@ -52,6 +57,9 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
    Whatever cannot be checked locally or in `?demo` (install, GPS/compass, look and motion on the device,
    iPhone/Android) does not stay as a PR checkbox: one issue per group of checks, with prerequisites, steps with URLs,
    the expected result as a checklist, devices, cleanup and the PR link. List: `gh issue list --label device-test`.
+10. **Every UI change follows `docs/UI-PROTOCOL.md`** (rules U1…): the PR shows its checklist or says which exception it
+   makes and why. If a proposal breaks a rule, say which one (e.g. "breaks U4"). The bypass is for Kostas only ("UI
+   bypass" → branch `kostas/ui-exp-*`, label `ui-experiment`, never merged as is). A new rule needs Kostas's approval.
 
 ## Also binding
 - **Worker deploys** go only through GitHub → Actions → «Worker deploy»: staging from any branch, production only from
@@ -106,7 +114,7 @@ None of these is loaded automatically: open the one for your topic before you st
 - citybus.gr API facts, before touching `worker/`, `scripts/fetch-static.mjs`, `scripts/record-fixtures.mjs` or
   `web/js/arrivals.js`: `docs/UPSTREAM-API.md`
 - Cities (Patras, Corfu, adding one): `docs/MULTI-CITY.md`
-- Motion, materials, the numbered UI map for reviews: `docs/DESIGN.md`
+- Motion, materials, glass, the numbered UI map for reviews: `docs/DESIGN.md`; the UI rules and their checks: `docs/UI-PROTOCOL.md`
 - Tests, fixtures, `?demo` modes, screenshots: `docs/TESTING.md`
 - CI, merge window, Pages, PR previews, staging and production deploys: `docs/CI-AND-DEPLOY.md`
 - First-time setup, local worker, who holds which secret: `CONTRIBUTING.md`

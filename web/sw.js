@@ -43,15 +43,23 @@ const SHELL = [
   'icon.svg',
   'css/tokens.css',
   'css/arrivals.css',
+  'css/trip.css',
   'css/nearby.css',
   'css/extras.css',
   'css/places.css',
   'css/report.css',
   'css/welcome.css',
+  'css/boot.css',
   'css/setup.css',
+  'css/glass.css',
+  'css/ui-kit.css',
+  'css/home.css',
   'js/app.js',
   'js/ui.js',
+  'js/glass.js',
   'js/map.js',
+  'js/map-style.js',
+  'js/map-stops.js',
   'js/sheet.js',
   'js/motion.js',
   'js/text.js',
@@ -68,12 +76,14 @@ const SHELL = [
   'js/boot-city.js',
   'js/geo.js',
   'js/walk.js',
+  'js/trip.js',
+  'js/trip-map.js',
+  'js/trip-view.js',
   'js/nearby.js',
   'js/geocode.js',
   'js/store.js',
-  'js/notify.js',
   'js/share.js',
-  'js/lines-view.js',
+  'js/stop-menu.js',
   'js/bus-view.js',
   'js/settings-view.js',
   'js/accents.js',
@@ -82,11 +92,17 @@ const SHELL = [
   'js/i18n-en-report.js',
   'js/i18n-en-welcome.js',
   'js/i18n-en-setup.js',
+  'js/i18n-en-home.js',
+  'js/i18n-en-trip.js',
+  'js/home-view.js',
   'js/places.js',
+  'js/place-view.js',
   'js/platform.js',
   'js/report.js',
   'js/report-view.js',
   'js/welcome.js',
+  'js/boot.js',
+  'js/start-stop.js',
   'js/setup.js',
   'js/usage.js',
   'data/stops.json',
@@ -94,6 +110,15 @@ const SHELL = [
   // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.
   'data/corfu/stops.json',
   'data/corfu/lines.json',
+  // Map letters (TEL-361): Latin, Greek and punctuation, so labels show offline. Rarer ranges are cached when first used.
+  'fonts/Manrope%20Regular/0-255.pbf',
+  'fonts/Manrope%20Regular/256-511.pbf',
+  'fonts/Manrope%20Regular/768-1023.pbf',
+  'fonts/Manrope%20Regular/8192-8447.pbf',
+  'fonts/Manrope%20Bold/0-255.pbf',
+  'fonts/Manrope%20Bold/256-511.pbf',
+  'fonts/Manrope%20Bold/768-1023.pbf',
+  'fonts/Manrope%20Bold/8192-8447.pbf',
 ];
 
 // Cached when present; a 404 here must not break the install.
@@ -221,24 +246,3 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirst(event));
 });
 
-// Tap on a reminder notification: focus the open app (jumping to the target hash) or open it.
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil((async () => {
-    const scope = self.registration.scope;
-    let target = new URL('./', scope);
-    try {
-      const u = new URL(event.notification.data?.url || './', scope);
-      if (u.origin === self.location.origin) target = u;
-    } catch { /* keep scope */ }
-    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const open = wins.find((w) => w.url.startsWith(scope));
-    if (!open) return self.clients.openWindow(target.href);
-    const same = (a, b) => a.split('#')[0] === b.split('#')[0];
-    try {
-      await open.focus();
-      // Only a fragment change when the page is the same document (no reload, keeps ?demo etc.).
-      if (target.hash && same(open.url, target.href) && 'navigate' in open) await open.navigate(target.href);
-    } catch { /* focus can be refused; nothing else to do */ }
-  })());
-});

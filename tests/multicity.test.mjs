@@ -6,7 +6,6 @@ import { parseHash, relHash, formatHash, cityHash, shareHash, resolveBootCity } 
 import { createStore, KEY } from '../web/js/store.js';
 import { fetchLive, fetchStats, liveUrl, statsUrl, lastAttemptAt, _setTransport, API_BASE, MIN_GAP_MS } from '../web/js/api.js';
 import { createPlaces } from '../web/js/places.js';
-import { createReminders } from '../web/js/notify.js';
 import { buildIndex } from '../web/js/data.js';
 
 function fakeStorage(init = {}) {
@@ -168,7 +167,7 @@ test('store: the city setting is validated and survives a settings reset', () =>
   assert.equal(s.getSettings().city, 'corfu');
   s.setSetting('theme', 'dark');
   s.resetSettings();
-  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, reminderMin: 2, lang: 'el', usageStats: true, city: 'corfu' });
+  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, lang: 'el', usageStats: true, city: 'corfu' });
   s.clearAll();
   assert.equal(s.getSettings().city, undefined);
 });
@@ -260,37 +259,6 @@ test('places: items saved before multi-city (no `city`) are Patras', () => {
   assert.deepEqual(p.getPlaces(), []);
   city.v = 'patra';
   assert.deepEqual(p.getPlaces().map((x) => x.city), ['patra']);
-});
-
-test('reminders: tagged with the city; lists and lookups show the active city only; due ones fire anywhere', () => {
-  let t = 1_700_000_000_000;
-  const timers = [];
-  const fired = [];
-  const ls = fakeStorage();
-  const city = { v: 'patra' };
-  const r = createReminders({ storage: () => ls, now: () => t, setTimer: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, clearTimer: () => {}, onFire: (x) => fired.push(x), city: () => city.v });
-  r.scheduleReminder({ at: t + 60_000, title: 'P', tag: 'a', url: '#/patra/plan' });
-  city.v = 'corfu';
-  r.scheduleReminder({ at: t + 90_000, title: 'C', tag: 'b', url: '#/corfu/plan' });
-  assert.deepEqual(r.listReminders().map((x) => [x.tag, x.city]), [['b', 'corfu']]);
-  assert.equal(r.hasReminder('a'), false);
-  assert.equal(r.hasReminder('b'), true);
-  city.v = 'patra';
-  assert.deepEqual(r.listReminders().map((x) => x.tag), ['a']);
-  t += 100_000;
-  r.tick();
-  assert.deepEqual(fired.map((x) => [x.tag, x.city]), [['a', 'patra'], ['b', 'corfu']]);
-  assert.deepEqual(r.listReminders(), []);
-});
-
-test('reminders: stored ones without `city` (older app) are Patras', () => {
-  const t = 1_700_000_000_000;
-  const stored = { v: 1, items: [{ id: '1', tag: 'old', at: t + 60_000, title: 'Old' }] };
-  const city = { v: 'corfu' };
-  const r = createReminders({ storage: () => fakeStorage({ 'patra-bus:reminders': JSON.stringify(stored) }), now: () => t, setTimer: () => 1, clearTimer: () => {}, city: () => city.v });
-  assert.deepEqual(r.listReminders(), []);
-  city.v = 'patra';
-  assert.deepEqual(r.listReminders().map((x) => [x.tag, x.city]), [['old', 'patra']]);
 });
 
 // ---------------------------------------------------------------- data

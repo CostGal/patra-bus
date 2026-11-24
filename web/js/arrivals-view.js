@@ -3,12 +3,13 @@
 // Minimal UI: a tile is badge + destination + big countdown + a small LIVE / ΠΡΟΓΡ. flag; explanations live in Settings → Σχετικά.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
-import { createLivePoller, remainingSec, fetchStats, usualDelayText, DEMO, isStale } from './api.js';
-import { ageText } from './arrivals.js';
+import { createLivePoller, remainingSec, fetchStats, usualDelay, DEMO, isStale } from './api.js';
 import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
 import { shareLink } from './share.js';
-import { t, etaTxt, etaSay } from './i18n.js';
+import { t, etaTxt, etaSay, ageWords, minWord, secWord } from './i18n.js';
 import { cityHash, shareHash } from './route.js';
+import { fmtDist } from './geo.js';
+import { createSpringLoop } from './motion.js';
 
 export { etaTxt as etaText };
 
@@ -19,19 +20,102 @@ const NOW_SEC = 15; // under this a tile reads "τώρα"
 const whenSpoken = (rem) => (rem < NOW_SEC ? t('τώρα') : t('σε {when}', { when: etaSay(rem) }));
 
 // ---- one arrival tile ----
-// v: normalised Vehicle. opts: { compact, now, line, stop, lineLinks, stat, stale }. The element has .tick(now) to refresh the countdown in
+// v: normalised Vehicle. opts: { compact, now, line, stop, stat, stale }. The element has .tick(now) to refresh the countdown in
 // place (the stop view calls it every second; other modules may do the same or just re-render) and .setStat(stat) to show the
-// quiet "συνήθως +3′" under a scheduled tile (reliability stats from api.fetchStats; ignored for live ones).
-// With opts.stop (the stop code the tile belongs to) the tile is a link: a live bus opens its route (#/bus/…), a scheduled
-// departure (no vehicle position) opens its line (#/line/…; lineLinks: false turns that off, e.g. inside the line view).
+// small "+3" mark on a scheduled tile's flag, which opens in place into its sentence (reliability stats from api.fetchStats; ignored for live ones).
+// With opts.stop (the stop code the tile belongs to) a live bus's tile is a link to its route (#/bus/…). A scheduled
+// departure (no vehicle position) is not a link: the line page it opened was removed (TEL-248) until it is planned again.
 export const busHash = (v, stop) => cityHash(`#/bus/${encodeURIComponent(v.vehicleCode)}?route=${encodeURIComponent(v.routeCode)}&stop=${encodeURIComponent(stop)}`);
-const lineHash = (v) => cityHash(`#/line/${encodeURIComponent(v.lineCode)}?route=${encodeURIComponent(v.routeCode)}`);
 
-export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, lineLinks = true, stat = null, stale = false } = {}) {
+// Where the open pill goes: over the flag, kept between the line badge and the countdown (px from its closed place).
+function usualShift(btn, width) {
+  const tile = btn.closest('.atile'), flag = btn.parentElement;
+  if (!tile) return 0;
+  const f = flag.getBoundingClientRect();
+  const min = tile.querySelector('.atile-badge').getBoundingClientRect().right + 3;
+  const max = tile.querySelector('.atile-num').getBoundingClientRect().left - 3 - width;
+  return Math.round(Math.max(min, Math.min(f.left - 1, max)) - (f.left + flag.clientLeft + btn.offsetLeft));
+}
+
+// The full sentence, or the shorter one when it does not fit between the line badge and the countdown (a narrow phone).
+function fitUsual(btn) {
+  const pill = btn.firstChild, long = pill.lastChild, tile = btn.closest('.atile');
+  long.textContent = btn.usualText;
+  if (!tile) return;
+  const room = tile.querySelector('.atile-num').getBoundingClientRect().left - tile.querySelector('.atile-badge').getBoundingClientRect().right - 6;
+  if (pill.offsetWidth > room) long.textContent = btn.usualTight;
+}
+
+const usualCover = (btn) => btn.parentElement.offsetWidth + 2;
+
+const USUAL_ROUND = 28; // px: the closed mark is a circle this wide (css/arrivals.css)
+
+// The final size and place are worked out once, before anything moves, so nothing has to be corrected when it settles.
+function unfoldUsual(btn) {
+  const pill = btn.firstChild;
+  btn.classList.add('unfold');
+  pill.style.width = '';
+  fitUsual(btn);
+  const width = Math.max(pill.offsetWidth, usualCover(btn)); // open, it hides the whole flag
+  pill.style.width = `${width}px`;
+  btn.style.transformOrigin = `${width / 2}px 50%`;
+  const a = btn.usualAnim ||= { p: 0, vel: 0, at: 0, loop: null };
+  return Object.assign(a, { width, x: usualShift(btn, width) });
+}
+
+// p: 0 = the closed circle, 1 = the open pill, a little above 1 = the bounce. Only the cut-out, opacity and transform change.
+function paintUsual(btn, p) {
+  const a = btn.usualAnim, pill = btn.firstChild, q = Math.min(1, Math.max(0, p));
+  a.p = p;
+  pill.style.setProperty('--usual-cut', `${((a.width - USUAL_ROUND) * (1 - q)).toFixed(2)}px`);
+  pill.firstChild.style.opacity = Math.max(0, 1 - q * 2.5);
+  pill.lastChild.style.opacity = Math.max(0, (q - 0.35) / 0.65);
+  btn.style.transform = `translate3d(${a.x * q}px, 0, 0) scale(${1 + Math.max(0, p - 1) * 0.3})`;
+}
+
+function foldUsual(btn) {
+  const pill = btn.firstChild;
+  btn.classList.remove('unfold');
+  for (const el of [pill, pill.firstChild, pill.lastChild]) el.removeAttribute('style');
+  btn.style.transform = btn.style.transformOrigin = btn.style.willChange = '';
+  Object.assign(btn.usualAnim, { p: 0, vel: 0 });
+}
+
+// The usual-delay mark opens and closes in place on the shared spring (TEL-254); a second tap reverses it from where it is.
+function toggleUsual(btn, open) {
+  btn.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', String(open));
+  const a = btn.classList.contains('unfold') ? btn.usualAnim : unfoldUsual(btn);
+  const done = () => {
+    a.vel = 0;
+    if (btn.classList.contains('open')) btn.style.willChange = ''; else foldUsual(btn);
+  };
+  if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    a.loop?.stop();
+    paintUsual(btn, open ? 1 : 0);
+    done();
+    btn.animate?.([{ opacity: 0.4 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+    return;
+  }
+  a.loop ||= createSpringLoop({
+    get: () => a.p,
+    set: (p) => {
+      const now = performance.now(), dt = (now - a.at) / 1000;
+      if (dt > 0) a.vel = (p - a.p) / dt;
+      a.at = now;
+      paintUsual(btn, p);
+    },
+    onSettle: () => done(),
+  });
+  a.at = performance.now();
+  btn.style.willChange = 'transform';
+  a.loop.to(open ? 1 : 0, { velocity: a.vel, damping: open ? 0.72 : 1, response: open ? 0.42 : 0.3 });
+}
+
+export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), line, stop, stat = null, stale = false, usualOpen = null } = {}) {
   const live = !!v.live;
   const aged = live && stale; // TEL-52: its position is older than STALE_MS, so it must not read as LIVE any more
-  const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop)
-    : stop && !live && lineLinks && v.lineCode && v.routeCode ? lineHash(v) : null;
+  const href = stop && live && v.vehicleCode && v.routeCode ? busHash(v, stop) : null;
   const at = fetchedAt + v.etaSec * 1000; // ETA as a wall-clock instant; constant between fetches
   const clock = fmtClock(at);
   const dest = titleCase(v.routeName);
@@ -39,11 +123,21 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
 
   const num = h('span', { class: 'atile-num tabular' });
   const age = aged ? h('span', { class: 'atile-age' }) : null;
+  // the list is rebuilt on every poll: usualOpen (a Set kept by the view) remembers which marks are open
+  const usualKey = `${v.routeCode}|${clock}`;
+  const usualShort = h('span', { class: 'atile-usual-short', 'aria-hidden': 'true' });
+  const usualLong = h('span', { class: 'atile-usual-long', 'aria-hidden': 'true' });
+  const usual = live ? null : h('button', { type: 'button', class: 'atile-usual', hidden: true, 'aria-expanded': 'false', 'data-key': `usual:${usualKey}`, onclick: (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const open = !usual.classList.contains('open');
+    if (usualOpen) { if (open) usualOpen.add(usualKey); else usualOpen.delete(usualKey); }
+    toggleUsual(usual, open);
+  } }, h('span', { class: 'atile-usual-pill' }, usualShort, usualLong));
   const flag = live
     ? h('span', { class: 'atile-flag' }, h('span', { class: 'atile-dot', 'aria-hidden': 'true' }), t('LIVE'), age)
-    : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock));
-  const usual = h('span', { class: 'atile-usual', hidden: true });
-  const status = h('div', { class: 'atile-status' }, flag, live ? null : usual);
+    : h('span', { class: 'atile-flag' }, icon('clock'), t('ΠΡΟΓΡ.'), h('span', { class: 'atile-clock' }, clock), usual);
+  const status = h('div', { class: 'atile-status' }, flag);
 
   const el = h(href ? 'a' : 'div', { class: `atile ${live ? 'atile-live' : 'atile-sched'}${aged ? ' atile-aged' : ''}${compact ? ' atile-compact' : ''}${href ? ' atile-link press' : ''}`, role: href ? null : 'img', href },
     h('div', { class: 'atile-badge' }, badge),
@@ -59,7 +153,7 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
       : t('Γραμμή {line}, {dest}. Προγραμματισμένη άφιξη στις {clock}, {when}. Δεν υπάρχει ζωντανή θέση και μπορεί να μην τηρηθεί.', a) + (usualTxt ? ` ${usualTxt}.` : '') + hint;
   };
   el.tick = (t0 = Date.now()) => {
-    if (age) age.textContent = t('πριν {age}', { age: ageText((t0 - fetchedAt) / 1000) });
+    if (age) age.textContent = t('πριν {age}', { age: ageWords((t0 - fetchedAt) / 1000) });
     const rem = remainingSec(v, fetchedAt, t0);
     const text = etaTxt(rem);
     el.classList.toggle('atile-now', rem < NOW_SEC);
@@ -69,9 +163,31 @@ export function arrivalTile(v, fetchedAt, { compact = false, now = Date.now(), l
     el.setAttribute('aria-label', label(rem));
   };
   el.setStat = (s) => {
-    usualTxt = live ? '' : usualDelayText(s);
-    if (usual.textContent !== usualTxt) usual.textContent = usualTxt;
-    usual.hidden = !usualTxt;
+    if (live) return;
+    const info = usualDelay(s);
+    usualTxt = info ? info.text : '';
+    // the mark sits on the flag and does not change the tile's height; the sheet still holds on a late change (TEL-348)
+    if (usual.hidden === !!info) el.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
+    usual.hidden = !info;
+    // a button inside role="img" would be hidden from screen readers
+    if (!href) el.setAttribute('role', info ? 'group' : 'img');
+    if (info) {
+      usual.dataset.kind = info.kind;
+      usual.setAttribute('aria-label', info.text);
+      usualShort.textContent = info.short;
+      usualLong.textContent = info.text;
+      usual.usualText = info.text;
+      usual.usualTight = info.tight;
+      const open = !!usualOpen && usualOpen.has(usualKey);
+      usual.classList.toggle('open', open);
+      usual.setAttribute('aria-expanded', String(open));
+      // rebuilt by a poll while open: back in its place before the first paint, without moving
+      if (open && !usual.classList.contains('unfold')) requestAnimationFrame(() => {
+        if (!usual.isConnected || usual.classList.contains('unfold')) return;
+        unfoldUsual(usual);
+        paintUsual(usual, 1);
+      });
+    }
     if (lastText != null) { lastText = null; el.tick(Date.now()); }
   };
   el.tick(now);
@@ -94,10 +210,10 @@ const errText = (e) => ERR_TEXT()[e && e.kind] || ERR_TEXT().upstream;
 const secsUntil = (at, now) => Math.max(0, Math.ceil((at - now) / 1000));
 
 // ---- the stop view ----
-export function mountStop(container, ctx, { code }) {
+export function mountStop(container, ctx, { code, walk = false, auto = false }) { // auto: opened by the app at start, not a recent
   code = String(code);
   const stop = ctx.data && ctx.data.stopByCode.get(code);
-  const root = h('div', { class: 'stopv' });
+  const root = h('div', { class: 'stopv sheet-inset' });
   container.replaceChildren(root);
   if (!stop) {
     root.append(
@@ -112,7 +228,6 @@ export function mountStop(container, ctx, { code }) {
   let showAll = false;
   let stale = false;
   let retryPending = false;
-  let fitted = false;
   let tiles = []; // { v, el } for the tiles currently shown
   let timer = null;
   const stats = new Map(); // routeCode -> stat | null (asked once per mount; api.js memoises across mounts)
@@ -121,11 +236,13 @@ export function mountStop(container, ctx, { code }) {
   let mapQ = Promise.resolve(ctx.map && ctx.map.ready).catch(() => {});
   const onMap = (fn) => { mapQ = mapQ.then(() => { try { if (ctx.map) fn(ctx.map); } catch (e) { console.warn('map', e); } }); };
 
-  addRecent('stop', { code, name: stop.displayName });
+  if (!auto) addRecent('stop', { code, name: stop.displayName }); // CLAUDE.md rule 6: the stop near you is not saved
 
-  // ---- header: name · ★ · ⋯ (share) · close ----
-  const iconBtn = (name, label, onclick) => h('button', { type: 'button', class: 'btn round', 'aria-label': label, title: label, onclick }, icon(name));
-  const star = h('button', { type: 'button', class: 'btn round stopv-star', onclick: () => { toggleFavorite(code); paintStar(); } });
+  // ---- header (TEL-227, an Apple Maps place card): share · centred name and "Stop 1011 · <line badges>" · close.
+  // Low is this header alone; from mid, under the line chips, the row of directions and ☆. The ⋯ menu is gone: its
+  // two items are on screen now. Every round button here is one glass circle (.g-circle) ----
+  const iconBtn = (name, label, onclick, cls = '') => h('button', { type: 'button', class: `btn round g-circle${cls}`, 'aria-label': label, title: label, onclick }, icon(name));
+  const star = iconBtn('star', '', () => { toggleFavorite(code); paintStar(); }, ' stopv-star');
   function paintStar() {
     const on = isFavorite(code);
     const label = on ? t('Αφαίρεση από τα αγαπημένα') : t('Προσθήκη στα αγαπημένα');
@@ -145,25 +262,106 @@ export function mountStop(container, ctx, { code }) {
     else if (r === 'failed') ctx.toast(t('Δεν ήταν δυνατή η κοινοποίηση'));
   }
 
-  const menu = h('div', { class: 'stopv-menu', role: 'menu', hidden: true },
-    h('button', { type: 'button', role: 'menuitem', class: 'stopv-item', onclick: () => { setMenu(false); share(); } }, icon('share'), t('Κοινοποίηση')));
-  const moreBtn = h('button', { type: 'button', class: 'btn round stopv-more-btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': t('Περισσότερα'), title: t('Περισσότερα'), onclick: () => setMenu(menu.hidden) }, '⋯');
-  function setMenu(open) {
-    menu.hidden = !open;
-    moreBtn.setAttribute('aria-expanded', String(open));
-    if (open) menu.querySelector('button')?.focus();
-  }
-  const onDocClick = (e) => { if (!menu.hidden && !menu.contains(e.target) && !moreBtn.contains(e.target)) setMenu(false); };
-  const onKey = (e) => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); moreBtn.focus(); } };
-  document.addEventListener('click', onDocClick);
-  document.addEventListener('keydown', onKey);
-
+  // under the name at low: the line badges (the filter chips, carried up and centred there: css/glass.css, placed by
+  // placeChips()); from mid the chips are right under the name. The stop's number is at the very bottom (TEL-227)
+  const name = h('h1', { class: 'stopv-name card-title', title: stop.displayName }, stop.displayName);
   const head = h('header', { class: 'stopv-head' },
-    h('div', { class: 'stopv-top' },
-      h('div', { class: 'stopv-titles' },
-        h('h1', { class: 'stopv-name' }, stop.displayName),
-        h('p', { class: 'stopv-sub' }, t('Στάση {code}', { code }))),
-      h('div', { class: 'stopv-actions' }, star, moreBtn, iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/')), menu)));
+    h('div', { class: 'stopv-top card-head' },
+      iconBtn('share', t('Κοινοποίηση'), share),
+      h('div', { class: 'stopv-titles' }, name, h('span', { class: 'stopv-peek', 'aria-hidden': 'true', 'data-peek-end': '' })), // low ends under it (js/sheet.js)
+      iconBtn('close', t('Κλείσιμο'), () => ctx.navigate('#/'))));
+  // "Οδηγίες ως εδώ": the walk from where you are to this stop, drawn on the map, with its distance and time.
+  // CLAUDE.md rule 6: the position is read on the device; only the two ends of the walk go to OSRM (js/walk.js), as for
+  // the "near you" card. Nothing is stored and nothing goes into the URL. Without a routed path only the estimate shows.
+  let walkAbort = null;
+  async function directions() {
+    walkAbort?.abort();
+    const ac = walkAbort = new AbortController();
+    try {
+      let fix = ctx.location?.current;
+      if (!fix) { ctx.location?.start(); fix = await ctx.location?.waitForFix(10000); }
+      if (dead || ac.signal.aborted) return;
+      if (!fix) { ctx.toast(t('Δεν βρέθηκε η τοποθεσία σου. Δοκίμασε ξανά.')); return; }
+      const { walkRoute } = await import('./walk.js');
+      const r = await walkRoute(fix, stop, { signal: ac.signal });
+      if (dead || ac.signal.aborted) return;
+      if (r.geometry?.length > 1) {
+        ctx.map?.setOverlay('stop-walk', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: r.geometry } }] }, { kind: 'walk' });
+      } else ctx.map?.clearOverlay('stop-walk');
+      ctx.map?.fitTo([fix, stop], { maxZoom: 17 });
+      ctx.toast(t('{d} · {min} με τα πόδια', { d: fmtDist(r.meters), min: minWord(Math.max(1, Math.round(r.seconds / 60))) }));
+    } catch (err) {
+      if (err?.name !== 'AbortError') console.warn('[directions]', err);
+    }
+  }
+  const acts = h('div', { class: 'stopv-acts' },
+    h('button', { type: 'button', class: 'stopv-pill g-pill primary', onclick: directions }, icon('walk'), h('span', {}, t('Οδηγίες ως εδώ'))),
+    star);
+
+  // the name, as in Apple Maps: one line at low and mid (17 px, shrunk down to 14 px before it is cut with "…"); at up
+  // its own row under the buttons, 24 px (less if its longest word would not fit), up to two lines. From mid towards up
+  // it grows with the sheet as a transform (css/glass.css, by --u: smooth on a phone, no new font size per frame), and
+  // halfway up it moves to its own row at the same visual size, in a short blur. Only while the sheet is up or held: it
+  // measures low and mid at neither, and on the way down it tells us first (sheet:leave-full), so it never measures the
+  // up layout.
+  const sheetEl = document.getElementById('sheet');
+  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24, NAME_LH = 20; // NAME_LH: its line box at low and mid (css)
+  let nameN = NAME_PX, upN = NAME_UP; // its low/mid size, its up size
+  let measureCtx = null;
+  function fitName() {
+    if (dead) return;
+    if (head.classList.contains('is-up')) return; // measured again once it is one line
+    // no transition while it is measured: with reduced motion app.css gives every change a 0.01 ms one, and the
+    // computed size would still be the old one when it is read
+    name.style.transition = 'none';
+    for (const k of ['--name-px', '--name-n', '--name-up-n']) name.style.removeProperty(k);
+    const room = name.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
+    if (room <= 0) { name.style.transition = ''; return; }
+    const r = document.createRange();
+    r.selectNodeContents(name);
+    const scale = name.getBoundingClientRect().width / name.offsetWidth || 1; // the growth towards up, if any
+    let w = r.getBoundingClientRect().width / scale;
+    nameN = NAME_PX;
+    if (w > room) {
+      nameN = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
+      w = w * nameN / NAME_PX;
+      name.style.setProperty('--name-px', `${nameN}px`);
+      name.style.setProperty('--name-n', String(nameN));
+    }
+    // up: 30 px, unless its longest word would not fit on a line at that size (it would break inside the word)
+    measureCtx ||= document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(name);
+    measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
+    const longest = Math.max(...stop.displayName.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
+    const upRoom = head.clientWidth - 2; // up: the whole width of the card
+    upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * upRoom / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
+    if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
+    name.style.transition = '';
+  }
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (head.classList.contains('is-up') === on) return;
+    head.classList.toggle('is-up', on);
+    if (!on) fitName();
+    // the move to its own row hides in a short blur, as in Apple Maps
+    if (!reduceMotion.matches) name.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  const upRow = () => (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5; // halfway from mid to up
+  // sheet.js writes --sheet-t on every frame of a drag or a spring, and says when it crosses that point (sheet:upper);
+  // the observer only watches the state and the drag starting or ending (TEL-305)
+  const tMO = new MutationObserver(() => setUp(upRow()));
+  if (sheetEl) tMO.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+  const onUpper = () => setUp(upRow());
+  sheetEl?.addEventListener('sheet:upper', onUpper);
+  const onLeaveUp = () => setUp(false);
+  sheetEl?.addEventListener('sheet:leave-full', onLeaveUp);
+  const onSettle = () => placeChips(); // measured again at rest
+  sheetEl?.addEventListener('sheet:settle', onSettle);
+  // a web font that arrives late changes the name's width, not the header's size (fonts.ready can resolve before the
+  // name's font has even been asked for)
+  document.fonts?.ready.then(fitName);
+  document.fonts?.addEventListener('loadingdone', fitName);
 
   // ---- dynamic parts ----
   const bannerText = h('span', { class: 'stopv-banner-text' });
@@ -171,13 +369,50 @@ export function mountStop(container, ctx, { code }) {
   // Not a live region: its age is rewritten every second. State changes are spoken once through `status` instead.
   const banner = h('div', { class: 'stopv-banner', hidden: true }, icon('alert'), bannerText, bannerBtn);
   const chips = h('div', { class: 'stopv-chips', role: 'group', 'aria-label': t('Φίλτρο γραμμής') });
-  const chipBar = h('div', { class: 'stopv-chipbar', hidden: true }, chips);
+  // at low the chips are flat line badges inside the subtitle (TEL-224/227, css/glass.css); towards mid they come down
+  // into their own row and grow into the filter chips
+  const chipBar = h('div', { class: 'stopv-chipbar', 'data-lens': true, hidden: true }, chips);
+  // TEL-348 (Kostas): once the arrivals are on screen and the sheet has fitted them, nothing the view changes moves the
+  // sheet: a line filter, the 20 s poll, a «συνήθως» line arriving late push the list down instead. Each change first
+  // sends sheet:hold (js/sheet.js fits what is there now, then holds until the next drag or a new view).
+  const hold = () => root.dispatchEvent(new CustomEvent('sheet:hold', { bubbles: true }));
+  let sheetFitted = false; // the first render with data has been fitted by the sheet
   const body = h('div', { class: 'stopv-body' });
   const foot = h('p', { class: 'stopv-foot-text' });
   const refreshBtn = h('button', { type: 'button', class: 'btn round stopv-refresh', 'aria-label': t('Ανανέωση'), title: t('Ανανέωση'), onclick: () => doRefresh() }, icon('refresh'));
   // Loading / error / empty / loaded / stale, spoken once per change of kind, never on a routine 20 s poll (WCAG 4.1.3).
   const status = h('p', { class: 'visually-hidden', role: 'status' });
-  root.append(head, banner, chipBar, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), status);
+  const codeLine = h('p', { class: 'stopv-code' }, t('Στάση {code}', { code }));
+  root.append(head, banner, chipBar, acts, body, h('footer', { class: 'stopv-foot' }, foot, refreshBtn), codeLine, status);
+  // where the chips go at low (TEL-227): centred on the line under the name, at 85% (LOW_SCALE), as many as fit.
+  // Measured with the bar without its transform; css/glass.css moves and scales it by (1 - --l) of that, around the
+  // first badge (--pk-ox), so it travels with the sheet.
+  const LOW_SCALE = 0.85, GAP = 6; // GAP: the chips' gap at low (4 px, css/glass.css) and their two 1 px borders
+  function placeChips() {
+    if (dead || chipBar.hidden || !head.classList.contains('has-lines')) return;
+    const badges = [...chips.querySelectorAll('.stopv-chip:not([data-key="*"]) .badge')];
+    chipBar.style.transform = 'none';
+    const bar = chipBar.getBoundingClientRect(), row = chips.getBoundingClientRect();
+    const col = name.parentElement.getBoundingClientRect(); // (not the name: it moves with the sheet)
+    const line = { left: col.left, width: col.width, top: col.top + NAME_LH, height: 18 }; // the badges' line at low
+    const want = badges.reduce((w, b) => w + b.getBoundingClientRect().width, 0) + GAP * Math.max(0, badges.length - 1); // unscaled
+    chipBar.style.transform = '';
+    const pad = parseFloat(getComputedStyle(chips).paddingLeft) || 0;
+    const shown = Math.min(want, line.width / LOW_SCALE);
+    const start = row.left - bar.left + pad + 1; // the first badge at low: the chips lose their padding there, not their 1 px border
+    const target = line.left + (line.width - shown * LOW_SCALE) / 2;
+    chipBar.style.setProperty('--pk-ox', `${Math.round(start)}px`);
+    chipBar.style.setProperty('--pk-dx', `${Math.round(target - (bar.left + start))}px`);
+    chipBar.style.setProperty('--pk-dy', `${Math.round(line.top + line.height / 2 - (row.top + row.height / 2))}px`);
+    // all fit: the scroller keeps its right padding too, so it has nothing to scroll and draws no edge fade
+    const end = start + shown + (want <= shown ? pad + 8 : 0);
+    // (from the bar's width: the scroller's own right edge already moves with the cut at low)
+    const off = row.left - bar.left; // the scroller is wider than the bar by this much each side
+    chipBar.style.setProperty('--pk-cut', `${Math.max(0, Math.round(bar.width - off - end))}px`);
+  }
+  const chipRO = new ResizeObserver(() => { fitName(); placeChips(); });
+  chipRO.observe(head);
+  chipRO.observe(chipBar);
   let saidKind = '', sayTimer = 0;
   function say(kind, text) {
     if (kind === saidKind) return;
@@ -203,6 +438,7 @@ export function mountStop(container, ctx, { code }) {
     paintDynamic(Date.now());
   }
 
+  const usualOpen = new Set(); // which «συνήθως» marks are open, across the rebuilds of the list (TEL-254)
   const leftSec = (v, fetchedAt, now) => v.etaSec - (now - fetchedAt) / 1000; // unclamped
 
   // Reliability stats, lazily and only for routes with a scheduled tile on screen (api.js: memo 10 min, never throws).
@@ -220,7 +456,9 @@ export function mountStop(container, ctx, { code }) {
   }
 
   function render() {
+    fitName();
     if (dead) return;
+    if (sheetFitted) hold();
     const now = Date.now();
     const data = st.data;
     stale = !!data && isStale(data.fetchedAt, now);
@@ -230,7 +468,9 @@ export function mountStop(container, ctx, { code }) {
     const lines = [];
     for (const v of all) if (!lines.some((l) => l.code === v.lineCode)) lines.push({ code: v.lineCode, color: v.color, textColor: v.textColor });
     if (filter && !lines.some((l) => l.code === filter)) lines.push({ code: filter, color: ctx.data.lineByCode.get(filter)?.color, textColor: ctx.data.lineByCode.get(filter)?.textColor });
+    const hadChips = !chipBar.hidden;
     chipBar.hidden = lines.length < 2;
+    head.classList.toggle('has-lines', !chipBar.hidden);
     // Rebuilt only when the lines or the filter change (not on every poll), and focus stays on the same chip.
     const chipSig = `${filter}|${lines.map((l) => l.code).join(',')}`;
     if (!chipBar.hidden && chipSig !== chips.dataset.sig) {
@@ -242,7 +482,8 @@ export function mountStop(container, ctx, { code }) {
         ...lines.map((l) => chip(null, filter === l.code, () => { filter = filter === l.code ? null : l.code; showAll = false; render(); pushMap(); },
           [lineBadge(ctx.data.lineByCode.get(l.code) || l)], l.code)));
       if (focusedChip) [...chips.children].find((c) => c.dataset.key === focusedChip)?.focus({ preventScroll: true });
-    }
+      placeChips();
+    } else if (!hadChips && !chipBar.hidden) placeChips();
 
     // body. Whatever had keyboard focus in it (a tile, "show all", "try again") gets it back after the rebuild.
     body.setAttribute('aria-busy', String(!data && !st.error));
@@ -275,7 +516,7 @@ export function mountStop(container, ctx, { code }) {
       } else {
         const cut = showAll ? shown : shown.slice(0, MAX_TILES);
         const items = cut.map((v) => {
-          const tl = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code, stat: v.live ? null : stats.get(v.routeCode), stale });
+          const tl = arrivalTile(v, data.fetchedAt, { now, line: ctx.data.lineByCode.get(v.lineCode), stop: code, stat: v.live ? null : stats.get(v.routeCode), stale, usualOpen });
           tl.dataset.key = v.vehicleCode || `${v.routeCode}:${v.etaSec}`;
           tiles.push({ v, el: tl });
           return h('li', {}, tl);
@@ -297,10 +538,17 @@ export function mountStop(container, ctx, { code }) {
         : t('{n} αφίξεις, {live} με ζωντανή θέση', { n: all.length, live: nLive }));
     }
     body.dataset.err = !data && st.error ? errText(st.error) : '';
+    // where mid ends (TEL-224, js/sheet.js): a third into the second arrival (TEL-227, as Apple Maps shows the next
+    // card), so it is clear the list goes on; with one arrival (or a message) right under it. The loading skeleton is
+    // marked the same way, so mid does not jump on load.
+    const rows = body.querySelectorAll('.stopv-list > li');
+    const midEnd = rows[1] || rows[0] || body.querySelector('.stopv-state');
+    if (midEnd) midEnd.dataset.midEnd = rows[1] ? '0.33' : '1';
     if (hadFocus && !body.contains(document.activeElement)) {
       const back = (focusKey && body.querySelector(`[data-key="${CSS.escape(focusKey)}"]`)) || body.querySelector('a, button');
       back?.focus({ preventScroll: true });
     }
+    if (data) sheetFitted = true;
     paintDynamic(now);
   }
 
@@ -311,9 +559,9 @@ export function mountStop(container, ctx, { code }) {
     const data = st.data;
     const age = data ? (now - data.fetchedAt) / 1000 : 0;
     banner.hidden = !(data && stale);
-    if (!banner.hidden) bannerText.textContent = t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageText(age) }) + (st.error ? ` ${errText(st.error)}` : '');
+    if (!banner.hidden) bannerText.textContent = t('Παλιά δεδομένα: ενημερώθηκαν πριν {age}.', { age: ageWords(age) }) + (st.error ? ` ${errText(st.error)}` : '');
     const wait = st.nextAt ? secsUntil(st.nextAt, now) : 0;
-    const label = st.loading ? t('Ανανέωση…') : retryPending && wait > 0 ? t('Νέα προσπάθεια σε {n}″', { n: wait }) : t('Δοκίμασε ξανά');
+    const label = st.loading ? t('Ανανέωση…') : retryPending && wait > 0 ? t('Νέα προσπάθεια σε {when}', { when: secWord(wait) }) : t('Δοκίμασε ξανά');
     for (const b of [bannerBtn, ...body.querySelectorAll('.stopv-retry')]) {
       b.textContent = label;
       b.setAttribute('aria-disabled', String(st.loading || (retryPending && wait > 0)));
@@ -322,15 +570,17 @@ export function mountStop(container, ctx, { code }) {
     // one quiet line: age · next refresh (· demo)
     const bits = [];
     if (DEMO) bits.push(t('δεδομένα προσομοίωσης'));
-    if (data) bits.push(t('ενημερώθηκε πριν {age}', { age: ageText(age) }));
+    if (data) bits.push(t('Ενημερώθηκε πριν {age}', { age: ageWords(age) }));
     if (st.loading) bits.push(t('ανανέωση…'));
-    else if (st.nextAt) bits.push(t('ανανέωση σε {n}″', { n: wait }));
+    else if (st.nextAt) bits.push(t('ανανέωση σε {when}', { when: secWord(wait) }));
     if (st.error && data) bits.push(t('η τελευταία ανανέωση απέτυχε'));
     foot.textContent = bits.join(' · ');
   }
 
   // ---- map ----
-  onMap((m) => { m.highlightStop(code); m.flyTo({ lat: stop.lat, lng: stop.lng }, 16); });
+  // Opening a stop never zooms out (TEL-360): you keep your zoom, and up close the stop's arrow stays visible.
+  // auto: the boot logo has just landed on this stop (TEL-365), so the map stays where it is
+  onMap((m) => { m.highlightStop(code); if (!auto) m.flyTo({ lat: stop.lat, lng: stop.lng }); });
 
   let pushed = '';
   function pushMap() {
@@ -343,13 +593,8 @@ export function mountStop(container, ctx, { code }) {
       : [];
     // vehicleCode / routeCode / stopCode make the marker tappable (map.js onVehicleClick -> #/bus/…)
     const pts = buses.map((v) => ({ lat: v.lat, lng: v.lng, lineCode: v.lineCode, color: v.color || '#757575', textColor: v.textColor || '#ffffff', label: v.lineCode, vehicleCode: v.vehicleCode, routeCode: v.routeCode, stopCode: code }));
+    // The camera stays on the stop: a live bus never moves or zooms the map (TEL-356)
     onMap((m) => { if (!dead) m.setVehicles('stop', pts); });
-    if (!fitted && data) {
-      fitted = true;
-      // Bring the nearest live bus into view when it is not already around the stop.
-      const near = pts.map((p) => ({ p, d: Math.hypot((p.lat - stop.lat) * 111000, (p.lng - stop.lng) * 87000) })).sort((a, b) => a.d - b.d)[0];
-      if (near && near.d > 250 && near.d < 3000) onMap((m) => { if (!dead) m.fitTo([{ lat: stop.lat, lng: stop.lng }, near.p], { maxZoom: 16 }); });
-    }
   }
 
   // ---- clock ----
@@ -377,17 +622,28 @@ export function mountStop(container, ctx, { code }) {
   onVisibility();
   render();
 
+  // «Οδηγίες ως εδώ» from the hold menu (TEL-360) does what the button here does, when this stop is already open or just opened.
+  const onWalk = (e) => { if (e.detail === code) { e.preventDefault(); directions(); } };
+  document.addEventListener('stop:walk', onWalk);
+  if (walk) directions();
+
   return {
     destroy() {
       dead = true;
       clearInterval(timer);
       clearTimeout(sayTimer);
+      document.removeEventListener('stop:walk', onWalk);
       document.removeEventListener('visibilitychange', onVisibility);
-      document.removeEventListener('click', onDocClick);
-      document.removeEventListener('keydown', onKey);
       unsubStore();
+      chipRO.disconnect();
+      tMO.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+      sheetEl?.removeEventListener('sheet:settle', onSettle);
+      document.fonts?.removeEventListener('loadingdone', fitName);
+      walkAbort?.abort();
       poller.destroy();
-      mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
+      mapQ = mapQ.then(() => { try { if (ctx.map) { ctx.map.clearVehicles('stop'); ctx.map.clearOverlay('stop-walk'); ctx.map.highlightStop(null); } } catch (e) { console.warn('map', e); } });
       root.remove();
     },
   };

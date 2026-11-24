@@ -22,6 +22,13 @@ TEL-
 | Light | | |
 | Dark | | |
 
+## UI protocol
+<!-- Μόνο αν αλλάζει κάτι που φαίνεται στην οθόνη (docs/UI-PROTOCOL.md). Αλλιώς γράψε N/A. -->
+- [ ] Κανόνες U1… του docs/UI-PROTOCOL.md: ισχύουν για ό,τι αγγίζει το PR, ή εξαίρεση εδώ με τον λόγο:
+- [ ] Καμία νέα διάσταση, inset ή χρώμα όπου υπάρχει κλάση του kit ή token
+- [ ] `npm run shots` (low / mid / up × light / dark × EL / EN) και ονόματα από το UI map
+- [ ] Έλεγχοι στο iPhone ως issue `device-test`: #
+
 ## Πώς ελέγχθηκε / How tested
 <!-- Τσέκαρε ό,τι έκανες. Demo: http://localhost:8080/?demo#/stop/1011 (ή το preview του PR με ?demo). -->
 - [ ] `npm test`

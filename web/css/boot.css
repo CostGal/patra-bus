@@ -1,0 +1,93 @@
+/* Boot screen (TEL-255; TEL-365 «Η στάση προσγειώνεται», Kostas 2026-11-22): the app icon opens, its road spreads over the
+   screen, the stop inside it grows into the logo, and at the end the logo lands on the real stop of the map.
+   Shown only while <html> has the class `boot` (set by the inline head script in index.html); js/boot.js and the head
+   script end it with `boot-out` (the landing) or `boot-out boot-skip` (a tap: a plain fade).
+   Only transform and opacity (and visibility for the failsafe) are animated, on HTML layers, so the compositor runs the
+   motion while the main thread loads the app. The same brand look in the light and the dark theme. */
+
+:root {
+  --boot-bouncy: cubic-bezier(.34, 1.56, .64, 1);
+  --boot-soft: cubic-bezier(.3, 1.2, .4, 1);
+  --boot-smooth: cubic-bezier(.22, 1, .36, 1);
+}
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    /* underdamped springs, damping ratio .45 / .9, settled at the end of the duration */
+    --boot-bouncy: linear(0, 0.053, 0.188, 0.37, 0.567, 0.755, 0.918, 1.045, 1.134, 1.186, 1.205, 1.198, 1.173, 1.137, 1.097, 1.057, 1.023, 0.995, 0.975, 0.963, 0.958, 0.959, 0.963, 0.97, 0.979, 0.987, 0.994, 1, 1.004, 1.007, 1.008, 1.009, 1.008, 1.006, 1.005, 1.003, 1.001, 1, 0.999, 0.999, 1);
+    --boot-smooth: linear(0, 0.013, 0.048, 0.098, 0.158, 0.223, 0.291, 0.359, 0.425, 0.488, 0.547, 0.602, 0.653, 0.699, 0.74, 0.777, 0.81, 0.839, 0.864, 0.886, 0.905, 0.921, 0.935, 0.947, 0.957, 0.966, 0.973, 0.979, 0.984, 0.988, 0.991, 0.993, 0.996, 0.997, 0.998, 0.999, 1, 1.001, 1.001, 1.001, 1);
+  }
+}
+
+#boot { display: none; }
+html.boot #boot {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  color: #fff6e3; forced-color-adjust: none; /* the brand keeps its colours in high-contrast modes */
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none;
+  /* failsafe: a broken module never leaves the app covered */
+  animation: boot-failsafe 1ms linear 5s forwards;
+}
+/* the plain grey joins the phone's own launch picture; the gradient comes in over it */
+.boot-bg, .boot-sky { position: absolute; inset: 0; }
+.boot-bg { background: #1f2a33; }
+.boot-sky { background: linear-gradient(180deg, #1f2a33 0%, #17323f 40%, #12374a 62%, #4e5b55 82%, #b08e55 100%); }
+.boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.boot-logo { position: relative; width: 96px; height: 96px; }
+.boot-art { position: absolute; inset: 0; border-radius: 22px; overflow: hidden; opacity: 0; box-shadow: 0 0 0 1px rgba(255, 246, 227, .2); }
+.boot-emblem { position: absolute; inset: 0; transform: scale(1.45); }
+.boot-art svg, .boot-emblem svg { display: block; width: 100%; height: 100%; }
+/* the waiting ring (still loading after the intro) */
+.boot-ring { position: absolute; inset: 0; border-radius: 22px; border: 2px solid #81c995; opacity: 0; }
+.boot-name { display: flex; align-items: center; gap: 8px; }
+.boot-word { display: block; font-size: 20px; font-weight: 700; line-height: 1.2; color: #fff6e3; white-space: nowrap; }
+.boot-beta {
+  padding: 2px 8px; border-radius: var(--radius-full, 999px); font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  line-height: 1.4; color: #1f2a33; background: #dcb95c;
+}
+
+/* Timeline (ms from the first paint of #boot); the landing starts at 1190 (js/boot.js) and takes 510. */
+/* 0–204 the app icon, still; 204–765 its road spreads past the screen's edges while the gradient comes in */
+html.boot .boot-art { animation: boot-art 561ms cubic-bezier(.55, 0, .2, 1) 204ms both; }
+html.boot .boot-sky { animation: boot-sky 544ms linear 204ms both; }
+/* 204–748 the stop inside the icon grows into the logo */
+html.boot .boot-emblem { will-change: transform; animation: boot-emblem 544ms var(--boot-soft) 204ms both; }
+/* 680–952 «Telematica» and BETA */
+html.boot .boot-name { animation: boot-name 272ms var(--boot-smooth) 680ms both; }
+/* still loading at 1190: the app's "live" ring pulses out of the logo until finish() */
+html.boot .boot-ring { animation: boot-ring 1.2s var(--boot-smooth) 1190ms infinite; }
+html.boot-hold .boot-ring, html.boot-out .boot-ring { animation: none; opacity: 0; }
+html.boot-hold #boot { animation: none; } /* ?boot=hold (screenshots, review): no failsafe */
+
+/* The landing, 510 ms: the logo shrinks onto the real stop (--land-*, set by js/boot.js; none known: at the centre) and
+   melts into it while the grey and the gradient fade off the app. */
+html.boot.boot-out #boot { animation: none; pointer-events: none; }
+html.boot.boot-out:not(.boot-skip) .boot-emblem { animation: boot-land 510ms both; }
+html.boot.boot-out:not(.boot-skip) .boot-bg,
+html.boot.boot-out:not(.boot-skip) .boot-sky { animation: boot-exit 476ms linear 34ms both; }
+html.boot.boot-out:not(.boot-skip) .boot-name { animation: boot-exit 204ms linear 34ms both; }
+/* a tap: everything fades at once, 200 ms */
+html.boot.boot-out.boot-skip #boot { animation: boot-exit 200ms ease-out forwards; }
+
+/* the app's loading placeholder under it (index.html, #sheet-content): text-free rows */
+.boot-skel { display: grid; gap: var(--space-2, 8px); padding: var(--space-4, 16px) 0; }
+
+@keyframes boot-art { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(6); } }
+@keyframes boot-sky { from { opacity: 0; } to { opacity: 1; } }
+@keyframes boot-emblem { 0% { transform: scale(1); } 68% { transform: scale(1.6); } 100% { transform: scale(1.45); } }
+@keyframes boot-name { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes boot-ring { 0% { opacity: .55; transform: scale(.8); } 100% { opacity: 0; transform: scale(2); } }
+@keyframes boot-land {
+  0% { opacity: 1; transform: scale(1.45); animation-timing-function: cubic-bezier(.5, 0, .2, 1); }
+  66% { opacity: 1; transform: translate(var(--land-x, 0px), var(--land-y, 0px)) scale(var(--land-s, .42)); }
+  100% { opacity: 0; transform: translate(var(--land-x, 0px), var(--land-y, 0px)) scale(var(--land-s, .42)); }
+}
+@keyframes boot-exit { to { opacity: 0; } }
+@keyframes boot-failsafe { to { opacity: 0; visibility: hidden; } }
+
+/* Reduced motion: the logo still from the start, no opening, pop, ring or landing; at least 500 ms, then a 180 ms fade */
+@media (prefers-reduced-motion: reduce) {
+  html.boot .boot-art, html.boot .boot-sky, html.boot .boot-emblem, html.boot .boot-name, html.boot .boot-ring,
+  html.boot.boot-out:not(.boot-skip) .boot-emblem, html.boot.boot-out:not(.boot-skip) .boot-bg,
+  html.boot.boot-out:not(.boot-skip) .boot-sky, html.boot.boot-out:not(.boot-skip) .boot-name { animation: none; }
+  html.boot .boot-emblem { will-change: auto; }
+  html.boot.boot-out #boot, html.boot.boot-out.boot-skip #boot { animation: boot-exit 180ms linear forwards; }
+}
