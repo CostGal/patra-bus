@@ -38,6 +38,7 @@ All files are in `.github/workflows/`.
 
 - Repo: https://github.com/CostGal/patra-bus. Site: https://costgal.github.io/patra-bus/.
 - On every push to `main`, `pages.yml` uploads only `web/` to GitHub Pages. The tests do not gate it; they gate the merge.
+- If the deploy step fails (GitHub sometimes says "No artifacts named github-pages" right after a good upload), the job waits 30 s and tries once more by itself. If that fails too, start a new run: Actions, Pages, Run workflow, branch `main`. Do not use "Re-run failed jobs": it fails with "Multiple artifacts named github-pages".
 - The site lives under the subpath `/patra-bus/`. So paths inside `web/` stay relative (`./data/…`, `sw.js`, `start_url: "./"`). A path that starts with `/` would point at the wrong place.
 
 ## 5. PR previews and cache stamping

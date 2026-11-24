@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
@@ -28,5 +28,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web
+      # TEL-391: deploy-pages sometimes says "No artifacts named github-pages" right after a good upload (a GitHub
+      # glitch). A second try in the same run fixes it. "Re-run failed jobs" does not: it fails with "Multiple
+      # artifacts named github-pages". If both tries fail, start a new run: Actions → Pages → Run workflow.
       - id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+      - name: Wait before the second try
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: deployment-retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
