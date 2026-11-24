@@ -191,12 +191,12 @@ CLAUDE.md rule 5 says these stay visible.
 - **Settings → Σχετικά → Πηγές και άδειες** (`settings-view.js:11-19,245-248`): © OpenStreetMap contributors, OpenFreeMap,
   MapLibre GL JS, OSRM / FOSSGIS routing, Photon by komoot, and the active city's citybus.gr site.
 - **Map**: MapLibre's attribution control, always open as one line of text just above the sheet (`#map-attrib`; `map.js`
-  `AttributionControl({ compact: false })`, moved there by `attribInto`). No (i) button on the glass branch; its text comes
+  `AttributionControl({ compact: false })`, moved there by `attribInto`). No (i) button; its text comes
   from the map style (OpenFreeMap and OpenStreetMap).
 
-## 12. Glass UI, UI kit, sheet and home (branch `claude/TEL-83-glass-prototype`)
-This section exists only on the glass branch until it lands on `main`. The `app.js` line numbers elsewhere in this file
-are main's and are refreshed then. The look and its rules: `docs/DESIGN.md` §4 and §10, `docs/UI-PROTOCOL.md`.
+## 12. Glass UI, UI kit, sheet and home (TEL-83, on `main` since 2026-11-24)
+The `app.js` line numbers elsewhere in this file are from before the glass merge and may be off (finding of TEL-83). The
+look and its rules: `docs/DESIGN.md` §4 and §10, `docs/UI-PROTOCOL.md`.
 
 **Home (TEL-232, Apple Maps search mode)** = map + the search in the sheet. Low: the search alone. Mid: Places
 (`mountPlacesRow`: Σπίτι, Δουλειά, up to 3 own places, "+") and the recents (mid ends 20% into the 2nd). Up: favourites with
