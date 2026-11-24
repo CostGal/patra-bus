@@ -110,10 +110,16 @@ test('report menu (TEL-358): the kinds grow out of the row as a card, and go bac
   const row = page.locator('#menu-pop .pop-main button.pop-item');
   const card = page.locator('#menu-pop .pop-sub');
   const rowBox = await row.boundingBox();
-  // the first frame: still about the row's height, around the row
+  // the first frame: still about the row's height, around the row. The spring steps by the time since the last
+  // frame (up to 33 ms), so on a busy machine the "first" frame was already further on (TEL-379): the clock moves
+  // 16 ms per call, one 60 Hz frame, until that frame is measured.
   const first = await page.evaluate(() => new Promise((done) => {
+    const real = performance.now.bind(performance);
+    let t = real();
+    performance.now = () => (t += 16);
     document.querySelector('#menu-pop .pop-main button.pop-item').click();
     requestAnimationFrame(() => {
+      performance.now = real;
       const c = document.querySelector('#menu-pop .pop-sub');
       const m = c.style.clipPath.match(/inset\(0px 0px ([\d.]+)px/);
       done({ top: c.getBoundingClientRect().top, visible: c.offsetHeight - parseFloat(m ? m[1] : 0) });
@@ -179,6 +185,7 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
 });
 
 test('glass: the sheet has three states: a floating card at peek and half, solid and edge to edge at full', async ({ page }) => {
+  test.slow(); // TEL-379: about 40 steps with waits; under a full parallel run it went past the 20 s budget
   await page.goto('/?demo&debug#/stop/1011');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
   const seen = new Set();
@@ -232,22 +239,24 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
     const h = await page.locator('#sheet-handle').boundingBox();
     const x = h.x + h.width / 2, y0 = h.y + h.height / 2;
     await page.mouse.move(x, y0);
-    await page.mouse.down();
     // slow: four steps with a pause; fast: one quick stroke. The release speed is measured with performance.now, so
     // the fast stroke runs on a fake clock that moves 10 ms per call: the speed is the same on every machine, however
-    // loaded (TEL-233: on a busy runner the real clock made it slower than the 1200 px/s a fast flick needs)
-    if (pause) for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); await page.waitForTimeout(pause); }
-    else {
+    // loaded (TEL-233: on a busy runner the real clock made it slower than the 1200 px/s a fast flick needs).
+    // The clock starts before the press (TEL-379): the press is the first speed sample, and on the real clock the
+    // time until the fake one started counted too, so a busy machine still saw a slow flick.
+    if (!pause) {
       await page.evaluate(() => {
         const real = performance.now.bind(performance);
         let t = real();
         window.__realNow = real;
         performance.now = () => (t += 10);
       });
-      await page.mouse.move(x, y0 + dy, { steps: 3 });
-      await page.evaluate(() => { performance.now = window.__realNow; });
     }
+    await page.mouse.down();
+    if (pause) for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); await page.waitForTimeout(pause); }
+    else await page.mouse.move(x, y0 + dy, { steps: 3 });
     await page.mouse.up();
+    if (!pause) await page.evaluate(() => { performance.now = window.__realNow; });
     await page.waitForTimeout(700);
     return page.evaluate(() => document.getElementById('sheet').dataset.state);
   };
@@ -387,11 +396,14 @@ test.describe('touch', () => {
     await expect(page.locator('#searchbar')).toBeVisible();
     await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
     await page.waitForTimeout(100);
+    // every focus is written down: on a busy machine the sheet can be up (and the real field focused) before a
+    // single look right after the tap (TEL-379)
+    await page.evaluate(() => { window.__focus = []; document.addEventListener('focusin', (e) => window.__focus.push(e.target.className || e.target.id), true); });
     await page.locator('#search-input').tap();
-    // the keyboard opens on the hidden field at the top while the sheet goes up (no pan on iOS)
-    expect(await page.evaluate(() => document.activeElement.className)).toBe('kb-proxy');
     await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
     await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    // the keyboard opened on the hidden field at the top first, while the sheet went up (no pan on iOS)
+    expect((await page.evaluate(() => window.__focus))[0]).toBe('kb-proxy');
     await expect(page.locator('#search-panel')).toBeVisible();
   });
 });
