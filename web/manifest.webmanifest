@@ -8,8 +8,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f7f9",
-  "theme_color": "#f6f7f9",
+  "background_color": "#1f2a33",
+  "theme_color": "#1f2a33",
   "categories": ["travel", "navigation", "utilities"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -17,7 +17,6 @@
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Κοντά μου", "short_name": "Κοντά μου", "description": "Το επόμενο λεωφορείο κοντά σου", "url": "./#/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "Γραμμές", "short_name": "Γραμμές", "description": "Όλες οι γραμμές και οι στάσεις τους", "url": "./#/lines", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+    { "name": "Κοντά μου", "short_name": "Κοντά μου", "description": "Το επόμενο λεωφορείο κοντά σου", "url": "./#/", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

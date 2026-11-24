@@ -36,12 +36,16 @@ const ICONS = {
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
   chevron: '<path d="m9 18 6-6-6-6"/>',
   // extras used by the shell (and free for other modules)
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',
+  bulb: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/>',
+  dots: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   'chevron-down': '<path d="m6 9 6 6 6-6"/>',
   'chevron-up': '<path d="m18 15-6-6-6 6"/>',
   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
   briefcase: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 13h20"/>',
   alert: '<path d="m10.3 3.9-8.2 14.2A2 2 0 0 0 3.8 21h16.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
   refresh: '<path d="M21 12a9 9 0 0 0-15.5-6.2L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15.5 6.2L21 16"/><path d="M16 16h5v5"/>',
@@ -61,6 +65,44 @@ export function icon(name) {
   s.classList.add('icon', `icon-${name}`);
   s.innerHTML = ICONS[name] || '';
   return s;
+}
+
+// ---- cardHead: the header of a card with a short, fixed title (TEL-350, UI-PROTOCOL U2–U5) ----
+// The kit's .card-head and .card-head-up (css/ui-kit.css): an empty slot · the title, 17 px, centred · ✕. Halfway from
+// mid to up the title moves to its own row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (U8).
+// Nothing runs per frame. Returns { el, destroy }: the view calls destroy() when it closes.
+export function cardHead({ title, closeLabel, onClose }) {
+  const titleEl = h('h1', { class: 'card-title' }, title);
+  const closeBtn = h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': closeLabel, title: closeLabel, onclick: onClose }, icon('close'));
+  // low ends under this row (js/sheet.js)
+  const el = h('header', { class: 'card-head card-head-up', 'data-peek-end': '' }, h('span', { 'aria-hidden': 'true' }), titleEl, closeBtn);
+  const sheetEl = document.getElementById('sheet');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const setUp = (on) => {
+    if (el.classList.contains('is-up') === on) return;
+    el.classList.toggle('is-up', on);
+    if (!reduceMotion.matches) titleEl.animate([{ filter: 'blur(3px)' }, { filter: 'blur(0)' }], { duration: 180, easing: 'ease-out' });
+  };
+  // up while the sheet is full or dragged past halfway from mid to up
+  const upRow = () => !!sheetEl && (sheetEl.dataset.state === 'full' || sheetEl.classList.contains('dragging'))
+    && (parseFloat(sheetEl.style.getPropertyValue('--sheet-t')) || 0) > 1.5;
+  const onUpper = () => setUp(upRow());
+  const onLeaveUp = () => setUp(false);
+  const mo = new MutationObserver(onUpper);
+  if (sheetEl) {
+    mo.observe(sheetEl, { attributes: true, attributeFilter: ['class', 'data-state'] });
+    sheetEl.addEventListener('sheet:upper', onUpper);
+    sheetEl.addEventListener('sheet:leave-full', onLeaveUp);
+  }
+  setUp(upRow());
+  return {
+    el,
+    destroy() {
+      mo.disconnect();
+      sheetEl?.removeEventListener('sheet:upper', onUpper);
+      sheetEl?.removeEventListener('sheet:leave-full', onLeaveUp);
+    },
+  };
 }
 
 // ---- toast: one at a time, bottom-centre above the sheet, announced politely ----

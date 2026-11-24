@@ -2,8 +2,8 @@
 
 ## What these files are
 
-- `icon-beta.svg`: source of the beta app icon (the usual bus on full-bleed navy with an amber BETA pill).
-  The bus and the badge sit inside the maskable safe circle, so the same artwork is used for
+- `icon-beta.svg`: source of the beta app icon (TEL-365: a stop on the dark map, with a yellow BETA pill).
+  The stop and the badge sit inside the maskable safe circle, so the same artwork is used for
   `web/icons/icon-180.png`, `icon-192.png`, `icon-512.png` and `maskable-512.png`.
 - `og-image.html`: source of `web/og-image.png`, the 1200×630 link preview (Greek). Render it at
   1200×630 next to `icon-beta.svg` and screenshot it to regenerate the PNG.

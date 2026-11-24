@@ -1,7 +1,8 @@
 // First-run setup (owner: extras, TEL-74, issue #35). Three short steps the first time the app opens on the home view:
 // language (pre-selected from the system language), city, and what LIVE / ΠΡΟΓΡ. mean, instead of a list to read.
-// `?setup` previews it any time without touching the flag. Motion follows docs/DESIGN.md like welcome.js: the card rises and
-// sinks on the shared spring, steps slide in from the side they come from, reduced motion = short fades.
+// `?setup` previews it any time without touching the flag. Look and motion follow the locked stop card (docs/DESIGN.md §10,
+// docs/UI-PROTOCOL.md, TEL-247): kit header (back · progress · skip), a glass card that rises from the screen's bottom edge on
+// the shared spring and never fades (U12), steps slide in from the side they come from, reduced motion = short fades.
 // Styles: css/setup.css (prefix su-). English pairs: i18n-en-setup.js.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { t, setLang, langPref, resolveLang, onLangChange, lang, APP_NAME } from './i18n.js';
@@ -41,41 +42,53 @@ export function sampleLines(ctx) {
 
 export const STEPS = 3;
 const SETTLE = { damping: 1, response: 0.4 };
+const DOT = 20; // progress: an 8 px dot + 12 px gap (css/setup.css .su-dots)
+const navLang = () => globalThis.navigator?.language || globalThis.navigator?.languages?.[0] || '';
 
 // Resolves when the setup closes; null when it does not show. ctx: { data } for the sample tiles' line colours.
-export function maybeSetup({ bootHome, ctx } = {}) {
+export function maybeSetup({ bootHome, ctx, after } = {}) {
   const preview = /[?&]setup\b/.test(globalThis.location?.search || '');
   if (!shouldSetup({ seen: getSettings().setupDone === true, preview, bootHome })) return null;
   if (!preview) { // set on show, not on close: a reload mid-way must not bring it back.
     setSetting('setupDone', true);
+    // D1 (TEL-247): a phone that is not in Greek gets its own language before anything is drawn, so the setup (and the
+    // app behind it) is never Greek with "English" pre-selected. Greek phones: no change.
+    const sys = initialLang(langPref(), navLang());
+    if (sys !== lang()) setLang(sys);
   }
-  return new Promise((resolve) => openSetup({ ctx, onClosed: resolve }));
+  // `after` (the boot screen leaving, TEL-255): the flags above are set at once, the dialog opens when it resolves.
+  return Promise.resolve(after).then(() => new Promise((resolve) => openSetup({ ctx, onClosed: resolve })));
 }
 
 export function openSetup({ ctx = {}, onClosed } = {}) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const app = document.getElementById('app');
   const before = document.activeElement;
-  const navLang = globalThis.navigator?.language || globalThis.navigator?.languages?.[0] || '';
-  let pickLang = initialLang(langPref(), navLang);
+  let pickLang = initialLang(langPref(), navLang());
   let pickCity = cityId();
   let step = 0;
-  let v = 0; // 0 hidden .. 1 shown
+  let y = 0; // the card's offset below its place, px: `travel` hidden .. 0 shown
+  let travel = 1;
   let closed = false;
 
-  const dots = h('div', { class: 'su-dots', 'aria-hidden': 'true' });
-  const skip = h('button', { type: 'button', class: 'btn ghost sm press su-skip', onclick: () => close() });
+  // Header (kit .card-head, U3/U4): back circle · progress · skip circle. Back keeps its place on step 1 (hidden, inert).
+  const circle = (name, cls, onclick) => h('button', { type: 'button', class: `btn round g-circle ${cls}`, onclick }, icon(name));
+  const back = circle('back', 'su-back', () => go(step - 1));
+  const skip = circle('close', 'su-skip', () => close());
+  const pill = h('span', { class: 'su-pill' });
+  const dots = h('div', { class: 'su-dots', 'aria-hidden': 'true' }, ...Array.from({ length: STEPS }, () => h('span', { class: 'su-dot' })), pill);
+  const count = h('p', { class: 'visually-hidden', 'aria-live': 'polite' }); // «Βήμα n από 3»: read, not shown
   const body = h('div', { class: 'su-body' });
-  const back = h('button', { type: 'button', class: 'btn press su-back', onclick: () => go(step - 1) });
-  const next = h('button', { type: 'button', class: 'btn primary press su-next', onclick: () => (step < STEPS - 1 ? go(step + 1) : close()) });
+  const nextText = h('span');
+  const next = h('button', { type: 'button', class: 'g-pill primary su-next', onclick: () => (step < STEPS - 1 ? go(step + 1) : close()) }, nextText);
   const scrim = h('div', { class: 'su-scrim' });
-  const card = h('div', { class: 'su-card' }, h('div', { class: 'su-top' }, dots, skip), body, h('div', { class: 'su-foot' }, back, next));
+  const card = h('div', { class: 'su-card' }, h('div', { class: 'card-head su-head' }, back, dots, skip), count, body, h('div', { class: 'su-foot' }, next));
   const root = h('div', { class: 'su', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'su-title' }, scrim, card);
 
   // A row of choices that behave like radio buttons (aria-pressed, like the settings' segmented controls).
   const choices = (label, items, cur, onPick) => h('div', { class: 'su-choices', role: 'group', 'aria-label': label },
     ...items.map(([val, text]) => h('button', { type: 'button', class: 'su-choice press', 'data-v': val, 'aria-pressed': String(val === cur), onclick: () => onPick(val) },
-      h('span', { class: 'su-choice-text' }, text), h('span', { class: 'su-check', 'aria-hidden': 'true' }))));
+      h('span', { class: 'su-choice-text' }, text), h('span', { class: 'su-check', 'aria-hidden': 'true' }, icon('check')))));
 
   function content() {
     const title = (text) => h('h2', { class: 'su-title', id: 'su-title', tabindex: '-1' }, text);
@@ -100,8 +113,7 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
       h('div', { class: 'su-eg' }, exampleTile({ live: true, line: liveLine, dest: t('Κέντρο'), mins: 4 }),
         p(t('Το λεωφορείο στέλνει τη θέση του. Το βλέπεις στον χάρτη και ο χρόνος είναι εκτίμηση με βάση αυτή.'), 'su-cap')),
       h('div', { class: 'su-eg' }, exampleTile({ live: false, line: schedLine, dest: t('Κέντρο'), mins: 12 }),
-        p(t('Είναι μόνο η ώρα του προγράμματος, χωρίς θέση οχήματος. Το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'), 'su-cap')),
-      p(t('′ = λεπτά, ″ = δευτερόλεπτα'), 'su-units')];
+        p(t('Είναι μόνο η ώρα του προγράμματος, χωρίς θέση οχήματος. Το λεωφορείο μπορεί να καθυστερήσει ή να μην έρθει.'), 'su-cap'))];
   }
 
   function paintChoices() {
@@ -111,13 +123,12 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
   // dir: 1 = forward (slides in from the right), -1 = back (from the left), 0 = same step repainted (language change).
   function render(dir) {
     const focusV = document.activeElement?.closest?.('.su-choice')?.dataset.v;
-    skip.textContent = t('Παράλειψη');
-    back.textContent = t('Πίσω');
-    back.hidden = step === 0;
-    next.textContent = step < STEPS - 1 ? t('Επόμενο') : t('Ας ξεκινήσουμε');
-    dots.replaceChildren(...Array.from({ length: STEPS }, (_, i) => h('span', { class: `su-dot${i === step ? ' on' : ''}` })));
-    const pane = h('div', { class: `su-step${dir ? ' su-step-in' : ''}`, style: `--dir:${dir || 0}` },
-      h('p', { class: 'su-count' }, t('Βήμα {n} από {total}', { n: step + 1, total: STEPS })), ...content());
+    for (const [b, label] of [[skip, t('Παράλειψη')], [back, t('Πίσω')]]) { b.setAttribute('aria-label', label); b.title = label; }
+    back.inert = step === 0;
+    nextText.textContent = step < STEPS - 1 ? t('Επόμενο') : t('Ας ξεκινήσουμε');
+    pill.style.transform = `translateX(${step * DOT}px)`;
+    count.textContent = t('Βήμα {n} από {total}', { n: step + 1, total: STEPS });
+    const pane = h('div', { class: `su-step${dir ? ' su-step-in' : ''}`, style: `--dir:${dir || 0}` }, ...content());
     body.replaceChildren(pane);
     if (focusV) body.querySelector(`.su-choice[data-v="${focusV}"]`)?.focus({ preventScroll: true });
     else if (dir) body.querySelector('.su-title')?.focus({ preventScroll: true });
@@ -133,12 +144,19 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
 
   const offLang = onLangChange(() => { if (!closed) render(0); });
 
+  // The card rises from just below the screen's bottom edge and sinks back the same way; it stays opaque the whole time
+  // (a glass layer never fades, U12), only the scrim follows. The spring runs in px, so it settles without a jump.
   const paint = (val) => {
-    scrim.style.opacity = String(val);
-    card.style.opacity = String(val);
-    card.style.transform = `translateY(${(1 - val) * 28}px) scale(${0.95 + 0.05 * val})`;
+    scrim.style.opacity = String(Math.max(0, Math.min(1, 1 - val / travel)));
+    card.style.transform = val > 0.5 ? `translateY(${val}px)` : '';
   };
-  const loop = createSpringLoop({ get: () => v, set: (val) => { v = val; paint(val); }, onSettle: () => { if (v < 0.5) remove(); } });
+  const measure = () => { // from the untransformed card (U18)
+    const tf = card.style.transform;
+    card.style.transform = '';
+    travel = Math.max(1, innerHeight - card.getBoundingClientRect().top + 24);
+    card.style.transform = tf;
+  };
+  const loop = createSpringLoop({ get: () => y, set: (val) => { y = val; paint(val); }, onSettle: () => { if (closed) remove(); } });
 
   function remove() {
     root.remove();
@@ -159,13 +177,13 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
       return;
     }
     if (target) location.hash = cityHash(target);
-    if (reduce) { root.classList.add('su-out'); setTimeout(remove, 180); return; }
-    loop.to(0, SETTLE); // sinks back the way it came
+    if (reduce) { root.classList.add('su-out'); setTimeout(remove, 180); return; } // scrim fades, then the card goes
+    loop.to(travel, SETTLE); // sinks back the way it came
   }
   function onKey(e) {
     if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
     if (e.key !== 'Tab') return;
-    const order = [...root.querySelectorAll('button:not([hidden]), a[href]')];
+    const order = [...root.querySelectorAll('button:not([hidden], [inert]), a[href]')];
     const i = order.indexOf(document.activeElement);
     const nextEl = order[(i + (e.shiftKey ? -1 : 1) + order.length) % order.length];
     e.preventDefault();
@@ -177,6 +195,6 @@ export function openSetup({ ctx = {}, onClosed } = {}) {
   render(0);
   document.body.append(root);
   body.querySelector('.su-choice[aria-pressed="true"]')?.focus({ preventScroll: true });
-  if (reduce) { v = 1; paint(1); } else { paint(0); loop.to(1, SETTLE); }
+  if (!reduce) { measure(); y = travel; paint(y); loop.to(0, SETTLE); } // reduced: shown in place, the scrim fades in (css/setup.css)
   return { close };
 }

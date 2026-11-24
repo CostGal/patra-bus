@@ -3,11 +3,10 @@
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';
 import { fetchLive, remainingSec } from './api.js';
-import { ageText } from './arrivals.js';
 import { getSettings, onChange } from './store.js';
 import { haversine, nearestStops, fmtDist, inArea } from './geo.js';
 import { walkRoute, walkEstimate, walkSpeed } from './walk.js';
-import { t, etaTxt, etaSay } from './i18n.js';
+import { t, etaTxt, etaSay, etaWords, ageWords, minWord } from './i18n.js';
 import { cityHash } from './route.js';
 
 export const RADIUS_M = 500; // stops considered "near"
@@ -84,18 +83,18 @@ export function pickHero(states) {
   return { kind: 'none', dep: null, earlierMissed: null, next: null };
 }
 
-// "Φύγε σε 3′" / "Φύγε τώρα" / … : { cat: 'go'|'now'|'tight'|'missed', text, spoken }
+// "Φύγε σε 3 λεπτά" / "Φύγε τώρα" / … : { cat: 'go'|'now'|'tight'|'missed', text, spoken }
 export function actionFor(dep, next) {
   const mins = (sec) => Math.max(1, Math.floor(sec / 60));
   if (dep.verdict === 'ok') {
-    if (dep.leaveInSec >= 60) { const m = mins(dep.leaveInSec); return { cat: 'go', text: t('Φύγε σε {n}′', { n: m }), spoken: m === 1 ? t('Φύγε σε ένα λεπτό') : t('Φύγε σε {n} λεπτά', { n: m }) }; }
+    if (dep.leaveInSec >= 60) { const m = mins(dep.leaveInSec); return { cat: 'go', text: t('Φύγε σε {when}', { when: minWord(m) }), spoken: m === 1 ? t('Φύγε σε ένα λεπτό') : t('Φύγε σε {n} λεπτά', { n: m }) }; }
     return { cat: 'now', text: t('Φύγε τώρα'), spoken: t('Φύγε τώρα') };
   }
   if (dep.verdict === 'tight') {
     const x = dep.walkSec < 60 ? t('Πήγαινε στη στάση τώρα') : t('Φύγε τώρα — στο όριο');
     return { cat: 'tight', text: x, spoken: x };
   }
-  const tail = next ? t(' — επόμενο σε {when}', { when: etaTxt(next.remaining) }) : t(' — δεν υπάρχει άλλο προσεχώς');
+  const tail = next ? t(' — επόμενο σε {when}', { when: etaWords(next.remaining) }) : t(' — δεν υπάρχει άλλο προσεχώς');
   return { cat: 'missed', text: t('Δεν το προλαβαίνεις') + tail, spoken: t('Δεν το προλαβαίνεις') + (next ? t('. Επόμενο σε {when}', { when: etaSay(next.remaining) }) : t('. Δεν υπάρχει άλλο προσεχώς')) };
 }
 
@@ -139,7 +138,7 @@ export async function findNextBuses(ctx, fix, { signal, walk = 'route', now = Da
 
 const mapDo = (ctx, fn) => { try { fn(ctx.map); } catch { /* map not ready / absent */ } };
 const hashFor = (code) => cityHash(`#/stop/${encodeURIComponent(code)}`);
-const minText = (sec) => `${Math.max(1, Math.round(sec / 60))}′`;
+const minText = (sec) => minWord(Math.max(1, Math.round(sec / 60)));
 const isIOS = () => /iP(hone|ad|od)/.test(globalThis.navigator?.userAgent || '');
 
 // Fallback tile when arrivals-view.js has no arrivalTile: same shape (.tick), own markup.
@@ -395,12 +394,12 @@ export function mountNearby(container, ctx) {
     if (r.act.textContent !== act.text) r.act.textContent = act.text;
     const w = walkLabel(d.s);
     if (r.walk.textContent !== w) r.walk.textContent = w;
-    const note = m.earlierMissed ? t('Το {line} σε {when} φεύγει πριν φτάσεις στη στάση.', { line: m.earlierMissed.v.lineCode, when: etaTxt(m.earlierMissed.remaining) }) : staleNote(d.s, now);
+    const note = m.earlierMissed ? t('Το {line} σε {when} φεύγει πριν φτάσεις στη στάση.', { line: m.earlierMissed.v.lineCode, when: etaWords(m.earlierMissed.remaining) }) : staleNote(d.s, now);
     if (r.note.textContent !== note) r.note.textContent = note;
     r.note.hidden = !note;
     return act;
   }
-  const staleNote = (s, now) => (s.error && s.vehicles ? t('Παλιά δεδομένα · πριν {age}', { age: ageText((now - s.fetchedAt) / 1000) }) : (now - s.fetchedAt > 60000 && s.vehicles ? t('Τελευταία ενημέρωση πριν {age}', { age: ageText((now - s.fetchedAt) / 1000) }) : ''));
+  const staleNote = (s, now) => (s.error && s.vehicles ? t('Παλιά δεδομένα · πριν {age}', { age: ageWords((now - s.fetchedAt) / 1000) }) : (now - s.fetchedAt > 60000 && s.vehicles ? t('Τελευταία ενημέρωση πριν {age}', { age: ageWords((now - s.fetchedAt) / 1000) }) : ''));
   function walkLabel(s) {
     const m = s.walkSource === 'osrm' ? s.walkMeters : s.meters;
     return m < 40 ? ` · ${t('Είσαι στη στάση')}` : ` · ${t('{d} · {min} με τα πόδια', { d: fmtDist(m), min: minText(walkSecOf(s)) })}`;
@@ -517,7 +516,7 @@ export function mountNearby(container, ctx) {
         updateGroup(g, s, now);
         if (refs.groups.children[i] !== g.el) refs.groups.insertBefore(g.el, refs.groups.children[i] || null);
       });
-      const age = st.lastRefreshAt ? t('Ενημερώθηκε πριν {age}', { age: ageText((now - st.lastRefreshAt) / 1000) }) : t('Φόρτωση…');
+      const age = st.lastRefreshAt ? t('Ενημερώθηκε πριν {age}', { age: ageWords((now - st.lastRefreshAt) / 1000) }) : t('Φόρτωση…');
       if (refs.foot.textContent !== age) refs.foot.textContent = age;
     }
     updateMap(m);
@@ -529,7 +528,7 @@ export function mountNearby(container, ctx) {
       items.push(h('div', { class: 'nb-notice' }, icon('pin'), h('span', {}, t('Χειροκίνητη θέση')), btn('link', t('Χρήση GPS'), useGpsNow, t('Χρήση GPS'))));
     } else if (f) {
       if (f.accuracy > LOW_ACC_M) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Χαμηλή ακρίβεια θέσης (±{d}). Οι στάσεις ίσως δεν είναι οι κοντινότερες.', { d: fmtDist(f.accuracy) }))));
-      else if (now - f.ts > 120000) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Η θέση σου είναι από πριν {age}.', { age: ageText((now - f.ts) / 1000) }))));
+      else if (now - f.ts > 120000) items.push(h('div', { class: 'nb-notice nb-notice-warn' }, icon('alert'), h('span', {}, t('Η θέση σου είναι από πριν {age}.', { age: ageWords((now - f.ts) / 1000) }))));
     }
     if (st.far && st.states.length) items.push(h('div', { class: 'nb-notice' }, icon('info'), h('span', {}, t('Η κοντινότερη στάση είναι σε {d}.', { d: fmtDist(st.states[0].meters) }))));
     const sig = items.map((n) => n.textContent).join('|');

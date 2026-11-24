@@ -4,6 +4,33 @@ Product decisions by Kostas that a session cannot read from the code. Newest fir
 decided, and what it means for the work. A decision changes only with a new entry here; the Notion card is the history.
 The list of features (keep / cut / later) is the Notion card TEL-216.
 
+## 2026-11-24: the glass UI goes to `main` now; phone checks and speed come after, in B1
+- The glass UI (TEL-83, PR #102) is merged into `main` on 2026-11-24, so real users see it on the one link they
+  already have (`costgal.github.io/patra-bus/`). No separate preview link for it.
+- It ships before its phone checks. These move to Block B1 and are done after: the iPhone look and motion
+  (device-test issues #103, #127, #89 and #181–#229), «Οδηγίες ως εδώ» with real GPS, and speed on a cheap Android
+  (TEL-70, TEL-218). The UI protocol exception list does not need to be empty first; it keeps shrinking on `main`.
+- From now on UI PRs target `main`, not the glass branch.
+
+## 2026-11-24: the «near you» card stays, but not in this version
+- The «near you» card (`web/js/nearby.js`: the next bus at the stops around you, live) is kept, but it does not come
+  back on the glass home in this version and does not go into `main` now. Where and how it shows is discussed in the
+  feature list (TEL-216, #24).
+- Until then the code and its tests stay as they are, not mounted. On the glass home, the empty search shows
+  «Κοντινές στάσεις» (up to 4 stops within 800 m, without live times).
+
+## 2026-11-21: the lines list and the line page are removed until they are planned
+- The lines list (☰ → «Γραμμές», `#/lines`) and the line page (`#/line/{code}`) are removed (card TEL-248). They are hard
+  to add and manage well, so they need a proper plan first. In the feature list (TEL-216) #5 is now «Αργότερα».
+- What changed for the user: no «Γραμμές» in the menu or in the installed app's shortcuts; on a stop, a scheduled bus
+  («ΠΡΟΓΡ.») is no longer a link (a live bus still opens the vehicle page); an old link to a line opens the home.
+- They come back only with their own plan and card, as a new build on the glass UI (`docs/UI-PROTOCOL.md`), not as a
+  revert of TEL-248.
+
+## 2026-11-12: the trip planner's spare time before the bus is a fixed 2 minutes
+- In the new trip planner the spare time before the bus is a fixed 2 minutes and is not read from Settings (card
+  TEL-290, `LIMITS.bufferSec` in `web/js/trip.js`). The spare-time setting is a feature to rework later, in the B1 Block.
+
 ## 2026-11-11: Telematica is a navigation app for the bus; the trip planner is a beta feature
 - **Direction.** The app should feel like a navigation app, as Google Maps and Apple Maps do, but focused on travelling
   by bus instead of travelling in general: you say where you are going and it takes you there by bus.

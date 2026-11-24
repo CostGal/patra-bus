@@ -90,7 +90,7 @@ test('removed legacy token names are not declared or used', () => {
   const re = new RegExp(`--(${REMOVED.join('|')})(?![\\w-])`);
   assert.equal(Object.keys(light).filter((k) => re.test(k)).length, 0, 'declared in tokens.css');
   const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/nearby.css',
-    'css/places.css', 'css/report.css', 'css/welcome.css', 'js/lines-view.js', 'js/bus-view.js', 'index.html'];
+    'css/places.css', 'css/report.css', 'css/welcome.css', 'js/bus-view.js', 'index.html'];
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     assert.doesNotMatch(src, new RegExp(`var\\(${re.source}`), `${f} uses a removed token`);
@@ -101,8 +101,10 @@ test('removed legacy token names are not declared or used', () => {
 test('stylesheets only use tokens that exist', () => {
   const files = ['app.css', 'css/arrivals.css', 'css/extras.css', 'css/nearby.css',
     'css/places.css', 'css/report.css', 'css/welcome.css'];
-  const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--panel-w',
-    '--top-inset', '--chips-h', '--offline-h']);
+  const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--sheet-t', '--panel-w',
+    '--top-inset', '--chips-h', '--offline-h', '--chips-fl', '--chips-fr', '--kb',
+    '--l', '--u', '--name-px', '--name-n', '--name-up-n', // the sheet's drag (js/sheet.js); a long name's sizes (js/bus-view.js)
+    '--usual-cut']); // how much of the opening usual-delay mark is hidden (js/arrivals-view.js)
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     for (const m of src.matchAll(/var\((--[\w-]+)/g)) {

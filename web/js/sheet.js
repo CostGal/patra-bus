@@ -5,16 +5,32 @@
 // Desktop: static panel, snap() is remembered but has no visual effect.
 // onSnap({state, visible, desktop}) fires when a target is chosen (padding for the map);
 // onMove({visible, lift, opacity}) fires every frame while dragging (floating UI follows the sheet).
+// follow: elements outside the sheet that draw from --sheet-t (the ☰). The number is written on them, not on <html>:
+// a custom property on the root makes the browser restyle the whole page on every frame (TEL-305).
 import { t, N_, onLangChange } from './i18n.js';
 import { createSpringLoop, rubberband, project } from './motion.js';
+// Three states, as in Apple Maps (TEL-222): peek = "low" (the view's first row only), half = "mid" (the default), full =
+// "up" (whole screen). css/glass.css draws them from --sheet-t: 0 at peek, 1 at half, 2 at full.
 const STATES = ['peek', 'half', 'full'];
-const PEEK_PX = 152; // handle + a header row
+const HEADROOM = 12; // room above the first row, so a pressed round button can grow without being clipped (css/glass.css)
 const LABEL = { peek: N_('κλειστός'), half: N_('μισός'), full: N_('πλήρης') };
+// the view's first row, which is all the peek state shows
+const HEAD = '.stopv-head, .ex-head, .view-head';
 const RUBBER_DIM = 120; // px, resistance "feel" past the first/last snap point (docs/DESIGN.md §2)
-const MOMENTUM = { damping: 0.8, response: 0.3 }; // spring after a flick (release velocity)
-const SETTLE = { damping: 1, response: 0.35 }; // spring for a snap with no preceding gesture
+// One spring per move (Kostas, TEL-222): up from peek a hint of bounce, down to peek a little more, to and from full
+// none (it darkens and fills the screen instead). After a flick the same spring takes the release velocity.
+const SPRINGS = {
+  'peek>half': { damping: 0.86, response: 0.42 },
+  'half>peek': { damping: 0.72, response: 0.42 },
+  'half>full': { damping: 1, response: 0.3 }, // TEL-227: 25% quicker up, as in Apple Maps
+  'full>half': { damping: 1, response: 0.38 },
+};
+const SETTLE = { damping: 1, response: 0.35 };
+const HALF_PULL = 0.85; // distances to half count 85%: half wins a close call, a clear flick still leaves it
+const FAST_FLICK = 1200; // px/s: a flick this fast may skip half (full <-> peek in one go)
+const springFor = (from, to) => SPRINGS[`${from}>${to}`] || SETTLE;
 
-export function createSheet(root, { onSnap, onMove } = {}) {
+export function createSheet(root, { onSnap, onMove, follow = [] } = {}) {
   const handle = root.querySelector('.sheet-handle');
   const body = root.querySelector('.sheet-body');
   const content = root.querySelector('.sheet-content');
@@ -33,29 +49,131 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   let dragging = false;
   let suppressClick = false;
   let dragRaf = 0; // throttles setY() while dragging (1:1 follow, no physics)
-  let peekPx = PEEK_PX; // the home card sets this to its own height (setPeek)
+  let peekPx = null; // null = handle + the view's first row (setPeek overrides it)
+  let leaveStr = ''; // TEL-352: --leave as last written (see setY)
+  let look = false; // TEL-352: the up-only look (css/glass.css .up-only) is on: it outlives upOnly until the sheet has settled
+  let upOnly = false; // TEL-352: the view has no low or mid of its own: going down from up asks the app to leave
+  let leaveOpen = false; // TEL-359: the pull has passed 65%, so the app shows the menu's still copy (sheet:leave-menu)
+  let leaveHalf = null; // TEL-359: where that copy's mid ends, in px: --leave reaches 1 there, not at this view's mid
+  let lowLeave = false; // TEL-372: the view melts into home's search when swiped from mid to low (Favourites)
+  let lowPull = null; // TEL-372: that swipe is running: --leave goes 0 → 1 between these two heights, in px { from, to }
+  let lowTimer = 0;
 
   const isDesktop = () => desktopMQ.matches;
   const inert = () => isDesktop() || fixed;
+  // peek: the handle and the view's first row (its header, or home's search above the content), tight; a view can carry
+  // low further down by marking the row that ends it with [data-peek-end] (the stop's line pills, TEL-224)
+  function firstRow() {
+    const head = body.querySelector('.sheet-search:not([hidden])') || content.querySelector('[data-peek-end]:not([hidden])')
+      || content.querySelector(HEAD);
+    if (!head) return 96;
+    return handle.offsetHeight + Math.round(head.getBoundingClientRect().bottom - body.getBoundingClientRect().top + body.scrollTop) + 10;
+  }
+  // mid: half the screen, unless the view marks where it ends with [data-mid-end="<share of that element>"] (the stop:
+  // 20% into its second arrival; home: its card, TEL-224), kept between 35% and 60% of the screen
+  function midRow() {
+    const end = content.querySelector('[data-mid-end]');
+    if (!end || !end.offsetParent) return null;
+    const r = end.getBoundingClientRect();
+    const share = Math.max(0, Math.min(1, Number(end.dataset.midEnd) || 1));
+    return handle.offsetHeight + Math.round(r.top - body.getBoundingClientRect().top + body.scrollTop + r.height * share);
+  }
   function measure() {
     H = root.offsetHeight;
-    const peek = Math.min(peekPx + probe.offsetHeight, H);
-    SZ = { peek, half: Math.max(peek + 40, Math.min(Math.round(innerHeight * 0.5), H - 100)), full: H };
+    const peek = Math.min(Math.max(64, peekPx ?? firstRow()) + probe.offsetHeight, H);
+    const mid = midRow();
+    const half = mid == null ? Math.round(innerHeight * 0.5) : fitMid(mid);
+    SZ = { peek, half: Math.max(peek + 40, Math.min(half, H - 100)), full: H };
+  }
+  // + the space under the floating card (its margin, or the home bar), where the content is cut (css/glass.css)
+  function fitMid(mid) {
+    return Math.max(Math.round(innerHeight * 0.35), Math.min(Math.round(innerHeight * 0.6),
+      mid + Math.max(parseFloat(getComputedStyle(root).getPropertyValue('--g-sheet-m')) || 0, probe.offsetHeight)));
   }
   const yFor = (s) => H - SZ[s];
+
+  // glass: tell the handle when a drag passes a stop (it gives a small "tick", css/glass.css)
+  let upper = false; // past halfway from half to full (sheet:upper fires when it flips)
+  let lastStop = 0;
+  function tick(v) {
+    if (!dragging) return;
+    const near = STATES.findIndex((s) => Math.abs(yFor(s) - v) < 6);
+    if (near >= 0 && near !== lastStop) { lastStop = near; root.dispatchEvent(new CustomEvent('sheet:stop')); }
+    else if (near < 0) lastStop = -1;
+  }
 
   function setY(v) {
     y = v;
     root.style.setProperty('--sheet-y', `${v}px`);
     const vis = H - v;
-    // floating UI (FABs, toast, attribution) rides on the sheet up to the half point, then fades out
+    tick(v);
+    // 0 at peek, 1 at half, 2 at full (css/glass.css draws the sheet's shape and colour from it)
+    const tt = vis <= SZ.half ? (vis - SZ.peek) / Math.max(1, SZ.half - SZ.peek) : 1 + (vis - SZ.half) / Math.max(1, SZ.full - SZ.half);
+    const st = Math.max(0, Math.min(2, tt)).toFixed(3);
+    root.style.setProperty('--sheet-t', st);
+    // TEL-352: an up-only view (Settings, Report) melts into the menu as it is pulled down: --leave is 0 while the sheet
+    // covers more than 65% of the screen and 1 at half; css/glass.css turns the background to glass and blurs the texts with it
+    if (look || lowPull) {
+      // TEL-372: a swipe from mid to low uses the same --leave, measured between those two heights
+      const from = lowPull ? lowPull.from : innerHeight * 0.65;
+      const to = lowPull ? lowPull.to : (leaveHalf ?? SZ.half);
+      const lv = Math.max(0, Math.min(1, (from - vis) / Math.max(1, from - to))).toFixed(3);
+      if (lv !== leaveStr) { leaveStr = lv; root.style.setProperty('--leave', lv); }
+      // TEL-359: past 65% the app puts a still copy of the menu under the finger; back above it, the copy goes
+      const open = Number(lv) > 0;
+      if ((upOnly || lowPull) && open !== leaveOpen && (dragging || leaveOpen)) {
+        leaveOpen = open;
+        root.dispatchEvent(new CustomEvent('sheet:leave-menu', { detail: { open, low: !!lowPull } }));
+      }
+    }
+    for (const f of follow) f.style.setProperty('--sheet-t', st); // chrome outside the sheet (the ☰ joins the search row at full, TEL-223)
+    // views listen to this instead of watching the style attribute on every frame (TEL-305)
+    if ((tt > 1.5) !== upper) { upper = tt > 1.5; root.dispatchEvent(new CustomEvent('sheet:upper', { detail: { upper } })); }
+    // floating UI (FABs, toast) rides on the sheet up to the half point, then fades out (the attribution line stays
+    // glued to the sheet's edge all the way: app.js uses `visible` for it)
     const lift = Math.min(vis, SZ.half);
     const opacity = vis <= SZ.half ? 1 : Math.max(0, 1 - (vis - SZ.half) / Math.max(1, (SZ.full - SZ.half) * 0.35));
     onMove?.({ visible: vis, lift, opacity });
   }
 
   // Drives --sheet-y with the spring while not dragging; the pointer sets it directly during a drag.
-  const spring = createSpringLoop({ get: () => y, set: setY });
+  // sheet:settle when the sheet comes to rest (glass.js re-places what it measured while the content was morphing)
+  const settled = () => { endLowPull(); root.dispatchEvent(new CustomEvent('sheet:settle')); };
+  // TEL-372: the swipe from mid to low is over (the sheet is at rest, or a new drag starts): its look and copy go
+  function endLowPull() {
+    clearTimeout(lowTimer);
+    if (!lowPull || dragging) return;
+    lowPull = null;
+    leaveStr = '';
+    root.classList.remove('low-leave');
+    root.style.removeProperty('--leave');
+    if (leaveOpen) {
+      leaveOpen = false;
+      root.dispatchEvent(new CustomEvent('sheet:leave-menu', { detail: { open: false, low: true } }));
+    }
+  }
+  const spring = createSpringLoop({ get: () => y, set: setY, onSettle: settled });
+  // the content changes height (the stop's line pills and arrivals load): low and mid follow it, unless held or up
+  // (up, a view may lay its header out differently, e.g. the stop's two-line name: snap() measures on the way down)
+  // TEL-348 (Kostas): content that changes once it is on screen (a pick in the stop's line chips or the trip's options,
+  // the stop's poll, a late «συνήθως» line) must not move the sheet: it pushes the content down instead. The view
+  // sends `sheet:hold` just before the change; the sheet fits what is there now (a fit still pending), then stays where
+  // it is (a shorter list leaves room below) until the next drag or snap, which measure again.
+  let held = false;
+  root.addEventListener('sheet:hold', () => {
+    if (!held && !dragging && !inert() && H && state !== 'full') {
+      const before = SZ[state];
+      measure();
+      if (SZ[state] !== before) moveTo(state);
+    }
+    held = true;
+  });
+  new ResizeObserver(() => {
+    if (held || dragging || inert() || !H || state === 'full') return;
+    const before = SZ[state];
+    measure();
+    if (SZ[state] !== before && state !== 'full') moveTo(state);
+  }).observe(content);
 
   // prefers-reduced-motion: bypass physics entirely, a short opacity cross-fade on the content instead
   // (docs/DESIGN.md §7). Position itself jumps straight to the target.
@@ -75,8 +193,11 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   // module-level spring loop above.
   function moveTo(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
     measure();
+    if (lowPull && to === 'peek') lowPull.to = SZ.peek; // home's low can differ from the view's: the melt ends exactly there
     if (inert()) {
       root.style.removeProperty('--sheet-y');
+      root.style.setProperty('--sheet-t', fixed ? '2' : '1'); // plain page = the full look; side panel = the half look
+      for (const f of follow) f.style.setProperty('--sheet-t', '1');
       onMove?.({ visible: 0, lift: 0, opacity: 1 });
       onSnap?.({ state, visible: 0, desktop: isDesktop() });
       return;
@@ -85,6 +206,7 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (!animate) {
       spring.stop();
       setY(targetY);
+      settled();
     } else if (reduceMQ.matches) {
       spring.stop();
       reducedMotionTo(targetY);
@@ -98,8 +220,16 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   const paintLabel = () => handle.setAttribute('aria-label', t('Αλλαγή μεγέθους πίνακα (τώρα: {state})', { state: t(LABEL[state]) }));
   onLangChange(paintLabel);
 
-  function snap(to, { animate = true, velocity = 0, spring: cfg = SETTLE } = {}) {
+  function snap(to, { animate = true, velocity = 0, spring: cfg } = {}) {
     if (!STATES.includes(to)) return;
+    held = false;
+    cfg ||= springFor(state, to);
+    // leaving up: views put back what they grew there (the stop's two-line name, TEL-227), then low and mid are
+    // measured again, so the spring aims at their real heights (they are not measured while up, see below)
+    if (state === 'full' && to !== 'full') {
+      root.dispatchEvent(new CustomEvent('sheet:leave-full'));
+      if (!inert() && H) measure();
+    }
     state = to;
     root.dataset.state = to;
     document.body.dataset.sheet = to;
@@ -109,13 +239,23 @@ export function createSheet(root, { onSnap, onMove } = {}) {
 
   // ---- dragging ----
   let startY = 0;
+  let dragFrom = 'half';
   let pointerStart = 0;
   let samples = [];
   function dragBegin(clientY) {
+    held = false;
+    endLowPull();
     measure();
+    // TEL-372: only a swipe that starts at mid melts into search; reduced motion gets a plain jump on release
+    if (lowLeave && state === 'half' && !reduceMQ.matches) {
+      lowPull = { from: SZ.half, to: SZ.peek };
+      root.classList.add('low-leave');
+    }
     dragging = true;
     spring.stop(); // interrupt any in-flight snap; the drag takes over the live y from here
     startY = y;
+    lastStop = STATES.indexOf(state);
+    dragFrom = state;
     pointerStart = clientY;
     samples = [{ t: performance.now(), y: clientY }];
     root.classList.add('dragging');
@@ -133,6 +273,16 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     dragRaf = requestAnimationFrame(() => setY(ny));
     y = ny;
   }
+  // TEL-352: from up, a view that is "up only" does not snap down to low or mid: it asks the app to leave (sheet:leave).
+  // Nobody answering (preventDefault) means the sheet snaps as usual, so it is never left between two states.
+  function leaveOrSnap(to, opts) {
+    if (upOnly && state === 'full' && to !== 'full') {
+      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to, velocity: opts?.velocity || 0 } });
+      root.dispatchEvent(ev);
+      if (ev.defaultPrevented) return;
+    }
+    snap(to, opts);
+  }
   function dragEnd(moved) {
     cancelAnimationFrame(dragRaf);
     dragging = false;
@@ -145,15 +295,30 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       const b = samples[samples.length - 1];
       v = ((b.y - a.y) / Math.max(16, b.t - a.t)) * 1000;
     }
-    const proj = y + project(v);
+    // Where the flick would carry the sheet, then the nearest state, with half (the default) pulling harder: it wins
+    // unless another state is clearly closer. A flick moves one state from where the drag started, two (full <-> peek)
+    // when it is fast or the finger itself passed half (Kostas, TEL-222: easy by accident before, hard on purpose after).
+    // the flick's landing point, kept between full and peek: past them it would only make far states look farther,
+    // and half's pull would then win the fastest flicks (a fast flick down from full landed on half)
+    const proj = Math.max(yFor('full'), Math.min(yFor('peek'), y + project(v)));
+    const from = STATES.indexOf(dragFrom);
+    const passed = STATES.filter((s) => (yFor(s) - startY) * (y - yFor(s)) > 0).length; // states the finger crossed
     let best = state;
     let bd = Infinity;
-    for (const s of STATES) {
-      const d = Math.abs(yFor(s) - proj);
+    for (const [i, s] of STATES.entries()) {
+      if (Math.abs(i - from) > 1 + passed + (Math.abs(v) >= FAST_FLICK ? 1 : 0)) continue;
+      const d = Math.abs(yFor(s) - proj) * (s === 'half' ? HALF_PULL : 1);
       if (d < bd) { bd = d; best = s; }
     }
     if (moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 50); }
-    snap(best, { velocity: v, spring: MOMENTUM });
+    if (lowPull) lowTimer = setTimeout(endLowPull, 900); // in case the spring never reports rest
+    // TEL-372: a swipe from mid that lands on low asks the app to leave for home's search (a tap on the handle does not)
+    if (lowLeave && dragFrom === 'half' && best === 'peek') {
+      const ev = new CustomEvent('sheet:leave', { cancelable: true, detail: { to: best, velocity: v, low: true } });
+      root.dispatchEvent(ev);
+      if (ev.defaultPrevented) return;
+    }
+    leaveOrSnap(best, { velocity: v, spring: springFor(dragFrom, best) });
   }
 
   let handleMoved = false;
@@ -181,19 +346,20 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (suppressClick || inert()) return;
     if (state === 'full') tapDir = -1;
     else if (state === 'peek') tapDir = 1;
-    snap(STATES[STATES.indexOf(state) + tapDir]);
+    leaveOrSnap(STATES[STATES.indexOf(state) + tapDir]);
   });
   handle.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     e.preventDefault();
     const i = STATES.indexOf(state) + (e.key === 'ArrowUp' ? 1 : -1);
-    snap(STATES[Math.max(0, Math.min(2, i))]);
+    leaveOrSnap(STATES[Math.max(0, Math.min(STATES.length - 1, i))]);
   });
 
   // Body gestures (touch only): drag the sheet when it is not full, or when full and scrolled to the top.
   let t0 = null;
   body.addEventListener('touchstart', (e) => {
-    if (inert() || e.touches.length !== 1) { t0 = null; return; }
+    // a touch & hold on a button (not on a list row) is a press, never a drag of the sheet (TEL-227)
+    if (inert() || e.touches.length !== 1 || e.target.closest?.('button, [role="button"]')) { t0 = null; return; }
     t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, mode: 'undecided' };
   }, { passive: true });
   body.addEventListener('touchmove', (e) => {
@@ -227,7 +393,9 @@ export function createSheet(root, { onSnap, onMove } = {}) {
     if (inert() || handle.contains(e.target)) return;
     const kb = e.target.matches?.(':focus-visible');
     if (state === 'peek' && !kb) { snap('half'); return; }
-    if (!kb || state === 'full') return;
+    // the sheet's own body gets focus after every route (app.js): it is as tall as the sheet, so it never "fits" and
+    // would send the sheet up. Nothing in it needs to be revealed (TEL-366: the first swipe from Settings landed at up)
+    if (!kb || state === 'full' || e.target === body) return;
     const bottom = e.target.getBoundingClientRect().bottom - y; // at translateY 0
     const fits = (s) => bottom + yFor(s) <= innerHeight - 8;
     const to = fits('half') ? 'half' : 'full';
@@ -235,7 +403,11 @@ export function createSheet(root, { onSnap, onMove } = {}) {
   });
 
   // Re-measure on size changes (rotation, keyboard, breakpoint).
-  new ResizeObserver(() => { if (!dragging) moveTo(state, { animate: false }); }).observe(root);
+  // TEL-359: a spring already aiming at this height is left alone (home's sheet is taller than Settings': a flick must not jump)
+  new ResizeObserver(() => {
+    if (dragging || (spring.isAnimating() && root.offsetHeight === H)) return;
+    moveTo(state, { animate: false });
+  }).observe(root);
   desktopMQ.addEventListener('change', () => moveTo(state, { animate: false }));
 
   snap(state, { animate: false });
@@ -253,9 +425,42 @@ export function createSheet(root, { onSnap, onMove } = {}) {
       moveTo(state, { animate: false });
     },
     scrollToTop() { body.scrollTop = 0; },
-    // Peek height = handle + the single home card; null restores the default.
+    // TEL-352: Settings and Report have no low or mid. On, going down from up sends sheet:leave instead of snapping.
+    setUpOnly(v) {
+      v = !!v;
+      if (v === upOnly) return;
+      upOnly = v;
+      const endLook = () => {
+        if (upOnly) return;
+        look = false; leaveStr = ''; leaveOpen = false;
+        root.classList.remove('up-only');
+        root.style.removeProperty('--leave');
+      };
+      if (v) { look = true; root.classList.add('up-only'); }
+      else if (leaveHalf == null && (!leaveStr || Number(leaveStr) === 0)) endLook(); // with the menu's copy up, it must melt in first
+      // leaving mid-pull: the look stays until the spring to the next state is at rest, so nothing jumps
+      else { root.addEventListener('sheet:settle', endLook, { once: true }); setTimeout(endLook, 900); }
+    },
+    // TEL-372: on, a swipe from mid to low sends sheet:leave (low: true) instead of snapping (Favourites).
+    setLowLeave(v) { lowLeave = !!v; },
+    // TEL-359: home's sheet starts higher than Settings' (no room for the ☰): stay at this spot on screen when it swaps.
+    keepTop(px) {
+      if (inert()) return;
+      const d = px - root.getBoundingClientRect().top;
+      H = root.offsetHeight;
+      if (d) setY(y + d);
+    },
+    // TEL-359: the menu's still copy (or null): --leave then ends where the menu's own mid ends, so nothing jumps on release.
+    setLeaveMenu(el) {
+      const end = el?.querySelector('[data-mid-end]');
+      if (!end) { leaveHalf = null; return; }
+      const r = end.getBoundingClientRect();
+      const share = Math.max(0, Math.min(1, Number(end.dataset.midEnd) || 1));
+      leaveHalf = fitMid(Math.round(r.top - root.getBoundingClientRect().top + r.height * share));
+    },
+    // A fixed peek height instead of the handle + first row; null restores the default.
     setPeek(px) {
-      const next = px == null ? PEEK_PX : Math.max(96, Math.min(Math.round(px), Math.round(innerHeight * 0.45)));
+      const next = px == null ? null : Math.max(96, Math.min(Math.round(px) + HEADROOM, Math.round(innerHeight * 0.45)));
       if (next === peekPx) return;
       peekPx = next;
       if (!dragging) moveTo(state, { animate: false });

@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { busTimeline, locateOnRoute, inText, MAX_SNAP_M } from '../web/js/bus-view.js';
-import { routeDurationMin } from '../web/js/lines-view.js';
 import { buildIndex } from '../web/js/data.js';
 
 const NOW = 1_800_000_000_000;
@@ -100,16 +99,12 @@ test('locateOnRoute: segment, fraction, and rejection of far / invalid points', 
   assert.equal(locateOnRoute(null, pts[0]), null);
 });
 
-test('inText and routeDurationMin', () => {
+test('inText', () => {
   assert.equal(inText(0), 'τώρα');
   assert.equal(inText(14), 'τώρα');
-  assert.equal(inText(60), 'σε 1′');
-  assert.equal(inText(540), 'σε 9′');
-  assert.equal(inText(3900), 'σε 1 ώ 05′');
-  assert.equal(routeDurationMin(route), 8); // 480 s
-  assert.equal(routeDurationMin({ legSec: [] }), null);
-  assert.equal(routeDurationMin(null), null);
-  assert.equal(routeDurationMin({ legSec: [20] }), 1);
+  assert.equal(inText(60), 'σε 1 λεπτό');
+  assert.equal(inText(540), 'σε 9 λεπτά');
+  assert.equal(inText(3900), 'σε 1 ώρα και 5 λεπτά');
 });
 
 test('real routes.json: every anchor on every route gives a well-formed, monotonic timeline', () => {

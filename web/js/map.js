@@ -3,14 +3,12 @@
 //   available, setFollow(mode), resetNorth(), opts.onUserMove / opts.onBearing / opts.theme.
 // Everything custom (sources, layers) is re-added on every `style.load` so theme swaps keep state.
 import { icon } from './ui.js';
-import { t, onLangChange } from './i18n.js';
+import { t, onLangChange, lang } from './i18n.js';
 import { city } from './cities.js';
+import { BASE_STYLE, MAP_FONT, styleFor, addPlaces, setMapLanguage } from './map-style.js';
+import { STOP_LAYERS, FULL_ZOOM, addStopLayers, drawStopPin, setSelectedStopFilter, createSelectedStop, stopBearings } from './map-stops.js';
+import { loadData, loadShapes } from './data.js';
 
-const STYLES = {
-  light: 'https://tiles.openfreemap.org/styles/liberty',
-  dark: 'https://tiles.openfreemap.org/styles/fiord', // 'dark' is near-black (roads #181818 on #0c0c0c): unreadable
-};
-const FONT = ['Noto Sans Regular'];
 const noop = () => {};
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ll = (p) => [p.lng, p.lat];
@@ -36,9 +34,9 @@ function webglOk() {
 function fallbackApi(reason) {
   return {
     available: false, reason, ready: Promise.resolve(),
-    setStops: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
+    setStops: noop, setCity: noop, highlightStop: noop, setUserFix: noop, setVehicles: noop, clearVehicles: noop,
     setOverlay: noop, clearOverlay: noop, setMarkers: noop, clearMarkers: noop, flyTo: noop, fitTo: noop,
-    setPadding: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
+    setPadding: noop, recenter: noop, setTheme: noop, setFollow: noop, resetNorth: noop, getCenter: () => ({ ...city().center }),
   };
 }
 
@@ -62,7 +60,7 @@ const el = (cls, html) => {
 };
 
 export function createMap(container, opts = {}) {
-  const { onStopClick = noop, onVehicleClick = noop, onMapClick = noop, onLongPress = noop, onUserMove = noop, onBearing = noop } = opts;
+  const { onStopClick = noop, onVehicleClick = noop, onMapClick = noop, onLongPress = noop, onStopHold = noop, onUserMove = noop, onBearing = noop } = opts;
   // Floating UI that fitTo / flyTo keep clear of: { top: [selector], right: [selector] }, measured on every call.
   const avoid = { top: opts.avoid?.top || [], right: opts.avoid?.right || [] };
   if (typeof maplibregl === 'undefined') return fallbackApi('script');
@@ -73,7 +71,6 @@ export function createMap(container, opts = {}) {
   try {
     map = new maplibregl.Map({
       container,
-      style: STYLES[theme],
       center: ll(city().center),
       zoom: 14,
       minZoom: 8,
@@ -88,21 +85,11 @@ export function createMap(container, opts = {}) {
     console.warn('[map] init failed', err);
     return fallbackApi('init');
   }
-  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-  // Attribution stays behind the (i) button: MapLibre opens compact mode on load, collapse it.
-  const collapseAttrib = () => {
-    const el = container.querySelector('.maplibregl-ctrl-attrib');
-    el?.classList.remove('maplibregl-compact-show');
-    el?.removeAttribute('open');
-  };
-  collapseAttrib();
-  map.once('load', collapseAttrib);
+  // Attribution as one line of text that is always there (Kostas, TEL-226; like Apple's "Legal" and Google's logo in
+  // the apps that use their maps): no (i) to open. opts.attribInto: the shell's place for it, just above the sheet.
+  map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-left');
   const attribEl = container.querySelector('.maplibregl-ctrl-attrib');
-  if (attribEl) { // MapLibre re-opens it on style/resize events: keep it shut until the user opens it
-    const guard = new MutationObserver(() => { if (attribEl.classList.contains('maplibregl-compact-show')) collapseAttrib(); });
-    guard.observe(attribEl, { attributes: true, attributeFilter: ['class', 'open'] });
-    attribEl.addEventListener('click', () => guard.disconnect(), { once: true, capture: true });
-  }
+  if (attribEl && opts.attribInto) opts.attribInto.append(attribEl);
   const labelCanvas = () => map.getCanvas().setAttribute('aria-label', t('Χάρτης'));
   labelCanvas();
   onLangChange(labelCanvas); // the map outlives a language switch (only the views re-render)
@@ -160,41 +147,114 @@ export function createMap(container, opts = {}) {
 
   function addStops() {
     const c = palette();
-    map.addSource('stops', { type: 'geojson', data: stopsFc });
-    const selFilter = ['==', ['get', 'code'], selected ?? ''];
-    map.addLayer({
-      id: 'stops-halo', type: 'circle', source: 'stops', filter: selFilter,
-      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 11, 17, 20], 'circle-color': c.accent, 'circle-opacity': 0.22 },
-    });
-    map.addLayer({
-      id: 'stops-circle', type: 'circle', source: 'stops', minzoom: 13,
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 2.6, 15, 4.6, 17, 7, 19, 9.5],
-        'circle-color': c.fill,
-        'circle-stroke-color': c.stroke,
-        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 13, 1, 16, 2.4],
-      },
-    });
-    map.addLayer({
-      id: 'stops-selected', type: 'circle', source: 'stops', filter: selFilter,
-      paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 6, 17, 10.5],
-        'circle-color': c.accent, 'circle-stroke-color': c.fill, 'circle-stroke-width': 3,
-      },
-    });
-    map.addLayer({
-      id: 'stops-label', type: 'symbol', source: 'stops', minzoom: 16,
-      layout: {
-        'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 12, 'text-anchor': 'top',
-        'text-offset': [0, 0.9], 'text-max-width': 9, 'text-optional': true,
-      },
-      paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.6 },
-    });
-    // Invisible but wide: the touch target (clicks are matched against this layer).
-    map.addLayer({
-      id: 'stops-hit', type: 'circle', source: 'stops', minzoom: 13,
-      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 18], 'circle-color': '#000', 'circle-opacity': 0 },
-    });
+    addStopLayers(map, stopsFc, theme, selected, { font: MAP_FONT, color: c.text, halo: c.halo });
+    showSelected();
+  }
+
+  // The tapped stop is drawn on its own (map-stops.js), so it can bounce; its normal icon is hidden meanwhile.
+  const selectedStop = createSelectedStop(map, reduced);
+  function showSelected(still = false) {
+    const f = selected == null ? null : stopsFc.features.find((x) => x.properties.code === selected);
+    if (!f) { selectedStop.hide(); return; }
+    const [lng, lat] = f.geometry.coordinates;
+    selectedStop.show({ code: selected, lng, lat, bearing: f.properties.bearing ?? null }, theme, still);
+  }
+
+  // Arrows are worked out once per city, the first time the map is close enough to show them.
+  let bearings = null;
+  let bearingsFor = null;
+  function applyBearings() {
+    for (const f of stopsFc.features) {
+      const b = bearings?.get(f.properties.code);
+      if (b == null) delete f.properties.bearing;
+      else f.properties.bearing = b;
+    }
+  }
+  async function loadBearings() {
+    const id = city().id;
+    if (bearingsFor === id || map.getZoom() < FULL_ZOOM - 0.5) return;
+    bearingsFor = id;
+    try {
+      const [data, shapes] = await Promise.all([loadData(), loadShapes()]);
+      if (city().id !== id) return;
+      bearings = stopBearings(data, shapes);
+      applyBearings();
+      if (styleReady) map.getSource('stops')?.setData(stopsFc);
+      showSelected();
+    } catch (err) {
+      bearingsFor = null; // no arrows for now; the plain icon still works
+      console.warn('[map] stop directions', err);
+    }
+  }
+  map.on('zoomend', loadBearings);
+
+  // The stop under a tap: the nearest drawn icon within a finger's reach, or the tapped stop itself.
+  function stopAt(point) {
+    if (!styleReady || !map.getLayer(STOP_LAYERS[0])) return null;
+    if (selectedStop.hit(point)) return selectedStop.code();
+    const R = 20;
+    const hits = map.queryRenderedFeatures([[point.x - R, point.y - R], [point.x + R, point.y + R]], { layers: STOP_LAYERS });
+    let code = null;
+    let bd = R * R * 2;
+    for (const f of hits) {
+      const p = map.project(f.geometry.coordinates);
+      const d = (p.x - point.x) ** 2 + (p.y - point.y) ** 2;
+      if (d < bd) { bd = d; code = String(f.properties.code); }
+    }
+    return code;
+  }
+
+  // Press and hold: is the finger on a stop or on empty map? A finger is wider than a tap target, so the reach is larger.
+  // Up close every stop is drawn, so it is measured on the stops themselves; further out only the icons on screen count.
+  function stopUnderHold(point) {
+    if (selectedStop.hit(point)) return selectedStop.code();
+    if (!styleReady || !map.getLayer(STOP_LAYERS[0])) return null;
+    const R = 30;
+    let code = null;
+    let bd = R * R;
+    const consider = (c, coords) => {
+      const p = map.project(coords);
+      const d = (p.x - point.x) ** 2 + (p.y - point.y) ** 2;
+      if (d < bd) { bd = d; code = String(c); }
+    };
+    if (map.getZoom() >= FULL_ZOOM) for (const f of stopsFc.features) consider(f.properties.code, f.geometry.coordinates);
+    else for (const f of map.queryRenderedFeatures([[point.x - R, point.y - R], [point.x + R, point.y + R]], { layers: STOP_LAYERS })) consider(f.properties.code, f.geometry.coordinates);
+    return code;
+  }
+
+  // Tapping a stop (TEL-360): the 1st goes close enough to see its direction, each next one closer up to the map's limit.
+  // A double tap goes back to the zoom you started from.
+  let tapFocus = null; // { code, start, zoom, back }
+  let lastTap = { code: null, at: 0 };
+  const TAP_ZOOM = FULL_ZOOM + 0.5;
+  const TAP_MORE = 1.5;
+  const TAP_MAX = 19.5;
+  const DOUBLE_TAP_MS = 420;
+  const DOUBLE_TAP_PX = 48;
+  const recentTapCode = () => (performance.now() - lastTap.at < DOUBLE_TAP_MS + 400 ? lastTap.code : null);
+  const stopPoint = (code) => {
+    const f = stopsFc.features.find((x) => x.properties.code === code);
+    return f ? { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] } : null;
+  };
+  function tapStop(code) {
+    const now = map.getZoom();
+    lastTap = { code, at: performance.now() };
+    if (tapFocus?.code !== code || tapFocus.back) {
+      const open = code === selected; // already open (from a list or a link): the route will not run again
+      tapFocus = { code, start: now, zoom: Math.max(now, TAP_ZOOM) };
+      if (open) api.flyTo(stopPoint(code));
+      else onStopClick(code);
+      return;
+    }
+    tapFocus.zoom = Math.min((map.isMoving() ? tapFocus.zoom : now) + TAP_MORE, TAP_MAX);
+    api.flyTo(stopPoint(code));
+  }
+  // Kept (with back: true) so the stop view that is still opening aims at this zoom too.
+  function tapBack(code) {
+    lastTap = { code: null, at: 0 };
+    if (tapFocus?.code !== code) return;
+    tapFocus = { code, start: tapFocus.start, zoom: tapFocus.start, back: true };
+    api.flyTo(stopPoint(code));
   }
 
   const userAcc = { type: 'FeatureCollection', features: [] };
@@ -238,7 +298,7 @@ export function createMap(container, opts = {}) {
       map.addLayer({
         id: `${src}-line`, type: 'line', source: src, filter: lineFilter,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': color, 'line-width': widthExpr(w) },
+        paint: { 'line-color': color, 'line-width': widthExpr(w), ...(o.style.estimated ? { 'line-opacity': 0.55 } : {}) }, // a guessed stop order (TEL-295)
       }, before);
     }
   }
@@ -250,6 +310,7 @@ export function createMap(container, opts = {}) {
 
   function rebuild() {
     styleReady = true;
+    addPlaces(map, theme, lang());
     symbolBefore = map.getStyle().layers.find((l) => l.type === 'symbol')?.id;
     addUserAccuracy();
     for (const id of overlays.keys()) addOverlay(id);
@@ -257,38 +318,35 @@ export function createMap(container, opts = {}) {
     resolveReady();
   }
   map.on('style.load', rebuild);
+  // Our look (map-style.js) is applied to the provider's style each time it loads. diff: false, a theme swap starts clean.
+  const loadStyle = () => map.setStyle(BASE_STYLE, { diff: false, transformStyle: (_, next) => styleFor(next, theme, lang()) });
+  loadStyle();
+  onLangChange(() => { if (styleReady) setMapLanguage(map, lang()); });
 
   // ---------- events ----------
   let lastLong = 0;
   let suppressClickUntil = 0;
-  function triggerLong(lngLat) {
+  function triggerLong(lngLat, held = stopUnderHold(map.project(lngLat))) {
     if (Date.now() - lastLong < 900) return;
     lastLong = Date.now();
     navigator.vibrate?.(12);
+    if (held != null) { onStopHold(held); return; }
     onLongPress({ lat: lngLat.lat, lng: lngLat.lng });
   }
 
+  let touches = []; // fingers that went down and may still become a click, oldest first
+  let lastDown = null;
   map.on('click', (e) => {
+    const down = touches.shift(); // the finger that made this click
     if (Date.now() < suppressClickUntil) return;
-    if (styleReady && map.getLayer('stops-hit')) {
-      const hits = map.queryRenderedFeatures(e.point, { layers: ['stops-hit'] });
-      if (hits.length) {
-        let best = hits[0];
-        let bd = Infinity;
-        for (const f of hits) {
-          const p = map.project(f.geometry.coordinates);
-          const d = (p.x - e.point.x) ** 2 + (p.y - e.point.y) ** 2;
-          if (d < bd) { bd = d; best = f; }
-        }
-        onStopClick(String(best.properties.code));
-        return;
-      }
-    }
+    if (down?.double && down.code != null) { tapBack(down.code); return; } // the stop may have moved from under the finger
+    const code = stopAt(e.point);
+    if (code != null) { tapStop(code); return; }
     onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
   });
   map.on('mousemove', (e) => {
-    if (!styleReady || !map.getLayer('stops-hit')) return;
-    map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ['stops-hit'] }).length ? 'pointer' : '';
+    if (!styleReady) return;
+    map.getCanvas().style.cursor = stopAt(e.point) != null ? 'pointer' : '';
   });
   map.on('contextmenu', (e) => triggerLong(e.lngLat));
 
@@ -310,6 +368,26 @@ export function createMap(container, opts = {}) {
   }
   function lpHide() { lpDot?.remove(); lpDot = null; }
   const lpCancel = () => { if (lp) { clearTimeout(lp.timer); lp = null; } lpHide(); };
+  // On a stop a double tap is ours (back to the starting zoom); anywhere else it is the map's usual zoom in.
+  cc.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary) return;
+    const box = cc.getBoundingClientRect();
+    const near = lastDown && e.timeStamp - lastDown.t < DOUBLE_TAP_MS && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < DOUBLE_TAP_PX;
+    const code = near ? recentTapCode() : null;
+    const double = code != null;
+    lastDown = near ? null : { t: e.timeStamp, x: e.clientX, y: e.clientY };
+    touches = touches.filter((x) => e.timeStamp - x.t < 1000);
+    touches.push({ t: e.timeStamp, x: e.clientX, y: e.clientY, double, code });
+    if (double || stopAt({ x: e.clientX - box.left, y: e.clientY - box.top }) != null) map.doubleClickZoom.disable();
+    else map.doubleClickZoom.enable();
+  }, { passive: true, capture: true });
+  // The finger slid: a drag, so it will not be a click.
+  cc.addEventListener('pointermove', (e) => {
+    const last = touches[touches.length - 1];
+    if (last && Math.hypot(e.clientX - last.x, e.clientY - last.y) > 10) touches.pop();
+  }, { passive: true });
+  // Decided when the finger lands, on what was on screen then, with the same point the map gives a tap.
+  map.on('touchstart', (e) => { if (lp && e.points?.length === 1) lp.stop = stopUnderHold(e.point); });
   cc.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
     if (!e.isPrimary) { lpCancel(); return; }
@@ -322,7 +400,9 @@ export function createMap(container, opts = {}) {
         lp = null;
         if (!pt) return;
         fired = true;
-        triggerLong(map.unproject([pt.x - rect.left, pt.y - rect.top]));
+        const at = map.unproject([pt.x - rect.left, pt.y - rect.top]);
+        if (pt.stop !== undefined) triggerLong(at, pt.stop);
+        else triggerLong(at);
       }, 500),
     };
   }, { passive: true });
@@ -416,6 +496,10 @@ export function createMap(container, opts = {}) {
     d.append(el('veh-ring'), b);
     return d;
   }
+  // The ring pulses a couple of beats and rests (app.css, TEL-304); a new position plays it again.
+  function pingVeh(node) {
+    for (const a of node.querySelector('.veh-ring')?.getAnimations?.() ?? []) { a.currentTime = 0; a.play(); }
+  }
   const pickKey = (v) => v.key ?? v.vehicleCode ?? v.id ?? null;
   function updateVehEl(it, v) {
     it.node.style.setProperty('--c', v.color || '#757575');
@@ -449,7 +533,7 @@ export function createMap(container, opts = {}) {
   }
 
   // ---------- camera helpers ----------
-  // How far the visible floating elements (search bar + chips on top, the FAB column on the right) reach into the map.
+  // How far the visible floating elements (the ☰ and the offline note on top, the FAB column on the right) reach into the map.
   const GAP = 8;
   function floatingInsets() {
     const mr = container.getBoundingClientRect();
@@ -503,18 +587,38 @@ export function createMap(container, opts = {}) {
         type: 'FeatureCollection',
         features: (stops || []).filter(okPoint).map((s) => ({
           type: 'Feature', geometry: { type: 'Point', coordinates: ll(s) },
-          properties: { code: String(s.code), name: s.displayName || s.name || '' },
+          properties: { code: String(s.code), name: s.displayName || s.name || '', lines: s.lineCodes?.length || 0 },
         })),
       };
+      applyBearings();
       if (styleReady) map.getSource('stops')?.setData(stopsFc);
+      showSelected();
+      loadBearings();
     },
 
-    highlightStop(code) {
-      selected = code == null ? null : String(code);
-      if (!styleReady) return;
-      const f = ['==', ['get', 'code'], selected ?? ''];
-      for (const id of ['stops-halo', 'stops-selected']) if (map.getLayer(id)) map.setFilter(id, f);
+    // Live city switch (TEL-347): drop everything of the old city, show the new stops, move to the new centre.
+    setCity(stops) {
+      for (const id of [...overlays.keys()]) api.clearOverlay(id);
+      for (const id of [...markerSets.keys()]) api.clearMarkers(id);
+      for (const id of [...vehicleSets.keys()]) api.clearVehicles(id);
+      api.highlightStop(null);
+      tapFocus = null;
+      bearings = null;
+      bearingsFor = null;
+      api.setStops(stops);
+      lastFit = null;
+      map.flyTo({ center: ll(city().center), zoom: 14, speed: 1.6, essential: false });
     },
+
+    highlightStop(code, { still = false } = {}) {
+      const next = code == null ? null : String(code);
+      if (tapFocus && (next != null ? next !== tapFocus.code : selected === tapFocus.code)) tapFocus = null;
+      selected = next;
+      if (styleReady) setSelectedStopFilter(map, selected);
+      showSelected(still);
+    },
+    // Where the boot logo lands (TEL-365): the open stop's big icon. It is placed even while the map's tiles still load.
+    selectedPin: () => selectedStop.rect(),
 
     setUserFix(fix) {
       if (!fix || !okPoint(fix)) {
@@ -557,6 +661,7 @@ export function createMap(container, opts = {}) {
           }
         }
         if (it) {
+          if (metersBetween(it.to, p) > 1) pingVeh(it.node);
           updateVehEl(it, v);
           moveItem(it, p, 4000);
         } else {
@@ -585,7 +690,7 @@ export function createMap(container, opts = {}) {
 
     setOverlay(id, fc, style = {}) {
       if (styleReady) removeOverlayFromMap(id);
-      overlays.set(id, { fc, style: { kind: style.kind || 'route', color: style.color } });
+      overlays.set(id, { fc, style: { kind: style.kind || 'route', color: style.color, estimated: !!style.estimated } });
       if (styleReady) addOverlay(id);
     },
     clearOverlay(id) {
@@ -604,13 +709,58 @@ export function createMap(container, opts = {}) {
       markerSets.delete(id);
     },
 
-    flyTo(p, zoom) {
+    // A picture of the map around a stop with the stop drawn on it, for the hold menu: { canvas, screen }, or null.
+    stopPicture(code, w, h) {
+      const p = stopPoint(code);
+      if (!p) return Promise.resolve(null);
+      const f = stopsFc.features.find((x) => x.properties.code === code);
+      const arrow = f?.properties.bearing != null && map.getZoom() >= FULL_ZOOM ? f.properties.bearing - map.getBearing() : null;
+      const shot = () => new Promise((done) => {
+        function finish(withMap) {
+          const src = map.getCanvas();
+          const k = src.width / src.clientWidth;
+          const pt = map.project([p.lng, p.lat]);
+          const left = Math.max(0, Math.min(src.clientWidth - w, pt.x - w / 2));
+          const top = Math.max(0, Math.min(src.clientHeight - h, pt.y - h / 2 - 26)); // the icon stands above the spot
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(w * k);
+          canvas.height = Math.round(h * k);
+          const x = canvas.getContext('2d');
+          if (withMap) x.drawImage(src, left * k, top * k, w * k, h * k, 0, 0, canvas.width, canvas.height);
+          x.scale(k, k);
+          drawStopPin(x, Math.max(30, Math.min(w - 30, pt.x - left)), Math.max(72, Math.min(h - 12, pt.y - top)), theme, arrow);
+          const r = container.getBoundingClientRect();
+          done({ canvas, screen: { x: r.left + pt.x, y: r.top + pt.y } });
+        }
+        const timer = setTimeout(() => { map.off('render', draw); finish(false); }, 400);
+        function draw() {
+          clearTimeout(timer);
+          map.off('render', draw);
+          finish(true);
+        }
+        map.on('render', draw);
+        map.triggerRepaint();
+      });
+      // The stop's small icon leaves the map for the picture, so only the big one shows; then it comes back.
+      setSelectedStopFilter(map, code);
+      const hidden = new Promise((go) => { map.once('idle', go); setTimeout(go, 320); });
+      map.triggerRepaint();
+      return hidden.then(shot).then((picture) => {
+        setSelectedStopFilter(map, selected);
+        return picture;
+      });
+    },
+
+    flyTo(p, zoom, { instant = false } = {}) {
       if (!okPoint(p)) return;
       lastFit = null;
-      const z = zoom ?? Math.max(map.getZoom(), 16);
+      const tapped = tapFocus && stopPoint(tapFocus.code);
+      const onTapped = tapped && tapped.lat === p.lat && tapped.lng === p.lng;
+      const z = onTapped ? tapFocus.zoom : zoom ?? Math.max(map.getZoom(), 16);
       const far = metersBetween(api.getCenter(), p) > 4000;
       const o = { center: ll(p), zoom: z, padding: safePadding(), essential: false };
-      if (far) map.flyTo({ ...o, speed: 1.4 });
+      if (instant) map.jumpTo({ center: o.center, zoom: z, padding: o.padding }); // under the boot screen (TEL-365)
+      else if (far) map.flyTo({ ...o, speed: 1.4 });
       else map.easeTo({ ...o, duration: 600 });
     },
     fitTo(points, o = {}) {
@@ -619,12 +769,18 @@ export function createMap(container, opts = {}) {
       lastFit = { pts, o };
       doFit();
     },
+    // Glides the point (default: the user's location, if known) to the centre of the part of the map left clear, at the
+    // same zoom: the sheet moving between low and mid (app.js)
+    recenter(p) {
+      const to = p || userItem.cur;
+      if (!okPoint(to)) return;
+      lastFit = null;
+      map.easeTo({ center: ll(to), padding: safePadding(), duration: 450, essential: false });
+    },
     setPadding(p) {
-      const prev = pad;
       pad = { top: 0, bottom: 0, left: 0, right: 0, ...p };
-      // the sheet moved after a fit (e.g. peek -> half): fit again so every point stays in the visible area
-      if (lastFit && ['top', 'bottom', 'left', 'right'].some((k) => Math.abs(pad[k] - prev[k]) > 4)) { doFit(); return; }
-      if (tracking() && userItem.cur && !map.isMoving()) map.easeTo({ center: ll(userItem.cur), padding: pad, duration: 300, essential: false });
+      // Kept for the next fit or fly only: the map stays still when the sheet moves (Kostas, TEL-222: only a touch on
+      // the map moves the map)
     },
 
     setTheme(t) {
@@ -632,7 +788,7 @@ export function createMap(container, opts = {}) {
       if (next === theme) return;
       theme = next;
       styleReady = false;
-      map.setStyle(STYLES[theme], { diff: false }); // diffing liberty->dark leaves stale layers behind
+      loadStyle();
     },
     getCenter() {
       // centre of the part of the map that is not under the sheet / top bar
