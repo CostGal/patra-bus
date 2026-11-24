@@ -85,6 +85,11 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
 - What you notice along the way is a finding: note it and make cards at the end; don't fix it in passing.
 - Steps for the person come one at a time; wait for the answer. Full rules, Notion and the skills (`/plan-week`,
   `/task TEL-<id>`, `/quick-task`): `docs/WORKFLOW.md`.
+- When the session is Kostas's (`git config user.name` = CostGal): write in a dyslexia-friendly way. Few, simple
+  words. Short sentences. One step at a time, and say exactly what you need from him. Short lists instead of long
+  paragraphs. No tables unless he asks.
+- When Kostas writes «κινητό» (e.g. `/task TEL-249 κινητό`), the session runs in phone mode: plan and check go to him
+  as pages with buttons. How: `docs/WORKFLOW.md`, «Λειτουργία κινητού».
 - New technical terms go in `docs/GLOSSARY.md`. When how the parts connect changes, update `docs/ARCHITECTURE.md`.
 
 ## Commands
