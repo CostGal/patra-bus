@@ -39,12 +39,12 @@ Vanilla JS, no animation library: springs are implemented in a small local helpe
 - `prefers-reduced-transparency: reduce` → solid surfaces, no blur. `prefers-contrast: more` → solid + defined border.
 - Glass UI (TEL-83, on for everyone since 2026-10-29, `web/css/glass.css` + `web/js/glass.js`), aimed at Apple's Liquid Glass:
   **glass** = floating chrome over the map (☰, locate FAB, sheet / side panel, menu popover, setup and
-  welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (10/14px) so the map stays
+  welcome dialogs): very see-through (22% card colour, 28% big; dark 30/36%), *light* blur (7/9 px, the sheet 10 px: `--g-blur` / `--g-blur-lg` / `--g-blur-sheet` in `glass.css`) so the map stays
   clear, bright top edge + rim, a static top sheen (no shine that moves: not ambient, not under the finger), and on Chromium a lens bend at the edges (SVG displacement in `backdrop-filter`; Safari: blur only). **Touch & hold** (Apple-style, everything pressable): the control grows a little
   (~10 px, ≤ 8%, instead of §1's .97 shrink; **round buttons ~16 px, and pop out above their neighbours**), leans a few px
   towards the finger and turns more opaque, then springs back with a small wobble. **Full-width list rows** (stops, lines,
   place suggestions) neither grow nor turn grey: a soft glass highlight fades in behind them and out again. The locate
-  button fills with the app's blue while held and sends out a ring on a tap. **Sheet** (TEL-222, Apple Maps iOS 26): three states.
+  button fills with the app's blue while held and sends out a ring on a tap. **Sheet** (TEL-222, Apple Maps iOS 26): three states (in code `peek` / `half` / `full`, `web/js/sheet.js`).
   Low = a tight floating card (grabber + the view's first row), almost clear; mid (default) = the same card, larger,
   more opaque; up = whole screen, edge to edge and to the bottom, solid (light grey with white cards; dark grey in dark
   mode), no glass. Moves: low→mid a hint of bounce, mid→low a little more, mid↔up no bounce (it darkens and fills).
@@ -215,7 +215,9 @@ learned building it, as rules:
 
 **Motion**
 - Drag-linked change = a transform or opacity driven by `--l` / `--u` (from `--sheet-t`), never a font size or a
-  layout property per frame (it stutters on iPhone). Grow text with `scale`, keep its line box fixed.
+  layout property per frame (it stutters on iPhone). Grow text with `scale`, keep its line box fixed. Today's
+  exceptions (the stop's chips fold at low with sizes and gaps, the search field's padding, ☰'s `top`) are listed under
+  U8 in `tests/ui-protocol-exceptions.mjs` and go one by one.
 - Never change the sheet's measured layout (anything above `[data-peek-end]` / `[data-mid-end]`) as a function of
   `--l`: `sheet.js` measures low and mid from the layout and would aim at a moving target. Layout may change only
   while up or held (`sheet.js` does not measure then) and must be put back on `sheet:leave-full`, before it measures.

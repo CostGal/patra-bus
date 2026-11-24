@@ -4,6 +4,13 @@ Product decisions by Kostas that a session cannot read from the code. Newest fir
 decided, and what it means for the work. A decision changes only with a new entry here; the Notion card is the history.
 The list of features (keep / cut / later) is the Notion card TEL-216.
 
+## 2026-11-24: the «near you» card stays, but not in this version
+- The «near you» card (`web/js/nearby.js`: the next bus at the stops around you, live) is kept, but it does not come
+  back on the glass home in this version and does not go into `main` now. Where and how it shows is discussed in the
+  feature list (TEL-216, #24).
+- Until then the code and its tests stay as they are, not mounted. On the glass home, the empty search shows
+  «Κοντινές στάσεις» (up to 4 stops within 800 m, without live times).
+
 ## 2026-11-21: the lines list and the line page are removed until they are planned
 - The lines list (☰ → «Γραμμές», `#/lines`) and the line page (`#/line/{code}`) are removed (card TEL-248). They are hard
   to add and manage well, so they need a proper plan first. In the feature list (TEL-216) #5 is now «Αργότερα».

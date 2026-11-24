@@ -63,6 +63,8 @@ Open `http://localhost:8080/` after `npm run dev:web`. No worker is needed.
 
 `npm run shots` takes key screens in `?demo` with the smoke-test mocks, so it checks layout only. Map tiles are blocked (the map area is empty), fonts are the computer's, and touch feel, push, install, GPS and speed still need a real phone (see `CLAUDE.md`).
 
+`npm run shots -- --map` lets OpenFreeMap through so the map is drawn behind the glass (needs network; not in a cloud session, which blocks the tiles).
+
 Flags: `--device="iPhone SE,Pixel 7"`, `--lang=el|en`, `--theme=light|dark`, `--screen=stop,settings`, `--base=<preview URL>`, `--web=<other checkout>/web`, `--chromium=<path>` (or env `CHROMIUM_PATH`). Output goes to `shots/` with `SUMMARY.md`. All combinations take about 6 minutes. The `setup` and `boot` (held on its last frame) screens are included.
 
 `npm run shots -- --annotate` makes a numbered UI map for reviews: each element has a permanent ID and a nick from `scripts/ui-map.mjs`, output in `shots/ui-map/` with `LEGEND.md` and `explorer.html` (click an element to see its name). Its rules are in `docs/DESIGN.md` section 9.
