@@ -35,6 +35,7 @@ const SCREENS = [
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
   { id: 'report', url: '/?demo#/report?kind=app', scroll: 1 },
   { id: 'report-kinds', url: '/?demo#/report' },
+  { id: 'place', url: '/?demo#/place?id=home' }, // set Σπίτι (TEL-239)
   { id: 'setup', url: '/?demo&setup#/', steps: 2 },
   { id: 'boot', url: '/?demo&boot=hold#/' }, // boot screen (TEL-255), held on its last frame
 ];
