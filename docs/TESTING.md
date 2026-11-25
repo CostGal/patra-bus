@@ -18,7 +18,7 @@ If CI fails, download the artifact `playwright-results` (kept 14 days). It has o
 
 ## Unit tests
 
-39 files, `tests/*.test.mjs`, `node:test`, no dependencies. They cover pure logic and the worker: live/scheduled rules (`arrivals`), city data (`multicity`, `corfu-data`), routes (`worker-routes`), geo and walking (`geo`, `walk`), the store (`store`), i18n (`i18n`, `check-i18n`), push and reports on the worker (`push-worker`, `report`) and the service worker map cache (`sw-map`).
+51 files, `tests/*.test.mjs` (count them with `ls tests/*.test.mjs | wc -l`), `node:test`, no dependencies. They cover pure logic and the worker: live/scheduled rules (`arrivals`), city data (`multicity`, `corfu-data`, `city-detect`), routes (`worker-routes`, `routes`, and `route-order`: the routes whose stop order is a guess, an exception list that may only get shorter, TEL-291), geo, walking and search (`geo`, `walk`, `geocode`, `nearby`), trips (`trip`, `trip-view`, `trip-map`), the store and places (`store`, `places`), i18n (`i18n`, `check-i18n`), the worker's API, counters and stats (`api`, `counters`, `count-route`, `stats`, `admin`), push and reports on the worker (`push-worker`, `report`), the service worker (`sw-map`, `stamp-cache`) and the UI rules (`ui-protocol`, `ui-map`, `tokens`, `motion`).
 
 ## Smoke tests (Playwright)
 

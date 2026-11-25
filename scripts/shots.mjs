@@ -23,18 +23,20 @@ const ENGINES = { chromium, webkit, firefox };
 
 const DEFAULT_DEVICES = ['iPhone SE', 'iPhone 15', 'Pixel 7', 'iPad Mini landscape'];
 // hash is appended to <base>/?demo…; scroll = also capture the content below the fold (pages of the sheet);
-// steps = also capture that many next steps of a dialog (its .su-next button).
+// steps = also capture that many next steps of a dialog (its .su-next button); act = what to tap first to reach the screen.
 const SCREENS = [
   { id: 'home', url: '/?demo#/' },
   { id: 'stop', url: '/?demo#/stop/1011', scroll: 1 },
   { id: 'stop-error', url: '/?demo=error#/stop/1011' },
   { id: 'stop-nosvc', url: '/?demo=nosvc#/stop/1011' },
   { id: 'corfu-stop', url: '/?demo#/corfu/stop/801' },
+  { id: 'vehicle', url: '/?demo#/stop/1011', act: (p) => p.click('a.atile-live'), scroll: 1 }, // demo vehicle codes change daily, so open it by tapping a live bus
   { id: 'trip', url: '/?demo#/trip?stop=1011', scroll: 1 },
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
   { id: 'report', url: '/?demo#/report?kind=app', scroll: 1 },
   { id: 'report-kinds', url: '/?demo#/report' },
+  { id: 'place', url: '/?demo#/place?id=home' }, // set Σπίτι (TEL-239)
   { id: 'setup', url: '/?demo&setup#/', steps: 2 },
   { id: 'boot', url: '/?demo&boot=hold#/' }, // boot screen (TEL-255), held on its last frame
 ];
@@ -97,8 +99,8 @@ async function capture(context, base, screen, dir, summary) {
   await page.goto(base + screen.url);
   await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !c.hasAttribute('aria-busy'); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
   await page.waitForTimeout(args.map ? 2500 : 500); // --map: give the tiles time to draw
+  if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
   if (ANNOTATE) {
-    if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
     // first a clean JPEG with the boxes as data (explorer.html), then the boxed PNG
     const { boxes, vw, vh } = await page.evaluate(annotate, { ui: UI, colors: COLORS, draw: false });
     await mkdir(`${dir}/screens`, { recursive: true });
@@ -132,6 +134,22 @@ async function capture(context, base, screen, dir, summary) {
   summary.push({ dir, screen: screen.id, files, problems });
 }
 
+// One tab crashing ("page.goto: Page crashed", seen once on the boot screen, TEL-380) must not stop the whole sweep:
+// close the broken tab, try that screen once more, and if it fails again list it under "Problems" and go on.
+async function captureSafely(context, base, screen, dir, summary) {
+  const firstLine = (e) => String(e?.message || e).split('\n')[0];
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await capture(context, base, screen, dir, summary);
+      if (attempt > 1) summary.at(-1).problems.push('the tab crashed on the first try and worked on the second');
+      return;
+    } catch (e) {
+      for (const p of context.pages()) await p.close().catch(() => {});
+      if (attempt === 2) summary.push({ dir, screen: screen.id, files: [], problems: [`could not capture: ${firstLine(e)}`], ids: [], unknown: [], boxes: [], vw: 0, vh: 0 });
+    }
+  }
+}
+
 const base = args.base ? String(args.base).replace(/\/$/, '') : await startServer();
 const notes = new Set();
 const summary = [];
@@ -149,7 +167,7 @@ try {
       await mockNetwork(context, base);
       // registered after the mocks, so it wins for this host only
       if (args.map) await context.route((u) => u.hostname === 'tiles.openfreemap.org', (route) => route.continue());
-      for (const screen of screens) await capture(context, base, screen, dir, summary);
+      for (const screen of screens) await captureSafely(context, base, screen, dir, summary);
       await context.close();
       console.log(`${device} · ${lang} · ${theme} (${engine}): ${screens.length} screens`);
     }

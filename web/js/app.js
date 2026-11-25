@@ -1,5 +1,5 @@
 // App shell and integrator (owner: shell). Boots data + map + sheet, wires location, search, theme and the hash router.
-// Views are lazy-loaded modules with `mountX(container, ctx, params) -> { destroy() }` (docs/ARCHITECTURE.md).
+// Views are lazy-loaded modules with `mountX(container, ctx, params) -> { destroy() }` (docs/FRONTEND.md, section 2).
 import './boot-city.js'; // must stay first: picks the active city before any other module reads it
 import { h, icon, toast, lineBadge } from './ui.js';
 import { loadData, searchStops } from './data.js';
@@ -230,7 +230,7 @@ function buildMenu() {
     // TEL-253 (UI-PROTOCOL U25): one pick-one row, the chosen theme under the glass lens (js/glass.js: bar[data-lens] >
     // row > chip). paintThemeRow fills the row.
     h('div', { class: 'theme-bar', 'data-lens': true },
-      h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label' })),
+      h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label', onkeydown: onThemeKey })),
     h('div', { class: 'pop-sep' }),
     reportBtn,
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
@@ -250,6 +250,16 @@ function buildMenu() {
 // every open, since a hidden menu can't be measured. Focus that was in the row goes to the chosen theme.
 // `.theme-bar > .theme-row` and not `.theme-row`: while the lens's bubble is out (a drag, a glide after a tap) it holds a
 // copy of the row, first in the bar; repainting that copy would leave the real row on the old theme.
+// A radio group: the arrow keys move to the next theme and choose it, as native radios and the trip's options do
+// (TEL-344). Choosing repaints the row (applyTheme), and paintThemeRow puts the focus on the new choice.
+function onThemeKey(e) {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key] || 0;
+  if (!step) return;
+  const list = [...e.currentTarget.children], i = list.indexOf(document.activeElement);
+  if (i < 0) return;
+  e.preventDefault();
+  setSetting('theme', list[(i + step + list.length) % list.length].dataset.value);
+}
 function paintThemeRow() {
   const row = menuPop.querySelector('.theme-bar > .theme-row');
   if (!row) return;
@@ -307,6 +317,7 @@ function onMove({ visible, lift, opacity }) {
   mapAttrib.style.opacity = String(opacity);
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
+  toastHost.style.setProperty('--sheet-vis', `${visible}px`); // a centred toast (TEL-286) sits in the middle of the map left above the sheet
 }
 
 // ---------------------------------------------------------------- locate FAB (idle -> centre -> follow -> compass)
@@ -1269,6 +1280,8 @@ async function boot() {
   Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
   // Anonymous daily open/install count (CLAUDE.md rule 4): off the boot path, silent on failure.
   import('./usage.js').then((m) => m.reportUsage()).catch(() => {});
+  // «Update the app» when this app is older than the worker's minApp (TEL-286): off the boot path, silent on failure.
+  import('./app-update.js').then((m) => m.checkAppVersion()).catch(() => {});
 
   if ('serviceWorker' in navigator) {
     const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});

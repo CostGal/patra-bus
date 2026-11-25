@@ -12,7 +12,7 @@ Where it shows up in Telematica: the `Agent-ready` select on Code Tasks (it repl
 My words:
 
 **Alarm** (Durable Object alarm): a wake-up call a program sets for itself, like an alarm clock that starts the code at an exact time.
-Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`).
+Where it shows up in Telematica: push reminders and routines fire at their time this way (`worker/src/reminders.js`, `routines.js`; only the worker side is left, the app no longer uses them, see docs/WORKER.md section 10).
 My words:
 
 **All rights reserved**: the default legal state of a piece of work: people may look at it, but copying or using it needs the owner's permission, like a library book you can read but not photocopy and sell.
@@ -128,7 +128,7 @@ Where it shows up in Telematica: the lens bend at the edges of the glass UI (`we
 My words:
 
 **Durable Object**: a small box of memory on Cloudflare that has an ID and can wake itself up later, like a labelled locker with its own alarm clock.
-Where it shows up in Telematica: one per push reminder and routine, plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
+Where it shows up in Telematica: one per push reminder and routine (worker side only, unused by the app), plus delay stats (`Reminder`, `Routine`, `Stats` in `worker/src/`).
 My words:
 
 **ES module**: a JavaScript file that declares what it shares (`export`) and what it borrows (`import`), like a kitchen drawer with a label.
@@ -147,12 +147,17 @@ My words:
 Where it shows up in Telematica: recorded citybus.gr answers in `tests/e2e/fixtures/` and `web/fixtures/` so tests never use the network.
 My words:
 
+**Focus**: the one thing on the screen that is "listening" right now: the field the keyboard types into, or the button that Enter presses. Only one thing has it at a time, like the person holding the microphone in a meeting: everyone can see the others, but only that one is heard.
+Where it shows up in Telematica: after every page change `app.js` gives the focus to the sheet's body, so keyboard and screen-reader users start there. In TEL-366 the sheet took that as "show the focused thing" and went all the way up on the first swipe; `sheet.js` now ignores focus on its own body. The search field gets the focus only once the sheet is up (docs/FRONTEND.md).
+My words:
+
 **Global Privacy Control (GPC)**: a setting some browsers have that tells every site "don't track me", like a "no junk mail" sticker on a letterbox.
 Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
 My words:
 
 **GitHub Environment**: a named target (`staging`, `production`) in the repo settings that holds its own secrets and can require a named person to approve before a job uses them, like a locked door with its own key and a guard who must nod.
-Where it shows up in Telematica: `.github/workflows/worker-deploy.yml`; `production` waits for CostGal's approval, `staging` does not.
+Where it shows up in Telematica: `.github/workflows/worker-deploy.yml`; `production` waits for CostGal's approval, `staging` does not. The site has its own, `github-pages` (`pages.yml`).
+Each one can also list which branches and tags may use it; a release runs from a tag, so the tag pattern `v*` must be allowed there (TEL-211).
 My words:
 
 **Gentlemen's agreement**: a promise made on trust, with no legal force, like shaking hands on a deal.
@@ -164,7 +169,7 @@ Where it shows up in Telematica: place search with Photon in `web/js/geocode.js`
 My words:
 
 **GitHub Pages**: free hosting for a website's files straight from a GitHub repo, like a noticeboard that always shows the latest posted sheet.
-Where it shows up in Telematica: it serves the `web/` folder at costgal.github.io/patra-bus (`.github/workflows/pages.yml`).
+Where it shows up in Telematica: it serves the `web/` folder at costgal.github.io/patra-bus (`.github/workflows/pages.yml`); a new sheet goes up only when a Release is published (TEL-211).
 My words:
 
 **GITHUB_TOKEN**: a temporary key GitHub hands to each Action run, which opens only what the workflow's `permissions:` list allows, like a one-day visitor pass limited to certain rooms.
@@ -244,7 +249,7 @@ Where it shows up in Telematica: the repo has none; MapLibre, OpenFreeMap and th
 My words:
 
 **localStorage**: a small notebook the browser keeps on your device for a website, like a sticky note only you can read.
-Where it shows up in Telematica: favourites, settings, places and routines in `patra-bus:v2` (`web/js/store.js`).
+Where it shows up in Telematica: favourites, settings and places in `patra-bus:v2` (`web/js/store.js`).
 My words:
 
 **Manifest** (web app manifest): an ID card that tells the phone the app's name, icon and colours so it can be installed, like a name tag.
@@ -265,6 +270,10 @@ My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Blocks from Notion (there can be two) (`/block` refreshes it; `/sprint` is kept as an alias).
+My words:
+
+**node_modules**: the folder where `npm` puts every package the project uses, like the toolbox under the desk. It is never in git: `npm ci` fills it again from `package-lock.json`, so it can be deleted without losing anything.
+Where it shows up in Telematica: each new checkout or worktree starts without it, so the SessionStart hook runs `npm ci` before the tests can run.
 My words:
 
 **npm ci**: installs the packages exactly as `package-lock.json` lists them, like stocking a new desk with exactly the tools on the old desk's list.
@@ -311,8 +320,16 @@ My words:
 Where it shows up in Telematica: `scripts/ui-map.mjs` lists every UI element with its ID (S7) and nick (countdown) for the UI map and the explorer (TEL-198, TEL-230).
 My words:
 
+**Release** (GitHub Release): a named, numbered snapshot of the code that someone publishes on purpose, like printing a new edition of a book instead of handing out every page as it is written. A draft is not published yet; a pre-release is a trial edition.
+Where it shows up in Telematica: users get a change only when a Release with a tag like `v0.9.1` is published; then `pages.yml` and `worker-deploy.yml` run (TEL-211, `docs/CI-AND-DEPLOY.md` section 9). A pre-release deploys nothing.
+My words:
+
 **Required check**: a test or status that must be green on a pull request before GitHub lets anyone merge it, like a signature a form needs before it is accepted.
 Where it shows up in Telematica: `test` (the test suite) and `merge-window` (the merge hours) are required on `main`.
+My words:
+
+**Rollback**: putting the previous working version back after a bad release, like putting the old poster back up when the new one has a mistake.
+Where it shows up in Telematica: run Pages and Worker deploy by hand from the older tag (`docs/CI-AND-DEPLOY.md` section 9).
 My words:
 
 **Ruleset** (branch protection): rules GitHub enforces on a branch, such as "only through a pull request" or "needs one approval", like house rules pinned at the entrance.
@@ -356,7 +373,11 @@ Where it shows up in Telematica: the storage inside each Durable Object (`new_sq
 My words:
 
 **Staging**: a full copy of the server that only the team uses, with its own data and keys, where a change is tried before real users get it, like a dress rehearsal on the real stage before opening night.
-Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging.
+Where it shows up in Telematica: the Worker `patra-bus-staging` (`[env.staging]` in `worker/wrangler.toml`), deployed by Actions → Worker deploy → staging, and by itself after a merge to `main` that touches the worker (TEL-211).
+My words:
+
+**Tag** (git tag): a fixed name stuck on one exact commit, like a bookmark that never moves. A branch moves forward with every commit; a tag stays.
+Where it shows up in Telematica: every Release has a tag, `v` and three numbers (`v0.9.1`); production deploys only from such a tag whose commit is in `main` (TEL-211).
 My words:
 
 **Static check**: a test that reads the code as text without running it, like a proofreader reading the manuscript before anything is printed.

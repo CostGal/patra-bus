@@ -1,5 +1,5 @@
 // Walking time + route (owner: location). OSRM foot server first, straight-line estimate as fallback.
-// Only the two coordinates of the walk leave the device, and only to the routing server (see ARCHITECTURE.md).
+// Only the two coordinates of the walk leave the device, and only to the routing server (CLAUDE.md rule 6).
 import { haversine } from './geo.js';
 
 export const OSRM_FOOT = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving';
@@ -9,7 +9,7 @@ const MIN_ROUTE_M = 30; // closer than this the estimate is as good as a route
 const MAX_ROUTE_M = 5000; // farther is not a walk worth routing
 
 // m/s. The walking-speed setting left Settings (TEL-251, Kostas 2026-11-21): everyone walks at the normal speed, also
-// those who picked another one before (the stored value is ignored).
+// those who picked another one before (store.js no longer keeps the setting, TEL-280).
 export function walkSpeed() {
   return WALK_SPEEDS.normal;
 }

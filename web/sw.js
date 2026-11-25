@@ -1,4 +1,4 @@
-// Service worker: offline app shell + OpenFreeMap assets. Bump CACHE on any shell change.
+// Service worker: offline app shell + OpenFreeMap assets. CACHE is stamped at deploy: do not bump it by hand.
 // Never touches /api/ or any other origin except tiles.openfreemap.org (routing, geocoding etc. stay on the network).
 
 const CACHE = 'patra-bus-v18';
@@ -105,6 +105,7 @@ const SHELL = [
   'js/start-stop.js',
   'js/setup.js',
   'js/usage.js',
+  'js/app-update.js',
   'data/stops.json',
   'data/lines.json',
   // Corfu (docs/MULTI-CITY.md): stops + lines are precached like Patras's, so either city opens offline.

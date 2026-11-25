@@ -1,4 +1,4 @@
-// "Επόμενο λεωφορείο κοντά σου" (owner: location). Minimal card: one hero + at most 2 rows, the rest on expand. Contract in docs/ARCHITECTURE.md; styles in css/nearby.css (.nb-*).
+// "Επόμενο λεωφορείο κοντά σου" (owner: location). Minimal card: one hero + at most 2 rows, the rest on expand. See docs/FRONTEND.md, section 3; styles in css/nearby.css (.nb-*).
 // Pure logic first (pickStops, computeDepartures, pickHero: unit-tested), then the card.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';

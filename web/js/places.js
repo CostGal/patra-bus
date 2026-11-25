@@ -1,4 +1,4 @@
-// Saved places (Σπίτι/Δουλειά + up to 3 custom) (owner: places). See docs/ARCHITECTURE.md (Round 3).
+// Saved places (Σπίτι/Δουλειά + up to 3 custom) (owner: places). See docs/FRONTEND.md, section 5.
 // Storage is its own key and never throws: when localStorage is unavailable the places live in memory for the page.
 import { h, icon } from './ui.js';
 import { t, N_ } from './i18n.js';
