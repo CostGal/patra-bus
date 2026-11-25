@@ -67,6 +67,42 @@ export function icon(name) {
   return s;
 }
 
+// ---- fitCardName: a card's name in its header, as in Apple Maps (TEL-337, UI-PROTOCOL U4) ----
+// One line at low and mid: 17 px, shrunk down to 14 px before it is cut with "…" (--name-px, --name-n). At up its own
+// row, 24 px, less if its longest word would not fit on a line at that size (--name-up-n). The CSS of each card reads
+// these. Measured only at low and mid (`head` has no .is-up), with transitions off (U16); call it again when a font
+// arrives (U17). `text` is the name itself, for its longest word.
+const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24;
+let measureCtx = null;
+export function fitCardName(title, head, text = title.textContent) {
+  if (head.classList.contains('is-up')) return; // measured again once it is one line
+  // no transition while it is measured: with reduced motion app.css gives every change a 0.01 ms one, and the
+  // computed size would still be the old one when it is read
+  title.style.transition = 'none';
+  for (const k of ['--name-px', '--name-n', '--name-up-n']) title.style.removeProperty(k);
+  const room = title.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
+  if (room > 0) {
+    const r = document.createRange();
+    r.selectNodeContents(title);
+    const scale = title.getBoundingClientRect().width / title.offsetWidth || 1; // the growth towards up, if any (U18)
+    const w = r.getBoundingClientRect().width / scale;
+    let n = NAME_PX;
+    if (w > room) {
+      n = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
+      title.style.setProperty('--name-px', `${n}px`);
+      title.style.setProperty('--name-n', String(n));
+    }
+    // up: the whole width of the card
+    measureCtx ||= document.createElement('canvas').getContext('2d');
+    const cs = getComputedStyle(title);
+    measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
+    const longest = Math.max(...String(text).split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
+    const upN = Math.max(n, Math.min(NAME_UP, Math.floor(NAME_PX * (head.clientWidth - 2) / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
+    if (upN !== NAME_UP) title.style.setProperty('--name-up-n', String(upN));
+  }
+  title.style.transition = '';
+}
+
 // ---- cardHead: the header of a card with a short, fixed title (TEL-350, UI-PROTOCOL U2–U5) ----
 // The kit's .card-head and .card-head-up (css/ui-kit.css): an empty slot · the title, 17 px, centred · ✕. Halfway from
 // mid to up the title moves to its own row, 24 px, in a short blur (U4, U10); towards up it grows as a transform (U8).
