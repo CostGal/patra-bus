@@ -11,8 +11,8 @@ All files are in `.github/workflows/`.
 | `test.yml` (Test) | every PR, or by hand | Checks out full history, then: secret scan of every commit with gitleaks (config `.gitleaks.toml`), `npm ci`, installs Chromium, `npm test` (unit + Playwright smoke), `npm run check:i18n`, and `wrangler deploy --dry-run` for the worker (builds it, deploys nothing). Language is set to Greek because tests read Greek text. | No comment. On failure it uploads `playwright-results` (14 days). |
 | `lighthouse.yml` (Lighthouse) | every PR, or by hand | Serves `web/` and runs Lighthouse 11.7.1 on `?demo` home and stop 1011 (performance, accessibility, PWA). Report only: low scores never fail it, a crash does. | Posts or updates one PR comment with the scores (not on fork PRs). Uploads `lighthouse-reports` (14 days). |
 | `merge-window.yml` (Merge window) | PR opened/updated/reopened/ready, on a schedule, or by hand | Sets the commit status `merge-window` (section 3). | None. |
-| `pages.yml` (Pages) | push to `main`, or by hand | Stamps the service worker cache, uploads `web/`, deploys GitHub Pages. | None. |
-| `worker-deploy.yml` (Worker deploy) | push to `main` that touches worker files, or by hand | Deploys the API worker (section 6). | None. |
+| `pages.yml` (Pages) | a published Release with a tag like `v0.9.1`, or by hand from such a tag | Checks the tag, stamps the service worker cache, uploads `web/`, deploys GitHub Pages (section 9). | None. |
+| `worker-deploy.yml` (Worker deploy) | push to `main` that touches worker files (staging), a published Release (production), or by hand | Deploys the API worker (sections 6 and 9). | None. |
 | `watch-same-bus.yml` (Same-bus watch) | every 30 min in daytime, or by hand | Runs `scripts/watch-same-bus.mjs` (section 8). | Comments on one standing issue. |
 
 ## 2. Required checks before a merge
@@ -37,7 +37,8 @@ All files are in `.github/workflows/`.
 ## 4. The site
 
 - Repo: https://github.com/CostGal/patra-bus. Site: https://costgal.github.io/patra-bus/.
-- On every push to `main`, `pages.yml` uploads only `web/` to GitHub Pages. The tests do not gate it; they gate the merge.
+- The site changes only when a Release is published (section 9). Then `pages.yml` uploads only `web/` to GitHub Pages. A merge to `main` does not change the site. The tests do not gate the deploy; they gate the merge.
+- Between releases, `main` is not shown on the site. A change is seen on its PR preview (section 5).
 - The site lives under the subpath `/patra-bus/`. So paths inside `web/` stay relative (`./data/…`, `sw.js`, `start_url: "./"`). A path that starts with `/` would point at the wrong place.
 
 ## 5. PR previews and cache stamping
@@ -52,12 +53,12 @@ All files are in `.github/workflows/`.
 
 The only way the API worker is deployed is the Action "Worker deploy". Nobody runs `wrangler deploy` from a computer, not even for staging. (The comment in the root `wrangler.jsonc` that says "deployed by hand" is out of date.)
 
-- Staging: Actions, Worker deploy, Run workflow, pick any branch, target `staging`. Anyone with write access may do it. It goes to the worker `patra-bus-staging` (https://patra-bus-staging.patra-bus.workers.dev) with its own KV, Durable Objects and secrets (`[env.staging]` in `worker/wrangler.toml`).
-- Production: only from `main`. The job refuses a production run from any other branch. It starts by itself after a push to `main` that changes one of these paths: `worker/**`, `web/js/arrivals.js`, `web/js/cities.js`, `web/js/notif-link.js`, `web/js/report.js`, `web/js/route.js`. It can also be started by hand on `main`.
-- Then it waits for approval in the GitHub Environment `production`. Kostas approves. Without the approval, the worker stays behind the web files.
+- Staging: it deploys by itself after a push to `main` that changes one of these paths: `worker/**`, `web/js/arrivals.js`, `web/js/cities.js`, `web/js/notif-link.js`, `web/js/report.js`, `web/js/route.js`. So staging follows `main`. By hand: Actions, Worker deploy, Run workflow, pick any branch, target `staging`. Anyone with write access may do it. A merge to `main` overwrites a branch that someone put on staging by hand, so say it in the team chat when you test there. It goes to the worker `patra-bus-staging` (https://patra-bus-staging.patra-bus.workers.dev) with its own KV, Durable Objects and secrets (`[env.staging]` in `worker/wrangler.toml`).
+- Production: only from a published Release (section 9). The `check` job refuses a production run that is not on a tag like `v0.9.1`, or whose commit is not in `main`. A merge to `main` does not reach production. By hand it runs only from such a tag (the rollback in section 9).
+- Then it waits for approval in the GitHub Environment `production`. Kostas approves. Without the approval, the worker stays behind the site.
 - The deploy step needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the matching GitHub Environment. It fails with a clear message if the token is missing. `wrangler deploy` does not change the worker's own secrets.
 - One deploy per target at a time; a newer one waits.
-- Order for a worker change: run it locally (`npm run dev:worker`), then deploy the branch to staging, then merge the PR and approve production.
+- Order for a worker change: run it locally (`npm run dev:worker`), then deploy the branch to staging, then merge the PR (staging now has `main`), then publish a Release and approve production.
 - Staging and production share the daily free-plan limits of one Cloudflare account, so heavy staging tests use up production's quota.
 
 ## 7. Session start hook
@@ -70,3 +71,40 @@ The only way the API worker is deployed is the Action "Worker deploy". Nobody ru
 ## 8. Same-bus watcher
 
 `watch-same-bus.yml` looks for a live and a scheduled row of the same line that could be one bus, and reports on the issue "Same-bus watch (TEL-145)". It makes a few live requests per run with a token scraped on the fly, and it runs only from `main`. To pause it, disable the workflow in the Actions tab. Details are in `docs/ARCHITECTURE.md`.
+
+## 9. Releases: how users get a change
+
+Users get a change only when a GitHub Release is published (TEL-211). A merge to `main` updates staging only.
+
+How to publish:
+
+1. GitHub, Releases, "Draft a new release".
+2. "Choose a tag": type a new tag, `v` and three numbers (for example `v0.9.1`), and pick "Create new tag on publish". Target: `main`.
+3. Title: the tag, plus a few words if you like. Press "Generate release notes".
+4. Leave "Set as a pre-release" off. A pre-release deploys nothing.
+5. "Publish release". Kostas presses it. Anyone may prepare the draft ("Save draft"); a draft deploys nothing.
+
+What happens next:
+
+- `pages.yml` runs at once and the site changes.
+- `worker-deploy.yml` waits in the Environment `production`. Kostas opens the run in Actions, "Review deployments", approves. Until then the site is ahead of the worker.
+- Both run on every release, also when only one of the two changed.
+- In both, the `check` job runs first. It fails, and nothing is deployed, when the tag is not `v` and three numbers or its commit is not in `main`.
+- Check after: https://costgal.github.io/patra-bus/ and https://patra-bus.patra-bus.workers.dev/health.
+- Editing or deleting a release later deploys nothing and undoes nothing.
+
+How to roll back to the release before:
+
+1. Actions, Pages, "Run workflow", "Use workflow from": tab Tags, pick the older tag (for example `v0.9.0`), Run.
+2. Actions, Worker deploy, "Run workflow", the same tag, target `production`, Run. Kostas approves.
+
+Limits of the rollback:
+
+- It works for tags made after TEL-211 was merged. A run from a tag uses the workflow file as it was at that tag.
+- The worker cannot go back past a Durable Object migration (`[[migrations]]` in `worker/wrangler.toml`). Then fix it on `main` and publish a new release.
+- The other way is always open: a PR that reverts the change, then a new release (for example `v0.9.2`).
+
+Settings this needs (GitHub, Settings, Environments; Kostas). They cannot be confirmed from the repo files:
+
+- `production` and `github-pages` must allow tags `v*` under "Deployment branches and tags". If they allow only the branch `main`, a release run is refused.
+- `github-pages` has no reviewer unless one is added there. Without one, whoever publishes a release changes the site with no approval step.
