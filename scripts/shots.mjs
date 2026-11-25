@@ -132,6 +132,22 @@ async function capture(context, base, screen, dir, summary) {
   summary.push({ dir, screen: screen.id, files, problems });
 }
 
+// One tab crashing ("page.goto: Page crashed", seen once on the boot screen, TEL-380) must not stop the whole sweep:
+// close the broken tab, try that screen once more, and if it fails again list it under "Problems" and go on.
+async function captureSafely(context, base, screen, dir, summary) {
+  const firstLine = (e) => String(e?.message || e).split('\n')[0];
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await capture(context, base, screen, dir, summary);
+      if (attempt > 1) summary.at(-1).problems.push('the tab crashed on the first try and worked on the second');
+      return;
+    } catch (e) {
+      for (const p of context.pages()) await p.close().catch(() => {});
+      if (attempt === 2) summary.push({ dir, screen: screen.id, files: [], problems: [`could not capture: ${firstLine(e)}`], ids: [], unknown: [], boxes: [], vw: 0, vh: 0 });
+    }
+  }
+}
+
 const base = args.base ? String(args.base).replace(/\/$/, '') : await startServer();
 const notes = new Set();
 const summary = [];
@@ -149,7 +165,7 @@ try {
       await mockNetwork(context, base);
       // registered after the mocks, so it wins for this host only
       if (args.map) await context.route((u) => u.hostname === 'tiles.openfreemap.org', (route) => route.continue());
-      for (const screen of screens) await capture(context, base, screen, dir, summary);
+      for (const screen of screens) await captureSafely(context, base, screen, dir, summary);
       await context.close();
       console.log(`${device} · ${lang} · ${theme} (${engine}): ${screens.length} screens`);
     }
