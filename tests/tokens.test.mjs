@@ -104,7 +104,8 @@ test('stylesheets only use tokens that exist', () => {
   const local = new Set(['--hit', '--lc', '--lc-text', '--c', '--t', '--i', '--row-h', '--pl-line', '--pl-line-text', '--sheet-y', '--sheet-t', '--panel-w',
     '--top-inset', '--chips-h', '--offline-h', '--chips-fl', '--chips-fr', '--kb',
     '--l', '--u', '--name-px', '--name-n', '--name-up-n', // the sheet's drag (js/sheet.js); a long name's sizes (js/bus-view.js)
-    '--usual-cut']); // how much of the opening usual-delay mark is hidden (js/arrivals-view.js)
+    '--usual-cut', // how much of the opening usual-delay mark is hidden (js/arrivals-view.js)
+    '--sheet-vis']); // how much of the sheet shows, for a centred toast (js/app.js, TEL-286)
   for (const f of files) {
     const src = readFileSync(new URL(`../web/${f}`, import.meta.url), 'utf8');
     for (const m of src.matchAll(/var\((--[\w-]+)/g)) {
