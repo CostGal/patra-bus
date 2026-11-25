@@ -151,6 +151,7 @@ export const UI_SCREENS = [
   { id: 'setup', url: '/?demo&setup#/' },
   { id: 'welcome', url: '/?demo&welcome#/' },
   { id: 'boot', url: '/?demo&boot=hold#/' },
+  { id: 'pin', url: '/?demo#/pin?lat=38.24660&lng=21.73460' }, // a dropped pin: its marker on the map (M5)
 ];
 
 // Runs in the page. Finds every visible match of the registry and anything pressable that is not in it (red "?").
@@ -170,7 +171,10 @@ export function annotate({ ui, colors, draw = true }) {
     if (r.width < 6 || r.height < 6 || cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity < 0.1) return null;
     if (r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) return null;
     const hit = document.elementFromPoint(Math.min(vw - 1, Math.max(0, r.left + r.width / 2)), Math.min(vh - 1, Math.max(0, r.top + r.height / 2)));
-    return hit && (el.contains(hit) || hit.contains(el)) ? r : null; // not covered by something else
+    if (!hit) return null;
+    // a map marker lets taps through (pointer-events: none), so the hit is the map under it: still uncovered (TEL-262)
+    if (cs.pointerEvents === 'none' && el.closest('#map')) return hit.closest('#map') ? r : null;
+    return el.contains(hit) || hit.contains(el) ? r : null; // not covered by something else
   };
   const found = [], marked = new Set();
   for (const u of ui) {
