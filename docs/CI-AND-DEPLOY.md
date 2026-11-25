@@ -39,6 +39,7 @@ All files are in `.github/workflows/`.
 - Repo: https://github.com/CostGal/patra-bus. Site: https://costgal.github.io/patra-bus/.
 - The site changes only when a Release is published (section 9). Then `pages.yml` uploads only `web/` to GitHub Pages. A merge to `main` does not change the site. The tests do not gate the deploy; they gate the merge.
 - Between releases, `main` is not shown on the site. A change is seen on its PR preview (section 5).
+- If the deploy step fails (GitHub sometimes says "No artifacts named github-pages" right after a good upload), the job waits 30 s and tries once more by itself. If that fails too, start a new run from the same tag: Actions, Pages, Run workflow, "Use workflow from", Tags, the release tag. Do not use "Re-run failed jobs": it fails with "Multiple artifacts named github-pages".
 - The site lives under the subpath `/patra-bus/`. So paths inside `web/` stay relative (`./data/…`, `sw.js`, `start_url: "./"`). A path that starts with `/` would point at the wrong place.
 
 ## 5. PR previews and cache stamping
