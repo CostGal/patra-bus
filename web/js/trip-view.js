@@ -6,7 +6,7 @@
 // numbers, as Google Maps does (TEL-294, Kostas). No ~ anywhere.
 // Imports: ui, i18n, geo, arrivals-view (arrivalTile) and trip (retime, leaveState) only (guard: tests/trip-view.test.mjs).
 import { h, icon, lineBadge, fmtClock } from './ui.js';
-import { t, tn, etaTxt, etaWords } from './i18n.js';
+import { t, tn, N_, etaTxt, etaWords } from './i18n.js';
 import { fmtDist } from './geo.js';
 import { arrivalTile } from './arrivals-view.js';
 import { retime, leaveState } from './trip.js';
@@ -152,6 +152,16 @@ const SAY_SRC = () => ({ live: t('Ζωντανή ώρα'), scheduled: t('Ώρα 
 const estFlag = () => h('span', { class: 'tripv-est' }, t('ΕΚΤΙΜ.'));
 
 // opts: { dest, plan({ onUpdate }) → Promise<planTrips result>, lineFor(code) → line | null, onBack(), onOtherDest() }
+// No trip found: the title and the line under it say why (TEL-317), from planTrips' reason (js/trip.js). Greek keys.
+const NO_TRIP = {
+  'outside-from': [N_('Είσαι έξω από την πόλη'), N_('Τα αστικά λεωφορεία δεν περνούν από εκεί που είσαι.')],
+  'outside-to': [N_('Ο προορισμός είναι έξω από την πόλη'), N_('Τα αστικά λεωφορεία δεν πάνε ως εκεί.')],
+  'no-board-stops': [N_('Δεν υπάρχει στάση κοντά σου'), N_('Η πιο κοντινή στάση είναι πάνω από 1,5 χλμ μακριά.')],
+  'no-alight-stops': [N_('Δεν υπάρχει στάση κοντά στον προορισμό'), N_('Η πιο κοντινή στάση είναι πάνω από 1,5 χλμ μακριά από εκεί.')],
+};
+const NO_ROUTE = [N_('Δεν βρέθηκε διαδρομή με λεωφορείο'), N_('Δεν υπάρχει γραμμή, ούτε με μία αλλαγή, που να σε πάει εκεί.')];
+export const noTripText = (reason) => NO_TRIP[reason] || NO_ROUTE;
+
 export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => null, onBack, onOtherDest } = {}) {
   const root = h('div', { class: 'tripv sheet-inset' });
   container.replaceChildren(root);
@@ -338,9 +348,9 @@ export function mountTrip(container, ctx, { dest = '', plan, lineFor = () => nul
       title.textContent = t('Διαδρομή');
       peek.replaceChildren();
       optBar.hidden = true; sum.hidden = true;
-      body.replaceChildren(stateBlock('route', t('Δεν βρέθηκε διαδρομή με λεωφορείο'),
-        t('Δεν υπάρχει γραμμή, ούτε με μία αλλαγή, που να σε πάει εκεί.'), t('Άλλος προορισμός'), () => onOtherDest?.()));
-      say(t('Δεν βρέθηκε διαδρομή με λεωφορείο'));
+      const [why, hint] = noTripText(result.reason);
+      body.replaceChildren(stateBlock('route', t(why), t(hint), t('Άλλος προορισμός'), () => onOtherDest?.()));
+      say(t(why));
       return;
     }
     const models = optionsModel(its, now, dest);

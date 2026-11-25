@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 // Browser globals the modules touch; set before the dynamic import (as tests/i18n.test.mjs does).
 globalThis.document = { documentElement: {} };
 Object.defineProperty(globalThis, 'navigator', { value: { language: 'el-GR' }, configurable: true, writable: true });
-const { tripModel, optionsModel, dur, etaOf } = await import('../web/js/trip-view.js');
+const { tripModel, optionsModel, dur, etaOf, noTripText } = await import('../web/js/trip-view.js');
 const { setLang } = await import('../web/js/i18n.js');
 
 // ---- sample itineraries, by hand, in the shape of card TEL-290 (and the transfer fields of TEL-292) ----
@@ -252,4 +252,23 @@ test('trip.css: no blur layer and no side padding of its own', () => {
   assert.ok(!/backdrop-filter/.test(css));
   assert.ok(!/padding-inline/.test(css));
   assert.ok(css.includes('.tripv-title.card-title'), 'the title selector has two classes (U19)');
+});
+
+test('no trip: the message says why (TEL-317), one per reason of planTrips', async () => {
+  const { LIMITS } = await import('../web/js/trip.js');
+  const seen = new Set();
+  for (const r of ['outside-from', 'outside-to', 'no-board-stops', 'no-alight-stops']) {
+    const [why, hint] = noTripText(r);
+    assert.ok(why && hint, r);
+    assert.notDeepEqual([why, hint], noTripText('no-route'), r);
+    seen.add(why);
+  }
+  assert.equal(seen.size, 4); // four different titles
+  assert.equal(noTripText('no-route')[0], 'Δεν βρέθηκε διαδρομή με λεωφορείο');
+  assert.equal(noTripText(undefined)[0], 'Δεν βρέθηκε διαδρομή με λεωφορείο');
+  assert.equal(LIMITS.farRadius, 1500); // the hints say «1,5 χλμ»: change them with it
+  // every reason planTrips can give (its comment lists them) has text, or falls back on purpose (no-route)
+  const src = readFileSync(new URL('../web/js/trip.js', import.meta.url), 'utf8');
+  const reasons = src.match(/reason \(only when itineraries is empty\): (.+)/)[1].match(/'([a-z-]+)'/g).map((s) => s.slice(1, -1));
+  for (const r of reasons) if (!['no-data', 'no-route'].includes(r)) assert.notEqual(noTripText(r)[0], noTripText('no-route')[0], r);
 });
