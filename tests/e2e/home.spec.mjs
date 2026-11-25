@@ -75,3 +75,10 @@ test('home: favourites show their next arrival only when the sheet is up', async
   await page.evaluate(() => window.__app.sheet.snap('full', { animate: false }));
   await expect(page.locator('.hm-fav .atile').first()).toBeVisible();
 });
+
+test('welcome card: «Στείλε σχόλια» opens the «Πρόταση» form (TEL-385)', async ({ page }) => {
+  await page.goto('/?demo&welcome#/');
+  await page.locator('.wl-link').click();
+  await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/#\/report\?kind=idea$/);
+  await expect(page.locator('.rp-text')).toBeVisible();
+});
