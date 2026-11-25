@@ -1,5 +1,5 @@
 // Stop sheet: header + arrival tiles that say how long, and whether it is live or just the timetable.
-// Contract in docs/ARCHITECTURE.md. Styles: css/arrivals.css (prefixes .atile-, .stopv-).
+// See docs/FRONTEND.md, section 3. Styles: css/arrivals.css (prefixes .atile-, .stopv-).
 // Minimal UI: a tile is badge + destination + big countdown + a small LIVE / ΠΡΟΓΡ. flag; explanations live in Settings → Σχετικά.
 import { h, icon, lineBadge, fmtClock } from './ui.js';
 import { titleCase } from './text.js';

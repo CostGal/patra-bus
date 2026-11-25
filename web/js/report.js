@@ -1,6 +1,6 @@
 // Problem reports: shared by the frontend (pre-check, payload, transport) and the Worker (the real validation).
 // Pure and DOM-free; the Worker imports it, so it must not import anything that touches the browser.
-// Only what the user typed (category, text, optional email) plus the coarse diagnostics below is ever sent. Contract: docs/ARCHITECTURE.md.
+// Only what the user typed (category, text, optional email) plus the coarse diagnostics below is ever sent. See docs/FRONTEND.md, section 10, and docs/WORKER.md, section 7.
 
 export const CATEGORIES = ['data', 'app', 'idea', 'other'];
 export const LIMITS = { messageMin: 10, messageMax: 2000, emailMax: 254 };

@@ -1,5 +1,5 @@
 // Walking time + route (owner: location). OSRM foot server first, straight-line estimate as fallback.
-// Only the two coordinates of the walk leave the device, and only to the routing server (see ARCHITECTURE.md).
+// Only the two coordinates of the walk leave the device, and only to the routing server (CLAUDE.md rule 6).
 import { haversine } from './geo.js';
 
 export const OSRM_FOOT = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving';

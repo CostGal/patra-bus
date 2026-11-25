@@ -72,9 +72,9 @@ touches the SW `SHELL` list, `data.js` and the tests. It happens in the same cha
 
 ### 4. Frontend: active city
 - Stored in `store` (`settings.city`, default `patra`). First run inside a known city's bbox → that city.
-- Hash: optional prefix, `#/corfu/stop/123`. **No prefix = Patras** (all existing shared links, bookmarks and
-  routines keep working). New share links always carry the prefix.
-- Per-city user data: favorites, places, routines and reminders reference stop codes, so each item gets a `city`
+- Hash: optional prefix, `#/corfu/stop/123`. **No prefix = Patras** (all existing shared links, bookmarks keep
+  working). New share links always carry the prefix.
+- Per-city user data: favorites and places reference stop codes, so each item gets a `city`
   field. One-time migration tags existing items `patra`. Lists are filtered by the active city.
 - Settings: a city picker. Switching reloads data and recenters the map.
 
@@ -108,7 +108,7 @@ touches the SW `SHELL` list, `data.js` and the tests. It happens in the same cha
 - `api.js` always calls the prefixed routes (`/api/{cityId()}/…`, also for Patras); the memo is keyed by city + code.
 - Active city at boot: hash prefix → `settings.city` → `DEFAULT_CITY`. Hash: `#/corfu/stop/123`; **no prefix = Patras**.
   New share links always carry the prefix. Switching city = save setting, go to that city's `#/`, reload.
-- User items that reference stops (favorites, places, routines, reminders, recents…) carry `city`; a one-time
+- User items that reference stops (favorites, places, recents…) carry `city`; a one-time
   migration tags existing items `patra`; lists show only the active city's items.
 - Settings has a city picker. The app is called **Telematica** (manifest, `<title>`, about text, notification
   titles); the active city is shown in the UI. Repo, worker name, localStorage key and SW cache names stay as they are.

@@ -1,5 +1,5 @@
 // Map (owner: shell). MapLibre GL JS 4.7.1 (global `maplibregl`) + OpenFreeMap vector styles.
-// Implements MapApi from docs/ARCHITECTURE.md plus a few shell-only extras:
+// Implements the MapApi of the old contract (docs/archive/ARCHITECTURE-rounds-1-4.md) plus a few shell-only extras:
 //   available, setFollow(mode), resetNorth(), opts.onUserMove / opts.onBearing / opts.theme.
 // Everything custom (sources, layers) is re-added on every `style.load` so theme swaps keep state.
 import { icon } from './ui.js';
