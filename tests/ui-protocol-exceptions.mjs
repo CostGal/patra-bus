@@ -35,7 +35,7 @@ export const STATIC_EXCEPTIONS = {
   },
 };
 
-// Browser checks: view → { rule: reason }. Views: home, stop, trip, bus, favorites, settings, report; and
+// Browser checks: view → { rule: reason }. Views: home, stop, trip, bus, favorites, settings, report, install; and
 // "stop-long" for the stop with the longest name (826), "chrome" for what sits over the map in every view.
 const OLD_HEAD = 'old header (.ex-head / .view-head), not the kit\'s .card-head yet';
 const OLD_INSET = 'content 24 px from the card at low/mid, 32 up: its own 16 px on top of the sheet\'s';
@@ -64,6 +64,9 @@ export const VIEW_EXCEPTIONS = {
   },
   report: {
     U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the stop, the trip, the bus and the favourites (TEL-252)',
+  },
+  install: {
+    U2: 'up, the card is edge to edge but .sheet-inset keeps its 8 px: 24 px from the edge (ui-kit.css), as the settings and the report (TEL-409)',
   },
   chrome: {
     U11: 'the toast eases its transform in .3 s (none only while dragging): a programmatic snap leaves it behind',

@@ -153,8 +153,8 @@ a.atile { text-decoration: none; }
 .bv-foot, .bv-legend { margin-top: 10px; }
 
 /* ---- settings v3: collapsible sections, (i) hints, language row ---- */
-.set-lang { margin: 0 0 var(--space-3); padding: var(--space-1) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
-.set-sec { margin: 0 0 var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
+.set-lang { margin: 0 0 var(--space-3); padding: var(--space-1) var(--space-4); border: 1px solid var(--border); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
+.set-sec { margin: 0 0 var(--space-2); border: 1px solid var(--border); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
 .set-sum {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 52px; padding: 0 var(--space-4);
   font-weight: 600; cursor: pointer; list-style: none;
@@ -201,3 +201,34 @@ html.glass .stop-menu-list { background: color-mix(in srgb, var(--card) 76%, tra
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   html.glass .stop-menu-list { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* ---- install the app (TEL-409, js/install-view.js) ---- */
+.in-body { padding-top: var(--space-2); }
+.in-lead { color: var(--muted-foreground); }
+.in-steps { display: grid; gap: var(--space-2); margin: var(--space-2) 0; }
+.in-step { display: flex; align-items: center; gap: var(--space-3); min-height: 52px; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--muted); }
+.in-n { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); font-weight: 700; font-size: .875rem; }
+.in-text { flex: 1; min-width: 0; font-size: var(--text-md); font-weight: 600; overflow-wrap: anywhere; }
+.in-glyph { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--radius-inner); background: var(--background); color: var(--primary); }
+.in-glyph .icon { width: 20px; height: 20px; }
+.in-glyph.is-ok { background: var(--primary); color: var(--primary-foreground); }
+.in-done { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-md); font-weight: 600; }
+.in-note { margin-top: var(--space-2); }
+.in-go .icon { width: 20px; height: 20px; }
+
+/* ---- the install card on home (TEL-409): glass (css/glass.css), just above the sheet, left of the map buttons ----
+   z 19 under the sheet (20), like .fabs-bottom: app.js moves it with the sheet on every frame up to mid (no transition,
+   U11), then the sheet slides over it; it never fades (U12). */
+.ih { position: fixed; z-index: 19; left: calc(var(--safe-left, 0px) + 12px); right: calc(var(--safe-right, 0px) + 76px); bottom: var(--space-4);
+  max-width: 420px; display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-card);
+  background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sheet); will-change: transform; }
+.ih[hidden] { display: none; }
+.ih-row { display: flex; align-items: center; gap: var(--space-3); }
+.ih-logo { flex: none; width: 40px; height: 40px; border-radius: var(--radius-inner); }
+.ih-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ih-text strong { font-size: var(--text-md); line-height: 1.25; }
+.ih .btn.round.g-circle { flex: none; margin: 0; align-self: flex-start; }
+.ih-go { width: 100%; }
+.no-map .ih { display: none; }
+@media (min-width: 900px) { .ih { display: none; } }
+

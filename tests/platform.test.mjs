@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectPlatform, currentPlatform } from '../web/js/platform.js';
+import { detectPlatform, currentPlatform, installCase } from '../web/js/platform.js';
 
 const UA = {
   iphoneSafari: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
@@ -99,4 +99,31 @@ test('currentPlatform reads navigator and any app display-mode', () => {
     delete globalThis.matchMedia;
     if (saved) Object.defineProperty(globalThis, 'navigator', saved); else delete globalThis.navigator;
   }
+});
+
+test('installCase picks the install guide for each platform (TEL-409)', () => {
+  const c = (o) => installCase({ os: 'other', mode: 'browser', browser: 'chrome', canPrompt: false, ...o });
+  assert.equal(c({ mode: 'app' }), 'installed');
+  assert.equal(c({ os: 'ios', browser: 'inapp' }), 'inapp');
+  assert.equal(c({ os: 'android', canPrompt: true }), 'prompt');
+  assert.equal(c({ canPrompt: true }), 'prompt'); // desktop Chrome/Edge
+  assert.equal(c({ os: 'ios', browser: 'safari' }), 'ios-safari');
+  assert.equal(c({ os: 'ios', browser: 'chrome' }), 'ios-other');
+  assert.equal(c({ os: 'android', browser: 'chrome' }), 'android-chrome');
+  assert.equal(c({ os: 'android', browser: 'edge' }), 'android-chrome');
+  assert.equal(c({ os: 'android', browser: 'samsung' }), 'android-samsung');
+  assert.equal(c({ os: 'android', browser: 'firefox' }), 'android-firefox');
+  assert.equal(c({ os: 'android', browser: 'other' }), 'android-other');
+  assert.equal(c({ browser: 'safari' }), 'desktop');
+});
+
+test('the home install card shows only on a phone in a browser, until closed (TEL-409)', async () => {
+  const { shouldHint } = await import('../web/js/install-view.js');
+  const off = { dismissed: false, installed: false };
+  assert.equal(shouldHint({ os: 'ios', mode: 'browser' }, off), true);
+  assert.equal(shouldHint({ os: 'android', mode: 'browser' }, off), true);
+  assert.equal(shouldHint({ os: 'other', mode: 'browser' }, off), false);
+  assert.equal(shouldHint({ os: 'ios', mode: 'app' }, off), false);
+  assert.equal(shouldHint({ os: 'ios', mode: 'browser' }, { ...off, dismissed: true }), false);
+  assert.equal(shouldHint({ os: 'android', mode: 'browser' }, { ...off, installed: true }), false);
 });

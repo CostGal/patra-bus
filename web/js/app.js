@@ -18,6 +18,7 @@ import { searchPlaces, withoutShownStops } from './geocode.js';
 import { searchKey } from './text.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import { pickStartStop } from './start-stop.js';
+import { captureInstallPrompt, canInstall, createInstallHint } from './install-view.js';
 try { localStorage.removeItem('patra-bus:reminders'); } catch { /* no storage */ } // left by older versions (TEL-351)
 
 // Was the page opened on the home view (not a deep link)? Only then the first-run setup may appear.
@@ -162,6 +163,13 @@ function makePopover(btn, pop) {
 // utility (scale .97 on :active, instant down / eased up) covers it — just opt the trigger in.
 function pressable(btn) { btn.classList.add('press'); }
 
+// TEL-409: the browser's install prompt fires once, soon after load: keep it for the install buttons.
+captureInstallPrompt();
+// TEL-409: on home, a glass card just above the sheet offers to install the app (phone, browser tab, until ✕).
+// Under the sheet (z 19, like the map buttons): it moves with the sheet up to mid, then the sheet slides over it.
+const installHint = createInstallHint({ onHow: () => { location.hash = cityHash('#/install'); } });
+document.getElementById('app')?.append(installHint.el);
+
 // ---------------------------------------------------------------- menu popover (navigation + map theme)
 const menuBtn = $('menu-btn');
 const menuPop = $('menu-pop');
@@ -233,6 +241,8 @@ function buildMenu() {
       h('div', { class: 'theme-row', role: 'radiogroup', 'aria-labelledby': 'theme-label', onkeydown: onThemeKey })),
     h('div', { class: 'pop-sep' }),
     reportBtn,
+    // TEL-409: only in a browser tab; the installed app has no use for it
+    canInstall() ? item('#/install', 'install', t('Εγκατάσταση εφαρμογής')) : null,
     item('#/settings', 'settings', t('Ρυθμίσεις και σχετικά')));
   menuPop.replaceChildren(main, kinds);
   // the menu under the card is inert, so a tap on it lands on the panel itself
@@ -318,6 +328,7 @@ function onMove({ visible, lift, opacity }) {
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
   toastHost.style.setProperty('--sheet-vis', `${visible}px`); // a centred toast (TEL-286) sits in the middle of the map left above the sheet
+  installHint.el.style.transform = lift ? `translateY(${-lift}px)` : '';
 }
 
 // ---------------------------------------------------------------- locate FAB (idle -> centre -> follow -> compass)
@@ -904,7 +915,7 @@ let currentHead = '';
 // Where the user was before opening the report sheet: the screen name and a public stop/line code, never the query (no coordinates).
 let reportCtx = { view: '', ref: '' };
 let booted = false;
-const SNAP = { '': 'half', stop: 'half', bus: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', place: 'full' };
+const SNAP = { '': 'half', stop: 'half', bus: 'half', favorites: 'half', pin: 'half', trip: 'half', settings: 'full', report: 'full', install: 'full', place: 'full' };
 
 // Switching city (TEL-347) = load that city's data, then remember it, move the map and redraw the screen: no page reload.
 // Stored items, reminders and the api memo are keyed by city, so they follow cityId(). The active city changes only after
@@ -1013,9 +1024,9 @@ async function route() {
 
   focusPt = null;
   routeSnap = true;
-  sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report'); // no low or mid: down from up goes home (TEL-352)
+  sheet.setUpOnly(currentHead === 'settings' || currentHead === 'report' || currentHead === 'install'); // no low or mid: down from up goes home (TEL-352)
   sheet.setLowLeave(currentHead === 'favorites'); // a swipe from mid to low melts into home's search (TEL-372)
-  if ((currentHead === 'settings' || currentHead === 'report') && !homeParts) import('./home-view.js').then((m) => { homeParts = m; }).catch(() => {});
+  if ((currentHead === 'settings' || currentHead === 'report' || currentHead === 'install') && !homeParts) import('./home-view.js').then((m) => { homeParts = m; }).catch(() => {});
   sheet.snap(nextSnap || SNAP[currentHead], { animate: booted, velocity: carry });
   routeSnap = false;
   nextSnap = null;
@@ -1033,6 +1044,7 @@ async function route() {
     }
   };
 
+  if (booted) installHint.update(currentHead === ''); // TEL-409: the install card shows on home only
   switch (currentHead) {
     case 'stop': {
       const stop = data.stopByCode.get(String(arg));
@@ -1062,6 +1074,10 @@ async function route() {
     case 'report':
       document.title = `${t('Αναφορά προβλήματος')} · ${title()}`;
       await mount(() => import('./report-view.js'), (m) => m.mountReport(content, ctx, { context: reportCtx, kind: params.kind, kinds: REPORT_KINDS }));
+      break;
+    case 'install': // TEL-409: how to add the app to the home screen
+      document.title = `${t('Εγκατάσταση εφαρμογής')} · ${title()}`;
+      await mount(() => import('./install-view.js'), (m) => m.mountInstall(content, ctx));
       break;
     case 'place': // TEL-239: set Σπίτι, Δουλειά or a new place in the sheet
       document.title = `${t('Μέρη')} · ${title()}`;
@@ -1275,6 +1291,8 @@ async function boot() {
   await route();
   booted = true;
   bootScreen.finish();
+  // after the first-run setup, never under the boot screen
+  Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => installHint.update(currentHead === '')).catch(() => {});
   // One-time thank-you for the testers, only when opened as an installed app (or with ?welcome to preview). Never blocks boot.
   // After the first-run setup, when both apply (first launch of the installed app), and never under the boot screen.
   Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
