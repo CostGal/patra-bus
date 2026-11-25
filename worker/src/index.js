@@ -12,6 +12,10 @@ import { CITIES, DEFAULT_CITY, apiBase, isCity } from '../../web/js/cities.js';
 import { versionBody } from './version.js';
 
 const TOKEN_MARGIN_MS = 5 * 60 * 1000;
+// TEL-399: every call to citybus.gr gives up after this long, so a hung upstream cannot hold a request open.
+export const UPSTREAM_TIMEOUT_MS = 8000;
+// TEL-399: after a failed live call, the same stop is not asked again for this long (same floor as a good answer).
+export const FAIL_TTL_S = 15;
 
 class UpstreamError extends Error {
   constructor(message, status = 502) {
@@ -44,8 +48,28 @@ async function getToken(env, city, { force = false } = {}) {
       return saved.token;
     }
   }
-  const res = await fetch(city.page, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-  const html = await res.text();
+  return refreshToken(env, city);
+}
+
+// TEL-399: one scrape of the city page at a time per isolate; callers that arrive meanwhile share it.
+const refreshing = new Map();
+function refreshToken(env, city) {
+  let p = refreshing.get(city.id);
+  if (!p) {
+    p = scrapeToken(env, city).finally(() => refreshing.delete(city.id));
+    refreshing.set(city.id, p);
+  }
+  return p;
+}
+
+async function scrapeToken(env, city) {
+  let res, html;
+  try {
+    res = await fetch(city.page, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
+    html = await res.text();
+  } catch {
+    throw new UpstreamError('token fetch failed');
+  }
   const m = html.match(/const token = '([^']+)'/);
   if (!res.ok || !m) throw new UpstreamError('token not found');
   const token = m[1];
@@ -55,14 +79,21 @@ async function getToken(env, city, { force = false } = {}) {
   } catch {
     throw new UpstreamError('token undecodable');
   }
-  const ttl = Math.max(60, exp - Math.floor(Date.now() / 1000));
-  await env.KV.put(`token/${city.id}`, JSON.stringify({ token, exp }), { expirationTtl: ttl });
+  const left = exp - Math.floor(Date.now() / 1000);
+  // A token that has already expired is never stored or used.
+  if (left <= 0) throw new UpstreamError('token expired');
+  try {
+    await env.KV.put(`token/${city.id}`, JSON.stringify({ token, exp }), { expirationTtl: Math.max(60, left) });
+  } catch (err) {
+    // KV full or down: the token still works for this request, the next one scrapes again.
+    console.error(`token/${city.id}: KV put failed: ${err.message}`);
+  }
   return token;
 }
 
 async function call(city, path, headers) {
   try {
-    return await fetch(apiBase(city) + path, { headers });
+    return await fetch(apiBase(city) + path, { headers, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
   } catch {
     throw new UpstreamError('fetch failed');
   }
@@ -80,7 +111,12 @@ async function upstream(env, city, path, opts = {}) {
     });
   }
   if (res.status === 404 && 'notFound' in opts) return opts.notFound;
-  const text = await res.text();
+  let text;
+  try {
+    text = await res.text();
+  } catch {
+    throw new UpstreamError('upstream body failed');
+  }
   // Upstream has been seen answering 200 with an empty body.
   if (!res.ok || !text.trim()) throw new UpstreamError(`upstream ${res.status}`);
   try {
@@ -149,6 +185,8 @@ async function cached(cors, ctx, key, ttl, produce, env) {
 // shared. Stop codes collide across cities, hence the city in the key.
 export async function liveBody(env, ctx, city, code) {
   const c = cityOf(city);
+  const failKey = `fail/live/${c.id}/${code}`;
+  if (await failMarked(env, failKey)) throw new UpstreamError('upstream failed recently');
   return cachedBody(env, ctx, `live/${c.id}/${code}`, 15, async () => {
     // 404 = nothing scheduled for this stop right now: a normal answer, cached like any other.
     const raw = await upstream(env, c, `/stops/live/${code}`, { notFound: null });
@@ -157,7 +195,40 @@ export async function liveBody(env, ctx, city, code) {
     // Stats feed on real upstream answers only (this runs on cache MISS), off the response path.
     if (raw !== null) ctx.waitUntil(recordStats(env, c.id, code, result));
     return JSON.stringify(result);
+  }).catch((err) => {
+    if (err instanceof UpstreamError) ctx.waitUntil(markFail(env, failKey));
+    throw err;
   });
+}
+
+// TEL-399 negative cache: a short marker per stop after an upstream failure (5xx, empty body, bad JSON,
+// timeout, no token), so a broken citybus gets fewer calls, not more. Same Cache API / KV fallback as cachedBody.
+async function failMarked(env, key) {
+  try {
+    return Boolean(await caches.default.match(new Request(`https://patra-bus.cache/${key}`)));
+  } catch {
+    try {
+      const t = await env.KV.get(`memo/${key}`, 'json');
+      return Boolean(t) && Date.now() - t < FAIL_TTL_S * 1000;
+    } catch {
+      return false;
+    }
+  }
+}
+
+async function markFail(env, key) {
+  try {
+    await caches.default.put(
+      new Request(`https://patra-bus.cache/${key}`),
+      new Response('1', { headers: { 'Cache-Control': `public, max-age=${FAIL_TTL_S}` } }),
+    );
+  } catch {
+    try {
+      await env.KV.put(`memo/${key}`, JSON.stringify(Date.now()), { expirationTtl: 60 });
+    } catch {
+      // Nothing to do: the next request simply asks upstream again.
+    }
+  }
 }
 
 // Live read for Durable Objects: same shared cache path as the HTTP route.
