@@ -69,5 +69,5 @@ export async function checkAppVersion({ fetchFn = globalThis.fetch, demo = DEMO,
 }
 
 function showToast() {
-  toast(t('Η εφαρμογή χρειάζεται ενημέρωση.'), { ms: 20000, action: { label: t('Ενημέρωση'), onClick: updateAndReload, primary: true } });
+  toast(t('Η εφαρμογή χρειάζεται ενημέρωση.'), { ms: 20000, center: true, action: { label: t('Ενημέρωση'), onClick: updateAndReload, primary: true } });
 }

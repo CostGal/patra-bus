@@ -112,7 +112,9 @@ export function toast(text, opts = {}) {
   toastHost ||= document.getElementById('toasts') || document.body.appendChild(h('div', { id: 'toasts', class: 'toast-host', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }));
   clearTimeout(toastTimer);
   const { action } = opts;
-  const el = h('div', { class: 'toast' }, h('span', { class: 'toast-text' }, text));
+  // opts.center: a glass card in the middle of the screen, for a message that asks for an action (TEL-286).
+  toastHost.classList.toggle('toast-host-center', !!opts.center);
+  const el = h('div', { class: opts.center ? 'toast toast-glass material-lg' : 'toast' }, h('span', { class: 'toast-text' }, text));
   const dismiss = () => {
     clearTimeout(toastTimer);
     if (el.parentNode !== toastHost) return;
