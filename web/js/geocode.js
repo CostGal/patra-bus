@@ -9,7 +9,10 @@ import { city } from './cities.js';
 const PHOTON = 'https://photon.komoot.io/api/';
 // TEL-309: without `lang`, Photon picks the names from the browser's Accept-Language, and a Greek phone that also lists
 // English gets "St. Andrew" for «Άγιος Ανδρέας». `default` = the local (Greek) OSM name; the English app asks for `en`.
-const photonLang = () => (lang() === 'en' ? 'en' : 'default');
+// TEL-303: a query typed in Greek letters asks for the Greek names in the English app too, so «Άγιος Ανδρέας» still
+// matches its church by name (rankExact) instead of coming back as "St. Andrew".
+const GREEK = /[\u0370-\u03ff\u1f00-\u1fff]/;
+const photonLang = (text) => (lang() === 'en' && !GREEK.test(text) ? 'en' : 'default');
 const photonBbox = ({ west, south, east, north }) => `${west},${south},${east},${north}`; // minLon,minLat,maxLon,maxLat
 const TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE = 40;
@@ -226,7 +229,7 @@ export function streetPlace(features) {
 // One Photon request → its raw features (cached per text and coarse position, so "Κορίνθου 5" and
 // "Κορίνθου 7" share the street request).
 async function fetchFeatures(text, ref, signal) {
-  const pl = photonLang();
+  const pl = photonLang(text);
   const key = `${city().id}|${pl}|${searchKey(text)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.features;
