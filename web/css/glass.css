@@ -86,7 +86,7 @@ html.glass .menu-fab, html.glass .fab, html.glass .map-capsule {
 html.glass .fab { transition: background-color .15s, color .15s, transform .1s; }
 html.glass .fab:hover { background: var(--g-sheen), color-mix(in srgb, var(--muted) 45%, transparent); }
 
-html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-card {
+html.glass .sheet, html.glass #menu-pop, html.glass .su-card, html.glass .wl-card, html.glass .ih {
   background: var(--g-sheen), var(--g-bg-lg);
   -webkit-backdrop-filter: var(--g-blur-lg); backdrop-filter: var(--g-blur-lg);
   border: var(--g-line); box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), var(--g-shadow-lg);
@@ -546,3 +546,9 @@ html.glass :is(.menu-fab, .map-capsule) {
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   html.glass :is(.menu-fab, .map-capsule) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* TEL-409, the install sheet's steps (css/extras.css .in-step): glass rows, like the card's round buttons */
+html.glass .in-step { background-image: var(--g-sheen); background-color: var(--g-circle); border-color: transparent;
+  box-shadow: inset 0 1px 0 var(--g-edge), inset 0 0 0 1px var(--g-rim), 0 1px 5px var(--g-circle-shadow); }
+html.glass .in-glyph { background: var(--g-circle); box-shadow: inset 0 0 0 1px var(--g-rim); }
+html.glass .in-glyph.is-ok { background: var(--primary); }

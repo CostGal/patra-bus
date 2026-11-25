@@ -215,3 +215,20 @@ html.glass .stop-menu-list { background: color-mix(in srgb, var(--card) 76%, tra
 .in-done { display: flex; align-items: center; gap: var(--space-3); font-size: var(--text-md); font-weight: 600; }
 .in-note { margin-top: var(--space-2); }
 .in-go .icon { width: 20px; height: 20px; }
+
+/* ---- the install card on home (TEL-409): glass (css/glass.css), just above the sheet, left of the map buttons ----
+   z 19 under the sheet (20), like .fabs-bottom: app.js moves it with the sheet on every frame up to mid (no transition,
+   U11), then the sheet slides over it; it never fades (U12). */
+.ih { position: fixed; z-index: 19; left: calc(var(--safe-left, 0px) + 12px); right: calc(var(--safe-right, 0px) + 76px); bottom: var(--space-4);
+  max-width: 420px; display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-card);
+  background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sheet); will-change: transform; }
+.ih[hidden] { display: none; }
+.ih-row { display: flex; align-items: center; gap: var(--space-3); }
+.ih-logo { flex: none; width: 40px; height: 40px; border-radius: var(--radius-inner); }
+.ih-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ih-text strong { font-size: var(--text-md); line-height: 1.25; }
+.ih .btn.round.g-circle { flex: none; margin: 0; align-self: flex-start; }
+.ih-go { width: 100%; }
+.no-map .ih { display: none; }
+@media (min-width: 900px) { .ih { display: none; } }
+

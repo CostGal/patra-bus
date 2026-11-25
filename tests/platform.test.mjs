@@ -116,3 +116,14 @@ test('installCase picks the install guide for each platform (TEL-409)', () => {
   assert.equal(c({ os: 'android', browser: 'other' }), 'android-other');
   assert.equal(c({ browser: 'safari' }), 'desktop');
 });
+
+test('the home install card shows only on a phone in a browser, until closed (TEL-409)', async () => {
+  const { shouldHint } = await import('../web/js/install-view.js');
+  const off = { dismissed: false, installed: false };
+  assert.equal(shouldHint({ os: 'ios', mode: 'browser' }, off), true);
+  assert.equal(shouldHint({ os: 'android', mode: 'browser' }, off), true);
+  assert.equal(shouldHint({ os: 'other', mode: 'browser' }, off), false);
+  assert.equal(shouldHint({ os: 'ios', mode: 'app' }, off), false);
+  assert.equal(shouldHint({ os: 'ios', mode: 'browser' }, { ...off, dismissed: true }), false);
+  assert.equal(shouldHint({ os: 'android', mode: 'browser' }, { ...off, installed: true }), false);
+});

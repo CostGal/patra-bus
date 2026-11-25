@@ -4,6 +4,7 @@
 // UI-PROTOCOL: the kit's .card-head with ✕ (U2–U5, U19), 16 px inset (.sheet-inset), the primary button is a kit .btn.
 import { h, icon, cardHead } from './ui.js';
 import { t, N_, APP_NAME } from './i18n.js';
+import { getSettings, setSetting } from './store.js';
 import { currentPlatform, installCase } from './platform.js';
 
 // ---- the browser's install prompt (Chromium only). Caught early by app.js; it can be shown once. ----
@@ -19,6 +20,56 @@ export function captureInstallPrompt() {
 }
 // The menu row shows only while the app is not installed (and not just installed in this tab).
 export const canInstall = () => !installedNow && currentPlatform().mode !== 'app';
+
+// Shows the browser's own install window. true = the user accepted. false = no prompt, or they said no.
+export async function promptInstall() {
+  const ev = deferred;
+  deferred = null; // single use
+  if (!ev) { notify(); return false; }
+  let ok = false;
+  try {
+    ev.prompt();
+    ok = (await ev.userChoice)?.outcome === 'accepted';
+  } catch { /* refused or already used */ }
+  if (ok) installedNow = true;
+  notify();
+  return ok;
+}
+
+// ---- the floating card on home (TEL-409): a glass card just above the sheet, on a phone in a browser tab ----
+// Pure: should the card show? Only on a phone (iPhone, Android) in a browser, not installed, not closed with ✕.
+export const shouldHint = ({ os, mode }, { dismissed, installed }) => (os === 'ios' || os === 'android') && mode === 'browser' && !dismissed && !installed;
+
+// Returns { el, update(onHome) }. app.js places el over the map and moves it with the sheet (like the map buttons).
+// opts.onHow(): open the steps (#/install).
+export function createInstallHint({ onHow }) {
+  const el = h('div', { class: 'ih', role: 'region', 'aria-label': t('Εγκατάσταση εφαρμογής'), hidden: true });
+  let home = false;
+  const close = () => { setSetting('installHintDismissed', true); update(home); };
+  function paint() {
+    const p = currentPlatform({ hasInstallPrompt: !!deferred });
+    const kind = installCase(p);
+    const go = kind === 'prompt'
+      ? h('button', { type: 'button', class: 'g-pill primary press ih-go', onclick: async () => { if (!(await promptInstall())) onHow(); } }, icon('install'), h('span', {}, t('Εγκατάσταση')))
+      : h('button', { type: 'button', class: 'g-pill primary press ih-go', onclick: onHow }, icon(kind.startsWith('ios') ? 'share' : 'install'), h('span', {}, t('Δείξε μου πώς')));
+    el.replaceChildren(
+      h('div', { class: 'ih-row' },
+        h('img', { class: 'ih-logo', src: 'icon.svg', alt: '', width: '40', height: '40' }),
+        h('div', { class: 'ih-text' },
+          h('strong', {}, t('Βάλε το {app} στην οθόνη σου', { app: APP_NAME })),
+          h('span', { class: 'ex-sub' }, t('Ανοίγει με ένα πάτημα, σαν εφαρμογή.'))),
+        h('button', { type: 'button', class: 'btn round g-circle', 'aria-label': t('Όχι τώρα'), title: t('Όχι τώρα'), onclick: close }, icon('close'))),
+      go);
+  }
+  function update(onHome) {
+    home = onHome;
+    const show = onHome && shouldHint(currentPlatform(), { dismissed: getSettings().installHintDismissed === true, installed: installedNow });
+    if (show && el.hidden) paint();
+    el.hidden = !show;
+  }
+  listeners.add(() => { if (!el.hidden) { paint(); update(home); } });
+  return { el, update };
+}
 
 // steps: [text, iconName?]
 const SHARE_STEPS = [
@@ -53,15 +104,8 @@ export function mountInstall(container, ctx) {
   const done = (text) => h('p', { class: 'in-done' }, h('span', { class: 'in-glyph is-ok', 'aria-hidden': 'true' }, icon('check')), h('span', {}, text));
 
   async function runPrompt(btn) {
-    const ev = deferred;
-    deferred = null; // single use
-    if (!ev) { paint(); return; }
     btn.disabled = true;
-    try {
-      ev.prompt();
-      if ((await ev.userChoice)?.outcome === 'accepted') installedNow = true;
-    } catch { /* refused or already used */ }
-    paint(); // accepted: done; dismissed: the manual steps
+    await promptInstall(); // repaints: accepted = done; dismissed = the manual steps
   }
 
   function paint() {

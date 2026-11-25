@@ -18,7 +18,7 @@ import { searchPlaces, withoutShownStops } from './geocode.js';
 import { searchKey } from './text.js';
 import { haversine, fmtDist, nearestStops, inArea } from './geo.js';
 import { pickStartStop } from './start-stop.js';
-import { captureInstallPrompt, canInstall } from './install-view.js';
+import { captureInstallPrompt, canInstall, createInstallHint } from './install-view.js';
 try { localStorage.removeItem('patra-bus:reminders'); } catch { /* no storage */ } // left by older versions (TEL-351)
 
 // Was the page opened on the home view (not a deep link)? Only then the first-run setup may appear.
@@ -163,8 +163,12 @@ function makePopover(btn, pop) {
 // utility (scale .97 on :active, instant down / eased up) covers it — just opt the trigger in.
 function pressable(btn) { btn.classList.add('press'); }
 
-// TEL-409: the browser's install prompt fires once, soon after load: keep it for the install sheet's button.
+// TEL-409: the browser's install prompt fires once, soon after load: keep it for the install buttons.
 captureInstallPrompt();
+// TEL-409: on home, a glass card just above the sheet offers to install the app (phone, browser tab, until ✕).
+// Under the sheet (z 19, like the map buttons): it moves with the sheet up to mid, then the sheet slides over it.
+const installHint = createInstallHint({ onHow: () => { location.hash = cityHash('#/install'); } });
+document.getElementById('app')?.append(installHint.el);
 
 // ---------------------------------------------------------------- menu popover (navigation + map theme)
 const menuBtn = $('menu-btn');
@@ -323,6 +327,7 @@ function onMove({ visible, lift, opacity }) {
   mapAttrib.style.opacity = String(opacity);
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
+  installHint.el.style.transform = lift ? `translateY(${-lift}px)` : '';
 }
 
 // ---------------------------------------------------------------- locate FAB (idle -> centre -> follow -> compass)
@@ -1038,6 +1043,7 @@ async function route() {
     }
   };
 
+  if (booted) installHint.update(currentHead === ''); // TEL-409: the install card shows on home only
   switch (currentHead) {
     case 'stop': {
       const stop = data.stopByCode.get(String(arg));
@@ -1284,6 +1290,8 @@ async function boot() {
   await route();
   booted = true;
   bootScreen.finish();
+  // after the first-run setup, never under the boot screen
+  Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => installHint.update(currentHead === '')).catch(() => {});
   // One-time thank-you for the testers, only when opened as an installed app (or with ?welcome to preview). Never blocks boot.
   // After the first-run setup, when both apply (first launch of the installed app), and never under the boot screen.
   Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));

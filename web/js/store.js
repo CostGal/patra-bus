@@ -28,10 +28,11 @@ const VALID = {
   usageStats: (v) => typeof v === 'boolean',
   usageDay: (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v), // Athens day of the last "open" sent; stays on the device
   usageInstall: (v) => typeof v === 'boolean', // true once the "install" count was sent from this device
+  installHintDismissed: (v) => typeof v === 'boolean', // TEL-409: the home's install card was closed with ✕
 };
 // Settings that survive "reset settings": the city is a place, the flags only record first-run hints already shown.
 // The usage choice and markers survive too: a reset must not switch counting back on or count this device again.
-const KEEP_ON_RESET = ['city', 'welcomeSeen', 'setupDone', 'usageStats', 'usageDay', 'usageInstall'];
+const KEEP_ON_RESET = ['city', 'welcomeSeen', 'setupDone', 'usageStats', 'usageDay', 'usageInstall', 'installHintDismissed'];
 const NUMERIC = new Set(['bufferMin']);
 
 const defaultStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };

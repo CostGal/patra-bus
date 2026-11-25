@@ -32,7 +32,7 @@ html.glass .btn.round.g-circle.g-press { background-color: var(--g-pressed); }
 .g-pill .icon { width: 20px; height: 20px; }
 .g-pill .icon-walk { fill: currentColor; stroke: none; }
 .g-pill:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-html.glass :is(.sheet, .su-card) .g-pill.primary {
+html.glass :is(.sheet, .su-card, .ih) .g-pill.primary {
   background-image: linear-gradient(to bottom, rgba(255, 255, 255, calc(.32 * (1 - var(--u, 1)))), rgba(255, 255, 255, 0) 55%);
   background-color: color-mix(in srgb, var(--primary) calc(74% + var(--u, 1) * 26%), transparent);
   /* a shining outline: bright along the top, a light rim all round */

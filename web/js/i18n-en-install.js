@@ -22,4 +22,8 @@ export const PAIRS = [
   ['Πάτα το μενού «⋯» αυτής της εφαρμογής', 'Tap this app’s “⋯” menu'],
   ['Διάλεξε «Άνοιγμα στο πρόγραμμα περιήγησης»', 'Choose “Open in browser”'],
   ['Στον υπολογιστή, στο Chrome ή στο Edge, πάτα το εικονίδιο εγκατάστασης στη γραμμή διεύθυνσης. Στο κινητό, άνοιξε αυτή τη σελίδα και έλα ξανά εδώ.', 'On a computer, in Chrome or Edge, click the install icon in the address bar. On your phone, open this page and come back here.'],
+  ['Δείξε μου πώς', 'Show me how'],
+  ['Όχι τώρα', 'Not now'],
+  ['Βάλε το {app} στην οθόνη σου', 'Put {app} on your home screen'],
+  ['Ανοίγει με ένα πάτημα, σαν εφαρμογή.', 'It opens with one tap, like an app.'],
 ];

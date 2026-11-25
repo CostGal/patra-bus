@@ -9,7 +9,11 @@ The list of features (keep / cut / later) is the Notion card TEL-216.
 - A new build on the glass UI, not the old guide: the ☰ menu shows «Εγκατάσταση εφαρμογής» only while the app runs in a
   browser tab. It opens a full-height sheet (`#/install`) with only the steps for that phone and browser, or one
   «Εγκατάσταση» button where the browser has its own install prompt (Android Chrome, Edge, desktop).
-- No banner or hint on the home screen for now; that would be its own card if the menu row is not enough.
+- On home, on a phone in a browser tab, a glass card sits just above the sheet (it moves with it up to mid, then the
+  sheet slides over it): «Εγκατάσταση» opens the browser's own install window where there is one (Android), else
+  «Δείξε μου πώς» opens the steps. ✕ hides it for good on that device (`installHintDismissed`). Kostas asked for it
+  more interactive the same day.
+- iPhone limit: a web page cannot open Safari's «Προσθήκη στην οθόνη Αφετηρίας» by itself; only the steps can show it.
 
 ## 2026-11-24: the glass UI goes to `main` now; phone checks and speed come after, in B1
 - The glass UI (TEL-83, PR #102) is merged into `main` on 2026-11-24, so real users see it on the one link they
