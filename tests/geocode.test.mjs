@@ -152,12 +152,13 @@ test('Latin without a number → as typed first; Greek letters only when that is
   }
 });
 
-test('request shape: only q, lat, lon, limit, bbox; position at 2 decimals', async () => {
+test('request shape: only q, lat, lon, limit, bbox, lang; position at 2 decimals', async () => {
   await search('Ρήγα Φεραίου 9');
   await search('Ανθείας');
   assert.ok(urls.length >= 3);
   for (const u of urls) {
-    assert.deepEqual([...u.searchParams.keys()].sort(), ['bbox', 'lat', 'limit', 'lon', 'q']);
+    assert.deepEqual([...u.searchParams.keys()].sort(), ['bbox', 'lang', 'lat', 'limit', 'lon', 'q']);
+    assert.equal(u.searchParams.get('lang'), 'default'); // Greek app: the local OSM names (TEL-309)
     assert.match(u.searchParams.get('lat'), /^-?\d+\.\d{2}$/);
     assert.match(u.searchParams.get('lon'), /^-?\d+\.\d{2}$/);
   }

@@ -2,7 +2,7 @@
 // Live data exists only per stop, so the bus is followed through the stop it was opened from (the "anchor"): its live
 // ETA there is the only measured time; everything else is that ETA plus/minus the route's typical leg times (an
 // ESTIMATE, labelled so). Route order itself is inferred (routes.json), see route.confidence. Styles: css/extras.css (bv-).
-import { h, icon, lineBadge, fmtClock } from './ui.js';
+import { h, icon, lineBadge, fmtClock, fitCardName } from './ui.js';
 import { createLivePoller, DEMO, STALE_MS } from './api.js';
 import { loadShapes } from './data.js';
 import { closestOnPath } from './geo.js';
@@ -176,34 +176,7 @@ export function mountBus(container, ctx, { vehicleCode, route: routeParam, stop:
   // it grows as a transform (css/extras.css, by --u: U8); halfway up it moves to its own row in a short blur (U10).
   // Measured only at low and mid, with transitions off (U16), again when a font arrives (U17).
   const sheetEl = document.getElementById('sheet');
-  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24;
-  let measureCtx = null;
-  function fitName() {
-    if (dead || head.classList.contains('is-up')) return; // measured again once it is one line
-    title.style.transition = 'none';
-    for (const k of ['--name-px', '--name-n', '--name-up-n']) title.style.removeProperty(k);
-    const room = title.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
-    if (room > 0) {
-      const r = document.createRange();
-      r.selectNodeContents(title);
-      const scale = title.getBoundingClientRect().width / title.offsetWidth || 1; // the growth towards up, if any (U18)
-      const w = r.getBoundingClientRect().width / scale;
-      let n = NAME_PX;
-      if (w > room) {
-        n = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
-        title.style.setProperty('--name-px', `${n}px`);
-        title.style.setProperty('--name-n', String(n));
-      }
-      // up: 24 px, unless its longest word would not fit on a line at that size (it would break inside the word)
-      measureCtx ||= document.createElement('canvas').getContext('2d');
-      const cs = getComputedStyle(title);
-      measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
-      const longest = Math.max(...title.textContent.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
-      const upN = Math.max(n, Math.min(NAME_UP, Math.floor(NAME_PX * (head.clientWidth - 2) / (longest * 1.04 || 1)))); // 4%: rounding
-      if (upN !== NAME_UP) title.style.setProperty('--name-up-n', String(upN));
-    }
-    title.style.transition = '';
-  }
+  function fitName() { if (!dead) fitCardName(title, head); } // js/ui.js (TEL-337)
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const setUp = (on) => {
     if (head.classList.contains('is-up') === on) return;

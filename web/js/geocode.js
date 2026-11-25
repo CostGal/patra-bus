@@ -1,12 +1,15 @@
 // Destination search (owner: geocode): local stops first, then Photon (OSM geocoder, no key).
 // Place = { kind: 'stop'|'place', name, subtitle, lat, lng, stopCode?, approx? }
 import { loadData, searchStops } from './data.js';
-import { t, N_ } from './i18n.js';
+import { t, N_, lang } from './i18n.js';
 import { searchKey } from './text.js';
 import { haversine, inArea } from './geo.js';
 import { city } from './cities.js';
 
 const PHOTON = 'https://photon.komoot.io/api/';
+// TEL-309: without `lang`, Photon picks the names from the browser's Accept-Language, and a Greek phone that also lists
+// English gets "St. Andrew" for «Άγιος Ανδρέας». `default` = the local (Greek) OSM name; the English app asks for `en`.
+const photonLang = () => (lang() === 'en' ? 'en' : 'default');
 const photonBbox = ({ west, south, east, north }) => `${west},${south},${east},${north}`; // minLon,minLat,maxLon,maxLat
 const TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE = 40;
@@ -223,7 +226,8 @@ export function streetPlace(features) {
 // One Photon request → its raw features (cached per text and coarse position, so "Κορίνθου 5" and
 // "Κορίνθου 7" share the street request).
 async function fetchFeatures(text, ref, signal) {
-  const key = `${city().id}|${searchKey(text)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
+  const pl = photonLang();
+  const key = `${city().id}|${pl}|${searchKey(text)}|${ref.lat.toFixed(2)},${ref.lng.toFixed(2)}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.features;
   const url = new URL(PHOTON);
@@ -232,6 +236,7 @@ async function fetchFeatures(text, ref, signal) {
   url.searchParams.set('lon', ref.lng.toFixed(2));
   url.searchParams.set('limit', '8');
   url.searchParams.set('bbox', photonBbox(city().bbox));
+  url.searchParams.set('lang', pl);
   const ctl = new AbortController();
   const onAbort = () => ctl.abort();
   if (signal?.aborted) throw abortError();
