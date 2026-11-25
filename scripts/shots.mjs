@@ -23,13 +23,14 @@ const ENGINES = { chromium, webkit, firefox };
 
 const DEFAULT_DEVICES = ['iPhone SE', 'iPhone 15', 'Pixel 7', 'iPad Mini landscape'];
 // hash is appended to <base>/?demo…; scroll = also capture the content below the fold (pages of the sheet);
-// steps = also capture that many next steps of a dialog (its .su-next button).
+// steps = also capture that many next steps of a dialog (its .su-next button); act = what to tap first to reach the screen.
 const SCREENS = [
   { id: 'home', url: '/?demo#/' },
   { id: 'stop', url: '/?demo#/stop/1011', scroll: 1 },
   { id: 'stop-error', url: '/?demo=error#/stop/1011' },
   { id: 'stop-nosvc', url: '/?demo=nosvc#/stop/1011' },
   { id: 'corfu-stop', url: '/?demo#/corfu/stop/801' },
+  { id: 'vehicle', url: '/?demo#/stop/1011', act: (p) => p.click('a.atile-live'), scroll: 1 }, // demo vehicle codes change daily, so open it by tapping a live bus
   { id: 'trip', url: '/?demo#/trip?stop=1011', scroll: 1 },
   { id: 'favorites', url: '/?demo#/favorites' },
   { id: 'settings', url: '/?demo#/settings', scroll: 3 },
@@ -98,8 +99,8 @@ async function capture(context, base, screen, dir, summary) {
   await page.goto(base + screen.url);
   await page.waitForFunction(() => { const c = document.getElementById('sheet-content'); return c && !c.hasAttribute('aria-busy'); }, null, { timeout: 8000 }).catch(() => problems.push('still loading after 8 s'));
   await page.waitForTimeout(args.map ? 2500 : 500); // --map: give the tiles time to draw
+  if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
   if (ANNOTATE) {
-    if (screen.act) { await screen.act(page).catch((e) => problems.push(`could not open the screen: ${e.message.split('\n')[0]}`)); await page.waitForTimeout(700); }
     // first a clean JPEG with the boxes as data (explorer.html), then the boxed PNG
     const { boxes, vw, vh } = await page.evaluate(annotate, { ui: UI, colors: COLORS, draw: false });
     await mkdir(`${dir}/screens`, { recursive: true });
