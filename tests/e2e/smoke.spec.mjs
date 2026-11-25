@@ -120,3 +120,10 @@ test('EL/EN toggle switches all visible text', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('lang', 'el');
   await expect(page.locator('#search-input')).toHaveAttribute('placeholder', 'Πού πάμε;');
 });
+
+test('report form: the message question fits the kind (TEL-386)', async ({ page }) => {
+  for (const [kind, label] of [['app', 'Τι συνέβη;'], ['data', 'Τι συνέβη;'], ['idea', 'Τι θα ήθελες;'], ['other', 'Τι θέλεις να μας πεις;']]) {
+    await page.goto(`/?demo#/report?kind=${kind}`);
+    await expect(page.locator('label.rp-label').first()).toHaveText(label);
+  }
+});
