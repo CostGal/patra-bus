@@ -17,7 +17,8 @@ person's area. If a change needs a file in another area, say so and ask first, o
 
 Kostas is code owner of everything (`.github/CODEOWNERS`). Four `web/js` files are also imported by the worker
 (`arrivals.js`, `cities.js`, `report.js`, `notif-link.js`): a merge that changes them (or `route.js`, which the deploy
-workflow also watches) redeploys the worker, so a change to them touches Amarildo's area as well as Kostas's.
+workflow also watches) redeploys the staging worker (production follows at the next Release), so a change to them
+touches Amarildo's area as well as Kostas's.
 
 ## Hard rules
 Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as they are.
@@ -29,13 +30,18 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
    English goes in `web/js/i18n-en.js` or `i18n-en-<feature>.js`. `npm run check:i18n` must pass.
 4. **No analytics, telemetry or tracking:** no third-party scripts, no fingerprinting, no beacons. Diagnostics leave the
    device only through the «Αναφορά προβλήματος» form, when the user sends it, and only what the form showed them first.
-   One exception (Kostas, 2026-10-25): the anonymous daily counters of `worker/src/counters.js`: one number per
-   day × metric × city, with no IP, device id, user id or free text. The app sends only `{metric, city}` to
-   `POST /api/count`: `open` at most once a day per device and `install` once, the first time it opens as an installed
-   app; nothing when the user switched it off in Settings or the browser sends Global Privacy Control. Previews and
-   localhost are not counted. `feedback` is counted by the worker itself; `push` is reserved and nothing records it.
-   Only Kostas sees the totals (`/stats` on the worker, secret `STATS_TOKEN`). A new metric or field needs this rule
-   updated first.
+   One exception (Kostas, 2026-10-25, extended 2026-11-25, TEL-393): the anonymous daily counters of
+   `worker/src/counters.js`: one number per day × metric × city, with no IP, device id, user id, stop or line code, or
+   free text. The app sends only `{metric, city}` to `POST /api/count`: `open` at most once a day per device,
+   `active_week` at most once a week (Monday to Sunday, Athens time) and `active_month` at most once a calendar month
+   per device, `new_device` once, the first time the app ever opens on that device, and `install` once, the first time
+   it opens as an installed app. The device remembers only that it already sent each one. Nothing is sent when the user
+   switched it off in Settings or the browser sends Global Privacy Control. Previews and localhost are not counted. The
+   worker counts by itself, from requests it already serves and only when it really calls citybus.gr (a cache miss):
+   `feedback`; `upstream` (live calls to citybus.gr), `upstream_fail` (calls that failed or timed out), `live_arr` and
+   `sched_arr` (arrivals it returned as live or as scheduled). These carry nothing from the device, so the Settings
+   switch does not apply to them. `push` is reserved and nothing records it. Only Kostas sees the totals (`/stats` on
+   the worker, secret `STATS_TOKEN`). A new metric or field needs this rule updated first.
 5. **Attributions stay visible:** OpenFreeMap / © OpenStreetMap, OSRM / FOSSGIS, Photon / komoot and citybus.gr in
    Settings (`settings-view.js`), and the map's own credit on the map (`AttributionControl` in `map.js`).
 6. **The user's location stays on the device.** It is not sent to our worker, not stored (localStorage holds only the
@@ -62,8 +68,10 @@ Code and docs cite these by number ("CLAUDE.md rule 4"), so the numbers stay as 
    bypass" → branch `kostas/ui-exp-*`, label `ui-experiment`, never merged as is). A new rule needs Kostas's approval.
 
 ## Also binding
-- **Worker deploys** go only through GitHub → Actions → «Worker deploy»: staging from any branch, production only from
-  `main` with Kostas's approval. No `wrangler deploy` from a computer, not even for staging.
+- **Worker deploys** go only through GitHub → Actions → «Worker deploy»: staging from any branch (and by itself after
+  a merge to `main`), production only from a published GitHub Release (tag like `v0.9.1`) with Kostas's approval. The
+  site changes only on a Release too (`docs/CI-AND-DEPLOY.md`, section 9). No `wrangler deploy` from a computer, not
+  even for staging.
 - **citybus.gr:** only the three endpoints in `docs/UPSTREAM-API.md` (`/stops`, `/lines`, `/stops/live/{code}`); no
   probing of other URLs. Live is not polled faster than every 15 s per stop (the frontend polls every 20 s, only
   while the page is visible). The API is unofficial and they can block us.

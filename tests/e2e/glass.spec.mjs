@@ -103,6 +103,27 @@ test('menu theme row: one capsule, the lens on the chosen theme; a pick moves it
   await expect.poll(() => lensOn('dark')).toBe(true);
 });
 
+test('menu theme row: the arrow keys choose the next theme, as radios do (TEL-344)', async ({ page }) => {
+  await page.goto('/?demo#/');
+  await page.click('#menu-btn');
+  await expect(page.locator('#menu-pop')).toBeVisible();
+  const chosen = () => page.evaluate(() => document.querySelector('.theme-bar > .theme-row > [aria-checked="true"]').dataset.value);
+  const focused = () => page.evaluate(() => document.activeElement?.closest('.theme-bar > .theme-row') ? document.activeElement.dataset.value : null);
+  await page.locator('.theme-bar > .theme-row > [data-value="auto"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(chosen).toBe('light');
+  expect(await focused()).toBe('light');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(chosen).toBe('dark');
+  expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
+  await page.keyboard.press('ArrowRight'); // wraps around
+  await expect.poll(chosen).toBe('auto');
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(chosen).toBe('dark');
+  expect(await focused()).toBe('dark');
+  await expect(page.locator('#menu-pop')).toBeVisible();
+});
+
 test('report menu (TEL-358): the kinds grow out of the row as a card, and go back into it', async ({ page }) => {
   await page.goto('/?demo#/');
   await page.click('#menu-btn');
@@ -110,10 +131,18 @@ test('report menu (TEL-358): the kinds grow out of the row as a card, and go bac
   const row = page.locator('#menu-pop .pop-main button.pop-item');
   const card = page.locator('#menu-pop .pop-sub');
   const rowBox = await row.boundingBox();
-  // the first frame: still about the row's height, around the row
+  // the first frame: still about the row's height, around the row. The spring steps by the time since the last
+  // frame (up to 33 ms), so on a busy machine the "first" frame was already further on (TEL-379). The clock stands
+  // still until the next frame starts, then moves one 60 Hz frame (16 ms): other loops that read it in between
+  // (the menu's own spring, the theme lens) no longer add time to the card's first step.
   const first = await page.evaluate(() => new Promise((done) => {
+    const real = performance.now.bind(performance);
+    let t = real();
+    performance.now = () => t;
+    requestAnimationFrame(() => { t += 16; }); // asked before the click, so it runs before the card's first step
     document.querySelector('#menu-pop .pop-main button.pop-item').click();
     requestAnimationFrame(() => {
+      performance.now = real;
       const c = document.querySelector('#menu-pop .pop-sub');
       const m = c.style.clipPath.match(/inset\(0px 0px ([\d.]+)px/);
       done({ top: c.getBoundingClientRect().top, visible: c.offsetHeight - parseFloat(m ? m[1] : 0) });
@@ -179,6 +208,7 @@ test('glass: no shine under the finger; round buttons pop out unclipped; rows ge
 });
 
 test('glass: the sheet has three states: a floating card at peek and half, solid and edge to edge at full', async ({ page }) => {
+  test.slow(); // TEL-379: about 40 steps with waits; under a full parallel run it went past the 20 s budget
   await page.goto('/?demo&debug#/stop/1011');
   await expect(page.locator('.stopv .atile:not(.atile-skel)').first()).toBeVisible();
   const seen = new Set();
@@ -232,22 +262,24 @@ test('glass: the sheet has three states: a floating card at peek and half, solid
     const h = await page.locator('#sheet-handle').boundingBox();
     const x = h.x + h.width / 2, y0 = h.y + h.height / 2;
     await page.mouse.move(x, y0);
-    await page.mouse.down();
     // slow: four steps with a pause; fast: one quick stroke. The release speed is measured with performance.now, so
     // the fast stroke runs on a fake clock that moves 10 ms per call: the speed is the same on every machine, however
-    // loaded (TEL-233: on a busy runner the real clock made it slower than the 1200 px/s a fast flick needs)
-    if (pause) for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); await page.waitForTimeout(pause); }
-    else {
+    // loaded (TEL-233: on a busy runner the real clock made it slower than the 1200 px/s a fast flick needs).
+    // The clock starts before the press (TEL-379): the press is the first speed sample, and on the real clock the
+    // time until the fake one started counted too, so a busy machine still saw a slow flick.
+    if (!pause) {
       await page.evaluate(() => {
         const real = performance.now.bind(performance);
         let t = real();
         window.__realNow = real;
         performance.now = () => (t += 10);
       });
-      await page.mouse.move(x, y0 + dy, { steps: 3 });
-      await page.evaluate(() => { performance.now = window.__realNow; });
     }
+    await page.mouse.down();
+    if (pause) for (let i = 1; i <= 4; i++) { await page.mouse.move(x, y0 + (i * dy) / 4); await page.waitForTimeout(pause); }
+    else await page.mouse.move(x, y0 + dy, { steps: 3 });
     await page.mouse.up();
+    if (!pause) await page.evaluate(() => { performance.now = window.__realNow; });
     await page.waitForTimeout(700);
     return page.evaluate(() => document.getElementById('sheet').dataset.state);
   };
@@ -382,16 +414,53 @@ test.describe('touch', () => {
     await expect.poll(settled).toBe(true);
     await expect(page.locator('#menu-pop')).toBeVisible();
   });
+  // TEL-345: the same hold-and-drag on the other two lens rows: the stop's line filter and the trip's options
+  for (const [name, url, row, keyOf, perm] of [
+    ['stop line filter', '/?demo#/stop/1011', '.stopv-chipbar > .stopv-chips', 'key', false],
+    ['trip options', '/?demo#/trip?stop=1011', '.tripv-optbar > .tripv-opts', 'key', true],
+  ]) {
+    test(`${name}: a drag from the chosen chip picks where it lets go (TEL-345)`, async ({ page, context }) => {
+      if (perm) { await context.grantPermissions(['geolocation']); await context.setGeolocation({ latitude: 38.2466123, longitude: 21.7346123 }); }
+      await page.goto(url);
+      const chipsSel = `${row} > *`;
+      await expect(page.locator(chipsSel).first()).toBeVisible();
+      await expect.poll(() => page.locator(chipsSel).count(), { timeout: 10000 }).toBeGreaterThanOrEqual(2);
+      const cdp = await page.context().newCDPSession(page);
+      const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+      const ON = ':is(.on, [aria-pressed="true"], [aria-checked="true"])';
+      const chosen = () => page.evaluate(([sel, on, k]) => document.querySelector(`${sel} > ${on}`)?.dataset[k] ?? null, [row, ON, keyOf]);
+      const centre = (i) => page.evaluate(([sel, i]) => { const r = document.querySelectorAll(`${sel} > *`)[i].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, [row, i]);
+      const settled = () => page.evaluate(([sel, on]) => { const row = document.querySelector(sel); const bar = row.parentElement; const l = bar.querySelector(':scope > .g-lens');
+        const c = row.querySelector(`:scope > ${on}`); if (!l || !c) return false;
+        return !bar.classList.contains('g-holding') && Math.abs(l.getBoundingClientRect().left - c.getBoundingClientRect().left) < 2; }, [row, ON]);
+      await expect.poll(settled).toBe(true);
+      const from = await page.evaluate(([sel, on]) => [...document.querySelectorAll(`${sel} > *`)].findIndex((c) => c.matches(on)), [row, ON]);
+      const n = await page.locator(chipsSel).count();
+      const to = from === n - 1 ? 0 : n - 1;
+      const want = await page.evaluate(([sel, i, k]) => document.querySelectorAll(`${sel} > *`)[i].dataset[k], [row, to, keyOf]);
+      // hold the chosen chip, drag to the far one, let go
+      const [x0, y] = await centre(from); const [x1] = await centre(to);
+      await touch('touchStart', x0, y);
+      await page.waitForTimeout(100);
+      for (let i = 1; i <= 10; i++) { await touch('touchMove', x0 + (x1 - x0) * i / 10, y); await page.waitForTimeout(16); }
+      await touch('touchEnd');
+      await expect.poll(chosen).toBe(want);
+      await expect.poll(settled).toBe(true);
+    });
+  }
   test('search in the sheet: a tap at low opens the keyboard at the top, then the real field once the sheet is up', async ({ page }) => {
     await page.goto('/?demo&debug#/');
     await expect(page.locator('#searchbar')).toBeVisible();
     await page.evaluate(() => window.__app.sheet.snap('peek', { animate: false }));
     await page.waitForTimeout(100);
+    // every focus is written down: on a busy machine the sheet can be up (and the real field focused) before a
+    // single look right after the tap (TEL-379)
+    await page.evaluate(() => { window.__focus = []; document.addEventListener('focusin', (e) => window.__focus.push(e.target.className || e.target.id), true); });
     await page.locator('#search-input').tap();
-    // the keyboard opens on the hidden field at the top while the sheet goes up (no pan on iOS)
-    expect(await page.evaluate(() => document.activeElement.className)).toBe('kb-proxy');
     await expect.poll(() => page.evaluate(() => document.getElementById('sheet').dataset.state)).toBe('full');
     await expect.poll(() => page.evaluate(() => document.activeElement.id)).toBe('search-input');
+    // the keyboard opened on the hidden field at the top first, while the sheet went up (no pan on iOS)
+    expect((await page.evaluate(() => window.__focus))[0]).toBe('kb-proxy');
     await expect(page.locator('#search-panel')).toBeVisible();
   });
 });

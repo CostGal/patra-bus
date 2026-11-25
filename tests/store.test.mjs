@@ -21,7 +21,7 @@ test('defaults', () => {
   assert.deepEqual(s.getFavorites(), []);
   assert.deepEqual(s.getRecents('stop'), []);
   assert.deepEqual(s.getRecents('place'), []);
-  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, lang: 'el', usageStats: true });
+  assert.deepEqual(s.getSettings(), { theme: 'auto', bufferMin: 2, lang: 'el', usageStats: true });
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
   assert.equal(s.isFavorite('1011'), false);
 });
@@ -122,9 +122,9 @@ test('recents: remove and clear; null items ignored', () => {
 test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   const { s, ls } = make();
   assert.equal(s.setSetting('theme', 'dark'), true);
-  assert.equal(s.setSetting('walkSpeed', 'fast'), true);
+  assert.equal(s.setSetting('walkSpeed', 'fast'), false); // dropped in TEL-280
   assert.equal(s.setSetting('bufferMin', '5'), true); // from a <select>
-  assert.deepEqual(s.getSettings(), { theme: 'dark', walkSpeed: 'fast', bufferMin: 5, lang: 'el', usageStats: true });
+  assert.deepEqual(s.getSettings(), { theme: 'dark', bufferMin: 5, lang: 'el', usageStats: true });
   assert.equal(s.setSetting('theme', 'blue'), false);
   assert.equal(s.setSetting('bufferMin', -1), false);
   assert.equal(s.setSetting('bufferMin', 2.5), false);
@@ -132,7 +132,7 @@ test('settings: set, validate, coerce numeric strings, reject unknown', () => {
   assert.equal(s.setSetting('nope', 1), false);
   assert.equal(s.getSettings().theme, 'dark');
   assert.equal(s.getSettings().nope, undefined);
-  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { theme: 'dark', walkSpeed: 'fast', bufferMin: 5 });
+  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { theme: 'dark', bufferMin: 5 });
   s.resetSettings();
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
 });
@@ -285,8 +285,8 @@ test('settings: changing lang emits a settings event once', () => {
   assert.deepEqual(seen, ['settings']);
 });
 
-// ---- first-run flags (welcome seen, legend seen): booleans, absent = false ----
-const FLAGS = ['welcomeSeen', 'legendSeen'];
+// ---- first-run flags (welcome seen, setup done): booleans, absent = false ----
+const FLAGS = ['welcomeSeen', 'setupDone'];
 
 test('first-run flags: absent by default, booleans only, persisted', () => {
   const { s, ls } = make();
@@ -314,9 +314,9 @@ test('first-run flags: non-boolean values are rejected and leave state alone', (
 });
 
 test('first-run flags: a dirty stored blob keeps only the valid one', () => {
-  const dirty = { v: 3, favorites: [], recents: {}, settings: { welcomeSeen: 'yes', legendSeen: true } };
+  const dirty = { v: 3, favorites: [], recents: {}, settings: { welcomeSeen: 'yes', setupDone: true, legendSeen: true, walkSpeed: 'fast' } };
   const { s } = make(fakeStorage({ [KEY]: JSON.stringify(dirty) }));
-  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, legendSeen: true });
+  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, setupDone: true }); // legendSeen and walkSpeed: dropped keys (TEL-280)
 });
 
 test('first-run flags: survive resetSettings together with city, other settings are dropped', () => {
@@ -324,15 +324,15 @@ test('first-run flags: survive resetSettings together with city, other settings 
   const { s } = make(ls);
   s.setSetting('city', 'patra');
   s.setSetting('theme', 'dark'); s.setSetting('bufferMin', 5);
-  s.setSetting('welcomeSeen', true); s.setSetting('legendSeen', true);
+  s.setSetting('welcomeSeen', true); s.setSetting('setupDone', true);
   s.resetSettings();
-  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, city: 'patra', welcomeSeen: true, legendSeen: true });
-  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { city: 'patra', welcomeSeen: true, legendSeen: true });
+  assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS, city: 'patra', welcomeSeen: true, setupDone: true });
+  assert.deepEqual(JSON.parse(ls.getItem(KEY)).settings, { city: 'patra', welcomeSeen: true, setupDone: true });
 });
 
 test('first-run flags: clearAll wipes them', () => {
   const { s } = make();
-  s.setSetting('welcomeSeen', true); s.setSetting('legendSeen', true);
+  s.setSetting('welcomeSeen', true); s.setSetting('setupDone', true);
   s.clearAll();
   for (const key of FLAGS) assert.equal(s.getSettings()[key], undefined);
   assert.deepEqual(s.getSettings(), { ...DEFAULT_SETTINGS });
@@ -343,6 +343,6 @@ test('first-run flags: one settings event per real change', () => {
   const seen = [];
   s.onChange((k) => seen.push(k));
   s.setSetting('welcomeSeen', true); s.setSetting('welcomeSeen', true);
-  s.setSetting('legendSeen', true); s.setSetting('legendSeen', 'yes');
+  s.setSetting('setupDone', true); s.setSetting('setupDone', 'yes');
   assert.deepEqual(seen, ['settings', 'settings']);
 });

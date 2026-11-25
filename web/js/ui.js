@@ -1,4 +1,4 @@
-// Shared DOM helpers (owner: shell). Signatures are a contract, see docs/ARCHITECTURE.md.
+// Shared DOM helpers (owner: shell). Signatures are a contract, see docs/FRONTEND.md, section 3.
 export function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(props || {})) {
@@ -112,7 +112,9 @@ export function toast(text, opts = {}) {
   toastHost ||= document.getElementById('toasts') || document.body.appendChild(h('div', { id: 'toasts', class: 'toast-host', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }));
   clearTimeout(toastTimer);
   const { action } = opts;
-  const el = h('div', { class: 'toast' }, h('span', { class: 'toast-text' }, text));
+  // opts.center: a glass card in the middle of the screen, for a message that asks for an action (TEL-286).
+  toastHost.classList.toggle('toast-host-center', !!opts.center);
+  const el = h('div', { class: opts.center ? 'toast toast-glass material-lg' : 'toast' }, h('span', { class: 'toast-text' }, text));
   const dismiss = () => {
     clearTimeout(toastTimer);
     if (el.parentNode !== toastHost) return;
@@ -120,7 +122,9 @@ export function toast(text, opts = {}) {
     setTimeout(() => el.remove(), 200);
   };
   if (action) {
-    el.append(h('button', { type: 'button', class: 'toast-action press', onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
+    // action.primary: the one button (TEL-51), filled, for an action the toast exists for (e.g. «Ενημέρωση», TEL-286).
+    const cls = action.primary ? 'btn primary sm toast-btn press' : 'toast-action press';
+    el.append(h('button', { type: 'button', class: cls, onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
   }
   toastHost.replaceChildren(el);
   requestAnimationFrame(() => el.classList.add('show'));

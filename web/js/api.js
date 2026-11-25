@@ -1,4 +1,4 @@
-// Live-data client. Contract in docs/ARCHITECTURE.md.
+// Live-data client. See docs/FRONTEND.md, sections 3 and 6.
 // Hard rule: live upstream is never hit more than once per 15 s per stop, retries included.
 // Enforced here, globally, so no view or poller can beat it: a per-code memo of the last *attempt*
 // (success or failure) plus in-flight dedupe.
