@@ -1,7 +1,7 @@
 // Stop sheet: header + arrival tiles that say how long, and whether it is live or just the timetable.
 // See docs/FRONTEND.md, section 3. Styles: css/arrivals.css (prefixes .atile-, .stopv-).
 // Minimal UI: a tile is badge + destination + big countdown + a small LIVE / ΠΡΟΓΡ. flag; explanations live in Settings → Σχετικά.
-import { h, icon, lineBadge, fmtClock } from './ui.js';
+import { h, icon, lineBadge, fmtClock, fitCardName } from './ui.js';
 import { titleCase } from './text.js';
 import { createLivePoller, remainingSec, fetchStats, usualDelay, DEMO, isStale } from './api.js';
 import { isFavorite, toggleFavorite, addRecent, onChange } from './store.js';
@@ -305,39 +305,8 @@ export function mountStop(container, ctx, { code, walk = false, auto = false }) 
   // measures low and mid at neither, and on the way down it tells us first (sheet:leave-full), so it never measures the
   // up layout.
   const sheetEl = document.getElementById('sheet');
-  const NAME_PX = 17, NAME_MIN = 14, NAME_UP = 24, NAME_LH = 20; // NAME_LH: its line box at low and mid (css)
-  let nameN = NAME_PX, upN = NAME_UP; // its low/mid size, its up size
-  let measureCtx = null;
-  function fitName() {
-    if (dead) return;
-    if (head.classList.contains('is-up')) return; // measured again once it is one line
-    // no transition while it is measured: with reduced motion app.css gives every change a 0.01 ms one, and the
-    // computed size would still be the old one when it is read
-    name.style.transition = 'none';
-    for (const k of ['--name-px', '--name-n', '--name-up-n']) name.style.removeProperty(k);
-    const room = name.clientWidth - 2; // 2 px to spare: a fraction of a pixel over would still draw the "…"
-    if (room <= 0) { name.style.transition = ''; return; }
-    const r = document.createRange();
-    r.selectNodeContents(name);
-    const scale = name.getBoundingClientRect().width / name.offsetWidth || 1; // the growth towards up, if any
-    let w = r.getBoundingClientRect().width / scale;
-    nameN = NAME_PX;
-    if (w > room) {
-      nameN = Math.max(NAME_MIN, Math.floor(NAME_PX * room / w));
-      w = w * nameN / NAME_PX;
-      name.style.setProperty('--name-px', `${nameN}px`);
-      name.style.setProperty('--name-n', String(nameN));
-    }
-    // up: 30 px, unless its longest word would not fit on a line at that size (it would break inside the word)
-    measureCtx ||= document.createElement('canvas').getContext('2d');
-    const cs = getComputedStyle(name);
-    measureCtx.font = `${cs.fontWeight} ${NAME_PX}px ${cs.fontFamily}`;
-    const longest = Math.max(...stop.displayName.split(/\s+/).map((wd) => measureCtx.measureText(wd).width));
-    const upRoom = head.clientWidth - 2; // up: the whole width of the card
-    upN = Math.max(nameN, Math.min(NAME_UP, Math.floor(NAME_PX * upRoom / (longest * 1.04 || 1)))); // 4%: letter spacing, rounding
-    if (upN !== NAME_UP) name.style.setProperty('--name-up-n', String(upN));
-    name.style.transition = '';
-  }
+  const NAME_LH = 20; // the name's line box at low and mid (css)
+  function fitName() { if (!dead) fitCardName(name, head, stop.displayName); } // js/ui.js (TEL-337)
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const setUp = (on) => {
     if (head.classList.contains('is-up') === on) return;
