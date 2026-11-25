@@ -104,13 +104,12 @@ Favourites, recents, places and reminders each carry a `city`; an item without o
 Flags inside the blob's `settings` (`store.js:19-32`):
 | Setting | Meaning | Set when |
 |---|---|---|
-| `city`, `lang`, `theme`, `walkSpeed`, `bufferMin` | preferences | user changes them |
+| `city`, `lang`, `theme`, `bufferMin` | preferences | user changes them |
 | `setupDone` | first-run setup was shown | when it opens (`setup.js:50`) |
 | `welcomeSeen` | testers' welcome was shown | when it opens (`welcome.js:21`) |
 | `usageStats` | counting on (default) or off | Settings → Data |
 | `usageDay` | Athens day of the last `open` count sent | after a successful POST (`usage.js:46-47`) |
 | `usageInstall` | the `install` count was sent | after a successful POST (`usage.js:51-52`) |
-| `legendSeen` | unused, still accepted so old blobs stay valid | never |
 
 "Διαγραφή όλων των δεδομένων" (`settings-view.js:222`) calls `clearAll()` (removes the whole blob, flags included) and cancels
 the pending reminders. It leaves `patra-bus:places` and `patra-bus:loc-granted`. `resetSettings()` in `store.js:220` keeps `city`, the flags and
