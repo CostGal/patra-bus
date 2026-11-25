@@ -112,9 +112,9 @@ export function toast(text, opts = {}) {
   toastHost ||= document.getElementById('toasts') || document.body.appendChild(h('div', { id: 'toasts', class: 'toast-host', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }));
   clearTimeout(toastTimer);
   const { action } = opts;
-  // opts.center: a glass card in the middle of the screen, for a message that asks for an action (TEL-286).
-  toastHost.classList.toggle('toast-host-center', !!opts.center);
-  const el = h('div', { class: opts.center ? 'toast toast-glass material-lg' : 'toast' }, h('span', { class: 'toast-text' }, text));
+  // Every toast is a glass card in the middle of the map left above the sheet (TEL-286, TEL-410: Kostas, all messages).
+  toastHost.classList.add('toast-host-center');
+  const el = h('div', { class: 'toast toast-glass material-lg' }, h('span', { class: 'toast-text' }, text));
   const dismiss = () => {
     clearTimeout(toastTimer);
     if (el.parentNode !== toastHost) return;
@@ -122,8 +122,8 @@ export function toast(text, opts = {}) {
     setTimeout(() => el.remove(), 200);
   };
   if (action) {
-    // action.primary: the one button (TEL-51), filled, for an action the toast exists for (e.g. «Ενημέρωση», TEL-286).
-    const cls = action.primary ? 'btn primary sm toast-btn press' : 'toast-action press';
+    // the one button (TEL-51), filled, as on the update message (TEL-286, TEL-410)
+    const cls = 'btn primary sm toast-btn press';
     el.append(h('button', { type: 'button', class: cls, onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
   }
   toastHost.replaceChildren(el);

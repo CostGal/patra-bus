@@ -295,12 +295,8 @@ html.sheet-dragging .toast-host { transition: none; }
 }
 .toast.show { opacity: 1; transform: scale(1); }
 .toast-text { flex: 1; padding: var(--space-1) 0; }
-.toast-action {
-  flex: none; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: none; color: var(--inverse-action); font-weight: var(--weight-semibold); cursor: pointer;
-}
-.toast-action:hover { background: rgba(128, 128, 128, .18); }
 .toast .toast-btn { flex: none; }
-/* Centred glass toast (TEL-286): same material as the sheet, readable text colour, in the middle of the screen.
+/* Every toast (TEL-286, TEL-410): the sheet's glass (glass.css), readable text colour, in the middle of the map above the sheet.
    !important: app.js lifts the host above the sheet with an inline transform, which a centred toast must ignore.
    Its middle is the middle of the map left above the sheet (--sheet-vis, set by app.js every frame), never under the ☰ row. */
 .toast-host.toast-host-center {

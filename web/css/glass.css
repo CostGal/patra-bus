@@ -10,7 +10,8 @@
      (SVG displacement filters #g-lens / #g-lens-lg). Safari cannot use SVG filters in backdrop-filter: blur only;
    - everything inside the sheet = tinted (translucent --card, no blur of its own), except the sticky headers, which
      are glass over the list scrolling under them;
-   - stays solid on purpose: the toast (TEL-47: 4.5:1 for the action over a bright map), the full-screen search panel
+   - the toast is glass too, as the sheet (TEL-410, Kostas; it replaced TEL-47's solid toast; its action is the filled button);
+   - stays solid on purpose: the full-screen search panel
      (a page of text, sits over the sheet), the stop menu (popover over the sheet), map marker labels (one blur each).
    Reduced transparency and more contrast fall back to solid, static surfaces through the --g-* variables at the bottom. */
 
