@@ -167,7 +167,7 @@ test('store: the city setting is validated and survives a settings reset', () =>
   assert.equal(s.getSettings().city, 'corfu');
   s.setSetting('theme', 'dark');
   s.resetSettings();
-  assert.deepEqual(s.getSettings(), { theme: 'auto', walkSpeed: 'normal', bufferMin: 2, lang: 'el', usageStats: true, city: 'corfu' });
+  assert.deepEqual(s.getSettings(), { theme: 'auto', bufferMin: 2, lang: 'el', usageStats: true, city: 'corfu' });
   s.clearAll();
   assert.equal(s.getSettings().city, undefined);
 });
