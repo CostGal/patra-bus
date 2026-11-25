@@ -36,6 +36,7 @@ with an optional city prefix: `#/corfu/stop/801`.
 | `#/place?id=home\|work\|new\|<id>` | `place-view.js` | set or change a saved place in the sheet (TEL-239) | — |
 | `#/settings` | `settings-view.js` | settings, data, about, credits | 709 |
 | `#/report` | `report-view.js` | problem report form | 713 |
+| `#/install` | `install-view.js` | how to install the app (TEL-409; ☰ row only in a browser tab) | — |
 
 An unknown first segment goes back to `#/` (`app.js:660`). `SNAP` (`app.js:630`) says how high the sheet opens for each view.
 Every view exports `mountX(container, ctx, params) → { destroy() }`. It draws inside `container` and must remove its timers,

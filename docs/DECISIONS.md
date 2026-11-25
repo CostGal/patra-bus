@@ -4,6 +4,13 @@ Product decisions by Kostas that a session cannot read from the code. Newest fir
 decided, and what it means for the work. A decision changes only with a new entry here; the Notion card is the history.
 The list of features (keep / cut / later) is the Notion card TEL-216.
 
+## 2026-11-25: the install guide comes back, in the ☰ menu (TEL-409)
+- Feedback: some users do not know how to install the app. Kostas put TEL-409 in the current block and asked for it now.
+- A new build on the glass UI, not the old guide: the ☰ menu shows «Εγκατάσταση εφαρμογής» only while the app runs in a
+  browser tab. It opens a full-height sheet (`#/install`) with only the steps for that phone and browser, or one
+  «Εγκατάσταση» button where the browser has its own install prompt (Android Chrome, Edge, desktop).
+- No banner or hint on the home screen for now; that would be its own card if the menu row is not enough.
+
 ## 2026-11-24: the glass UI goes to `main` now; phone checks and speed come after, in B1
 - The glass UI (TEL-83, PR #102) is merged into `main` on 2026-11-24, so real users see it on the one link they
   already have (`costgal.github.io/patra-bus/`). No separate preview link for it.

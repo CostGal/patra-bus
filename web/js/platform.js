@@ -49,3 +49,19 @@ export function currentPlatform({ hasInstallPrompt = false } = {}) {
     standalone, displayModeStandalone, hasInstallPrompt,
   });
 }
+
+// TEL-409: which install guide fits this platform (install-view.js). Pure, so it is node-testable.
+// 'installed' | 'prompt' (the browser's own install button) | 'ios-safari' | 'ios-other' | 'inapp' |
+// 'android-chrome' | 'android-samsung' | 'android-firefox' | 'android-other' | 'desktop'
+export function installCase(p) {
+  if (p.mode === 'app') return 'installed';
+  if (p.browser === 'inapp') return 'inapp';
+  if (p.canPrompt) return 'prompt';
+  if (p.os === 'ios') return p.browser === 'safari' ? 'ios-safari' : 'ios-other';
+  if (p.os === 'android') {
+    if (p.browser === 'chrome' || p.browser === 'edge') return 'android-chrome';
+    if (p.browser === 'samsung' || p.browser === 'firefox') return `android-${p.browser}`;
+    return 'android-other';
+  }
+  return 'desktop';
+}

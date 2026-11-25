@@ -17,6 +17,7 @@ const VIEWS = {
   trip: '#/trip?stop=1011',
   settings: '#/settings',
   report: '#/report',
+  install: '#/install', // TEL-409
 };
 
 // Runs in the page. Returns { rule: [problem, …] } for one state.
