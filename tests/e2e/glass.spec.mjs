@@ -111,12 +111,14 @@ test('report menu (TEL-358): the kinds grow out of the row as a card, and go bac
   const card = page.locator('#menu-pop .pop-sub');
   const rowBox = await row.boundingBox();
   // the first frame: still about the row's height, around the row. The spring steps by the time since the last
-  // frame (up to 33 ms), so on a busy machine the "first" frame was already further on (TEL-379): the clock moves
-  // 16 ms per call, one 60 Hz frame, until that frame is measured.
+  // frame (up to 33 ms), so on a busy machine the "first" frame was already further on (TEL-379). The clock stands
+  // still until the next frame starts, then moves one 60 Hz frame (16 ms): other loops that read it in between
+  // (the menu's own spring, the theme lens) no longer add time to the card's first step.
   const first = await page.evaluate(() => new Promise((done) => {
     const real = performance.now.bind(performance);
     let t = real();
-    performance.now = () => (t += 16);
+    performance.now = () => t;
+    requestAnimationFrame(() => { t += 16; }); // asked before the click, so it runs before the card's first step
     document.querySelector('#menu-pop .pop-main button.pop-item').click();
     requestAnimationFrame(() => {
       performance.now = real;
