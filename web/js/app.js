@@ -307,6 +307,7 @@ function onMove({ visible, lift, opacity }) {
   mapAttrib.style.opacity = String(opacity);
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
+  toastHost.style.setProperty('--sheet-vis', `${visible}px`); // a centred toast (TEL-286) sits in the middle of the map left above the sheet
 }
 
 // ---------------------------------------------------------------- locate FAB (idle -> centre -> follow -> compass)
