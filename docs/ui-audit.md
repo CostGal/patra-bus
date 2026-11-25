@@ -1,6 +1,8 @@
 # UI and accessibility audit (TEL-19)
 
-> TEL-217: the route planner (planner JS files, `planner.css`, `#/plan`) was removed. Findings about it below are historical.
+> Removed since this audit, so findings about them below are historical: the route planner (planner JS files, `planner.css`,
+> `#/plan`, TEL-217), the guide (`guide-view.js`, TEL-271), the lines list and line page (`lines-view.js`, `#/lines`,
+> TEL-248) and the local reminders (`notify.js`, TEL-351). The trip (`#/trip`, `trip-view.js`) is a newer screen, not the old planner.
 
 Audit, not redesign: people use Telematica at a bus stop, in sunlight, one-handed. Visual style stays as it is.
 P1 items are fixed in the TEL-19 PR. P2 and P3 items are proposals for new tasks.

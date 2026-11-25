@@ -31,11 +31,21 @@ function mountKinds(container, ctx, kinds) {
   return { destroy() { head.destroy(); } };
 }
 
+// The message field's question and hint fit the kind (TEL-386): a suggestion or «something else» did not "happen".
+const PROBLEM_TEXT = [N_('Τι συνέβη;'), N_('Περίγραψε τι έγινε και τι περίμενες να δεις. Αν αφορά στάση ή γραμμή, γράψε ποια.')];
+const MESSAGE_TEXT = {
+  data: PROBLEM_TEXT,
+  app: PROBLEM_TEXT,
+  idea: [N_('Τι θα ήθελες;'), N_('Περίγραψε την ιδέα σου και πώς θα σε βοηθούσε.')],
+  other: [N_('Τι θέλεις να μας πεις;'), N_('Γράψε ό,τι θέλεις να μας πεις. Αν αφορά στάση ή γραμμή, γράψε ποια.')],
+};
+
 export function mountReport(container, ctx, params = {}) {
   const kinds = params.kinds || [];
   const kind = kinds.find(([value]) => value === params.kind);
   if (!kind) return mountKinds(container, ctx, kinds);
   const cat = kind[0];
+  const [question, hint] = MESSAGE_TEXT[cat] || PROBLEM_TEXT;
   const n = ++uid;
   const ids = { msg: `rp-msg-${n}`, msgErr: `rp-msg-err-${n}`, mail: `rp-mail-${n}`, mailHint: `rp-mail-hint-${n}`, mailErr: `rp-mail-err-${n}` };
   let busy = false;
@@ -51,7 +61,7 @@ export function mountReport(container, ctx, params = {}) {
 
   const message = h('textarea', {
     id: ids.msg, class: 'rp-input rp-text', rows: 6, maxlength: LIMITS.messageMax, required: true, 'aria-describedby': ids.msgErr,
-    placeholder: t('Περίγραψε τι έγινε και τι περίμενες να δεις. Αν αφορά στάση ή γραμμή, γράψε ποια.'),
+    placeholder: t(hint),
   });
   const email = h('input', {
     id: ids.mail, class: 'rp-input', type: 'email', inputmode: 'email', autocomplete: 'email', autocapitalize: 'off', spellcheck: 'false',
@@ -108,7 +118,7 @@ export function mountReport(container, ctx, params = {}) {
   }
 
   const form = h('form', { class: 'rp-form', novalidate: true, onsubmit: onSubmit },
-    h('div', { class: 'rp-field' }, h('label', { class: 'rp-label', for: ids.msg }, t('Τι συνέβη;')), message, msgErr),
+    h('div', { class: 'rp-field' }, h('label', { class: 'rp-label', for: ids.msg }, t(question)), message, msgErr),
     h('div', { class: 'rp-field' },
       h('label', { class: 'rp-label', for: ids.mail }, t('Email'), ' ', h('span', { class: 'rp-opt' }, `(${t('προαιρετικό')})`)),
       email,
