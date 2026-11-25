@@ -42,8 +42,12 @@ function updateAndReload() {
   sw.getRegistration().then((r) => r?.update()).catch(() => {});
 }
 
+// ?update-test shows the toast at once, without asking the worker, so it can be seen on a phone (also with ?demo).
+const FORCE = (() => { try { return new URLSearchParams(location.search).has('update-test'); } catch { return false; } })();
+
 // Called once after boot. -> true when the toast was shown (for tests). Never throws.
-export async function checkAppVersion({ fetchFn = globalThis.fetch, demo = DEMO, app = APP_VERSION, show = showToast } = {}) {
+export async function checkAppVersion({ fetchFn = globalThis.fetch, demo = DEMO, app = APP_VERSION, show = showToast, force = FORCE } = {}) {
+  if (force) { show(); return true; }
   if (demo || typeof fetchFn !== 'function') return false;
   try {
     const res = await fetchFn(`${API_BASE}/version`, { credentials: 'omit', cache: 'no-store' });

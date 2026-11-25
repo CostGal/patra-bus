@@ -54,3 +54,11 @@ test('wiring: app.js loads it after boot, sw.js caches it', () => {
   assert.match(read('js/app.js'), /import\('\.\/app-update\.js'\)\.then\(\(m\) => m\.checkAppVersion\(\)\)/);
   assert.ok(read('sw.js').includes("'js/app-update.js'"));
 });
+
+test('checkAppVersion: ?update-test shows the toast without asking the worker, also in ?demo', async () => {
+  let calls = 0, shown = 0;
+  const counting = async () => { calls++; return { ok: true, json: async () => ({ minApp: '0.0.1' }) }; };
+  assert.equal(await checkAppVersion({ fetchFn: counting, demo: true, app: '0.9.1', show: () => shown++, force: true }), true);
+  assert.equal(shown, 1);
+  assert.equal(calls, 0);
+});
