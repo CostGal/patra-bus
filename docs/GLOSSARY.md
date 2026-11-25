@@ -147,6 +147,10 @@ My words:
 Where it shows up in Telematica: recorded citybus.gr answers in `tests/e2e/fixtures/` and `web/fixtures/` so tests never use the network.
 My words:
 
+**Focus**: the one thing on the screen that is "listening" right now: the field the keyboard types into, or the button that Enter presses. Only one thing has it at a time, like the person holding the microphone in a meeting: everyone can see the others, but only that one is heard.
+Where it shows up in Telematica: after every page change `app.js` gives the focus to the sheet's body, so keyboard and screen-reader users start there. In TEL-366 the sheet took that as "show the focused thing" and went all the way up on the first swipe; `sheet.js` now ignores focus on its own body. The search field gets the focus only once the sheet is up (docs/FRONTEND.md).
+My words:
+
 **Global Privacy Control (GPC)**: a setting some browsers have that tells every site "don't track me", like a "no junk mail" sticker on a letterbox.
 Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
 My words:
@@ -266,6 +270,10 @@ My words:
 
 **Mod** (Claude Code plugin): a small add-on that changes how Claude Code itself looks or behaves, like a phone case with a pocket for your cards.
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Blocks from Notion (there can be two) (`/block` refreshes it; `/sprint` is kept as an alias).
+My words:
+
+**node_modules**: the folder where `npm` puts every package the project uses, like the toolbox under the desk. It is never in git: `npm ci` fills it again from `package-lock.json`, so it can be deleted without losing anything.
+Where it shows up in Telematica: each new checkout or worktree starts without it, so the SessionStart hook runs `npm ci` before the tests can run.
 My words:
 
 **npm ci**: installs the packages exactly as `package-lock.json` lists them, like stocking a new desk with exactly the tools on the old desk's list.
