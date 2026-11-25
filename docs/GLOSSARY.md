@@ -147,6 +147,10 @@ My words:
 Where it shows up in Telematica: recorded citybus.gr answers in `tests/e2e/fixtures/` and `web/fixtures/` so tests never use the network.
 My words:
 
+**Focus**: the one thing on the screen that is "listening" right now: the field the keyboard types into, or the button that Enter presses. Only one thing has it at a time, like the person holding the microphone in a meeting: everyone can see the others, but only that one is heard.
+Where it shows up in Telematica: after every page change `app.js` gives the focus to the sheet's body, so keyboard and screen-reader users start there. In TEL-366 the sheet took that as "show the focused thing" and went all the way up on the first swipe; `sheet.js` now ignores focus on its own body. The search field gets the focus only once the sheet is up (docs/FRONTEND.md).
+My words:
+
 **Global Privacy Control (GPC)**: a setting some browsers have that tells every site "don't track me", like a "no junk mail" sticker on a letterbox.
 Where it shows up in Telematica: when the browser sends it (`navigator.globalPrivacyControl`), the app sends no anonymous counts at all (`web/js/usage.js`, TEL-197).
 My words:
