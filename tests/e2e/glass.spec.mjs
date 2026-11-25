@@ -103,6 +103,27 @@ test('menu theme row: one capsule, the lens on the chosen theme; a pick moves it
   await expect.poll(() => lensOn('dark')).toBe(true);
 });
 
+test('menu theme row: the arrow keys choose the next theme, as radios do (TEL-344)', async ({ page }) => {
+  await page.goto('/?demo#/');
+  await page.click('#menu-btn');
+  await expect(page.locator('#menu-pop')).toBeVisible();
+  const chosen = () => page.evaluate(() => document.querySelector('.theme-bar > .theme-row > [aria-checked="true"]').dataset.value);
+  const focused = () => page.evaluate(() => document.activeElement?.closest('.theme-bar > .theme-row') ? document.activeElement.dataset.value : null);
+  await page.locator('.theme-bar > .theme-row > [data-value="auto"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(chosen).toBe('light');
+  expect(await focused()).toBe('light');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(chosen).toBe('dark');
+  expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
+  await page.keyboard.press('ArrowRight'); // wraps around
+  await expect.poll(chosen).toBe('auto');
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(chosen).toBe('dark');
+  expect(await focused()).toBe('dark');
+  await expect(page.locator('#menu-pop')).toBeVisible();
+});
+
 test('report menu (TEL-358): the kinds grow out of the row as a card, and go back into it', async ({ page }) => {
   await page.goto('/?demo#/');
   await page.click('#menu-btn');
