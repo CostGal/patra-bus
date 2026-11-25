@@ -32,7 +32,7 @@ export function openWelcome() {
 
   const stagger = (i) => ({ class: 'wl-in', style: `--i:${i}` });
   const start = h('button', { type: 'button', class: 'btn primary press wl-start', onclick: () => close() }, t('Ας ξεκινήσουμε'));
-  const feedback = h('a', { class: 'wl-link press', href: cityHash('#/report'), onclick: () => close(false) }, t('Στείλε σχόλια'));
+  const feedback = h('a', { class: 'wl-link press', href: cityHash('#/report?kind=idea'), onclick: () => close(false) }, t('Στείλε σχόλια')); // straight to «Πρόταση» (TEL-385)
   const scrim = h('div', { class: 'wl-scrim' });
   const card = h('div', { class: 'wl-card' },
     h('div', { class: 'wl-emblem', 'aria-hidden': 'true' },
