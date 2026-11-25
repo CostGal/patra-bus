@@ -87,6 +87,15 @@ issues και PRs με **έναν κοινό** μετρητή (#74 issue, #75 PR
    στο chat για το συγκεκριμένο PR και αφού περάσουν οι έλεγχοι· σε session άλλου, ποτέ. Το CI το τσεκάρει ο Kostas στο PR (ενότητα 0)· ο Claude δίνει μόνο το link. Δευ–Παρ 08:30–17:30 (merge
    window, TEL-182) το `merge-window` είναι κίτρινο: ο Claude δίνει βήμα «Enable auto-merge» αντί για «Merge», και το
    PR γίνεται merge μόνο του μετά τις 17:30. Αργίες και άνοιγμα αμέσως: `docs/CI-AND-DEPLOY.md`.
+   **PR του Claude** (TEL-275): ανοίγουν με τον λογαριασμό του Kostas, άρα κανείς δεν μπορεί να τα εγκρίνει (το GitHub δεν
+   αφήνει έγκριση στο δικό σου PR) και το auto-merge δεν δουλεύει. Βήματα για τον Kostas:
+   1. Στο PR: «Ready for review» (ανοίγουν ως draft).
+   2. Περιμένει: `test` πράσινο και `merge-window` πράσινο (μετά τις 17:30 τις καθημερινές).
+   3. Τικ στο «Merge without waiting for requirements to be met (bypass rules)», μετά «Merge».
+
+   Το bypass περνά μόνο την έγκριση. Τα `test` και `merge-window` μένουν υποχρεωτικά: ο κλασικός κανόνας του `main` έχει
+   «Do not allow bypassing». PR του Amarildo ή του Fanis: ο Kostas κάνει «Approve» κανονικά, και το auto-merge δουλεύει.
+   Αν αλλάξει ο αριθμός των εγκρίσεων στο ruleset (TEL-263), αλλάζει και αυτό.
 6. **Κλείσιμο.** Κάρτα → Done (το `Completed on` το βάζει το Notion), findings → κάρτες, σύνοψη: τι έγινε, τι μένει, πρόταση για το
    επόμενο task.
 

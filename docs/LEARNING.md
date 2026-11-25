@@ -13,6 +13,7 @@ My study tracker: https://claude.ai/artifact/SJBZWER8F2n3JuCtQ8UBnP
 - Same-bus rules (TEL-81): how the app decides a live and a scheduled row are the same bus. Rule A: same `vehicleCode`. Rule B, the fallback: same line and arrival within 60 s. Rule B can hide a second real bus of the same line arriving within a minute (2026-10-19)
 - Code ownership and licenses (2026-10-18, TEL-1): who owns code by default, what a license is, why "All rights reserved" is the safe start, and why a public repo is not free for everyone to use. See the glossary entries: All rights reserved, License, Copyleft.
 - What happens to an old pending reminder after TEL-351 (2026-11-22): when the phone opens the new version, the app deletes the saved reminder from the phone. It never rings, nothing else is lost, and it cannot come back.
+- How a session gets ready by itself (TEL-146): a **hook** is a command Claude Code runs on its own when a session starts; a **worktree** is a second copy of the repo in its own folder, so two tasks never mix; that copy starts without **node_modules** (the packages folder), so the hook runs **npm ci** to fill it from the list in `package-lock.json`. See these four entries in GLOSSARY.md.
 
 ## Done — can explain it
 <!-- Move a term here once I can explain it in my own words (and have filled in "My words:" in GLOSSARY.md). -->
