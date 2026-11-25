@@ -164,6 +164,21 @@ test('request shape: only q, lat, lon, limit, bbox, lang; position at 2 decimals
   }
 });
 
+test('TEL-303: the English app asks Photon in English, except for a query in Greek letters', async () => {
+  const { setLang } = await import('../web/js/i18n.js');
+  setLang('en');
+  try {
+    urls = [];
+    await search('Lidl');
+    assert.ok(urls.length >= 1);
+    for (const u of urls) assert.equal(u.searchParams.get('lang'), 'en');
+    urls = [];
+    await search('Άγιος Ανδρέας');
+    assert.ok(urls.length >= 1);
+    for (const u of urls) assert.equal(u.searchParams.get('lang'), 'default');
+  } finally { setLang('el'); }
+});
+
 test('TEL-161: the landmark named like the query comes before a look-alike stop; OSM bus stops are dropped', async () => {
   const stop = { code: '529', key: searchKey('ΝΟΣ. ΑΓΙΟΣ ΑΝΔΡΕΑΣ'), displayName: 'Νοσ. Άγιος Ανδρέας', lat: 38.2367, lng: 21.7458, lineCodes: ['601'] };
   const out = await searchPlaces('Άγιος Ανδρέας', { data: { stops: [stop] }, near });

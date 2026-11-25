@@ -133,7 +133,7 @@ requests with a position leave the phone:
   (line 17) gives a straight-line time times 1.3. Callers: `nearby.js:118` and the stop's "Οδηγίες ως εδώ" pill
   (`arrivals-view.js` `directions()`: on a tap, the walk from the device to that stop, drawn on the map; nothing stored).
 - **Photon** (`fetchFeatures` in `geocode.js`): a bias `lat`/`lon` rounded to 2 decimals (about 1 km), plus the typed text, the city box
-  and `lang` (`default` = the local Greek names, `en` in the English app; TEL-309).
+  and `lang` (`default` = the local Greek names, `en` in the English app unless the query has Greek letters; TEL-309, TEL-303).
   The search starts 350 ms after typing and needs 3 characters (`app.js:436-453`). Without GPS the map centre is used.
 
 ## 8. Names and accents
