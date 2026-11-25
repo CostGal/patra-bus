@@ -346,6 +346,9 @@ const PAIRS = [
   ['{n} αφίξεις, {live} με ζωντανή θέση', '{n} arrivals, {live} with live position'],
   ['Παλιά δεδομένα: οι χρόνοι μπορεί να μην ισχύουν.', 'Old data: the times may be wrong.'],
   [' Τα δεδομένα δεν έχουν ενημερωθεί πρόσφατα.', ' The data has not been updated recently.'],
+  // app-update.js (TEL-286)
+  ['Η εφαρμογή χρειάζεται ενημέρωση.', 'The app needs an update.'],
+  ['Ενημέρωση', 'Update'],
 ];
 
 // Feature-owned pair lists live in their own files (one owner each, no merge conflicts): same format as PAIRS.

@@ -163,4 +163,4 @@ Installed apps update late (the service worker swaps files on the next visit), s
 - **`minApp` goes up only when an older app really breaks**, never just because a new version exists. A test fails if `minApp` is newer than the app in `web/`.
 - **`api` goes up only for a change old apps cannot read**, which the rules above should make rare.
 - The contract test `tests/worker-contract.test.mjs` (part of `npm test`) lists every field the app reads from `/version`, `/health`, live (with and without service), stats and errors. A new field passes; a removed, renamed or retyped one fails. A new field the app starts reading goes into the test's `CONTRACT` in the same PR.
-- The app does not read `/version` yet; showing «update the app» when it is older than `minApp` is a separate card (`web/`).
+- The app reads `/version` once after boot (`web/js/app-update.js`, TEL-286) and shows «update the app» when it is older than `minApp`.
