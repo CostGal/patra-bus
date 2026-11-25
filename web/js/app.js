@@ -327,6 +327,7 @@ function onMove({ visible, lift, opacity }) {
   mapAttrib.style.opacity = String(opacity);
   mapAttrib.style.visibility = opacity < 0.05 ? 'hidden' : '';
   toastHost.style.transform = `translate(-50%, ${-lift}px)`;
+  toastHost.style.setProperty('--sheet-vis', `${visible}px`); // a centred toast (TEL-286) sits in the middle of the map left above the sheet
   installHint.el.style.transform = lift ? `translateY(${-lift}px)` : '';
 }
 
@@ -1297,6 +1298,8 @@ async function boot() {
   Promise.resolve(setupClosed).then(() => bootScreen.leaving).then(() => import('./welcome.js').then((m) => m.maybeWelcome()).catch(() => {}));
   // Anonymous daily open/install count (CLAUDE.md rule 4): off the boot path, silent on failure.
   import('./usage.js').then((m) => m.reportUsage()).catch(() => {});
+  // «Update the app» when this app is older than the worker's minApp (TEL-286): off the boot path, silent on failure.
+  import('./app-update.js').then((m) => m.checkAppVersion()).catch(() => {});
 
   if ('serviceWorker' in navigator) {
     const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});
