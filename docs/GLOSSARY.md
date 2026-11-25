@@ -272,6 +272,10 @@ My words:
 Where it shows up in Telematica: `.claude/skills/tel-sprint/` draws the «Block» pane with your open TEL cards of the current Blocks from Notion (there can be two) (`/block` refreshes it; `/sprint` is kept as an alias).
 My words:
 
+**node_modules**: the folder where `npm` puts every package the project uses, like the toolbox under the desk. It is never in git: `npm ci` fills it again from `package-lock.json`, so it can be deleted without losing anything.
+Where it shows up in Telematica: each new checkout or worktree starts without it, so the SessionStart hook runs `npm ci` before the tests can run.
+My words:
+
 **npm ci**: installs the packages exactly as `package-lock.json` lists them, like stocking a new desk with exactly the tools on the old desk's list.
 Where it shows up in Telematica: the CI runs it, and the SessionStart hook (`scripts/session-start.mjs`) runs it when a session starts without `node_modules`.
 My words:

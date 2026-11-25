@@ -38,6 +38,20 @@ for (const [name, hash] of [['Settings', '#/settings'], ['Report', '#/report']])
   });
 }
 
+// TEL-366/368: after every route app.js focuses the sheet's own body. With keyboard modality that focus is
+// :focus-visible, and the body (as tall as the sheet) never "fits" at mid, so the sheet used to jump to up.
+test('up only: the sheet body getting focus leaves home at mid (TEL-368)', async ({ page }) => {
+  await page.goto('/?demo#/settings');
+  await expect.poll(() => state(page)).toBe('full');
+  await dragDown(page, 300);
+  expect(await state(page)).toBe('half');
+  await page.keyboard.press('Shift'); // keyboard modality: a scripted focus now counts as :focus-visible
+  await page.evaluate(() => { document.activeElement?.blur(); document.getElementById('sheet-body').focus(); });
+  expect(await page.evaluate(() => document.getElementById('sheet-body').matches(':focus-visible'))).toBe(true);
+  await page.waitForTimeout(700);
+  expect(await state(page)).toBe('half');
+});
+
 test('up only: a small drag springs back to up and stays on Settings', async ({ page }) => {
   await page.goto('/?demo#/settings');
   await expect.poll(() => state(page)).toBe('full');
