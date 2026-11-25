@@ -62,7 +62,7 @@ Marked **(W)** are also imported by the Worker, so they must not touch the DOM.
   stop's name starts with the query or its code is the query (TEL-161).
 - **Vehicle**: `bus-view.js`, `data.js` (loads stops, lines, routes; search ranking).
 - **Storage, settings, share**: `store.js` (the main blob), `settings-view.js`, `share.js` (Web Share, else clipboard),
-  `usage.js` (anonymous counts).
+  `usage.js` (anonymous counts), `app-update.js` («update the app» when older than the worker's `minApp`, TEL-286).
 - **First run, welcome, report**: `setup.js`, `welcome.js`, `report-view.js`, `report.js` **(W)** (validation and diagnostics
   whitelist), `platform.js` (iOS/Android, installed or browser).
 - **Language and text**: `i18n.js` (`t`, `tn`, `N_`, `lang`), `i18n-en.js` + `i18n-en-report|welcome|setup|home.js`, `text.js`
@@ -185,6 +185,9 @@ The dictionary does not look at the city, so a Corfu word that is in it is accen
   (WORKER.md). In `?demo` nothing is sent.
 - **Usage counts** (`usage.js`): `POST /api/count` with `{metric, city}` for `open` (once per Athens day) and `install` (once).
   Not sent with `usageStats` off, Global Privacy Control, `?demo`, or off `https://costgal.github.io`. The rule is CLAUDE.md rule 4.
+- **Version check** (`app-update.js`, TEL-286): once after boot, `GET /version` with no body and no credentials. When
+  `APP_VERSION` is older than `minApp`, a toast «Η εφαρμογή χρειάζεται ενημέρωση.» with «Ενημέρωση» (fetch the new service
+  worker, then reload). Not in `?demo`; silent on any failure.
 
 ## 11. Credits
 CLAUDE.md rule 5 says these stay visible.
