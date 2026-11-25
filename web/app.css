@@ -299,6 +299,7 @@ html.sheet-dragging .toast-host { transition: none; }
   flex: none; min-height: var(--control-h); padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: none; color: var(--inverse-action); font-weight: var(--weight-semibold); cursor: pointer;
 }
 .toast-action:hover { background: rgba(128, 128, 128, .18); }
+.toast .toast-btn { flex: none; }
 @media (min-width: 900px) { .toast-host { left: calc(50% + (var(--panel-w) / 2)); bottom: 24px; } }
 
 /* ---------- shared bits (usable by every view) ---------- */

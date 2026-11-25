@@ -120,7 +120,9 @@ export function toast(text, opts = {}) {
     setTimeout(() => el.remove(), 200);
   };
   if (action) {
-    el.append(h('button', { type: 'button', class: 'toast-action press', onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
+    // action.primary: the one button (TEL-51), filled, for an action the toast exists for (e.g. «Ενημέρωση», TEL-286).
+    const cls = action.primary ? 'btn primary sm toast-btn press' : 'toast-action press';
+    el.append(h('button', { type: 'button', class: cls, onclick: () => { dismiss(); action.onClick?.(); } }, action.label));
   }
   toastHost.replaceChildren(el);
   requestAnimationFrame(() => el.classList.add('show'));

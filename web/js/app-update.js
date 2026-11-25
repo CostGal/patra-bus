@@ -31,19 +31,26 @@ const VERSION_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/;
 // true only for a well-formed minApp newer than the app; anything odd from the worker is ignored.
 export const isOutdated = (app, minApp) => VERSION_RE.test(String(minApp ?? '')) && VERSION_RE.test(String(app)) && compareVersions(app, minApp) < 0;
 
+// ?update-test shows the toast at once, without asking the worker, so it can be seen on a phone (also with ?demo).
+const FORCE = (() => { try { return new URLSearchParams(location.search).has('update-test'); } catch { return false; } })();
+
 // The new files come with the new service worker (skipWaiting + clients.claim in sw.js): ask for it, reload once it
 // has taken over, or after 4 s anyway.
 function updateAndReload() {
-  const reload = () => location.reload();
+  // In the ?update-test check there is no newer app: reload without the flag, so the toast goes away as it would after
+  // a real update (with the flag it would come straight back).
+  const reload = () => {
+    if (!FORCE) return location.reload();
+    const url = new URL(location.href);
+    url.searchParams.delete('update-test');
+    location.replace(url.href);
+  };
   const sw = navigator.serviceWorker;
-  if (!sw) return reload();
+  if (FORCE || !sw) return reload();
   const timer = setTimeout(reload, 4000);
   sw.addEventListener('controllerchange', () => { clearTimeout(timer); reload(); }, { once: true });
   sw.getRegistration().then((r) => r?.update()).catch(() => {});
 }
-
-// ?update-test shows the toast at once, without asking the worker, so it can be seen on a phone (also with ?demo).
-const FORCE = (() => { try { return new URLSearchParams(location.search).has('update-test'); } catch { return false; } })();
 
 // Called once after boot. -> true when the toast was shown (for tests). Never throws.
 export async function checkAppVersion({ fetchFn = globalThis.fetch, demo = DEMO, app = APP_VERSION, show = showToast, force = FORCE } = {}) {
@@ -62,5 +69,5 @@ export async function checkAppVersion({ fetchFn = globalThis.fetch, demo = DEMO,
 }
 
 function showToast() {
-  toast(t('Η εφαρμογή χρειάζεται ενημέρωση.'), { ms: 20000, action: { label: t('Ενημέρωση'), onClick: updateAndReload } });
+  toast(t('Η εφαρμογή χρειάζεται ενημέρωση.'), { ms: 20000, action: { label: t('Ενημέρωση'), onClick: updateAndReload, primary: true } });
 }
