@@ -47,6 +47,8 @@ Other behaviour:
 - Header `X-Cache: HIT|MISS` is on live, stats, stops and lines. On a HIT, `fetchedAt` in the body is the time of the original upstream fetch, not of this request. The app uses it to age the countdowns.
 - Upstream 404 for live means "no departures now". The worker answers `200 {vehicles: [], noService: true}` and caches it like any other answer.
 - An empty or invalid upstream body counts as an error and is not cached.
+- Negative cache (TEL-399): when a live call fails (5xx, empty or invalid body, timeout, no token), a marker `fail/live/{city}/{code}` is kept for 15 s (Cache API, or KV `memo/…` as fallback). Meanwhile that stop answers `502 {error: 'upstream'}` without calling citybus.gr. A broken upstream gets fewer calls, not more.
+- Every call to citybus.gr (city page and API) gives up after 8 s (`UPSTREAM_TIMEOUT_MS`).
 - The reminder and routine code reads live through the same function (`liveBody`), so it shares the 15 s cache.
 
 ## 4. Token handling
@@ -55,6 +57,9 @@ Other behaviour:
 - It is stored in KV as `token/{city}` with the expiry date (`exp`) read from the JWT. The KV entry expires with the token.
 - It is fetched only when needed: no token stored, or fewer than 5 minutes left. There is no timer.
 - On upstream `401` or `403`, the worker scrapes a fresh token and retries once, now with a `Referer` header.
+- One scrape at a time per city (per isolate): requests that arrive meanwhile wait for the same scrape (TEL-399).
+- A scraped token that has already expired is not stored or used; the request fails with `502`.
+- If storing the token in KV fails, the request still uses it; the next request scrapes again.
 - Upstream facts (endpoints, token format, `0/0` coordinates) are in `docs/UPSTREAM-API.md`. They are not repeated here.
 
 ## 5. Storage
