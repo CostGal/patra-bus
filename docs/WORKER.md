@@ -26,10 +26,10 @@ The router is `fetch()` in `worker/src/index.js` (lines 332-393). Path parsing f
 | `POST /api/count` | `204`, no body | none | Anonymous counter, section 8. |
 | `GET /stats` | Static HTML page, holds no data | none | Private stats page. |
 | `GET /api/admin/counts` | Counter totals as JSON | none | Needs `Authorization: Bearer <STATS_TOKEN>`. |
-| `GET /api/push/key` | `{publicKey}` | none | Push, section 10. `503` without the key. |
-| `POST /api/push/reminders` | `201 {id}` | none | One-off reminder. |
+| `GET /api/push/key` | `404` | none | Closed (TEL-256 step 1), section 10. |
+| `POST /api/push/reminders` | `404` | none | Closed (TEL-256 step 1). |
 | `DELETE /api/push/reminders/:id` | `204` | none | `:id` is 32 hex characters. |
-| `POST /api/push/routines` | `201 {id}` | none | Weekly routine. |
+| `POST /api/push/routines` | `404` | none | Closed (TEL-256 step 1). |
 | `DELETE /api/push/routines/:id` | `204` | none | Same id format. |
 
 Other behaviour:
@@ -128,7 +128,7 @@ The rule is CLAUDE.md rule 4. This is the mechanics (`worker/src/counters.js`, `
 
 The app has no client any more for push reminders or weekly routines. The worker side is still in the code: the routes in section 2, the `Reminder` and `Routine` classes (`reminders.js`, `routines.js`), the sender in `push.js`, VAPID settings and `DEV_ALLOW_LOCAL_PUSH`.
 
-- Push routes answer `503` unless both VAPID keys exist. POST bodies are limited to 4096 bytes (`413`). Each of the two POST routes allows 12 requests per IP per 10 minutes.
+- Step 1 of the removal (TEL-256, plan in TEL-298): `GET /api/push/key` and both POSTs answer `404 {error: 'not_found'}` with CORS headers, so nothing new is stored. The two DELETEs still answer `204`, and `OPTIONS` still allows `DELETE`, so old installs can cancel and empty their lists. Stored objects keep running their alarms until the `v4` migration (step 2) deletes both classes for good.
 - Only push services of Google, Mozilla, Microsoft and Apple are accepted as subscription endpoints (`push.js`). `http://localhost` is allowed only with `DEV_ALLOW_LOCAL_PUSH=1`.
 - Reminder: an alarm fires at the chosen time. If it has a trip, the worker re-reads live and re-arms up to 3 times when the bus is more than 60 s late. If the push service answers `429` or `5xx`, it retries once after 30 s to 5 min. Everything is deleted after sending.
 - Routine: on each chosen weekday (Athens time) it checks live 20 minutes before, picks the first catchable bus, sends at leave time minus `leadMin`, then arms the next day. It expires after 120 days and is deleted when the push service says the subscription is gone.

@@ -1,6 +1,6 @@
 import { normalizeLive, noServiceResult } from '../../web/js/arrivals.js';
-import { ReminderBase, validateReminder, MAX_BODY_BYTES } from './reminders.js';
-import { RoutineBase, validateRoutine } from './routines.js';
+import { ReminderBase } from './reminders.js';
+import { RoutineBase } from './routines.js';
 import { StatsBase, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
 import { CountersBase, recordCount } from './counters.js';
@@ -201,53 +201,15 @@ function rateLimited(ip, now, max = RATE_MAX) {
 }
 const reminderStub = (env, id) => env.REMINDERS.get(env.REMINDERS.idFromName(id));
 const routineStub = (env, id) => env.ROUTINES.get(env.ROUTINES.idFromName(id));
-const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
 
-// Shared POST preamble: push configured, per-IP rate limit, size cap, JSON. -> { raw } | { res }.
-async function readPushBody(request, env, cors, bucket) {
-  if (!env.VAPID_PRIVATE_KEY || !env.VAPID_PUBLIC_KEY) return { res: json(cors, { error: 'push_unavailable' }, 503) };
-  if (rateLimited(`${bucket}:${request.headers.get('CF-Connecting-IP') || 'local'}`, Date.now())) {
-    return { res: json(cors, { error: 'rate_limited' }, 429, { 'Retry-After': '600' }) };
-  }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return { res: json(cors, { error: 'too_large' }, 413) };
-  try {
-    return { raw: JSON.parse(text) };
-  } catch {
-    return { res: json(cors, { error: 'bad_request', field: 'json' }, 400) };
-  }
-}
-
+// TEL-256 step 1: push is gone from the app. New sign-ups (GET key, both POSTs) now fall through to 404.
+// Only the DELETEs stay, so old installs can still cancel what they stored; CORS + OPTIONS DELETE keep that working.
 async function pushRoute(request, env, cors, pathname) {
-  if (pathname === '/api/push/key' && request.method === 'GET') {
-    if (!env.VAPID_PUBLIC_KEY) return json(cors, { error: 'push_unavailable' }, 503);
-    return json(cors, { publicKey: env.VAPID_PUBLIC_KEY });
-  }
-  if (pathname === '/api/push/reminders' && request.method === 'POST') {
-    const { raw, res: early } = await readPushBody(request, env, cors, 'reminder');
-    if (early) return early;
-    const v = validateReminder(raw, Date.now(), { allowLocal: env.DEV_ALLOW_LOCAL_PUSH === '1' });
-    if (!v.ok) return json(cors, { error: 'bad_request', field: v.error }, 400);
-    const id = newId();
-    const res = await reminderStub(env, id).fetch('https://reminder/', { method: 'POST', body: JSON.stringify(v.value) });
-    if (!res.ok) return json(cors, { error: 'internal' }, 500);
-    return json(cors, { id }, 201, { 'Cache-Control': 'no-store' });
-  }
   const del = pathname.match(/^\/api\/push\/reminders\/([^/]+)$/);
   if (del && request.method === 'DELETE') {
     if (!PUSH_ID.test(del[1])) return json(cors, { error: 'not_found' }, 404);
     await reminderStub(env, del[1]).fetch('https://reminder/', { method: 'DELETE' });
     return new Response(null, { status: 204, headers: headers(cors) });
-  }
-  if (pathname === '/api/push/routines' && request.method === 'POST') {
-    const { raw, res: early } = await readPushBody(request, env, cors, 'routine');
-    if (early) return early;
-    const v = validateRoutine(raw, { allowLocal: env.DEV_ALLOW_LOCAL_PUSH === '1' });
-    if (!v.ok) return json(cors, { error: 'bad_request', field: v.error }, 400);
-    const id = newId();
-    const res = await routineStub(env, id).fetch('https://routine/', { method: 'POST', body: JSON.stringify({ id, ...v.value }) });
-    if (!res.ok) return json(cors, { error: 'internal' }, 500);
-    return json(cors, { id }, 201, { 'Cache-Control': 'no-store' });
   }
   const delR = pathname.match(/^\/api\/push\/routines\/([^/]+)$/);
   if (delR && request.method === 'DELETE') {

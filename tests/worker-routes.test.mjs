@@ -342,31 +342,33 @@ test('liveBody: takes the city id and rejects ids outside the table', () => with
   assert.ok(!fetched.some((f) => f.url.includes('nope')));
 }));
 
-test('worker: push POSTs take an optional city (400 field "city" when bad) and hand it to the DO', () => withWorld(async ({ env, ctx }) => {
-  const stored = [];
-  const ns = () => ({
-    idFromName: (n) => n,
-    get: () => ({ fetch: async (_u, init) => { stored.push(JSON.parse(init.body)); return new Response('{}', { status: 201 }); } }),
-  });
+test('worker: push sign-ups are closed (404 with CORS); DELETE and its preflight still work for old installs', () => withWorld(async ({ env, ctx }) => {
+  const deleted = [];
+  const ns = () => ({ idFromName: (n) => n, get: (id) => ({ fetch: async () => { deleted.push(id); return new Response(null, { status: 204 }); } }) });
+  // Even with keys set, nothing new can be stored (TEL-256 step 1).
   const penv = { ...env, VAPID_PRIVATE_KEY: 'x', VAPID_PUBLIC_KEY: 'y', REMINDERS: ns(), ROUTINES: ns() };
-  // distinct IPs: the rate limiter is per isolate, keyed by bucket + ip
-  const post = (path, body, ip) =>
-    worker.fetch(new Request(`https://w.test${path}`, { method: 'POST', body: JSON.stringify(body), headers: { 'CF-Connecting-IP': ip } }), penv, ctx);
-  const rem = (over = {}) => remReq({ at: Date.now() + 600e3, ...over });
+  const call = (method, path, body) => worker.fetch(new Request(`https://w.test${path}`, {
+    method, body: body && JSON.stringify(body), headers: { Origin: 'http://localhost:8080', 'CF-Connecting-IP': '10.9.1.1' },
+  }), penv, ctx);
 
-  const bad = await post('/api/push/reminders', rem({ city: 'nope' }), '10.9.0.1');
-  assert.equal(bad.status, 400);
-  assert.deepEqual(await bad.json(), { error: 'bad_request', field: 'city' });
-  const badR = await post('/api/push/routines', rouReq({ city: 7 }), '10.9.0.2');
-  assert.equal(badR.status, 400);
-  assert.equal((await badR.json()).field, 'city');
-
-  assert.equal((await post('/api/push/reminders', rem({ city: 'corfu' }), '10.9.0.3')).status, 201);
-  assert.equal(stored.pop().city, 'corfu');
-  assert.equal((await post('/api/push/reminders', rem(), '10.9.0.4')).status, 201);
-  assert.equal(stored.pop().city, 'patra');
-  assert.equal((await post('/api/push/routines', rouReq({ city: 'corfu' }), '10.9.0.5')).status, 201);
-  assert.equal(stored.pop().city, 'corfu');
-  assert.equal((await post('/api/push/routines', rouReq(), '10.9.0.6')).status, 201);
-  assert.equal(stored.pop().city, 'patra');
+  for (const [method, path, body] of [
+    ['GET', '/api/push/key'],
+    ['POST', '/api/push/reminders', remReq({ at: Date.now() + 600e3 })],
+    ['POST', '/api/push/routines', rouReq()],
+  ]) {
+    const r = await call(method, path, body);
+    assert.equal(r.status, 404, `${method} ${path}`);
+    assert.deepEqual(await r.json(), { error: 'not_found' });
+    assert.ok(r.headers.get('Access-Control-Allow-Origin'), `${method} ${path} has CORS`);
+  }
+  const id = 'a'.repeat(32);
+  for (const path of [`/api/push/reminders/${id}`, `/api/push/routines/${id}`]) {
+    const r = await call('DELETE', path);
+    assert.equal(r.status, 204, path);
+    assert.ok(r.headers.get('Access-Control-Allow-Origin'), `${path} has CORS`);
+  }
+  assert.deepEqual(deleted, [id, id]);
+  const pre = await call('OPTIONS', `/api/push/routines/${id}`);
+  assert.equal(pre.status, 204);
+  assert.match(pre.headers.get('Access-Control-Allow-Methods'), /DELETE/);
 }));
