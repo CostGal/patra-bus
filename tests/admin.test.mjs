@@ -81,7 +81,7 @@ test('adminRoute: only GET', async () => {
 
 test('summarizeCounts: today, 7 days, 30 days and all time per metric and city', () => {
   const s = summarizeCounts(ROWS, NOW);
-  assert.deepEqual(s.totals, [
+  assert.deepEqual(s.totals.map(({ metric, city, today, d7, d30, all }) => ({ metric, city, today, d7, d30, all })), [
     { metric: 'feedback', city: '', today: 1, d7: 1, d30: 1, all: 1 },
     // 10-22 is inside 7 days (from 10-19); 10-01 inside 30 days (from 09-26); 09-01 only in "all".
     { metric: 'feedback', city: 'patra', today: 2, d7: 3, d30: 8, all: 15 },
@@ -91,4 +91,60 @@ test('summarizeCounts: today, 7 days, 30 days and all time per metric and city',
 test('summarizeCounts: day list keeps only the last 30 days, newest first', () => {
   const s = summarizeCounts(ROWS, NOW);
   assert.deepEqual(s.days.map((r) => r.day), ['2026-10-25', '2026-10-25', '2026-10-22', '2026-10-01']);
+});
+
+test('summarizeCounts: days30 is the last 30 Athens days, oldest first, ending today', () => {
+  const s = summarizeCounts(ROWS, NOW);
+  assert.equal(s.days30.length, 30);
+  assert.equal(s.days30[0], '2026-09-26');
+  assert.equal(s.days30[29], '2026-10-25');
+});
+
+test('summarizeCounts: prev7 is the 7 days before the last 7, and series has a 0 for every missing day', () => {
+  const rows = [
+    { day: '2026-10-25', metric: 'open', city: 'patra', n: 4 }, // today: d7
+    { day: '2026-10-19', metric: 'open', city: 'patra', n: 3 }, // first day of d7
+    { day: '2026-10-18', metric: 'open', city: 'patra', n: 2 }, // last day of prev7
+    { day: '2026-10-12', metric: 'open', city: 'patra', n: 1 }, // first day of prev7
+    { day: '2026-10-11', metric: 'open', city: 'patra', n: 9 }, // before prev7, still in 30 days
+    { day: '2026-10-20', metric: 'open', city: 'corfu', n: 5 },
+  ];
+  const s = summarizeCounts(rows, NOW);
+  const patra = s.totals.find((t) => t.metric === 'open' && t.city === 'patra');
+  assert.equal(patra.d7, 7);
+  assert.equal(patra.prev7, 3);
+  assert.equal(patra.d30, 19);
+  assert.equal(patra.series.length, 30);
+  assert.equal(patra.series[29], 4);
+  assert.equal(patra.series[s.days30.indexOf('2026-10-11')], 9);
+  assert.equal(patra.series.reduce((a, n) => a + n, 0), 19, 'every other day is 0');
+  const corfu = s.totals.find((t) => t.metric === 'open' && t.city === 'corfu');
+  assert.deepEqual([corfu.d7, corfu.prev7], [5, 0]);
+});
+
+test('summarizeCounts: a city-less row (feedback) gets its own prev7 and series', () => {
+  const s = summarizeCounts(ROWS, NOW);
+  const none = s.totals.find((t) => t.city === '');
+  assert.equal(none.prev7, 0);
+  assert.equal(none.series[29], 1);
+  const patra = s.totals.find((t) => t.city === 'patra');
+  assert.equal(patra.prev7, 0, '10-22 is in d7, 10-01 is before prev7 (from 10-12)');
+  assert.equal(patra.series[s.days30.indexOf('2026-10-01')], 5);
+});
+
+test('summarizeCounts: the day after the clock goes forward neither skips nor repeats a day', () => {
+  // Athens moves to summer time on Sunday 2026-03-29, a 23-hour day. 2026-03-30 00:30 in Athens is 03-29 21:30 UTC.
+  const s = summarizeCounts([{ day: '2026-03-24', metric: 'open', city: 'patra', n: 1 }], Date.UTC(2026, 2, 29, 21, 30));
+  assert.equal(s.today, '2026-03-30');
+  assert.equal(new Set(s.days30).size, 30);
+  assert.equal(s.days30[28], '2026-03-29');
+  assert.equal(s.days30[23], '2026-03-24');
+  assert.equal(s.totals[0].d7, 1, '03-24 is the first day of the last 7');
+});
+
+test('STATS_HTML: the inline script parses, has one tab list to extend, hides push', () => {
+  const script = STATS_HTML.match(/<script>([\s\S]*)<\/script>/)[1];
+  assert.doesNotThrow(() => new Function(script));
+  assert.match(script, /const TABS = \[/);
+  assert.match(script, /"hidden":\["push"\]/);
 });
