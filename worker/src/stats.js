@@ -124,8 +124,18 @@ export async function recordStats(env, city, stopCode, result) {
   }
 }
 
+// TEL-404: a failed Durable Object answer throws, so the caller's 10-min cache never stores it as a 200.
+export class StatsError extends Error {}
+
 export async function readStats(env, city, routeCode, stopCode) {
+  if (!env.STATS) throw new StatsError('stats: no binding');
   const stub = env.STATS.get(env.STATS.idFromName(statsName(city, routeCode, stopCode)));
-  const res = await stub.fetch('https://stats/');
+  let res;
+  try {
+    res = await stub.fetch('https://stats/');
+  } catch (err) {
+    throw new StatsError(`stats: ${err?.name || 'fetch failed'}`);
+  }
+  if (!res.ok) throw new StatsError(`stats: DO ${res.status}`);
   return res.text();
 }
