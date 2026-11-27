@@ -1,7 +1,7 @@
 import { normalizeLive, noServiceResult } from '../../web/js/arrivals.js';
 import { ReminderBase } from './reminders.js';
 import { RoutineBase } from './routines.js';
-import { StatsBase, recordStats, readStats, validCode } from './stats.js';
+import { StatsBase, StatsError, recordStats, readStats, validCode } from './stats.js';
 import { parseRoute } from './routes.js';
 import { CountersBase, recordCount } from './counters.js';
 import { adminRoute } from './admin.js';
@@ -126,7 +126,7 @@ async function upstream(env, city, path, opts = {}) {
   }
 }
 
-// ALLOWED_ORIGIN (see origin.js): an allowed Origin is echoed back, anything else gets the first exact entry.
+// ALLOWED_ORIGIN (see origin.js): an allowed Origin is echoed back; anything else gets no Access-Control-Allow-Origin.
 function corsOrigin(env, request) {
   return corsOriginFor(env, request.headers.get('Origin'));
 }
@@ -134,7 +134,7 @@ function corsOrigin(env, request) {
 function headers(cors, extra = {}) {
   return {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': cors,
+    ...(cors ? { 'Access-Control-Allow-Origin': cors } : {}),
     Vary: 'Origin',
     'Access-Control-Expose-Headers': 'X-Cache',
     ...extra,
@@ -369,7 +369,7 @@ export default {
       return new Response(null, {
         status: 204,
         headers: {
-          'Access-Control-Allow-Origin': cors,
+          ...(cors ? { 'Access-Control-Allow-Origin': cors } : {}),
           Vary: 'Origin',
           'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
@@ -418,9 +418,19 @@ export default {
       // stops | lines
       return await cached(cors, ctx, `${c.id}/${route.kind}`, 86400, async () => JSON.stringify(await upstream(env, c, `/${route.kind}`)), env);
     } catch (err) {
-      const status = err.status || 502;
-      console.error(`${pathname}: ${err.message}`);
-      return json(cors, { error: 'upstream', status }, status, { 'Cache-Control': 'no-store' });
+      // TEL-404: say which side failed. citybus.gr -> 'upstream' (unchanged); the stats Durable Object ->
+      // 'stats_unavailable'; anything else is our own bug -> 'internal' 500 (logged by name only, no body).
+      const nc = { 'Cache-Control': 'no-store' };
+      if (err instanceof UpstreamError) {
+        console.error(`${pathname}: ${err.message}`);
+        return json(cors, { error: 'upstream', status: err.status }, err.status, nc);
+      }
+      if (err instanceof StatsError) {
+        console.error(`${pathname}: ${err.message}`);
+        return json(cors, { error: 'stats_unavailable', status: 503 }, 503, nc);
+      }
+      console.error(`${pathname}: internal ${err?.name || 'Error'}: ${err?.message}`);
+      return json(cors, { error: 'internal', status: 500 }, 500, nc);
     }
   },
 };

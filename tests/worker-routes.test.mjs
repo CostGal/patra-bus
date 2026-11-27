@@ -318,6 +318,52 @@ test('worker: stats route validates codes and uses a per-city cache key', () => 
   assert.ok(cacheStore.has('https://patra-bus.cache/stats/patra/2015/1011'));
 }));
 
+test('worker: a failed stats Durable Object is a 503, never cached as a 200 (TEL-404)', () => withWorld(async ({ env, ctx, cacheStore }) => {
+  let ok = false;
+  const senv = { ...env, STATS: { idFromName: (n) => n, get: (id) => ({ fetch: async () => (ok ? new Response(JSON.stringify({ samples: 0, id })) : new Response('boom', { status: 500 })) }) } };
+  const call = () => worker.fetch(new Request('https://w.test/api/corfu/stats/2015/801'), senv, ctx);
+  const bad = await call();
+  assert.equal(bad.status, 503);
+  assert.deepEqual(await bad.json(), { error: 'stats_unavailable', status: 503 });
+  assert.equal(bad.headers.get('Cache-Control'), 'no-store');
+  assert.ok(!cacheStore.has('https://patra-bus.cache/stats/corfu/2015/801'));
+  const thrown = await worker.fetch(new Request('https://w.test/api/corfu/stats/2015/801'),
+    { ...senv, STATS: { idFromName: (n) => n, get: () => ({ fetch: async () => { throw new Error('DO reset'); } }) } }, ctx);
+  assert.equal(thrown.status, 503);
+  ok = true;
+  const good = await call();
+  assert.equal(good.status, 200);
+  assert.equal((await good.json()).id, 'corfu/2015/801');
+}));
+
+test('worker: our own bug is a 500 internal, citybus trouble stays 502 upstream (TEL-404)', () => withWorld(async ({ env, ctx }) => {
+  const benv = { ...env, KV: { get: async () => { throw new TypeError('kv broke'); }, put: async () => {} } };
+  const r = await worker.fetch(new Request('https://w.test/health'), benv, ctx);
+  assert.equal(r.status, 500);
+  assert.deepEqual(await r.json(), { error: 'internal', status: 500 });
+  assert.equal(r.headers.get('Cache-Control'), 'no-store');
+}, { upstream: () => new Response('', { status: 503 }) }).then(() => withWorld(async ({ get }) => {
+  const r = await get('/api/corfu/live/801');
+  assert.equal(r.status, 502);
+  assert.equal((await r.json()).error, 'upstream');
+}, { upstream: () => new Response('', { status: 503 }) })));
+
+test('worker: no ALLOWED_ORIGIN or Origin: null -> no Access-Control-Allow-Origin, also on OPTIONS (TEL-404)', () => withWorld(async ({ env, ctx }) => {
+  const call = (e, method, origin) => worker.fetch(new Request('https://w.test/api/corfu/live/801', { method, headers: origin ? { Origin: origin } : {} }), e, ctx);
+  const none = { ...env };
+  delete none.ALLOWED_ORIGIN;
+  const prod = { ...env, ALLOWED_ORIGIN: 'https://costgal.github.io,http://localhost:8080' };
+  for (const method of ['GET', 'OPTIONS']) {
+    for (const origin of ['null', 'https://costgal.github.io', 'https://evil.test', undefined]) {
+      assert.equal((await call(none, method, origin)).headers.get('Access-Control-Allow-Origin'), null, `${method} ${origin} without ALLOWED_ORIGIN`);
+    }
+    assert.equal((await call(prod, method, 'null')).headers.get('Access-Control-Allow-Origin'), null, `${method} Origin: null`);
+    assert.equal((await call(prod, method, 'https://evil.test')).headers.get('Access-Control-Allow-Origin'), null, `${method} other site`);
+    assert.equal((await call(prod, method, 'https://costgal.github.io')).headers.get('Access-Control-Allow-Origin'), 'https://costgal.github.io', `${method} app`);
+    assert.equal((await call(prod, method, 'https://costgal.github.io')).headers.get('Vary'), 'Origin');
+  }
+}));
+
 test('worker: /health lists every city, tokenExp stays the Patras one', () => withWorld(async ({ get }) => {
   let h = await (await get('/health')).json();
   assert.equal(h.ok, true);

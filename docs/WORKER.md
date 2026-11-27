@@ -36,7 +36,7 @@ Other behaviour:
 
 - `OPTIONS` answers `204` with the CORS headers (`GET, POST, DELETE, OPTIONS`, preflight cached 24 h).
 - Any other method on a read route, and any unknown path, gives `404 {error: 'not_found'}`.
-- An unknown city gives `404`. A failed upstream call gives `{error: 'upstream', status}` with the upstream status or `502`.
+- An unknown city gives `404`. A failed upstream call gives `{error: 'upstream', status}` with the upstream status or `502`. A failed stats Durable Object gives `503 {error: 'stats_unavailable'}` and is not cached. Any other error is our own bug: `500 {error: 'internal'}` (TEL-404). All of them carry `Cache-Control: no-store`.
 - `/stats` and `/api/admin/counts` send no CORS header on purpose, so no other site can read them.
 
 ## 3. Caching
@@ -88,8 +88,8 @@ Migrations in `worker/wrangler.toml`: `v1` adds `Reminder`, `v2` adds `Routine` 
 ## 6. CORS
 
 - `ALLOWED_ORIGIN` in `worker/wrangler.toml` is a comma-separated list. Production: `https://costgal.github.io`, `http://localhost:8080`, `https://patra-bus-dev.patra-bus.workers.dev`, `https://*-patra-bus-dev.patra-bus.workers.dev`. Staging has the same list without the first entry.
-- An entry is an exact origin, or one with a single `*` inside the first host label. `*` stands for one or more of `a-z`, `0-9`, `-`. That matches preview URLs of one project and nothing else. Any other use of `*` matches nothing. If the variable is missing, the default is `*`. Code: `worker/src/origin.js`.
-- An allowed origin is echoed back in `Access-Control-Allow-Origin`. An unknown origin gets the first exact entry of the list instead, so the browser blocks the answer.
+- An entry is an exact origin, or one with a single `*` inside the first host label. `*` stands for one or more of `a-z`, `0-9`, `-`. That matches preview URLs of one project and nothing else. Any other use of `*` matches nothing. If the variable is missing or empty, no origin is allowed (TEL-404; it used to mean `*`); `*` must be written out. Code: `worker/src/origin.js`.
+- An allowed origin is echoed back in `Access-Control-Allow-Origin`. An unknown origin, a missing one and `Origin: null` get no `Access-Control-Allow-Origin` at all, also on `OPTIONS`, so the browser blocks the answer (TEL-404). The worker never sends the word `null`: it would match `Origin: null` (sandboxed iframes, `file://`, `data:`).
 - This only stops browsers running other sites. A script or `curl` can still call GET routes. `POST /api/report` and `POST /api/count` also refuse a request whose `Origin` is not allowed (`403`). A request with no `Origin` passes.
 
 ## 7. Problem reports (`POST /api/report`)

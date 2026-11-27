@@ -254,7 +254,8 @@ test('/api/report: GET is 404, preflight allows POST + Content-Type', async () =
     assert.equal(pre.status, 204);
     assert.match(pre.headers.get('Access-Control-Allow-Methods'), /POST/);
     const other = await worker.fetch(new Request('https://w.test/api/report', { method: 'OPTIONS', headers: { Origin: 'https://evil.example' } }), s.env, {});
-    assert.equal(other.headers.get('Access-Control-Allow-Origin'), ORIGIN); // not echoed to the other site: its browser blocks the call
+    assert.equal(other.headers.get('Access-Control-Allow-Origin'), null); // TEL-404: no header for another site, its browser blocks the call
+    assert.equal(pre.headers.get('Access-Control-Allow-Origin'), ORIGIN);
   } finally { s.restore(); }
 });
 

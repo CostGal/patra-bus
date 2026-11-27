@@ -34,9 +34,9 @@ test('origin: malformed wildcards match nothing', () => {
   }
 });
 
-test('origin: "*" and empty config allow everything', () => {
+test('origin: only an explicit "*" allows everything; empty config allows nothing (TEL-404)', () => {
   assert.equal(isAllowedOrigin({ ALLOWED_ORIGIN: '*' }, 'https://x.test'), true);
-  assert.equal(isAllowedOrigin({}, 'https://x.test'), true);
+  assert.equal(isAllowedOrigin({}, 'https://x.test'), false);
 });
 
 test('origin: only pattern matches count as preview', () => {
@@ -47,11 +47,25 @@ test('origin: only pattern matches count as preview', () => {
   assert.equal(isPatternOrigin({ ALLOWED_ORIGIN: '*' }, 'https://x.test'), false);
 });
 
-test('origin: CORS echoes allowed origins, else the first exact entry (never a pattern)', () => {
+test('origin: CORS echoes allowed origins, else no header at all (TEL-404: never "null", never a pattern)', () => {
   const prev = 'https://alice-ux-patra-bus-dev.patra-bus.workers.dev';
   assert.equal(corsOriginFor(env, prev), prev);
-  assert.equal(corsOriginFor(env, 'https://evil.test'), 'https://costgal.github.io');
-  assert.equal(corsOriginFor(env, null), 'https://costgal.github.io');
-  assert.equal(corsOriginFor({ ALLOWED_ORIGIN: 'https://*.patra-bus.pages.dev' }, 'https://evil.test'), 'null');
+  assert.equal(corsOriginFor(env, 'https://costgal.github.io'), 'https://costgal.github.io');
+  assert.equal(corsOriginFor(env, 'http://localhost:8080'), 'http://localhost:8080');
+  assert.equal(corsOriginFor(env, DEV), DEV);
+  assert.equal(corsOriginFor(env, 'https://evil.test'), null);
+  assert.equal(corsOriginFor(env, null), null);
+  assert.equal(corsOriginFor(env, 'null'), null);
+  assert.equal(corsOriginFor({ ALLOWED_ORIGIN: 'https://*.patra-bus.pages.dev' }, 'https://evil.test'), null);
   assert.equal(corsOriginFor({ ALLOWED_ORIGIN: '*' }, null), '*');
+});
+
+test('origin: without ALLOWED_ORIGIN nothing is allowed (TEL-404: the default is no longer "*")', () => {
+  for (const e of [{}, { ALLOWED_ORIGIN: '' }, { ALLOWED_ORIGIN: ' , ' }]) {
+    assert.equal(isAllowedOrigin(e, 'https://costgal.github.io'), false);
+    assert.equal(isAllowedOrigin(e, 'null'), false);
+    assert.equal(corsOriginFor(e, 'https://costgal.github.io'), null);
+    assert.equal(corsOriginFor(e, 'null'), null);
+    assert.equal(corsOriginFor(e, null), null);
+  }
 });
