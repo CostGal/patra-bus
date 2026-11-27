@@ -87,24 +87,24 @@ export const STATS_HTML = `<!doctype html>
   :root {
     color-scheme: light dark; font: 15px/1.4 system-ui, sans-serif;
     --bg: #f6f6f8; --card: #fff; --fg: #1c1c1e; --muted: #6c6c70; --line: #d8d8dc;
-    --bar: #9db8e8; --bar-today: #2f6fde; --bar-zero: #d8d8dc; --err: #c33;
+    --bar: #9db8e8; --bar-today: #2f6fde; --bar-zero: #d8d8dc; --err: #c33; --btn: #2f6fde; --btn-fg: #fff;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #000; --card: #1c1c1e; --fg: #f2f2f7; --muted: #a0a0a8; --line: #3a3a3c;
-      --bar: #3d5f99; --bar-today: #6fa1ff; --bar-zero: #3a3a3c; --err: #ff6b6b; }
+      --bar: #3d5f99; --bar-today: #6fa1ff; --bar-zero: #3a3a3c; --err: #ff6b6b; --btn: #6fa1ff; --btn-fg: #000; }
   }
   body { margin: 0 auto; max-width: 880px; padding: 16px; background: var(--bg); color: var(--fg); }
   h1 { font-size: 24px; margin: 8px 0; }
   h2 { font-size: 19px; margin: 28px 0 8px; }
   h3 { font-size: 15px; margin: 0 0 4px; }
   form { display: flex; gap: 8px; margin: 16px 0; }
-  input { flex: 1; min-width: 0; font: inherit; padding: 8px; }
-  button { font: inherit; padding: 8px 14px; }
+  input { flex: 1; min-width: 0; font: inherit; padding: 8px; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+  form button { font: inherit; padding: 8px 14px; color: var(--btn-fg); background: var(--btn); border: 0; border-radius: 8px; cursor: pointer; }
   .note { color: var(--muted); font-size: 13px; margin: 4px 0; }
   #err { color: var(--err); }
   .num { font-variant-numeric: tabular-nums; }
   [role=tablist] { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 8px 0 12px; }
-  [role=tab] { border: 0; background: none; color: var(--muted); padding: 8px 12px; border-bottom: 2px solid transparent; cursor: pointer; }
+  [role=tab] { font: inherit; border: 0; background: none; color: var(--muted); padding: 8px 12px; border-bottom: 2px solid transparent; cursor: pointer; }
   [role=tab][aria-selected=true] { color: var(--fg); border-bottom-color: var(--bar-today); font-weight: 600; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
   .card { background: var(--card); border-radius: 12px; padding: 14px 16px; }
