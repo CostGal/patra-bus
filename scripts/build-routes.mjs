@@ -15,7 +15,8 @@
 //   --city     which city's data dir to read and write (default: Patras, web/data/)
 //   --offline  never touch the network (cache only, else heuristic fallback)
 //   --dry      compute and print, write nothing (diagnostics still go to scripts/.cache/)
-//   --only     process just these routes; implies --dry unless --write is given
+//   --only     process just these routes; implies --dry unless --write is given. With --write they are merged into the
+//              existing routes.json / shapes.json (TEL-401): the selected routes replaced, all others kept.
 import { readFile, writeFile, rename, mkdir, unlink } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
@@ -407,12 +408,19 @@ export function createOsrm({ cacheDir = CACHE, servers = K.SERVERS, offline = fa
 
 // ---------------------------------------------------------------- one route
 const sortByCode = (a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0);
+// Rank of each stop in string order of its code (equal codes share a rank). Codes stay strings: '0015' is not '15'.
+export function codeRanks(pts) {
+  const sorted = [...new Set(pts.map((p) => p.code))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const rank = new Map(sorted.map((c, k) => [c, k]));
+  return pts.map((p) => rank.get(p.code));
+}
 const tag = /ΤΕΡΜΑ|ΑΦΕΤΗΡΙΑ/;
 
 export async function processRoute(rt, pts, ctx) {
   const { index, osrm, log } = ctx;
   const n = pts.length;
   const diag = { flags: [] };
+  const ranks = codeRanks(pts);
   const out = { code: rt.code, lineCode: rt.lineCode, name: rt.name, direction: rt.direction };
   if (n < 2) return { ...out, stops: pts.map((p) => p.code), legSec: [], confidence: 0, method: 'single', diag, shape: [] };
 
@@ -441,7 +449,7 @@ export async function processRoute(rt, pts, ctx) {
     // 4. combine evidence: side-of-road (strong), name, stop-code monotonicity (weak)
     const judge = (t, nameEv) => {
       const sd = sideTest(t.geometry, t.legs.map((x) => x.distance), t.waypoints.map((w) => w.location), t.order.map((i) => pts[i]));
-      const codes = t.order.map((i) => +pts[i].code), tau = kendallTau(codes, codes.map((_, k) => k));
+      const codes = t.order.map((i) => ranks[i]), tau = kendallTau(codes, codes.map((_, k) => k));
       const rel = Math.min(1, (sd.right + sd.left) / 10);
       return { sd, tau, rel, total: 1.6 * sd.score * rel + nameEv * ev0.w + 0.3 * tau };
     };
@@ -553,6 +561,20 @@ export async function loadInputs() {
   return { stops, routes };
 }
 
+// The routes.json / shapes.json objects for these results. `prev` ({ routes, shapes }, the files on disk) is given for an
+// --only run: its routes and shapes are kept and only the results' routes are replaced (a result without a shape drops
+// the old one). Without `prev` (a full rebuild) the files hold exactly the results.
+export function routeFiles(results, generatedAt, prev = null) {
+  const routesJson = { version: 1, generatedAt, routes: { ...(prev?.routes?.routes || {}) } };
+  const shapes = { ...(prev?.shapes || {}) };
+  for (const r of results) {
+    routesJson.routes[r.code] = { code: r.code, lineCode: r.lineCode, name: r.name, direction: r.direction, stops: r.stops, legSec: r.legSec, confidence: r.confidence, method: r.method };
+    delete shapes[r.code];
+    if (r.shape.length) shapes[r.code] = r.shape;
+  }
+  return { routesJson, shapes };
+}
+
 async function atomicWrite(url, text) {
   const tmp = new URL(url.href + '.tmp');
   await writeFile(tmp, text);
@@ -611,19 +633,23 @@ export async function main(argv = process.argv.slice(2)) {
   log(`\nOSRM requests: ${osrm.stats.network} network, ${osrm.stats.cached} cached`);
 
   const write = !opt.dry && (!opt.only.length || opt.write) && results.length > 0;
-  const generatedAt = new Date().toISOString();
-  const routesJson = { version: 1, generatedAt, routes: {} };
-  const shapes = {};
-  for (const r of results) {
-    routesJson.routes[r.code] = { code: r.code, lineCode: r.lineCode, name: r.name, direction: r.direction, stops: r.stops, legSec: r.legSec, confidence: r.confidence, method: r.method };
-    if (r.shape.length) shapes[r.code] = r.shape;
+  let prev = null;
+  if (write && opt.only.length) {
+    // --only --write merges into the files on disk; without them it would write just the selected routes, so stop.
+    try {
+      prev = { routes: JSON.parse(await readFile(new URL('routes.json', DATA), 'utf8')), shapes: JSON.parse(await readFile(new URL('shapes.json', DATA), 'utf8')) };
+      if (!prev.routes || typeof prev.routes.routes !== 'object' || !prev.shapes || typeof prev.shapes !== 'object') throw new Error('unexpected format');
+    } catch (e) {
+      throw new Error(`--only --write needs the current routes.json and shapes.json to merge into (${e.message}); nothing written`);
+    }
   }
+  const { routesJson, shapes } = routeFiles(results, new Date().toISOString(), prev);
   await mkdir(new URL('./.cache/', import.meta.url), { recursive: true });
   await writeFile(new URL(`./.cache/route-diag${city().id === DEFAULT_CITY ? '' : `-${city().id}`}.json`, import.meta.url), JSON.stringify(Object.fromEntries(results.map((r) => [r.code, { ...r.diag, confidence: r.confidence, method: r.method }])), null, 1));
   if (write) {
     await atomicWrite(new URL('shapes.json', DATA), JSON.stringify(shapes));
     await atomicWrite(new URL('routes.json', DATA), JSON.stringify(routesJson));
-    log(`wrote routes.json (${Object.keys(routesJson.routes).length} routes) and shapes.json`);
+    log(`wrote routes.json (${Object.keys(routesJson.routes).length} routes${prev ? `, ${results.length} rebuilt` : ''}) and shapes.json`);
   } else log('dry run: nothing written (--only needs --write)');
   return { results, osrm: osrm.stats };
 }
