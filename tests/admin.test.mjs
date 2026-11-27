@@ -148,3 +148,8 @@ test('STATS_HTML: the inline script parses, has one tab list to extend, hides pu
   assert.match(script, /const TABS = \[/);
   assert.match(script, /"hidden":\["push"\]/);
 });
+
+test('STATS_HTML: English only (Kostas, 2026-11-27), no Greek letters', () => {
+  assert.doesNotMatch(STATS_HTML, /[\u0370-\u03ff\u1f00-\u1fff]/);
+  assert.match(STATS_HTML, /<html lang="en">/);
+});

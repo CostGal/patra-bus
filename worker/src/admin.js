@@ -63,21 +63,21 @@ export function summarizeCounts(rows, now) {
 // (a new one before its labels are added) still shows, under its code. `push` is on the whitelist but nothing records
 // it, so the page hides it.
 const LABELS = {
-  metric: { feedback: 'Αναφορές / Feedback', open: 'Ανοίγματα / Opens', install: 'Εγκαταστάσεις / Installs', push: 'Push' },
+  metric: { feedback: 'Feedback', open: 'Opens', install: 'Installs', push: 'Push' },
   meaning: {
-    open: 'Συσκευές που άνοιξαν την εφαρμογή, μία φορά τη μέρα η καθεμία· μια συσκευή που μπαίνει κάθε μέρα μετράει 7. / Devices that opened the app, once a day each; a device used every day counts 7 times.',
-    install: 'Πρώτο άνοιγμα ως εγκατεστημένη εφαρμογή, μία φορά ανά συσκευή. / First launch as an installed app, once per device.',
-    feedback: 'Αναφορές προβλήματος που στάλθηκαν από τη φόρμα. / Problem reports sent from the form.',
+    open: 'Devices that opened the app, once a day each; a device used every day counts 7 times.',
+    install: 'First launch as an installed app, once per device.',
+    feedback: 'Problem reports sent from the form.',
   },
   order: ['open', 'install', 'feedback'],
   hidden: ['push'],
   cities: Object.values(CITIES).map((c) => c.id),
-  city: { '': 'Χωρίς πόλη / No city', ...Object.fromEntries(Object.values(CITIES).map((c) => [c.id, `${c.name.el} / ${c.name.en}`])) },
+  city: { '': 'No city', ...Object.fromEntries(Object.values(CITIES).map((c) => [c.id, c.name.en])) },
 };
 
 // The inline script uses no template literals and no backslashes, so this outer template keeps it as written.
 export const STATS_HTML = `<!doctype html>
-<html lang="el">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -130,16 +130,16 @@ export const STATS_HTML = `<!doctype html>
 </style>
 </head>
 <body>
-<h1>Στατιστικά / Stats</h1>
-<p class="note">Ανώνυμα σύνολα ανά ημέρα (ώρα Αθήνας). Χωρίς IP, id συσκευής ή στοιχεία χρήστη. / Anonymous daily totals (Athens time). No IP, device id or user data.</p>
-<form id="f"><input id="t" type="password" autocomplete="current-password" placeholder="STATS_TOKEN" aria-label="STATS_TOKEN" required><button>Άνοιγμα / Open</button></form>
+<h1>Stats</h1>
+<p class="note">Anonymous daily totals (Athens time). No IP, device id or user data.</p>
+<form id="f"><input id="t" type="password" autocomplete="current-password" placeholder="STATS_TOKEN" aria-label="STATS_TOKEN" required><button>Open</button></form>
 <p id="err" role="alert"></p>
 <div id="out"></div>
 <script>
 const LABELS = ${JSON.stringify(LABELS)};
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const name = (kind, v) => esc(LABELS[kind][v] ?? v);
-const fmt = (n) => Number(n).toLocaleString('el-GR');
+const fmt = (n) => Number(n).toLocaleString('en-GB');
 const dm = (day) => day.slice(8, 10) + '/' + day.slice(5, 7);
 const sum = (list, k) => list.reduce((a, t) => a + t[k], 0);
 
@@ -148,7 +148,7 @@ const delta = (now, before) => {
   const d = now - before;
   if (d === 0) return '<span class="delta">= 0</span>';
   const sign = d > 0 ? '▲ +' : '▼ −';
-  const pct = before === 0 ? 'νέο / new' : Math.round(Math.abs(d) / before * 100) + '%';
+  const pct = before === 0 ? 'new' : Math.round(Math.abs(d) / before * 100) + '%';
   return '<span class="delta">' + sign + fmt(Math.abs(d)) + ' (' + pct + ')</span>';
 };
 
@@ -169,7 +169,7 @@ const citiesOf = (d, metric) => {
 const bars = (t, days30, max) => {
   const W = 10, H = 56;
   let s = '<svg class="bars" viewBox="0 0 ' + (W * days30.length) + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="' +
-    esc(name('metric', t.metric) + ', ' + LABELS.city[t.city] + ': 30 ημέρες / 30 days') + '">';
+    esc(name('metric', t.metric) + ', ' + LABELS.city[t.city] + ': 30 days') + '">';
   days30.forEach((day, i) => {
     const n = t.series[i] || 0;
     const h = n === 0 ? 1 : Math.max(2, Math.round(n / max * (H - 2)));
@@ -177,7 +177,7 @@ const bars = (t, days30, max) => {
     s += '<rect class="' + cls + '" x="' + (i * W + 1) + '" y="' + (H - h) + '" width="' + (W - 2) + '" height="' + h + '"></rect>' +
       '<rect class="hit" x="' + (i * W) + '" y="0" width="' + W + '" height="' + H + '" data-pick="' + esc(dm(day) + ': ' + fmt(n)) + '"><title>' + esc(day + ': ' + n) + '</title></rect>';
   });
-  return s + '</svg><div class="axis"><span>' + esc(dm(days30[0])) + '</span><span>μέγ. / max ' + fmt(max) + '</span><span>σήμερα / today</span></div><p class="pick"></p>';
+  return s + '</svg><div class="axis"><span>' + esc(dm(days30[0])) + '</span><span>max ' + fmt(max) + '</span><span>today</span></div><p class="pick"></p>';
 };
 
 const headline = (d, metric) => {
@@ -196,37 +196,37 @@ const detail = (d, metric) => {
   const max = Math.max(1, ...cols.flatMap((t) => t.series));
   return '<h2>' + name('metric', metric) + '</h2><div class="grid">' + cols.map((t) =>
     '<section class="card"><h3>' + name('city', t.city) + '</h3><dl class="num">' +
-    '<dt>Σήμερα / Today</dt><dd>' + fmt(t.today) + '</dd>' +
-    '<dt>7 ημ. / 7 d</dt><dd>' + fmt(t.d7) + ' ' + delta(t.d7, t.prev7) + '</dd>' +
-    '<dt>30 ημ. / 30 d</dt><dd>' + fmt(t.d30) + '</dd>' +
-    '<dt>Όλα / All</dt><dd>' + fmt(t.all) + '</dd></dl>' + bars(t, d.days30, max) + '</section>').join('') + '</div>';
+    '<dt>Today</dt><dd>' + fmt(t.today) + '</dd>' +
+    '<dt>7 d</dt><dd>' + fmt(t.d7) + ' ' + delta(t.d7, t.prev7) + '</dd>' +
+    '<dt>30 d</dt><dd>' + fmt(t.d30) + '</dd>' +
+    '<dt>All</dt><dd>' + fmt(t.all) + '</dd></dl>' + bars(t, d.days30, max) + '</section>').join('') + '</div>';
 };
 
 const table = (head, rows) => '<table><thead><tr>' + head.map((h, i) => '<th' + (i >= 2 ? ' class="n"' : '') + '>' + h + '</th>').join('') +
-  '</tr></thead><tbody>' + (rows.join('') || '<tr><td colspan="' + head.length + '">Κανένα δεδομένο ακόμα / No data yet</td></tr>') + '</tbody></table>';
+  '</tr></thead><tbody>' + (rows.join('') || '<tr><td colspan="' + head.length + '">No data yet</td></tr>') + '</tbody></table>';
 
 // The first tables of the page, closed at the bottom: the same numbers, one row each.
-const raw = (d) => '<details><summary>Όλα τα νούμερα / Raw numbers</summary>' +
-  '<h3>Σύνολα / Totals</h3>' +
-  table(['Μέτρηση / Metric', 'Πόλη / City', 'Σήμερα / Today', '7 ημ. / 7 d', '30 ημ. / 30 d', 'Όλα / All'],
+const raw = (d) => '<details><summary>Raw numbers</summary>' +
+  '<h3>Totals</h3>' +
+  table(['Metric', 'City', 'Today', '7 d', '30 d', 'All'],
     d.totals.map((t) => '<tr><td>' + name('metric', t.metric) + '</td><td>' + name('city', t.city) + '</td>' +
       [t.today, t.d7, t.d30, t.all].map((n) => '<td class="n">' + n + '</td>').join('') + '</tr>')) +
-  '<h3>Ανά ημέρα (30 ημ.) / Per day (30 d)</h3>' +
-  table(['Ημέρα / Day', 'Μέτρηση / Metric', 'Πόλη / City', 'Πλήθος / Count'],
+  '<h3>Per day (30 d)</h3>' +
+  table(['Day', 'Metric', 'City', 'Count'],
     d.days.map((r) => '<tr><td>' + esc(r.day) + '</td><td>' + name('metric', r.metric) + '</td><td>' + name('city', r.city) + '</td><td class="n">' + r.n + '</td></tr>')) +
   '</details>';
 
 const usage = (d) => {
   const metrics = metricsOf(d);
-  if (!metrics.length) return '<p>Κανένα δεδομένο ακόμα / No data yet</p>' + raw(d);
-  return '<p class="note">Τελευταίες 7 μέρες ως ' + esc(dm(d.today)) + ', σε σχέση με τις 7 πριν. / Last 7 days to ' + esc(dm(d.today)) + ', against the 7 before.</p>' +
+  if (!metrics.length) return '<p>No data yet</p>' + raw(d);
+  return '<p class="note">Last 7 days to ' + esc(dm(d.today)) + ', against the 7 before.</p>' +
     '<div class="grid">' + metrics.map((m) => headline(d, m)).join('') + '</div>' +
     metrics.map((m) => detail(d, m)).join('') + raw(d);
 };
 
-// One entry per tab. A new tab (TEL-396, «Ποιότητα δεδομένων / Data quality») is one more line here.
+// One entry per tab. A new tab (TEL-396, "Data quality") is one more line here.
 const TABS = [
-  { id: 'usage', label: 'Χρήση / Usage', render: usage },
+  { id: 'usage', label: 'Usage', render: usage },
 ];
 let data = null;
 let tab = TABS[0].id;
@@ -234,7 +234,7 @@ let tab = TABS[0].id;
 const show = () => {
   const out = document.getElementById('out');
   const current = TABS.find((x) => x.id === tab);
-  out.innerHTML = '<nav role="tablist" aria-label="Στατιστικά / Stats">' + TABS.map((x) =>
+  out.innerHTML = '<nav role="tablist" aria-label="Stats">' + TABS.map((x) =>
     '<button type="button" role="tab" id="tab-' + x.id + '" data-tab="' + x.id + '" aria-controls="panel" aria-selected="' + (x.id === tab) + '">' + esc(x.label) + '</button>').join('') +
     '</nav><div role="tabpanel" id="panel" aria-labelledby="tab-' + current.id + '">' + current.render(data) + '</div>';
 };
@@ -253,7 +253,7 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   err.textContent = '';
   try {
     const res = await fetch('/api/admin/counts', { headers: { Authorization: 'Bearer ' + document.getElementById('t').value }, cache: 'no-store' });
-    if (!res.ok) throw new Error(res.status === 401 ? 'Λάθος κωδικός / Wrong token' : res.status === 429 ? 'Πολλές προσπάθειες, δοκίμασε σε 10 λεπτά / Too many tries, wait 10 min' : 'HTTP ' + res.status);
+    if (!res.ok) throw new Error(res.status === 401 ? 'Wrong token' : res.status === 429 ? 'Too many tries, wait 10 min' : 'HTTP ' + res.status);
     data = await res.json();
     show();
   } catch (ex) {
